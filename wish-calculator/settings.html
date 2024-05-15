@@ -5,6 +5,8 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Wish Calculator</title>
+
+	<link rel="icon" href="fate.png">
 </head>
 
 <style>
@@ -20,9 +22,19 @@
 
 	.lowerRightCorner {
 		position: fixed;
-		bottom: 20px;
+		bottom: 15px;
 		/* Adjust the distance from the bottom as needed */
 		right: 20px;
+		/* Adjust the distance from the right as needed */
+		z-index: 999;
+		/* Adjust the z-index to control the button's stacking order */
+	}
+	
+	.lowerLeftCorner {
+		position: fixed;
+		bottom: 15px;
+		/* Adjust the distance from the bottom as needed */
+		left: 20px;
 		/* Adjust the distance from the right as needed */
 		z-index: 999;
 		/* Adjust the z-index to control the button's stacking order */
@@ -186,6 +198,21 @@
 		outline: 0;
 	}
 
+	@media screen and (max-width: 450.67px) {
+		#fatediv {
+			display: none;
+		}
+
+		.fate {
+			/* top: 63px;
+			left: calc(50vw + 64px); */
+		}
+
+		/* .wishbr {
+			display: block;
+		} */
+	}
+
 	.fate {
 		animation: fadeInAnimation ease 3s;
 		animation-iteration-count: 1;
@@ -216,16 +243,6 @@
 		display: none;
 	}
 
-	@media screen and (max-width: 450.67px) {
-		.fate {
-			top: 63px;
-			left: calc(50vw + 64px);
-		}
-
-		.wishbr {
-			display: block;
-		}
-	}
 
 	@media screen and (max-width: 768px) {
 		body:not(.dark-mode) {
@@ -272,6 +289,14 @@
 			/* Increase the size by a factor (adjust as needed) */
 			/* margin-right: 5px; /* Add some spacing between the checkbox and label */
 		}
+
+		.lowerLeftCorner {
+			bottom: 40px;
+			left: unset;
+			right: 20px;
+			/* Adjust the distance from the right as needed */
+		}
+
 	}
 
 
@@ -287,7 +312,7 @@
 </style>
 
 <body class="dark-mode" ; style="font-size: 24px; font-family:verdana; line-height:1.5em;">
-	<img id="fate" class="fate" alt="" />
+	<div id="fatediv"><a href="https://zukrainak47.github.io/wish-calculator/"><img id="fate" class="fate" alt="" /></a></div>
 
 	<h2 style="margin-top:5px"><a class="dark-mode" id="home_home"
 			href="https://zukrainak47.github.io/wish-calculator/">WISH <br class="wishbr">CALCULATOR</a></h2>
@@ -380,19 +405,30 @@
 			</td>
 		</tr>
 	</table>
+	
 	<br>
 
 	<div class="lowerRightCorner" id="backgroundDiv">
-		<button id="backgroundToggle" class="button-11">Toggle Background</button>
+		<button id="backgroundToggle" class="button-11"><b>Toggle Background</b></button>
 	</div>
 	<div class="lowerRightCorner" id="accountDiv" style="display: none;">
-		<form action="https://zukrainak47.github.io/wish-calculator/settings-2.html">
-			<button type="submit" id="swapAccounts" class="button-11">Go to account 2</button>
+		<form action="https://zukrainak47.github.io/wish-calculator/wish-calculator-2.html">
+			<button type="submit" id="swapAccounts" class="button-11"><b>Go to account 2</b></button>
 		</form>
 	</div>
 	<button id="darkModeToggle" class="button-29">Toggle Dark Mode</button>
 	<button id="restoreDefaults" class="button-29" style="margin-top: 4px;">Restore Defaults</button>
 	<button id="homeButton" class="button-29" style="margin-top: 4px;">Back to Calculator</button>
+
+	<br>
+	<br>
+	<br>
+
+	<div class="lowerLeftCorner" id="bugDiv">
+		<form action="https://zukra47.notion.site/Found-a-bug-Got-suggestions-6af401c619804d2494dea010c0d38ef7">
+			<button type="submit" id="bugReport" class="button-11"><b>Found a bug?</b></button>
+		</form>
+	</div>
 	<script>
 		function toggleDarkMode() {
 			const body = document.body;
