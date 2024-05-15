@@ -9,7 +9,8 @@
 		integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA=="
 		crossorigin="anonymous" referrerpolicy="no-referrer" />
 	<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
+	
+	<link rel="icon" href="fate.png">
 </head>
 
 <style>
@@ -23,7 +24,7 @@
 
 	.lowerRightCorner {
 		position: fixed;
-		bottom: 20px;
+		bottom: 15px;
 		/* Adjust the distance from the bottom as needed */
 		right: 20px;
 		/* Adjust the distance from the right as needed */
@@ -31,7 +32,17 @@
 		/* Adjust the z-index to control the button's stacking order */
 	}
 
-	#settingsButton {
+	.lowerLeftCorner {
+		position: fixed;
+		bottom: 15px;
+		/* Adjust the distance from the bottom as needed */
+		left: 20px;
+		/* Adjust the distance from the right as needed */
+		z-index: 999;
+		/* Adjust the z-index to control the button's stacking order */
+	}
+
+#settingsButton {
 		position: fixed;
 		top: 20px;
 		/* Adjust the distance from the bottom as needed */
@@ -221,6 +232,26 @@
 	select {
 		width: 110px;
 	}
+	
+	.disclaimer {
+		font-size: 15px;
+		color: #454545;
+	}
+
+	@media screen and (max-width: 450.67px) {
+		#fatediv {
+			display: none;
+		}
+
+		.fate {
+			/* top: 63px;
+			left: calc(50vw + 64px); */
+		}
+
+		/* .wishbr {
+			display: block;
+		} */
+	}
 
 	.fate {
 		animation: fadeInAnimation ease 3s;
@@ -252,14 +283,10 @@
 		display: none;
 	}
 	
-	@media screen and (max-width: 450.67px) {
-		.fate {
-			top: 63px;
-			left: calc(50vw + 64px);
-		}
-		.wishbr {
-			display: block;
-		}
+	.disclaimerDiv {
+		/* width: 80%; */
+		text-align: center;
+		margin-bottom: -15px;
 	}
 
 	@media screen and (max-width: 768px) {
@@ -303,6 +330,25 @@
 			height: 40px
 		}
 
+		.lowerLeftCorner {
+			bottom: 40px;
+			left: unset;
+			right: 20px;
+			/* Adjust the distance from the right as needed */
+		}
+		
+		.disclaimer {
+			font-size: 7px;
+			/* Adjust font size for smaller screens */
+			line-height: 1.5em !important;
+		}
+
+		.disclaimerDiv {
+			width: 100%;
+			margin-left: -7px;
+			margin-bottom: -22px;
+			white-space: nowrap;
+		}
 	}
 
 	a.dark-mode {
@@ -343,7 +389,7 @@
 </style>
 
 <body class="dark-mode" ; style="font-size: 24px; font-family:verdana; line-height:1.5em;">
-	<a href="https://zukrainak47.github.io/wish-calculator/wish-calculator-2.html"><img id="fate" class="fate" alt=""></a>
+	<div id="fatediv"><a href="https://zukrainak47.github.io/wish-calculator/wish-calculator-2.html"><img id="fate" class="fate" alt="" /></a></div>
 	<h2 style="margin-top: 5px;" class="cc2">
 		<a class="dark-mode" id="home_home" href="https://zukrainak47.github.io/wish-calculator/wish-calculator-2.html">
 			<span>WISH <br class="wishbr">CALCULATOR</span>
@@ -451,10 +497,17 @@
 	<!-- <button id="lowerRightCorner" class="button-11">Toggle Heizou</button> -->
 	<div class="lowerRightCorner" id="accountDiv">
 		<form action="https://zukrainak47.github.io/wish-calculator/">
-			<button type="submit" id="swapAccounts" class="button-11">Go to account 1</button>
+			<button type="submit" id="swapAccounts" class="button-11"><b>Go to account 1</b></button>
 		</form>
 	</div>
-
+	<div class="lowerLeftCorner" id="bugDiv">
+		<form action="https://zukra47.notion.site/Found-a-bug-Got-suggestions-6af401c619804d2494dea010c0d38ef7">
+			<button type="submit" id="bugReport" class="button-11"><b>Found a bug?</b></button>
+		</form>
+	</div>
+	<div class="disclaimerDiv" id="disclaimDiv" style="display: none">    
+		<p class="disclaimer" style="margin-bottom: 0;"><i>The calculator's estimate for starglitter gain may be lower than starglitter gain in-game.</i></p>
+	</div>
 	<button id="settingsButton" class="settings-icon-button">
 		<i class="fas fa-cog fa-lg"></i>
 	</button>
@@ -616,7 +669,7 @@
 				}
 				// var stupid_check = true;
 			} else {
-				wishes_required[0] = 0
+				wishes_required[0] = 0;
 			}
 
 
@@ -748,6 +801,15 @@
 					}
 				}
 			}
+
+			if (chars_weapons_odds_wishes.length === 1 && 
+				chars_weapons_odds_wishes[0][1] !== 0 &&
+				number_of_chars === 1 &&
+				number_of_weapons === 0 &&
+				guaranteed) {
+				safe = '';
+			}
+
 			const guaranteedChars = Math.floor((wishes + char_pity + (guaranteed ? soft_pity : 0)) / (2 * soft_pity));
 			const guaranteedWeapons = Math.floor((wishes + weapon_pity + (path * soft_pity_wb)) / (3 * soft_pity_wb));
 			if (guaranteedChars === 1) {
@@ -772,20 +834,33 @@
 			}
 			// Call the function with your data
 			console.log(chars_weapons_odds_wishes);
-			if (chars_weapons_odds_wishes.length === 1) {
+			if (chars_weapons_odds_wishes.length === 1 && 
+				chars_weapons_odds_wishes[0][1] !== 0 &&
+				number_of_chars === 1 &&
+				number_of_weapons === 0 &&
+				guaranteed) {
+					out = `You need <u>${chars_weapons_odds_wishes[0][1]} more</u> wishes to get\n<strong>${number_of_chars}</strong> limited 5-star character${char_s1}<br>`
+					updateOutputMain(out);
+					document.getElementById("showCalcsDiv").style.display = "none";
+					document.getElementById("br1").style.display = "block";
+					document.getElementById("br2").style.display = "block";
+					document.getElementById("probabilityChart").style.display = "none";
+				}
+			else if (chars_weapons_odds_wishes.length === 1 && 
+				chars_weapons_odds_wishes[0][1] === 0) {
 				if (number_of_chars && number_of_weapons) {
-					out = `You have enough wishes to get <strong>${number_of_chars}</strong> limited 5-star character${char_s1} and <strong>${number_of_weapons}</strong> desired limited 5-star weapon${weapon_s1}!<br>`;
+					out = `You have enough wishes to get <strong>${number_of_chars}</strong> limited 5-star character${char_s1} and <strong>${number_of_weapons}</strong> desired limited 5-star weapon${weapon_s1}!`;
 				} else if (number_of_chars) {
-					out = `You have enough wishes to get <strong>${number_of_chars}</strong> limited 5-star character${char_s1}!<br>`;
+					out = `You have enough wishes to get <strong>${number_of_chars}</strong> limited 5-star character${char_s1}!`;
 				} else if (number_of_weapons) {
-					out = `You have enough wishes to get <strong>${number_of_weapons}</strong> desired limited 5-star weapon${weapon_s1}!<br>`;
+					out = `You have enough wishes to get <strong>${number_of_weapons}</strong> desired limited 5-star weapon${weapon_s1}!`;
 				} else {
 					out = `Nothing to calculate!`;
 				}
 				updateOutputMain(out);
 				document.getElementById("showCalcsDiv").style.display = "none";
-				document.getElementById("br1").style.display = "none";
-				// document.getElementById("br2").style.display = "none";
+				document.getElementById("br1").style.display = "block";
+				// document.getElementById("br2").style.display = "block";
 				document.getElementById("probabilityChart").style.display = "none";
 			}
 			else if (graph_type === "auto") {
@@ -797,16 +872,17 @@
 					createCumultativeProbabilityChart(chars_weapons_odds_wishes, "bar");
 				}
 				document.getElementById("showCalcsDiv").style.display = "block";
-				document.getElementById("br1").style.display = "block";
+				document.getElementById("br1").style.display = "none";
 				// document.getElementById("br2").style.display = "block";
 			}
 			else {
 				document.getElementById("probabilityChart").style.display = "block";
 				createCumultativeProbabilityChart(chars_weapons_odds_wishes, graph_type);
 				document.getElementById("showCalcsDiv").style.display = "block";
-				document.getElementById("br1").style.display = "block";
+				document.getElementById("br1").style.display = "none";
 				// document.getElementById("br2").style.display = "block";
 			}
+			document.getElementById("disclaimDiv").style.display = "block";
 		}
 
 		function showCalcs() {
