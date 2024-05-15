@@ -1,0 +1,1300 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Wish Calculator for 2nd account</title>
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
+		integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA=="
+		crossorigin="anonymous" referrerpolicy="no-referrer" />
+	<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+</head>
+
+<style>
+	/* Hide the scrollbar completely */
+	::-webkit-scrollbar {
+		display: none;
+	}
+
+	/* Hide scrollbar for Firefox */
+	/* Please note that Firefox may still show the scrollbar if the page is scrollable */
+
+	.lowerRightCorner {
+		position: fixed;
+		bottom: 20px;
+		/* Adjust the distance from the bottom as needed */
+		right: 20px;
+		/* Adjust the distance from the right as needed */
+		z-index: 999;
+		/* Adjust the z-index to control the button's stacking order */
+	}
+
+	#settingsButton {
+		position: fixed;
+		top: 20px;
+		/* Adjust the distance from the bottom as needed */
+		right: 20px;
+		/* Adjust the distance from the right as needed */
+		z-index: 999;
+		/* Adjust the z-index to control the button's stacking order */
+	}
+
+	.settings-icon-button {
+		background: none;
+		border: none;
+		color: #454545;
+		/* Adjust the color as needed */
+		font-size: 24px;
+		/* Adjust the font size as needed */
+		cursor: pointer;
+		padding: 0;
+	}
+
+	.button-container {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+	}
+
+	td {
+		border: 1px solid black;
+		border-collapse: collapse;
+	}
+
+	body.dark-mode td {
+		border: 1px solid grey;
+		/* Dark mode border color */
+		border-collapse: collapse;
+	}
+
+	td {
+		text-align: center;
+		height: 100px
+	}
+
+	.container {
+		display: flex;
+		justify-content: center;
+		/* Horizontally center the button */
+		align-items: center;
+		/* Vertically center the button */
+		/* Add any other container styles as needed */
+	}
+
+	input,
+	select {
+		font-size: 24px
+	}
+
+	input {
+		width: 100px;
+	}
+
+	.output {
+		font-size: 25px;
+	}
+
+	.output_main {
+		font-size: 20px;
+		line-height: 1.3em;
+	}
+
+
+	body:not(.dark-mode) {
+		background-color: #fdfbfc;
+		color: black;
+		text-align: center;
+		padding: 20px;
+		background-image: url("heizou3.png");
+		background-repeat: no-repeat;
+		background-attachment: fixed;
+		background-size: cover;
+	}
+
+	body:not(.dark-mode).color-only {
+		color: black;
+		background-image: none;
+	}
+
+	body.dark-mode {
+		background-color: #060404;
+		color: white;
+		text-align: center;
+		padding: 20px;
+		background-image: url("heizou4.png");
+		background-repeat: no-repeat;
+		background-attachment: fixed;
+		background-size: cover;
+
+	}
+
+	body.dark-mode.color-only {
+		color: white;
+		background-image: none;
+	}
+
+	input {
+		min-width: 150px !important;
+		max-width: 99.99% !important;
+		transition: width 0.25s;
+		text-align: center;
+	}
+
+	.button-29 {
+		align-items: center;
+		appearance: none;
+		background-image: radial-gradient(100% 100% at 100% 0, #5adaff 0, #5468ff 100%);
+		border: 0;
+		border-radius: 6px;
+		box-shadow: rgba(45, 35, 66, .4) 0 2px 4px, rgba(45, 35, 66, .3) 0 7px 13px -3px, rgba(58, 65, 111, .5) 0 -3px 0 inset;
+		box-sizing: border-box;
+		color: #fff;
+		cursor: pointer;
+		display: inline-flex;
+		font-family: verdana;
+		height: 48px;
+		justify-content: center;
+		line-height: 1;
+		list-style: none;
+		overflow: hidden;
+		padding-left: 16px;
+		padding-right: 16px;
+		position: relative;
+		text-align: left;
+		text-decoration: none;
+		transition: box-shadow .15s, transform .15s;
+		user-select: none;
+		-webkit-user-select: none;
+		touch-action: manipulation;
+		white-space: nowrap;
+		will-change: box-shadow, transform;
+		font-size: 18px;
+	}
+
+	.button-29:focus {
+		box-shadow: #3c4fe0 0 0 0 1.5px inset, rgba(45, 35, 66, .4) 0 2px 4px, rgba(45, 35, 66, .3) 0 7px 13px -3px, #3c4fe0 0 -3px 0 inset;
+	}
+
+	.button-29:hover {
+		box-shadow: rgba(45, 35, 66, .4) 0 4px 8px, rgba(45, 35, 66, .3) 0 7px 13px -3px, #3c4fe0 0 -3px 0 inset;
+		transform: translateY(-2px);
+	}
+
+	.button-29:active {
+		box-shadow: #3c4fe0 0 3px 7px inset;
+		transform: translateY(2px);
+	}
+
+	.button-11 {
+		background-color: #fff;
+		border: 1px solid #000;
+		border-radius: 8px;
+		box-sizing: border-box;
+		color: #0f1111;
+		cursor: pointer;
+		display: inline-block;
+		font-family: "Amazon Ember", sans-serif;
+		font-size: 15px;
+		line-height: 20px;
+		padding: 0 10px 0 11px;
+		position: relative;
+		text-align: center;
+		text-decoration: none;
+		user-select: none;
+		-webkit-user-select: none;
+		touch-action: manipulation;
+		vertical-align: middle;
+	}
+
+	.button-11:hover {
+		background-color: #f7fafa;
+	}
+
+	.button-11:focus {
+		border-color: #008296;
+		box-shadow: rgba(213, 217, 217, .5) 0 2px 5px 0;
+		outline: 0;
+	}
+
+	select {
+		width: 110px;
+	}
+
+	.fate {
+		animation: fadeInAnimation ease 3s;
+		animation-iteration-count: 1;
+		animation-fill-mode: forwards;
+		position: absolute;
+		top: 27px;
+		left: calc(50vw + 129px);
+		width: 50px;
+		height: 50px;
+		content: url(fate.png);
+	}
+
+	@keyframes fadeInAnimation {
+		0% {
+			opacity: 0;
+		}
+
+		50% {
+			opacity: 0;
+		}
+
+		100% {
+			opacity: 1;
+		}
+	}
+
+	.wishbr {
+		display: none;
+	}
+	
+	@media screen and (max-width: 450.67px) {
+		.fate {
+			top: 63px;
+			left: calc(50vw + 64px);
+		}
+		.wishbr {
+			display: block;
+		}
+	}
+
+	@media screen and (max-width: 768px) {
+		body:not(.dark-mode) {
+			background-color: #fdfbfc;
+			background-image: url("heizou35.png");
+		}
+
+		body.dark-mode {
+			background-color: #060404;
+			background-image: url("heizou45.png");
+		}
+
+		select {
+			width: 50px;
+		}
+
+		input,
+		select,
+		td,
+		.output_main,
+		.output {
+			font-size: 10px;
+			/* Adjust font size for smaller screens */
+			line-height: 1.5em;
+		}
+
+		.button-11 {
+			font-size: 12px;
+		}
+
+		input {
+			min-width: 40px !important;
+		}
+
+		td {
+			height: 75px;
+		}
+
+		.container {
+			height: 40px
+		}
+
+	}
+
+	a.dark-mode {
+		text-decoration: none;
+		color: white;
+	}
+
+	a:not(dark-mode) {
+		text-decoration: none;
+		color: black;
+	}
+
+	#probabilityChart {
+		max-height: 300px;
+		/* Adjust the max height as needed */
+		width: 100%;
+		/* Ensure the chart spans the container's width */
+	}
+
+	.breakbreak {
+		display: block;
+		/* makes it have a width */
+		content: "";
+		/* clears default height */
+		margin-top: 13px;
+		/* change this to whatever height you want it */
+	}
+
+	.bb {
+		position: relative;
+		top: -20px;
+	}
+
+	.everything {
+		position: relative;
+		top: -46px;
+	}
+</style>
+
+<body class="dark-mode" ; style="font-size: 24px; font-family:verdana; line-height:1.5em;">
+	<a href="https://wish-calculator-for-2nd-account.zukrainak47.repl.co/"><img id="fate" class="fate" alt=""></a>
+	<h2 style="margin-top: 5px;" class="cc2">
+		<a class="dark-mode" id="home_home" href="https://wish-calculator-for-2nd-account.zukrainak47.repl.co/">
+			<span>WISH <br class="wishbr">CALCULATOR</span>
+				<br>
+				<span style="font-size:12px;" class="bb">(for your 2nd account)</span>
+		</a>
+	</h2>
+	<div class="everything">
+		<table style="width: 100%;">
+			<tr>
+				<td colspan="12" style="width:40%">
+					Number of 5 star characters desired: <input type="number" style="width: 40px;" id="number_of_chars"
+						value="2">
+				</td>
+				<td colspan="12" style="width:30%">
+					Currently guaranteed?
+					<select id="guaranteed">
+						<option value="1">Yes</option>
+						<option value="0" selected="selected">No</option>
+					</select>
+				</td>
+				<td colspan="12" style="width:30%">
+					Character pity: <input style="width:70px" type="number" id="char_pity" value="0">
+				</td>
+			</tr>
+			<tr>
+				<td colspan="12">
+					Number of 5 star weapons desired: <input style="width:40px" type="number" id="number_of_weapons"
+						value="0">
+				</td>
+				<td colspan="12">
+					Last 5 star weapon was standard?
+					<select id="standard">
+						<option value="1">Yes</option>
+						<option value="0" selected="selected">No</option>
+					</select>
+				</td>
+				<td colspan="9">
+					Weapon pity: <input style="width:40px" type="number" id="weapon_pity" value="0">
+				</td>
+				<td colspan="3">
+					Epitomized Path: <input style="width:40px" type="number" id="path" value="0">
+				</td>
+			</tr>
+			<tr>
+				<td colspan="8" style="width:20%">
+					Primogems: <br><input type="number" id="primogems" value="0">
+				</td>
+				<td colspan="8" style="width:20%">
+					Genesis Crystals: <br><input type="number" id="genesis" value="0">
+				</td>
+				<td colspan="8" style="width:20%">
+					Starglitter: <br><input type="number" id="starglitter" value="0">
+				</td>
+				<td colspan="12" style="width:40%">
+					Intertwined Fates: <br><input type="number" id="fates" value="0">
+				</td>
+			</tr>
+		</table>
+		<table style="width: 100%; display: none;">
+			<!-- display: none; -->
+			<tr>
+				<td class="container">
+					Settings
+				</td>
+			</tr>
+		</table>
+		<table style="width: 100%; display: none;">
+			<tr>
+				<td style="width: 25%;">
+					Wishes per 5 star character: <input style="width:40px" type="number" id="soft_pity" value="80">
+				</td>
+				<td style="width: 25%;">
+					Wishes per 5 star weapon: <input style="width:40px" type="number" id="soft_pity_wb" value="70">
+				</td>
+				<td style="width: 25%;">
+					Confidence (in %) - affects last line of output: <input style="width:40px" type="number" step="0.01"
+						id="confidence" value="90">
+				</td>
+				<td style="width: 25%;">
+					Preferred graph type:
+					<select id="graph_type">
+						<option value="auto" selected="selected">Auto</option>
+						<option value="bar">Bar</option>
+						<option value="scatter">Scatter</option>
+						<option value="line">Line</option>
+					</select>
+				</td>
+			</tr>
+		</table>
+
+
+		<br>
+		<button onclick="calculate()" class="button-29">Calculate</button>
+		<br><br>
+		<div style="font-family:verdana" id="output_main" class="output_main"></div>
+		<canvas id="probabilityChart" width="400" height="200"></canvas>
+		<br class="breakbreak">
+		<div style="font-family:verdana" id="output" class="output"></div>
+		<div class="button-container" id="showCalcsDiv" style="display: none;">
+			<button id="showCalcsButton" onclick="showCalcs()" class="button-29">Show list of probabilities</button>
+		</div>
+		<br id="br1" style="display: none;"><br id="br2" style="display: none;">
+	</div>
+	<!-- <button id="lowerRightCorner" class="button-11">Toggle Heizou</button> -->
+	<div class="lowerRightCorner" id="accountDiv">
+		<form action="https://wish-calculator.zukrainak47.repl.co/">
+			<button type="submit" id="swapAccounts" class="button-11">Go to account 1</button>
+		</form>
+	</div>
+
+	<button id="settingsButton" class="settings-icon-button">
+		<i class="fas fa-cog fa-lg"></i>
+	</button>
+
+	<script>
+		function resizable(el, factor) {
+			var int = Number(factor) || 7.7;
+			function resize() {el.style.width = ((el.value.length + 1) * int) + 'px'}
+			var e = 'keyup,keypress,focus,blur,change'.split(',');
+			for (var i in e) el.addEventListener(e[i], resize, false);
+			resize();
+		}
+		resizable(document.getElementById('primogems'), 7);
+		resizable(document.getElementById('number_of_chars'), 7);
+		resizable(document.getElementById('number_of_weapons'), 7);
+		resizable(document.getElementById('genesis'), 7);
+		resizable(document.getElementById('starglitter'), 7);
+		resizable(document.getElementById('fates'), 7);
+
+		function clearOutputMain() {
+			const outputElement = document.getElementById("output_main");
+			outputElement.textContent = "";
+		}
+
+		function updateOutputMain(text) {
+			const outputElement = document.getElementById("output_main");
+			outputElement.innerHTML += text + "<br>";
+		}
+
+
+		function clearOutput() {
+			const outputElement = document.getElementById("output");
+			outputElement.textContent = "";
+		}
+
+		function updateOutput(text) {
+			const outputElement = document.getElementById("output");
+			outputElement.innerHTML += text + "<br>";
+		}
+
+		// Function to toggle dark mode
+		function toggleDarkMode() {
+			const body = document.body;
+			const links = document.getElementsByTagName('a');
+			const fateElement = document.getElementById('fate'); // Get the "fate" element
+
+			body.classList.toggle("dark-mode"); // Toggle the dark-mode class on the body
+
+			// Toggle the dark-mode class on each 'a' element
+			for (let i = 0; i < links.length; i++) {
+				links[i].classList.toggle("dark-mode");
+			}
+
+			// Check if dark mode is active
+			const isDarkMode = body.classList.contains("dark-mode");
+
+			// Hide or show the fate element based on dark mode state
+			if (isDarkMode) {
+				fateElement.style.display = "block"; // Hide the element
+			} else {
+				fateElement.style.display = "none"; // Show the element
+			}
+		}
+
+
+
+		let out;
+		let chars_weapons_odds_wishes;
+		let char_s;
+		let weapon_s;
+		let char_s1;
+		let weapon_s1;
+		function calculate() {
+			const soft_pity = parseInt(document.getElementById("soft_pity").value);
+			const soft_pity_wb = parseInt(document.getElementById("soft_pity_wb").value);
+			const confidence = parseFloat(document.getElementById("confidence").value);
+			const graph_type = document.getElementById("graph_type").value;
+			const odds_zero = [
+				[0.375, soft_pity_wb],
+				[0.265625, soft_pity_wb * 2],
+				[0.359375, soft_pity_wb * 3],
+			];
+			const odds_one = [
+				[0.375, soft_pity_wb],
+				[0.625, soft_pity_wb * 2],
+			];
+			const odds_two = [[1, soft_pity_wb]];
+			const odds_std_zero = [
+				[0.5, soft_pity_wb],
+				[0.1875, soft_pity_wb * 2],
+				[0.3125, soft_pity_wb * 3],
+			];
+			const odds_std_one = [
+				[0.5, soft_pity_wb],
+				[0.5, soft_pity_wb * 2],
+			];
+			const odds_std_two = odds_two;
+
+			const odds_total = [
+				[odds_zero, odds_one, odds_two],
+				[odds_std_zero, odds_std_one, odds_std_two],
+			];
+
+			const number_of_chars = parseInt(document.getElementById("number_of_chars").value);
+			let guaranteed;
+			if (number_of_chars === 0) {
+				guaranteed = 0;
+			} else guaranteed = parseInt(document.getElementById("guaranteed").value);
+			const char_pity = parseInt(document.getElementById("char_pity").value);
+			const number_of_weapons = parseInt(document.getElementById("number_of_weapons").value);
+			const weapon_pity = parseInt(document.getElementById("weapon_pity").value);
+			const standard = parseInt(document.getElementById("standard").value);
+			const path = parseInt(document.getElementById("path").value);
+			const primogems = parseInt(document.getElementById("primogems").value);
+			const genesis = parseInt(document.getElementById("genesis").value);
+			const starglitter = parseInt(document.getElementById("starglitter").value);
+			const fates = parseInt(document.getElementById("fates").value);
+			if (number_of_chars === 1) {
+				char_s1 = "";
+			} else {
+				char_s1 = "s";
+			}
+			if (number_of_weapons === 1) {
+				weapon_s1 = "";
+			} else {
+				weapon_s1 = "s";
+			}
+			const wishes_without_starglitter = Math.floor((primogems + genesis) / 160) + fates + Math.floor(starglitter / 5);
+
+			let wishes = wishes_without_starglitter;
+			let starglitter_left = (starglitter % 5) + (2 * Math.floor(wishes_without_starglitter / 9));
+
+			let wishes_required = [soft_pity];
+
+			while (starglitter_left >= 5) {
+				const extra_wishes = Math.floor(starglitter_left / 5);
+				wishes += extra_wishes;
+				starglitter_left = (starglitter_left % 5) + Math.floor(extra_wishes / 9);
+			}
+
+			if (number_of_chars !== guaranteed) {
+				wishes_required = Array.from({length: number_of_chars + 1}, (_, i) =>
+					soft_pity * 2 * number_of_chars - char_pity - i * soft_pity
+				);
+				wishes_required = wishes_required.slice(guaranteed);
+
+				for (let k = 0; k < number_of_chars + 1 - guaranteed; k++) {
+					if (wishes_required[k] < 0) {
+						wishes_required.fill(0, k, number_of_chars - guaranteed + 1);
+						break;
+					}
+				}
+
+				// var stupid_check = false;
+			} else if (number_of_chars !== 0) {
+				wishes_required[0] -= char_pity;
+				if (wishes_required[0] < 0) {
+					wishes_required[0] = 0;
+				}
+				// var stupid_check = true;
+			} else {
+				wishes_required[0] = 0
+			}
+
+
+			const amount_of_cases = 2 ** (number_of_chars - guaranteed);
+
+			clearOutput();
+			clearOutputMain();
+			updateOutputMain(`Wishes owned: <strong>${wishes_without_starglitter}</strong>`);
+			updateOutputMain(`Total wishes accounting for starglitter gain: <strong>${wishes}</strong>`);
+
+			function pascal(n) {
+				let triangle2 = [1, 1];
+				for (let i = 0; i < n - 2; i++) {
+					const triangle = [...triangle2];
+					triangle2.push(1);
+					for (let x = 0; x < triangle2.length; x++) {
+						if (x !== 0 && x !== triangle2.length - 1) {
+							triangle2[x] = triangle[x - 1] + triangle[x];
+						}
+					}
+				}
+				return triangle2;
+			}
+
+			function multiply(o, odd) {
+				const sol = [];
+				for (const i of o) {
+					for (const j of odd) {
+						sol.push([i[0] * j[0], i[1] + j[1]]);
+					}
+				}
+				return sol;
+			}
+
+			function shorten(a) {
+				const map = new Map();
+
+				for (const item of a) {
+					if (isNaN(item[1]) || item[1] < 0) continue;  // Filter out NaN or negative values
+
+					if (map.has(item[1])) {
+						map.set(item[1], map.get(item[1]) + item[0]);
+					} else {
+						map.set(item[1], item[0]);
+					}
+				}
+
+				const result = Array.from(map, ([wishes, probability]) => [probability, wishes]);
+				result.sort((a, b) => b[1] - a[1]);
+				return result;
+			}
+
+
+
+			function weapon(n, path_count, std, pity, odds = null) {
+				if (n === 0) {
+					return [[1, 0]];
+				}
+
+				if (odds === null) {
+					odds = odds_total[std][path_count];
+				}
+
+				if (n === 1) {
+					for (let i = 0; i < odds.length; i++) {
+						odds[i][1] -= pity;
+					}
+					return odds;
+				}
+
+				let odds_temp = multiply(odds_zero, odds);
+				shorten(odds_temp);
+				return weapon(n - 1, 0, false, pity, odds_temp);
+			}
+
+			const list_of_probabilities = pascal(number_of_chars + 1 - guaranteed);
+			for (let i = 0; i < number_of_chars + 1 - guaranteed; i++) {
+				list_of_probabilities[i] /= amount_of_cases;
+			}
+
+			const char_odds_wishes = list_of_probabilities.map((probability, index) => [probability, wishes_required[index]]);
+			chars_weapons_odds_wishes = multiply(char_odds_wishes, weapon(number_of_weapons, path, standard, weapon_pity));
+			chars_weapons_odds_wishes.sort((a, b) => b[1] - a[1]);
+			for (let i = 0; i < chars_weapons_odds_wishes.length; i++) {
+				// Decrease the wish number 'x' by the specified value
+				chars_weapons_odds_wishes[i][1] -= wishes;
+
+				// Ensure the wish number doesn't go below zero (if needed)
+				if (chars_weapons_odds_wishes[i][1] < 0) {
+					chars_weapons_odds_wishes[i][1] = 0;
+				}
+			}
+			chars_weapons_odds_wishes = shorten(chars_weapons_odds_wishes);
+
+			let c = 0;
+			let flag = true;
+			let safe = '';
+			out = "Calculations below are taking initial starglitter gain into account<br>";
+
+			for (let i = 0; i < chars_weapons_odds_wishes.length; i++) {
+				const chance = chars_weapons_odds_wishes[i][0] * 100;
+				out += (`<strong>${chance.toFixed(2)}%</strong> for ${chars_weapons_odds_wishes[i][1]} more wishes to be needed<br>`);
+				if (chars_weapons_odds_wishes.length !== 1) {
+					if (flag) {
+						if (confidence === 100) {
+							if (number_of_chars && number_of_weapons) {
+								safe = `With <u>${chars_weapons_odds_wishes[i][1]} more</u> wishes you can expect a <strong>${(100 - c).toFixed(2)}%</strong> chance of getting\n<strong>${number_of_chars}</strong> limited 5-star character${char_s1} and <strong>${number_of_weapons}</strong> desired limited 5-star weapon${weapon_s1}<br>`;
+							} else if (number_of_chars) {
+								safe = `With <u>${chars_weapons_odds_wishes[i][1]} more</u> wishes you can expect a <strong>${(100 - c).toFixed(2)}%</strong> chance of getting\n<strong>${number_of_chars}</strong> limited 5-star character${char_s1}<br>`;
+							} else {
+								safe = `With <u>${chars_weapons_odds_wishes[i][1]} more</u> wishes you can expect a <strong>${(100 - c).toFixed(2)}%</strong> chance of getting\n<strong>${number_of_weapons}</strong> desired limited 5-star weapon${weapon_s1}<br>`;
+							}
+							flag = false;
+						}
+
+						c += chance;
+						if ((c >= 100 - confidence) && (confidence !== 100) && (i !== chars_weapons_odds_wishes.length - 1)) {
+							if (number_of_chars && number_of_weapons) {
+								safe = `With <u>${chars_weapons_odds_wishes[i + 1][1]} more</u> wishes you can expect a <strong>${(100 - c).toFixed(2)}%</strong> chance of getting\n<strong>${number_of_chars}</strong> limited 5-star character${char_s1} and <strong>${number_of_weapons}</strong> desired limited 5-star weapon${weapon_s1}<br>`;
+							} else if (number_of_chars) {
+								safe = `With <u>${chars_weapons_odds_wishes[i + 1][1]} more</u> wishes you can expect a <strong>${(100 - c).toFixed(2)}%</strong> chance of getting\n<strong>${number_of_chars}</strong> limited 5-star character${char_s1}<br>`;
+							} else {
+								safe = `With <u>${chars_weapons_odds_wishes[i + 1][1]} more</u> wishes you can expect a <strong>${(100 - c).toFixed(2)}%</strong> chance of getting\n<strong>${number_of_weapons}</strong> desired limited 5-star weapon${weapon_s1}<br>`;
+							}
+							flag = false;
+						} else if (i === chars_weapons_odds_wishes.length - 1) {
+							safe = `Confidence <strong>too low</strong> for estimate<br>`;
+						}
+					}
+				}
+			}
+			const guaranteedChars = Math.floor((wishes + char_pity + (guaranteed ? soft_pity : 0)) / (2 * soft_pity));
+			const guaranteedWeapons = Math.floor((wishes + weapon_pity + (path * soft_pity_wb)) / (3 * soft_pity_wb));
+			if (guaranteedChars === 1) {
+				char_s = "";
+			} else {
+				char_s = "s";
+			}
+			if (guaranteedWeapons === 1) {
+				weapon_s = "";
+			} else {
+				weapon_s = "s";
+			}
+
+
+			console.log(guaranteedWeapons);
+			const guaranteeMessage = `With your <u>current amount</u> of wishes you are <strong>guaranteed</strong> to get <strong>${guaranteedChars}</strong> limited 5-star character${char_s} or <strong>${guaranteedWeapons}</strong> desired limited 5-star weapon${weapon_s}<br>`;
+
+			// Display the message
+			updateOutputMain(guaranteeMessage);
+			if (safe !== '') {
+				updateOutputMain(safe);
+			}
+			// Call the function with your data
+			console.log(chars_weapons_odds_wishes);
+			if (chars_weapons_odds_wishes.length === 1) {
+				if (number_of_chars && number_of_weapons) {
+					out = `You have enough wishes to get <strong>${number_of_chars}</strong> limited 5-star character${char_s1} and <strong>${number_of_weapons}</strong> desired limited 5-star weapon${weapon_s1}!<br>`;
+				} else if (number_of_chars) {
+					out = `You have enough wishes to get <strong>${number_of_chars}</strong> limited 5-star character${char_s1}!<br>`;
+				} else if (number_of_weapons) {
+					out = `You have enough wishes to get <strong>${number_of_weapons}</strong> desired limited 5-star weapon${weapon_s1}!<br>`;
+				} else {
+					out = `Nothing to calculate!`;
+				}
+				updateOutputMain(out);
+				document.getElementById("showCalcsDiv").style.display = "none";
+				document.getElementById("br1").style.display = "none";
+				// document.getElementById("br2").style.display = "none";
+				document.getElementById("probabilityChart").style.display = "none";
+			}
+			else if (graph_type === "auto") {
+				document.getElementById("probabilityChart").style.display = "block";
+				if (chars_weapons_odds_wishes.length > 7) {
+					createCumultativeProbabilityChart(chars_weapons_odds_wishes, "scatter");
+
+				} else {
+					createCumultativeProbabilityChart(chars_weapons_odds_wishes, "bar");
+				}
+				document.getElementById("showCalcsDiv").style.display = "block";
+				document.getElementById("br1").style.display = "block";
+				// document.getElementById("br2").style.display = "block";
+			}
+			else {
+				document.getElementById("probabilityChart").style.display = "block";
+				createCumultativeProbabilityChart(chars_weapons_odds_wishes, graph_type);
+				document.getElementById("showCalcsDiv").style.display = "block";
+				document.getElementById("br1").style.display = "block";
+				// document.getElementById("br2").style.display = "block";
+			}
+		}
+
+		function showCalcs() {
+			updateOutput(out);
+			document.getElementById("showCalcsDiv").style.display = "none";
+			document.getElementById("br1").style.display = "none";
+			// document.getElementById("br2").style.display = "none";
+		}
+
+
+
+
+		window.addEventListener("load", function () {
+			// Retrieve the stored values from localStorage when the page loads
+
+			// Number of 5 star characters desired
+			const storedNumberOfChars = localStorage.getItem("numberOfChars");
+			if (storedNumberOfChars !== null) {
+				document.getElementById("number_of_chars").value = storedNumberOfChars;
+			}
+
+			// Currently guaranteed
+			const storedIsGuaranteed = localStorage.getItem("isGuaranteed");
+			if (storedIsGuaranteed !== null) {
+				document.getElementById("guaranteed").value = storedIsGuaranteed;
+			}
+
+			// Primogems
+			const storedPrimogemNumber = localStorage.getItem("primogemNumber");
+			if (storedPrimogemNumber !== null) {
+				document.getElementById("primogems").value = storedPrimogemNumber;
+			}
+
+			// Genesis Crystals
+			const storedGenesisNumber = localStorage.getItem("genesisNumber");
+			if (storedGenesisNumber !== null) {
+				document.getElementById("genesis").value = storedGenesisNumber;
+			}
+
+			// Starglitter
+			const storedStarglitterNumber = localStorage.getItem("starglitterNumber");
+			if (storedStarglitterNumber !== null) {
+				document.getElementById("starglitter").value = storedStarglitterNumber;
+			}
+
+			// Intertwined Fates
+			const storedFatesNumber = localStorage.getItem("fatesNumber");
+			if (storedFatesNumber !== null) {
+				document.getElementById("fates").value = storedFatesNumber;
+			}
+
+			const storedNumberOfWeapons = localStorage.getItem("numberOfWeapons");
+			if (storedNumberOfWeapons !== null) {
+				document.getElementById("number_of_weapons").value = storedNumberOfWeapons;
+			}
+
+			const storedIsStandard = localStorage.getItem("isStandard");
+			if (storedIsStandard !== null) {
+				document.getElementById("standard").value = storedIsStandard;
+			}
+
+			const storedSoftPity = localStorage.getItem("softPity");
+			if (storedSoftPity !== null) {
+				document.getElementById("soft_pity").value = storedSoftPity;
+			}
+
+			const storedWeaponSoftPity = localStorage.getItem("weaponSoftPity");
+			if (storedWeaponSoftPity !== null) {
+				document.getElementById("soft_pity_wb").value = storedWeaponSoftPity;
+			}
+
+			// Character pity
+			const storedCharPity = localStorage.getItem("charPity");
+
+			if (storedCharPity !== null && storedSoftPity !== null) {
+				if (storedCharPity >= storedSoftPity) {
+					document.getElementById("char_pity").value = storedSoftPity - 1;
+				} else {
+					document.getElementById("char_pity").value = storedCharPity;
+				}
+			}
+			else if (storedCharPity !== null) {
+				document.getElementById("char_pity").value = storedCharPity;
+			}
+
+			const storedWeaponPity = localStorage.getItem("weaponPity");
+
+			if (storedWeaponPity !== null && storedWeaponSoftPity !== null) {
+				if (storedWeaponPity >= storedWeaponSoftPity) {
+					document.getElementById("weapon_pity").value = storedWeaponSoftPity - 1;
+				} else {
+					document.getElementById("weapon_pity").value = storedWeaponPity;
+				}
+			}
+			else if (storedWeaponPity !== null) {
+				document.getElementById("weapon_pity").value = storedWeaponPity;
+			}
+
+			const storedPathNumber = localStorage.getItem("pathNumber");
+			if (storedPathNumber !== null) {
+				document.getElementById("path").value = storedPathNumber;
+			}
+
+			const storedConfidenceVal = localStorage.getItem("confidenceVal");
+			if (storedConfidenceVal !== null) {
+				document.getElementById("confidence").value = storedConfidenceVal;
+			}
+
+			const storedGraphType = localStorage.getItem("graphType");
+			if (storedGraphType !== null) {
+				document.getElementById("graph_type").value = storedGraphType;
+			}
+
+			// Dark Mode
+			const storedIsDarkMode = localStorage.getItem("isDarkMode");
+			if (storedIsDarkMode === "true") {
+				document.body.classList.add("dark-mode");
+				document.getElementById("home_home").classList.add("dark-mode");
+			} else {
+				document.body.classList.remove("dark-mode");
+				document.getElementById("home_home").classList.remove("dark-mode");
+			}
+			toggleDarkMode();
+			toggleDarkMode();
+
+		});
+
+
+		document.getElementById("number_of_chars").addEventListener("change", function () {
+			const numberOfChars = document.getElementById("number_of_chars").value;
+			localStorage.setItem("numberOfChars", numberOfChars);
+		});
+
+		document.getElementById("guaranteed").addEventListener("change", function () {
+			const isGuaranteed = document.getElementById("guaranteed").value;
+			localStorage.setItem("isGuaranteed", isGuaranteed);
+		});
+
+		document.getElementById("char_pity").addEventListener("change", function () {
+			const charPity = document.getElementById("char_pity").value;
+			localStorage.setItem("charPity", charPity);
+		});
+
+		document.getElementById("primogems").addEventListener("change", function () {
+			const primogemNumber = document.getElementById("primogems").value;
+			localStorage.setItem("primogemNumber", primogemNumber);
+		});
+
+		document.getElementById("genesis").addEventListener("change", function () {
+			const genesisNumber = document.getElementById("genesis").value;
+			localStorage.setItem("genesisNumber", genesisNumber);
+		});
+
+		document.getElementById("starglitter").addEventListener("change", function () {
+			const starglitterNumber = document.getElementById("starglitter").value;
+			localStorage.setItem("starglitterNumber", starglitterNumber);
+		});
+
+		document.getElementById("fates").addEventListener("change", function () {
+			const fatesNumber = document.getElementById("fates").value;
+			localStorage.setItem("fatesNumber", fatesNumber);
+		});
+
+		document.getElementById("number_of_weapons").addEventListener("change", function () {
+			const numberOfWeapons = document.getElementById("number_of_weapons").value;
+			localStorage.setItem("numberOfWeapons", numberOfWeapons);
+		});
+
+		document.getElementById("standard").addEventListener("change", function () {
+			const isStandard = document.getElementById("standard").value;
+			localStorage.setItem("isStandard", isStandard);
+		});
+
+		document.getElementById("weapon_pity").addEventListener("change", function () {
+			const weaponPity = document.getElementById("weapon_pity").value;
+			localStorage.setItem("weaponPity", weaponPity);
+		});
+
+		document.getElementById("path").addEventListener("change", function () {
+			const pathNumber = document.getElementById("path").value;
+			localStorage.setItem("pathNumber", pathNumber);
+		});
+
+		document.getElementById("soft_pity").addEventListener("change", function () {
+			const softPity = document.getElementById("soft_pity").value;
+			localStorage.setItem("softPity", softPity);
+		});
+
+		document.getElementById("soft_pity_wb").addEventListener("change", function () {
+			const weaponSoftPity = document.getElementById("soft_pity_wb").value;
+			localStorage.setItem("weaponSoftPity", weaponSoftPity);
+		});
+
+		document.getElementById("confidence").addEventListener("change", function () {
+			const confidenceVal = document.getElementById("confidence").value;
+			localStorage.setItem("confidenceVal", confidenceVal);
+		});
+
+		document.getElementById("graph_type").addEventListener("change", function () {
+			const graphType = document.getElementById("graph_type").value;
+			localStorage.setItem("graphType", graphType);
+		});
+
+
+		// const backgroundToggle = document.getElementById("backgroundToggle"); // Replace "backgroundToggle" with your button's ID
+
+		// backgroundToggle.addEventListener("click", function () {
+		// 	const body = document.body;
+		// 	body.classList.toggle("color-only"); // Toggle the "color-only" class
+		// });
+
+		// Add a click event listener to the "Settings" button
+		const settingsButton = document.getElementById("settingsButton");
+		settingsButton.addEventListener("click", function () {
+			// Specify the URL of the settings page you want to navigate to
+			const settingsPageURL = "settings.html"; // Replace with your settings page URL
+
+			// Navigate to the settings page in the same tab
+			window.location.href = settingsPageURL;
+		});
+
+		const inputMap = {
+			"number_of_chars": "numberOfChars",
+			"number_of_weapons": "numberOfWeapons",
+			"char_pity": "charPity",
+			"weapon_pity": "weaponPity",
+			"path": "pathNumber",
+			"primogems": "primogemNumber",
+			"genesis": "genesisNumber",
+			"starglitter": "starglitterNumber",
+			"fates": "fatesNumber",
+			"soft_pity": "softPity",
+			"soft_pity_wb": "weaponSoftPity",
+			"confidence": "confidenceVal"
+		};
+
+		const numberInputs = Object.keys(inputMap);
+
+		numberInputs.forEach(inputId => {
+			const inputElement = document.getElementById(inputId);
+
+			// Add an input event listener to each input element
+			inputElement.addEventListener("input", function () {
+				// Check if the input value is empty or negative
+				let inputValue = parseInt(inputElement.value);
+				if (isNaN(inputValue) || inputValue < 0) {
+					// If it's empty or negative, set it to 0
+					inputValue = 0;
+					inputElement.value = inputValue;
+				}
+
+				// Get the corresponding local storage key
+				const localStorageKey = inputMap[inputId];
+
+				// Update the local storage value
+				localStorage.setItem(localStorageKey, inputValue);
+			});
+		});
+
+
+
+		numberInputs.forEach(inputId => {
+			const inputElement = document.getElementById(inputId);
+
+			// Add an input event listener to each input element
+			inputElement.addEventListener("input", function () {
+				// Get the current input value
+				let inputValue = inputElement.value;
+
+				// Check if the input value starts with '0' and has more digits
+				if (/^0\d+/.test(inputValue)) {
+					// Remove the leading '0'
+					inputValue = inputValue.replace(/^0+/, '');
+					// Update the input value
+					if (inputValue === '') inputValue = "0";
+					inputElement.value = inputValue;
+
+					// Get the corresponding local storage key
+					const localStorageKey = inputMap[inputId];
+
+					// Update the local storage value
+					localStorage.setItem(localStorageKey, inputValue);
+				}
+			});
+		});
+
+
+
+		// Get a reference to the "path" input element by its ID
+		const pathInput = document.getElementById("path");
+
+		// Add an input event listener to the "path" input element
+		pathInput.addEventListener("input", function () {
+			// Parse the input value as an integer
+			let pathValue = parseInt(pathInput.value);
+
+			// Check if the value is greater than 2
+			if (pathValue > 2) {
+				// If it's greater than 2, set it to 2
+				pathValue = 2;
+			}
+
+			// Update the input value
+			pathInput.value = pathValue;
+
+			// Get the corresponding local storage key
+			const localStorageKey = "pathNumber"; // Use the appropriate key for local storage
+
+			// Update the local storage value
+			localStorage.setItem(localStorageKey, pathValue.toString());
+		});
+
+		const characterInput = document.getElementById("number_of_chars");
+
+		characterInput.addEventListener("input", function () {
+			let characterValue = parseInt(characterInput.value);
+
+			if (characterValue > 14) {
+				characterValue = 14;
+			}
+
+			characterInput.value = characterValue;
+
+			const localStorageKey = "numberOfChars";
+
+			localStorage.setItem(localStorageKey, characterValue.toString());
+		});
+
+
+		const weaponInput = document.getElementById("number_of_weapons");
+
+		weaponInput.addEventListener("input", function () {
+			let weaponValue = parseInt(weaponInput.value);
+
+			if (weaponValue > 10) {
+				weaponValue = 10;
+			}
+
+			weaponInput.value = weaponValue;
+
+			const localStorageKey = "numberOfWeapons";
+
+			localStorage.setItem(localStorageKey, weaponValue.toString());
+		});
+
+
+
+		// Define the list of inputs and their corresponding local storage keys
+		const inputMappings = [
+			{id: "char_pity", key: "charPity"},
+			{id: "weapon_pity", key: "weaponPity"},
+			{id: "soft_pity", key: "softPity"},
+			{id: "soft_pity_wb", key: "softPityWb"},
+			{id: "confidence", key: "confidenceVal"},
+		];
+		let charPityTimeout;
+		inputMappings.forEach(inputMapping => {
+			const inputElement = document.getElementById(inputMapping.id);
+
+			// Add an input event listener to each input element
+			inputElement.addEventListener("input", function () {
+				// Parse the input value as an integer or float, depending on the input
+				let inputValue;
+				if (inputMapping.key === "confidenceVal") {
+					inputValue = parseFloat(inputElement.value); // Parse as a float
+				} else {
+					inputValue = parseInt(inputElement.value); // Parse as an integer
+				}
+
+				// Check if the value exceeds the cap
+				if (inputMapping.key === "charPity") {
+					const softPity = parseInt(document.getElementById("soft_pity").value);
+					if (inputValue > softPity - 1) {
+						inputValue = softPity - 1;
+					}
+				} else if (inputMapping.key === "weaponPity") {
+					const softPityWb = parseInt(document.getElementById("soft_pity_wb").value);
+					if (inputValue > softPityWb - 1) {
+						inputValue = softPityWb - 1;
+					}
+				} else if (inputMapping.key === "softPity") {
+					if (inputValue > 90) {
+						inputValue = 90;
+					}
+				} else if (inputMapping.key === "softPityWb") {
+					if (inputValue > 77) {
+						inputValue = 77;
+					}
+				} else if (inputMapping.key === "confidenceVal") {
+					if (inputValue > 100.0) {
+						inputValue = 100.0;
+					}
+				}
+
+				// Update the input value
+				inputElement.value = inputValue;
+
+				// Update the local storage value
+				const localStorageKey = inputMapping.key;
+				localStorage.setItem(localStorageKey, inputValue.toString());
+			});
+		});
+
+		let probabilityChart = null; // Global variable to store the chart instance
+
+
+		function createCumultativeProbabilityChart(data, graph_type) {
+			// Get the canvas
+			const canvas = document.getElementById("probabilityChart");
+			const ctx = canvas.getContext("2d");
+
+			// Check if a chart instance exists, and destroy it if it does
+			if (probabilityChart) {
+				probabilityChart.destroy();
+			}
+
+			// Clear the canvas
+			ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+			// Calculate cumulative probabilities
+			const cumulativeProbabilities = [];
+			let cumulativeSum = 0;
+
+			// Reverse the data and labels
+			const reversedData = [...data].reverse();
+			const reversedLabels = data.map((item) => item[1]).reverse();
+
+			for (const item of reversedData) {
+				cumulativeSum += item[0] * 100;
+				cumulativeProbabilities.push(cumulativeSum.toFixed(2)); // Rounding to two decimal places
+			}
+
+			// Create the new chart with custom tooltip configuration
+			probabilityChart = new Chart(ctx, {
+				type: graph_type,
+				data: {
+					labels: reversedLabels,
+					datasets: [
+						{
+							label: "Cumulative Probabilitiy (%)",
+							data: cumulativeProbabilities,
+							backgroundColor: "rgba(75, 192, 192, 0.6)",
+							borderColor: "rgba(75, 192, 192, 1)",
+							borderWidth: 1,
+						},
+					],
+				},
+				options: {
+					tension: 0.3,
+					showLine: true,
+					responsive: true,
+					maintainAspectRatio: false,
+					scales: {
+						y: {
+							beginAtZero: true,
+							max: 100,
+							title: {
+								display: false,
+								text: "Cumulative Probability (%)",
+							},
+							grid: {
+								color: "rgba(127.5, 127.5, 127.5, 0.3)", // Set the grid lines color to white with opacity
+							},
+						},
+						x: {
+							title: {
+								display: true,
+								text: "Additional wishes to be required",
+							},
+							grid: {
+								color: "rgba(127.5, 127.5, 127.5, 0.3)", // Set the grid lines color to white with opacity
+							},
+						},
+					},
+					plugins: {
+						tooltip: {
+							callbacks: {
+								// Customize the tooltip label to show only y-coordinate value
+								label: (context) => {
+									return `Cumulative Probability: ${context.parsed.y}%`;
+								},
+							},
+						},
+					},
+				},
+			});
+		}
+	</script>
+</body>
+
+</html>

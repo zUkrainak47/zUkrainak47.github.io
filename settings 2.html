@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Wish Calculator for 2nd account</title>
+</head>
+
+<style>
+	::-webkit-scrollbar {
+		display: none;
+	}
+
+
+	.lowerRightCorner {
+		position: fixed;
+		bottom: 20px;
+		/* Adjust the distance from the bottom as needed */
+		right: 20px;
+		/* Adjust the distance from the right as needed */
+		z-index: 999;
+		/* Adjust the z-index to control the button's stacking order */
+	}
+
+	td {
+		border: 1px solid black;
+		border-collapse: collapse;
+	}
+
+	body.dark-mode td {
+		border: 1px solid grey;
+		/* Dark mode border color */
+		border-collapse: collapse;
+	}
+
+	td {
+		text-align: center;
+		height: 100px
+	}
+
+	.container {
+		display: flex;
+		justify-content: center;
+		/* Horizontally center the button */
+		align-items: center;
+		/* Vertically center the button */
+		/* Add any other container styles as needed */
+	}
+
+	input,
+	select {
+		font-size: 24px
+	}
+
+	input {
+		width: 70px;
+	}
+
+	select {
+		width: 110px;
+	}
+
+	.output {
+		font-size: 25px;
+	}
+
+	body:not(.dark-mode) {
+		background-color: #fdfbfc;
+		color: black;
+		text-align: center;
+		padding: 20px;
+		background-image: url("heizou3.png");
+		background-repeat: no-repeat;
+		background-attachment: fixed;
+		background-size: cover;
+	}
+
+	body:not(.dark-mode).color-only {
+		color: black;
+		background-image: none;
+	}
+
+	body.dark-mode {
+		background-color: #060404;
+		color: white;
+		text-align: center;
+		padding: 20px;
+		background-image: url("heizou4.png");
+		background-repeat: no-repeat;
+		background-attachment: fixed;
+		background-size: cover;
+
+	}
+
+	body.dark-mode.color-only {
+		color: white;
+		background-image: none;
+	}
+
+	input {
+		min-width: 150px !important;
+		max-width: 99.99% !important;
+		transition: width 0.25s;
+		text-align: center;
+	}
+
+	.button-29 {
+		align-items: center;
+		appearance: none;
+		background-image: radial-gradient(100% 100% at 100% 0, #5adaff 0, #5468ff 100%);
+		border: 0;
+		border-radius: 6px;
+		box-shadow: rgba(45, 35, 66, .4) 0 2px 4px, rgba(45, 35, 66, .3) 0 7px 13px -3px, rgba(58, 65, 111, .5) 0 -3px 0 inset;
+		box-sizing: border-box;
+		color: #fff;
+		cursor: pointer;
+		display: inline-flex;
+		font-family: verdana;
+		height: 48px;
+		justify-content: center;
+		line-height: 1;
+		list-style: none;
+		overflow: hidden;
+		padding-left: 16px;
+		padding-right: 16px;
+		position: relative;
+		text-align: left;
+		text-decoration: none;
+		transition: box-shadow .15s, transform .15s;
+		user-select: none;
+		-webkit-user-select: none;
+		touch-action: manipulation;
+		white-space: nowrap;
+		will-change: box-shadow, transform;
+		font-size: 18px;
+	}
+
+	.button-29:focus {
+		box-shadow: #3c4fe0 0 0 0 1.5px inset, rgba(45, 35, 66, .4) 0 2px 4px, rgba(45, 35, 66, .3) 0 7px 13px -3px, #3c4fe0 0 -3px 0 inset;
+	}
+
+	.button-29:hover {
+		box-shadow: rgba(45, 35, 66, .4) 0 4px 8px, rgba(45, 35, 66, .3) 0 7px 13px -3px, #3c4fe0 0 -3px 0 inset;
+		transform: translateY(-2px);
+	}
+
+	.button-29:active {
+		box-shadow: #3c4fe0 0 3px 7px inset;
+		transform: translateY(2px);
+	}
+
+	.button-11 {
+		background-color: #fff;
+		border: 1px solid #000;
+		border-radius: 8px;
+		box-sizing: border-box;
+		color: #0f1111;
+		cursor: pointer;
+		display: inline-block;
+		font-family: "Amazon Ember", sans-serif;
+		font-size: 15px;
+		line-height: 20px;
+		padding: 0 10px 0 11px;
+		position: relative;
+		text-align: center;
+		text-decoration: none;
+		user-select: none;
+		-webkit-user-select: none;
+		touch-action: manipulation;
+		vertical-align: middle;
+	}
+
+	.button-11:hover {
+		background-color: #f7fafa;
+	}
+
+	.button-11:focus {
+		border-color: #008296;
+		box-shadow: rgba(213, 217, 217, .5) 0 2px 5px 0;
+		outline: 0;
+	}
+
+	.fate {
+		animation: fadeInAnimation ease 3s;
+		animation-iteration-count: 1;
+		animation-fill-mode: forwards;
+		position: absolute;
+		top: 27px;
+		left: calc(50vw + 129px);
+		width: 50px;
+		height: 50px;
+		content: url(fate.png);
+	}
+
+	@keyframes fadeInAnimation {
+		0% {
+			opacity: 0;
+		}
+
+		50% {
+			opacity: 0;
+		}
+
+		100% {
+			opacity: 1;
+		}
+	}
+
+	.wishbr {
+		display: none;
+	}
+
+	@media screen and (max-width: 450.67px) {
+		.fate {
+			top: 63px;
+			left: calc(50vw + 64px);
+		}
+
+		.wishbr {
+			display: block;
+		}
+	}
+
+	@media screen and (max-width: 768px) {
+		body:not(.dark-mode) {
+			background-color: #fdfbfc;
+			background-image: url("heizou35.png");
+		}
+
+		body.dark-mode {
+			background-color: #060404;
+			background-image: url("heizou45.png");
+		}
+
+		select {
+			width: 50px;
+		}
+
+		input,
+		select,
+		td,
+		.output {
+			font-size: 10px;
+			/* Adjust font size for smaller screens */
+			line-height: 1.5em;
+		}
+
+		.button-11 {
+			font-size: 12px;
+		}
+
+		input {
+			min-width: 40px !important;
+		}
+
+		td {
+			height: 75px;
+		}
+
+		.container {
+			height: 40px;
+		}
+
+
+
+	}
+
+	a.dark-mode {
+		text-decoration: none;
+		color: white;
+	}
+
+	a:not(dark-mode) {
+		text-decoration: none;
+		color: black;
+	}
+
+	.bb {
+		position: relative;
+		top: -20px;
+	}
+
+	.everything {
+		position: relative;
+		top: -46px;
+	}
+</style>
+
+<body class="dark-mode" ; style="font-size: 24px; font-family:verdana; line-height:1.5em;">
+	<img id="fate" class="fate" alt="">
+	<h2 style="margin-top: 5px;" class="cc2">
+		<a class="dark-mode" id="home_home" href="https://wish-calculator-for-2nd-account.zukrainak47.repl.co/">
+			<span">WISH <br class="wishbr">CALCULATOR</span>
+				<br>
+				<span style="font-size:12px;" class="bb">(for your 2nd account)</span>
+		</a>
+	</h2>
+	<div class="everything">
+		<table style="width: 100%; display: none;">
+			<tr>
+				<td colspan="12" style="width:40%">
+					Number of 5 star characters desired: <input type="number" id="number_of_chars" value="2">
+				</td>
+				<td colspan="12" style="width:30%">
+					Currently guaranteed?
+					<select id="guaranteed">
+						<option value="1">Yes</option>
+						<option value="0">No</option>
+					</select>
+				</td>
+				<td colspan="12" style="width:30%">
+					Character pity: <input style="width:70px" type="number" id="char_pity" value="0">
+				</td>
+			</tr>
+			<tr>
+				<td colspan="12">
+					Number of 5 star weapons desired: <input style="width:40px" type="number" id="number_of_weapons"
+						value="0">
+				</td>
+				<td colspan="12">
+					Last 5 star weapon was standard?
+					<select id="standard">
+						<option value="1">Yes</option>
+						<option value="0">No</option>
+					</select>
+				</td>
+				<td colspan="9">
+					Weapon pity: <input style="width:40px" type="number" id="weapon_pity" value="0">
+				</td>
+				<td colspan="3">
+					Epitomized Path: <input style="width:40px" type="number" id="path" value="0">
+				</td>
+			</tr>
+			<tr>
+				<td colspan="8" style="width:20%">
+					Primogems: <br><input style="width:40px" type="number" id="primogems" value="0">
+				</td>
+				<td colspan="8" style="width:20%">
+					Genesis Crystals: <br><input style="width:40px" type="number" id="genesis" value="0">
+				</td>
+				<td colspan="8" style="width:20%">
+					Starglitter: <br><input style="width:40px" type="number" id="starglitter" value="0">
+				</td>
+				<td colspan="12" style="width:40%">
+					Intertwined Fates: <br><input style="width:40px" type="number" id="fates" value="0">
+				</td>
+			</tr>
+		</table>
+		<table style="width: 100%;">
+			<!-- display: none; -->
+			<tr>
+				<td class="container">
+					Settings
+				</td>
+			</tr>
+		</table>
+		<table style="width: 100%;">
+			<tr>
+				<td style="width: 25%;">
+					Wishes per 5 star character: <input style="width:40px" type="number" id="soft_pity" value="80">
+				</td>
+				<td style="width: 25%;">
+					Wishes per 5 star weapon: <input style="width:40px" type="number" id="soft_pity_wb" value="70">
+				</td>
+				<td style="width: 25%;">
+					Confidence (in %) - affects last line of output: <input style="width:40px" type="number" step="0.01"
+						id="confidence" value="90">
+				</td>
+				<td style="width: 25%;">
+					Preferred graph type:
+					<select id="graph_type">
+						<option value="auto">Auto</option>
+						<option value="bar">Bar</option>
+						<option value="line">Line</option>
+						<option value="scatter">Scatter</option>
+					</select>
+				</td>
+			</tr>
+		</table>
+		<br>
+
+		<!-- <button id="lowerRightCorner" class="button-11">Toggle Heizou</button> -->
+		<div class="lowerRightCorner" id="accountDiv">
+			<form action="https://wish-calculator.zukrainak47.repl.co/">
+				<button type="submit" id="swapAccounts" class="button-11">Go to account 1</button>
+			</form>
+		</div>
+		<button id="darkModeToggle" class="button-29">Toggle Dark Mode</button>
+		<button id="restoreDefaults" class="button-29" style="margin-top: 4px;">Restore Defaults</button>
+		<button id="homeButton" class="button-29" style="margin-top: 4px;">Back to Calculator</button>
+	</div>
+	<script>
+		function toggleDarkMode() {
+			const body = document.body;
+			const links = document.getElementsByTagName('a');
+			const fateElement = document.getElementById('fate'); // Get the "fate" element
+
+			body.classList.toggle("dark-mode"); // Toggle the dark-mode class on the body
+
+			// Toggle the dark-mode class on each 'a' element
+			for (let i = 0; i < links.length; i++) {
+				links[i].classList.toggle("dark-mode");
+			}
+
+			// Check if dark mode is active
+			const isDarkMode = body.classList.contains("dark-mode");
+
+			// Hide or show the fate element based on dark mode state
+			if (isDarkMode) {
+				fateElement.style.display = "block"; // Hide the element
+			} else {
+				fateElement.style.display = "none"; // Show the element
+			}
+		}
+
+		// Add a click event listener to the toggle button
+		const darkModeToggle = document.getElementById("darkModeToggle");
+		darkModeToggle.addEventListener("click", toggleDarkMode);
+
+		window.addEventListener("load", function () {
+			// Retrieve the stored values from localStorage when the page loads
+
+			// Number of 5 star characters desired
+			const storedNumberOfChars = localStorage.getItem("numberOfChars");
+			if (storedNumberOfChars !== null) {
+				document.getElementById("number_of_chars").value = storedNumberOfChars;
+			}
+
+			// Currently guaranteed
+			const storedIsGuaranteed = localStorage.getItem("isGuaranteed");
+			if (storedIsGuaranteed !== null) {
+				document.getElementById("guaranteed").value = storedIsGuaranteed;
+			}
+
+			// Primogems
+			const storedPrimogemNumber = localStorage.getItem("primogemNumber");
+			if (storedPrimogemNumber !== null) {
+				document.getElementById("primogems").value = storedPrimogemNumber;
+			}
+
+			// Genesis Crystals
+			const storedGenesisNumber = localStorage.getItem("genesisNumber");
+			if (storedGenesisNumber !== null) {
+				document.getElementById("genesis").value = storedGenesisNumber;
+			}
+
+			// Starglitter
+			const storedStarglitterNumber = localStorage.getItem("starglitterNumber");
+			if (storedStarglitterNumber !== null) {
+				document.getElementById("starglitter").value = storedStarglitterNumber;
+			}
+
+			// Intertwined Fates
+			const storedFatesNumber = localStorage.getItem("fatesNumber");
+			if (storedFatesNumber !== null) {
+				document.getElementById("fates").value = storedFatesNumber;
+			}
+
+			const storedNumberOfWeapons = localStorage.getItem("numberOfWeapons");
+			if (storedNumberOfWeapons !== null) {
+				document.getElementById("number_of_weapons").value = storedNumberOfWeapons;
+			}
+
+			const storedIsStandard = localStorage.getItem("isStandard");
+			if (storedIsStandard !== null) {
+				document.getElementById("standard").value = storedIsStandard;
+			}
+
+			const storedSoftPity = localStorage.getItem("softPity");
+			if (storedSoftPity !== null) {
+				document.getElementById("soft_pity").value = storedSoftPity;
+			}
+
+			const storedWeaponSoftPity = localStorage.getItem("weaponSoftPity");
+			if (storedWeaponSoftPity !== null) {
+				document.getElementById("soft_pity_wb").value = storedWeaponSoftPity;
+			}
+
+			// Character pity
+			const storedCharPity = localStorage.getItem("charPity");
+
+			if (storedCharPity !== null && storedSoftPity !== null) {
+				if (storedCharPity > storedSoftPity) {
+					document.getElementById("char_pity").value = storedSoftPity - 1;
+				} else {
+					document.getElementById("char_pity").value = storedCharPity;
+				}
+			}
+
+			const storedWeaponPity = localStorage.getItem("weaponPity");
+
+			if (storedWeaponPity !== null && storedWeaponSoftPity !== null) {
+				if (storedWeaponPity > storedWeaponSoftPity) {
+					document.getElementById("weapon_pity").value = storedWeaponSoftPity - 1;
+				} else {
+					document.getElementById("weapon_pity").value = storedWeaponPity;
+				}
+			}
+
+			const storedPathNumber = localStorage.getItem("pathNumber");
+			if (storedPathNumber !== null) {
+				document.getElementById("path").value = storedPathNumber;
+			}
+
+			const storedConfidenceVal = localStorage.getItem("confidenceVal");
+			if (storedConfidenceVal !== null) {
+				document.getElementById("confidence").value = storedConfidenceVal;
+			}
+
+			const storedGraphType = localStorage.getItem("graphType");
+			if (storedGraphType !== null) {
+				document.getElementById("graph_type").value = storedGraphType;
+			}
+
+			// Dark Mode
+			const storedIsDarkMode = localStorage.getItem("isDarkMode");
+			if (storedIsDarkMode === "true") {
+				document.body.classList.add("dark-mode");
+				document.getElementById("home_home").classList.add("dark-mode");
+			} else {
+				document.body.classList.remove("dark-mode");
+				document.getElementById("home_home").classList.remove("dark-mode");
+			}
+			toggleDarkMode();
+			toggleDarkMode();
+
+		});
+
+
+		document.getElementById("number_of_chars").addEventListener("change", function () {
+			const numberOfChars = document.getElementById("number_of_chars").value;
+			localStorage.setItem("numberOfChars", numberOfChars);
+		});
+
+		document.getElementById("guaranteed").addEventListener("change", function () {
+			const isGuaranteed = document.getElementById("guaranteed").value;
+			localStorage.setItem("isGuaranteed", isGuaranteed);
+		});
+
+		document.getElementById("char_pity").addEventListener("change", function () {
+			const charPity = document.getElementById("char_pity").value;
+			localStorage.setItem("charPity", charPity);
+		});
+
+		document.getElementById("primogems").addEventListener("change", function () {
+			const primogemNumber = document.getElementById("primogems").value;
+			localStorage.setItem("primogemNumber", primogemNumber);
+		});
+
+		document.getElementById("genesis").addEventListener("change", function () {
+			const genesisNumber = document.getElementById("genesis").value;
+			localStorage.setItem("genesisNumber", genesisNumber);
+		});
+
+		document.getElementById("starglitter").addEventListener("change", function () {
+			const starglitterNumber = document.getElementById("starglitter").value;
+			localStorage.setItem("starglitterNumber", starglitterNumber);
+		});
+
+		document.getElementById("fates").addEventListener("change", function () {
+			const fatesNumber = document.getElementById("fates").value;
+			localStorage.setItem("fatesNumber", fatesNumber);
+		});
+
+		document.getElementById("number_of_weapons").addEventListener("change", function () {
+			const numberOfWeapons = document.getElementById("number_of_weapons").value;
+			localStorage.setItem("numberOfWeapons", numberOfWeapons);
+		});
+
+		document.getElementById("standard").addEventListener("change", function () {
+			const isStandard = document.getElementById("standard").value;
+			localStorage.setItem("isStandard", isStandard);
+		});
+
+		document.getElementById("weapon_pity").addEventListener("change", function () {
+			const weaponPity = document.getElementById("weapon_pity").value;
+			localStorage.setItem("weaponPity", weaponPity);
+		});
+
+		document.getElementById("path").addEventListener("change", function () {
+			const pathNumber = document.getElementById("path").value;
+			localStorage.setItem("pathNumber", pathNumber);
+		});
+
+		document.getElementById("soft_pity").addEventListener("change", function () {
+			const softPity = document.getElementById("soft_pity").value;
+			localStorage.setItem("softPity", softPity);
+		});
+
+		document.getElementById("soft_pity_wb").addEventListener("change", function () {
+			const weaponSoftPity = document.getElementById("soft_pity_wb").value;
+			localStorage.setItem("weaponSoftPity", weaponSoftPity);
+		});
+
+		document.getElementById("confidence").addEventListener("change", function () {
+			const confidenceVal = document.getElementById("confidence").value;
+			localStorage.setItem("confidenceVal", confidenceVal);
+		});
+
+		document.getElementById("darkModeToggle").addEventListener("click", function () {
+			const isDarkMode = document.body.classList.contains("dark-mode");
+			localStorage.setItem("isDarkMode", isDarkMode);
+		});
+
+		document.getElementById("graph_type").addEventListener("change", function () {
+			const graphType = document.getElementById("graph_type").value;
+			localStorage.setItem("graphType", graphType);
+		});
+
+
+
+
+
+		// const backgroundToggle = document.getElementById("backgroundToggle"); // Replace "backgroundToggle" with your button's ID
+
+		// backgroundToggle.addEventListener("click", function () {
+		// 	const body = document.body;
+		// 	body.classList.toggle("color-only"); // Toggle the "color-only" class
+		// });
+
+
+		const homeButton = document.getElementById("homeButton");
+		homeButton.addEventListener("click", function () {
+			const homePageURL = "/";
+
+			window.location.href = homePageURL;
+		});
+
+
+		const restoreDefaults = document.getElementById("restoreDefaults");
+		restoreDefaults.addEventListener("click", function () {
+			document.getElementById("soft_pity").value = 80;
+			document.getElementById("soft_pity_wb").value = 70;
+			document.getElementById("confidence").value = 90;
+			document.getElementById("graph_type").value = "auto";
+			localStorage.setItem("softPity", 80);
+			localStorage.setItem("weaponSoftPity", 70);
+			localStorage.setItem("confidenceVal", 90);
+			localStorage.setItem("graphType", "auto");
+		});
+
+
+
+		const inputMap = {
+			"number_of_chars": "numberOfChars",
+			"number_of_weapons": "numberOfWeapons",
+			"char_pity": "charPity",
+			"weapon_pity": "weaponPity",
+			"path": "pathNumber",
+			"primogems": "primogemNumber",
+			"genesis": "genesisNumber",
+			"starglitter": "starglitterNumber",
+			"fates": "fatesNumber",
+			"soft_pity": "softPity",
+			"soft_pity_wb": "weaponSoftPity",
+			"confidence": "confidenceVal"
+		};
+
+		const numberInputs = Object.keys(inputMap);
+
+		numberInputs.forEach(inputId => {
+			const inputElement = document.getElementById(inputId);
+
+			// Add an input event listener to each input element
+			inputElement.addEventListener("input", function () {
+				// Check if the input value is empty or negative
+				let inputValue = parseInt(inputElement.value);
+				if (isNaN(inputValue) || inputValue < 0) {
+					// If it's empty or negative, set it to 0
+					inputValue = 0;
+					inputElement.value = inputValue;
+				}
+
+				// Get the corresponding local storage key
+				const localStorageKey = inputMap[inputId];
+
+				// Update the local storage value
+				localStorage.setItem(localStorageKey, inputValue);
+			});
+		});
+
+
+
+		numberInputs.forEach(inputId => {
+			const inputElement = document.getElementById(inputId);
+
+			// Add an input event listener to each input element
+			inputElement.addEventListener("input", function () {
+				// Get the current input value
+				let inputValue = inputElement.value;
+
+				// Check if the input value starts with '0' and has more digits
+				if (/^0\d+/.test(inputValue)) {
+					// Remove the leading '0'
+					inputValue = inputValue.replace(/^0+/, '');
+					// Update the input value
+					inputElement.value = inputValue;
+
+					// Get the corresponding local storage key
+					const localStorageKey = inputMap[inputId];
+
+					// Update the local storage value
+					localStorage.setItem(localStorageKey, inputValue);
+				}
+			});
+		});
+
+
+
+		// Get a reference to the "path" input element by its ID
+		const pathInput = document.getElementById("path");
+
+		// Add an input event listener to the "path" input element
+		pathInput.addEventListener("input", function () {
+			// Parse the input value as an integer
+			let pathValue = parseInt(pathInput.value);
+
+			// Check if the value is greater than 2
+			if (pathValue > 2) {
+				// If it's greater than 2, set it to 2
+				pathValue = 2;
+			}
+
+			// Update the input value
+			pathInput.value = pathValue;
+
+			// Get the corresponding local storage key
+			const localStorageKey = "pathNumber"; // Use the appropriate key for local storage
+
+			// Update the local storage value
+			localStorage.setItem(localStorageKey, pathValue.toString());
+		});
+
+
+		// Define the list of inputs and their corresponding local storage keys
+		const inputMappings = [
+			{id: "char_pity", key: "charPity"},
+			{id: "weapon_pity", key: "weaponPity"},
+			{id: "soft_pity", key: "softPity"},
+			{id: "soft_pity_wb", key: "weaponSoftPity"},
+			{id: "confidence", key: "confidenceVal"},
+		];
+		let charPityTimeout;
+		inputMappings.forEach(inputMapping => {
+			const inputElement = document.getElementById(inputMapping.id);
+
+			// Add an input event listener to each input element
+			inputElement.addEventListener("input", function () {
+				// Parse the input value as an integer or float, depending on the input
+				let inputValue;
+				if (inputMapping.key === "confidenceVal") {
+					inputValue = parseFloat(inputElement.value); // Parse as a float
+				} else {
+					inputValue = parseInt(inputElement.value); // Parse as an integer
+				}
+
+				// Check if the value exceeds the cap
+				if (inputMapping.key === "charPity") {
+					const softPity = parseInt(document.getElementById("soft_pity").value);
+					if (inputValue > softPity - 1) {
+						inputValue = softPity - 1;
+					}
+				} else if (inputMapping.key === "weaponPity") {
+					const softPityWb = parseInt(document.getElementById("soft_pity_wb").value);
+					if (inputValue > softPityWb - 1) {
+						inputValue = softPityWb - 1;
+					}
+				} else if (inputMapping.key === "softPity") {
+					if (inputValue > 90) {
+						inputValue = 90;
+					}
+				} else if (inputMapping.key === "weaponSoftPity") {
+					if (inputValue > 77) {
+						inputValue = 77;
+					}
+				} else if (inputMapping.key === "confidenceVal") {
+					if (inputValue > 100.0) {
+						inputValue = 100.0;
+					}
+				}
+
+				// Update the input value
+				inputElement.value = inputValue;
+
+				// Update the local storage value
+				const localStorageKey = inputMapping.key;
+				localStorage.setItem(localStorageKey, inputValue.toString());
+			});
+		});
+
+
+	</script>
+</body>
+
+</html>
