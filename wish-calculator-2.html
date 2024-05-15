@@ -823,63 +823,63 @@
 			// Retrieve the stored values from localStorage when the page loads
 
 			// Number of 5 star characters desired
-			const storedNumberOfChars = localStorage.getItem("numberOfChars");
+			const storedNumberOfChars = localStorage.getItem("numberOfChars2");
 			if (storedNumberOfChars !== null) {
 				document.getElementById("number_of_chars").value = storedNumberOfChars;
 			}
 
 			// Currently guaranteed
-			const storedIsGuaranteed = localStorage.getItem("isGuaranteed");
+			const storedIsGuaranteed = localStorage.getItem("isGuaranteed2");
 			if (storedIsGuaranteed !== null) {
 				document.getElementById("guaranteed").value = storedIsGuaranteed;
 			}
 
 			// Primogems
-			const storedPrimogemNumber = localStorage.getItem("primogemNumber");
+			const storedPrimogemNumber = localStorage.getItem("primogemNumber2");
 			if (storedPrimogemNumber !== null) {
 				document.getElementById("primogems").value = storedPrimogemNumber;
 			}
 
 			// Genesis Crystals
-			const storedGenesisNumber = localStorage.getItem("genesisNumber");
+			const storedGenesisNumber = localStorage.getItem("genesisNumber2");
 			if (storedGenesisNumber !== null) {
 				document.getElementById("genesis").value = storedGenesisNumber;
 			}
 
 			// Starglitter
-			const storedStarglitterNumber = localStorage.getItem("starglitterNumber");
+			const storedStarglitterNumber = localStorage.getItem("starglitterNumber2");
 			if (storedStarglitterNumber !== null) {
 				document.getElementById("starglitter").value = storedStarglitterNumber;
 			}
 
 			// Intertwined Fates
-			const storedFatesNumber = localStorage.getItem("fatesNumber");
+			const storedFatesNumber = localStorage.getItem("fatesNumber2");
 			if (storedFatesNumber !== null) {
 				document.getElementById("fates").value = storedFatesNumber;
 			}
 
-			const storedNumberOfWeapons = localStorage.getItem("numberOfWeapons");
+			const storedNumberOfWeapons = localStorage.getItem("numberOfWeapons2");
 			if (storedNumberOfWeapons !== null) {
 				document.getElementById("number_of_weapons").value = storedNumberOfWeapons;
 			}
 
-			const storedIsStandard = localStorage.getItem("isStandard");
+			const storedIsStandard = localStorage.getItem("isStandard2");
 			if (storedIsStandard !== null) {
 				document.getElementById("standard").value = storedIsStandard;
 			}
 
-			const storedSoftPity = localStorage.getItem("softPity");
+			const storedSoftPity = localStorage.getItem("softPity2");
 			if (storedSoftPity !== null) {
 				document.getElementById("soft_pity").value = storedSoftPity;
 			}
 
-			const storedWeaponSoftPity = localStorage.getItem("weaponSoftPity");
+			const storedWeaponSoftPity = localStorage.getItem("weaponSoftPity2");
 			if (storedWeaponSoftPity !== null) {
 				document.getElementById("soft_pity_wb").value = storedWeaponSoftPity;
 			}
 
 			// Character pity
-			const storedCharPity = localStorage.getItem("charPity");
+			const storedCharPity = localStorage.getItem("charPity2");
 
 			if (storedCharPity !== null && storedSoftPity !== null) {
 				if (storedCharPity >= storedSoftPity) {
@@ -892,7 +892,7 @@
 				document.getElementById("char_pity").value = storedCharPity;
 			}
 
-			const storedWeaponPity = localStorage.getItem("weaponPity");
+			const storedWeaponPity = localStorage.getItem("weaponPity2");
 
 			if (storedWeaponPity !== null && storedWeaponSoftPity !== null) {
 				if (storedWeaponPity >= storedWeaponSoftPity) {
@@ -905,23 +905,23 @@
 				document.getElementById("weapon_pity").value = storedWeaponPity;
 			}
 
-			const storedPathNumber = localStorage.getItem("pathNumber");
+			const storedPathNumber = localStorage.getItem("pathNumber2");
 			if (storedPathNumber !== null) {
 				document.getElementById("path").value = storedPathNumber;
 			}
 
-			const storedConfidenceVal = localStorage.getItem("confidenceVal");
+			const storedConfidenceVal = localStorage.getItem("confidenceVal2");
 			if (storedConfidenceVal !== null) {
 				document.getElementById("confidence").value = storedConfidenceVal;
 			}
 
-			const storedGraphType = localStorage.getItem("graphType");
+			const storedGraphType = localStorage.getItem("graphType2");
 			if (storedGraphType !== null) {
 				document.getElementById("graph_type").value = storedGraphType;
 			}
 
 			// Dark Mode
-			const storedIsDarkMode = localStorage.getItem("isDarkMode");
+			const storedIsDarkMode = localStorage.getItem("isDarkMode2");
 			if (storedIsDarkMode === "true") {
 				document.body.classList.add("dark-mode");
 				document.getElementById("home_home").classList.add("dark-mode");
@@ -937,77 +937,77 @@
 
 		document.getElementById("number_of_chars").addEventListener("change", function () {
 			const numberOfChars = document.getElementById("number_of_chars").value;
-			localStorage.setItem("numberOfChars", numberOfChars);
+			localStorage.setItem("numberOfChars2", numberOfChars);
 		});
 
 		document.getElementById("guaranteed").addEventListener("change", function () {
 			const isGuaranteed = document.getElementById("guaranteed").value;
-			localStorage.setItem("isGuaranteed", isGuaranteed);
+			localStorage.setItem("isGuaranteed2", isGuaranteed);
 		});
 
 		document.getElementById("char_pity").addEventListener("change", function () {
 			const charPity = document.getElementById("char_pity").value;
-			localStorage.setItem("charPity", charPity);
+			localStorage.setItem("charPity2", charPity);
 		});
 
 		document.getElementById("primogems").addEventListener("change", function () {
 			const primogemNumber = document.getElementById("primogems").value;
-			localStorage.setItem("primogemNumber", primogemNumber);
+			localStorage.setItem("primogemNumber2", primogemNumber);
 		});
 
 		document.getElementById("genesis").addEventListener("change", function () {
 			const genesisNumber = document.getElementById("genesis").value;
-			localStorage.setItem("genesisNumber", genesisNumber);
+			localStorage.setItem("genesisNumber2", genesisNumber);
 		});
 
 		document.getElementById("starglitter").addEventListener("change", function () {
 			const starglitterNumber = document.getElementById("starglitter").value;
-			localStorage.setItem("starglitterNumber", starglitterNumber);
+			localStorage.setItem("starglitterNumber2", starglitterNumber);
 		});
 
 		document.getElementById("fates").addEventListener("change", function () {
 			const fatesNumber = document.getElementById("fates").value;
-			localStorage.setItem("fatesNumber", fatesNumber);
+			localStorage.setItem("fatesNumber2", fatesNumber);
 		});
 
 		document.getElementById("number_of_weapons").addEventListener("change", function () {
 			const numberOfWeapons = document.getElementById("number_of_weapons").value;
-			localStorage.setItem("numberOfWeapons", numberOfWeapons);
+			localStorage.setItem("numberOfWeapons2", numberOfWeapons);
 		});
 
 		document.getElementById("standard").addEventListener("change", function () {
 			const isStandard = document.getElementById("standard").value;
-			localStorage.setItem("isStandard", isStandard);
+			localStorage.setItem("isStandard2", isStandard);
 		});
 
 		document.getElementById("weapon_pity").addEventListener("change", function () {
 			const weaponPity = document.getElementById("weapon_pity").value;
-			localStorage.setItem("weaponPity", weaponPity);
+			localStorage.setItem("weaponPity2", weaponPity);
 		});
 
 		document.getElementById("path").addEventListener("change", function () {
 			const pathNumber = document.getElementById("path").value;
-			localStorage.setItem("pathNumber", pathNumber);
+			localStorage.setItem("pathNumber2", pathNumber);
 		});
 
 		document.getElementById("soft_pity").addEventListener("change", function () {
 			const softPity = document.getElementById("soft_pity").value;
-			localStorage.setItem("softPity", softPity);
+			localStorage.setItem("softPity2", softPity);
 		});
 
 		document.getElementById("soft_pity_wb").addEventListener("change", function () {
 			const weaponSoftPity = document.getElementById("soft_pity_wb").value;
-			localStorage.setItem("weaponSoftPity", weaponSoftPity);
+			localStorage.setItem("weaponSoftPity2", weaponSoftPity);
 		});
 
 		document.getElementById("confidence").addEventListener("change", function () {
 			const confidenceVal = document.getElementById("confidence").value;
-			localStorage.setItem("confidenceVal", confidenceVal);
+			localStorage.setItem("confidenceVal2", confidenceVal);
 		});
 
 		document.getElementById("graph_type").addEventListener("change", function () {
 			const graphType = document.getElementById("graph_type").value;
-			localStorage.setItem("graphType", graphType);
+			localStorage.setItem("graphType2", graphType);
 		});
 
 
@@ -1029,18 +1029,18 @@
 		});
 
 		const inputMap = {
-			"number_of_chars": "numberOfChars",
-			"number_of_weapons": "numberOfWeapons",
-			"char_pity": "charPity",
-			"weapon_pity": "weaponPity",
-			"path": "pathNumber",
-			"primogems": "primogemNumber",
-			"genesis": "genesisNumber",
-			"starglitter": "starglitterNumber",
-			"fates": "fatesNumber",
-			"soft_pity": "softPity",
-			"soft_pity_wb": "weaponSoftPity",
-			"confidence": "confidenceVal"
+			"number_of_chars": "numberOfChars2",
+			"number_of_weapons": "numberOfWeapons2",
+			"char_pity": "charPity2",
+			"weapon_pity": "weaponPity2",
+			"path": "pathNumber2",
+			"primogems": "primogemNumber2",
+			"genesis": "genesisNumber2",
+			"starglitter": "starglitterNumber2",
+			"fates": "fatesNumber2",
+			"soft_pity": "softPity2",
+			"soft_pity_wb": "weaponSoftPity2",
+			"confidence": "confidenceVal2"
 		};
 
 		const numberInputs = Object.keys(inputMap);
@@ -1113,7 +1113,7 @@
 			pathInput.value = pathValue;
 
 			// Get the corresponding local storage key
-			const localStorageKey = "pathNumber"; // Use the appropriate key for local storage
+			const localStorageKey = "pathNumber2"; // Use the appropriate key for local storage
 
 			// Update the local storage value
 			localStorage.setItem(localStorageKey, pathValue.toString());
@@ -1130,7 +1130,7 @@
 
 			characterInput.value = characterValue;
 
-			const localStorageKey = "numberOfChars";
+			const localStorageKey = "numberOfChars2";
 
 			localStorage.setItem(localStorageKey, characterValue.toString());
 		});
@@ -1147,7 +1147,7 @@
 
 			weaponInput.value = weaponValue;
 
-			const localStorageKey = "numberOfWeapons";
+			const localStorageKey = "numberOfWeapons2";
 
 			localStorage.setItem(localStorageKey, weaponValue.toString());
 		});
@@ -1156,11 +1156,11 @@
 
 		// Define the list of inputs and their corresponding local storage keys
 		const inputMappings = [
-			{id: "char_pity", key: "charPity"},
-			{id: "weapon_pity", key: "weaponPity"},
-			{id: "soft_pity", key: "softPity"},
-			{id: "soft_pity_wb", key: "softPityWb"},
-			{id: "confidence", key: "confidenceVal"},
+			{id: "char_pity", key: "charPity2"},
+			{id: "weapon_pity", key: "weaponPity2"},
+			{id: "soft_pity", key: "softPity2"},
+			{id: "soft_pity_wb", key: "softPityWb2"},
+			{id: "confidence", key: "confidenceVal2"},
 		];
 		let charPityTimeout;
 		inputMappings.forEach(inputMapping => {
@@ -1177,25 +1177,25 @@
 				}
 
 				// Check if the value exceeds the cap
-				if (inputMapping.key === "charPity") {
+				if (inputMapping.key === "charPity2") {
 					const softPity = parseInt(document.getElementById("soft_pity").value);
 					if (inputValue > softPity - 1) {
 						inputValue = softPity - 1;
 					}
-				} else if (inputMapping.key === "weaponPity") {
+				} else if (inputMapping.key === "weaponPity2") {
 					const softPityWb = parseInt(document.getElementById("soft_pity_wb").value);
 					if (inputValue > softPityWb - 1) {
 						inputValue = softPityWb - 1;
 					}
-				} else if (inputMapping.key === "softPity") {
+				} else if (inputMapping.key === "softPity2") {
 					if (inputValue > 90) {
 						inputValue = 90;
 					}
-				} else if (inputMapping.key === "softPityWb") {
+				} else if (inputMapping.key === "softPityWb2") {
 					if (inputValue > 77) {
 						inputValue = 77;
 					}
-				} else if (inputMapping.key === "confidenceVal") {
+				} else if (inputMapping.key === "confidenceVal2") {
 					if (inputValue > 100.0) {
 						inputValue = 100.0;
 					}
