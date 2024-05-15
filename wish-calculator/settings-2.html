@@ -5,6 +5,8 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Wish Calculator for 2nd account</title>
+
+	<link rel="icon" href="fate.png">
 </head>
 
 <style>
@@ -15,9 +17,19 @@
 
 	.lowerRightCorner {
 		position: fixed;
-		bottom: 20px;
+		bottom: 15px;
 		/* Adjust the distance from the bottom as needed */
 		right: 20px;
+		/* Adjust the distance from the right as needed */
+		z-index: 999;
+		/* Adjust the z-index to control the button's stacking order */
+	}
+
+	.lowerLeftCorner {
+		position: fixed;
+		bottom: 15px;
+		/* Adjust the distance from the bottom as needed */
+		left: 20px;
 		/* Adjust the distance from the right as needed */
 		z-index: 999;
 		/* Adjust the z-index to control the button's stacking order */
@@ -181,6 +193,22 @@
 		outline: 0;
 	}
 
+	@media screen and (max-width: 450.67px) {
+		#fatediv {
+			display: none;
+		}
+
+		.fate {
+			/* top: 63px;
+			left: calc(50vw + 64px); */
+		}
+
+		/* .wishbr {
+			display: block;
+		} */
+	}
+
+	
 	.fate {
 		animation: fadeInAnimation ease 3s;
 		animation-iteration-count: 1;
@@ -209,17 +237,6 @@
 
 	.wishbr {
 		display: none;
-	}
-
-	@media screen and (max-width: 450.67px) {
-		.fate {
-			top: 63px;
-			left: calc(50vw + 64px);
-		}
-
-		.wishbr {
-			display: block;
-		}
 	}
 
 	@media screen and (max-width: 768px) {
@@ -262,6 +279,12 @@
 			height: 40px;
 		}
 
+		.lowerLeftCorner {
+			bottom: 40px;
+			left: unset;
+			right: 20px;
+			/* Adjust the distance from the right as needed */
+		}
 
 
 	}
@@ -288,9 +311,9 @@
 </style>
 
 <body class="dark-mode" ; style="font-size: 24px; font-family:verdana; line-height:1.5em;">
-	<img id="fate" class="fate" alt="">
+	<div id="fatediv"><a href="https://zukrainak47.github.io/wish-calculator/wish-calculator-2.html"><img id="fate" class="fate" alt="" /></a></div>
 	<h2 style="margin-top: 5px;" class="cc2">
-		<a class="dark-mode" id="home_home" href="https://zukrainak47.github.io/wish-calculator/settings-2.html">
+		<a class="dark-mode" id="home_home" href="https://zukrainak47.github.io/wish-calculator/wish-calculator-2.html">
 			<span">WISH <br class="wishbr">CALCULATOR</span>
 				<br>
 				<span style="font-size:12px;" class="bb">(for your 2nd account)</span>
@@ -383,7 +406,12 @@
 		<!-- <button id="lowerRightCorner" class="button-11">Toggle Heizou</button> -->
 		<div class="lowerRightCorner" id="accountDiv">
 			<form action="https://zukrainak47.github.io/wish-calculator/">
-				<button type="submit" id="swapAccounts" class="button-11">Go to account 1</button>
+				<button type="submit" id="swapAccounts" class="button-11"><b>Go to account 1</b></button>
+			</form>
+		</div>
+		<div class="lowerLeftCorner" id="bugDiv">
+			<form action="https://zukra47.notion.site/Found-a-bug-Got-suggestions-6af401c619804d2494dea010c0d38ef7">
+				<button type="submit" id="bugReport" class="button-11"><b>Found a bug?</b></button>
 			</form>
 		</div>
 		<button id="darkModeToggle" class="button-29">Toggle Dark Mode</button>
