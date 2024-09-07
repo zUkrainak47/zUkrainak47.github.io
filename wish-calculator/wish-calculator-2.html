@@ -507,6 +507,7 @@
 	</div>
 	<div class="disclaimerDiv" id="disclaimDiv" style="display: none">    
 		<p class="disclaimer" style="margin-bottom: 0;"><i>The calculator's estimate for starglitter gain may be lower than starglitter gain in-game.</i></p>
+		<p class="disclaimer" style="margin-top: 0;"><i>5% chance to trigger Capturing Radiance on average is assumed.</i></p>
 	</div>
 	<button id="settingsButton" class="settings-icon-button">
 		<i class="fas fa-cog fa-lg"></i>
@@ -673,7 +674,7 @@
 			}
 
 
-			const amount_of_cases = 2 ** (number_of_chars - guaranteed);
+			// const amount_of_cases = 2 ** (number_of_chars - guaranteed);
 
 			clearOutput();
 			clearOutputMain();
@@ -693,6 +694,10 @@
 				}
 				return triangle2;
 			}
+
+			console.log(pascal(3))
+			console.log(pascal(4))
+			console.log(pascal(5))
 
 			function multiply(o, odd) {
 				const sol = [];
@@ -745,12 +750,18 @@
 				return weapon(n - 1, 0, false, pity, odds_temp);
 			}
 
-			const list_of_probabilities = pascal(number_of_chars + 1 - guaranteed);
+			const amount_of_cases = number_of_chars + 1 - guaranteed
+			const list_of_probabilities = pascal(amount_of_cases);
 			for (let i = 0; i < number_of_chars + 1 - guaranteed; i++) {
-				list_of_probabilities[i] /= amount_of_cases;
+				list_of_probabilities[i] *= 0.45**(amount_of_cases-1-i) * 0.55**(i);
 			}
 
+			console.log(list_of_probabilities)
+
 			const char_odds_wishes = list_of_probabilities.map((probability, index) => [probability, wishes_required[index]]);
+			
+			console.log(char_odds_wishes)
+			
 			chars_weapons_odds_wishes = multiply(char_odds_wishes, weapon(number_of_weapons, path, standard, weapon_pity));
 			chars_weapons_odds_wishes.sort((a, b) => b[1] - a[1]);
 			for (let i = 0; i < chars_weapons_odds_wishes.length; i++) {
