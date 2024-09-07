@@ -585,30 +585,30 @@
 			const soft_pity_wb = parseInt(document.getElementById("soft_pity_wb").value);
 			const confidence = parseFloat(document.getElementById("confidence").value);
 			const graph_type = document.getElementById("graph_type").value;
+			// const odds_zero = [
+			// 	[0.375, soft_pity_wb],
+			// 	[0.265625, soft_pity_wb * 2],
+			// 	[0.359375, soft_pity_wb * 3],
+			// ];
 			const odds_zero = [
-				[0.375, soft_pity_wb],
-				[0.265625, soft_pity_wb * 2],
-				[0.359375, soft_pity_wb * 3],
-			];
-			const odds_one = [
 				[0.375, soft_pity_wb],
 				[0.625, soft_pity_wb * 2],
 			];
-			const odds_two = [[1, soft_pity_wb]];
+			const odds_one = [[1, soft_pity_wb]];
+			// const odds_std_zero = [
+			// 	[0.5, soft_pity_wb],
+			// 	[0.1875, soft_pity_wb * 2],
+			// 	[0.3125, soft_pity_wb * 3],
+			// ];
 			const odds_std_zero = [
-				[0.5, soft_pity_wb],
-				[0.1875, soft_pity_wb * 2],
-				[0.3125, soft_pity_wb * 3],
-			];
-			const odds_std_one = [
 				[0.5, soft_pity_wb],
 				[0.5, soft_pity_wb * 2],
 			];
-			const odds_std_two = odds_two;
+			const odds_std_one = odds_one;
 
 			const odds_total = [
-				[odds_zero, odds_one, odds_two],
-				[odds_std_zero, odds_std_one, odds_std_two],
+				[odds_zero, odds_one],
+				[odds_std_zero, odds_std_one],
 			];
 
 			const number_of_chars = parseInt(document.getElementById("number_of_chars").value);
@@ -1179,10 +1179,10 @@
 			// Parse the input value as an integer
 			let pathValue = parseInt(pathInput.value);
 
-			// Check if the value is greater than 2
-			if (pathValue > 2) {
-				// If it's greater than 2, set it to 2
-				pathValue = 2;
+			// Check if the value is greater than 1
+			if (pathValue > 1) {
+				// If it's greater than 1, set it to 1
+				pathValue = 1;
 			}
 
 			// Update the input value
