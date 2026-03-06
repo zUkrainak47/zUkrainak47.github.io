@@ -110,6 +110,10 @@
 }
 
 /* Pill sizes */
+body.pill-size-hidden #timer-info {
+    display: none !important;
+}
+
 body.pill-size-large #timer-info {
     flex-direction: column;
     align-items: center;

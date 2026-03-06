@@ -1,9 +1,10 @@
-import { formatTime, formatSolveTime, formatDate, getEffectiveTime } from './utils.js';
+import { formatTime, formatSolveTime, formatDate, formatReadableDate, formatDateTime, getEffectiveTime } from './utils.js';
 import { sessionManager } from './session.js';
 
 let _overlay = null;
 let _content = null;
 let _textarea = null;
+let _commentInput = null;
 let _modalActions = null;
 let _currentSolveIndex = null;
 
@@ -11,6 +12,7 @@ export function initModal() {
     _overlay = document.getElementById('modal-overlay');
     _content = document.getElementById('modal-content');
     _textarea = document.getElementById('modal-textarea');
+    _commentInput = document.getElementById('modal-solve-comment');
     _modalActions = document.getElementById('modal-actions');
 
     _overlay.addEventListener('click', (e) => {
@@ -54,6 +56,23 @@ export function initModal() {
             closeModal();
         }
     };
+
+    _commentInput.addEventListener('change', (e) => {
+        const id = _modalActions.dataset.solveId;
+        if (id) {
+            sessionManager.setSolveComment(id, e.target.value.trim());
+        }
+    });
+
+    _commentInput.addEventListener('input', () => autoResizeTextarea(_commentInput));
+
+    // Make enter key in comment input also blur to save
+    _commentInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            _commentInput.blur();
+        }
+    });
 }
 
 /**
@@ -79,6 +98,7 @@ export function customConfirm(message) {
             btnClose.removeEventListener('click', onCancel);
             overlay.removeEventListener('click', onOverlayClick);
             document.removeEventListener('keydown', onKeydown);
+            if (document.activeElement) document.activeElement.blur();
         };
 
         // Handlers
@@ -115,7 +135,7 @@ export function customConfirm(message) {
  * Custom async prompt modal matching the application aesthetics.
  * Returns a Promise that resolves to the input value (string) or null (Cancel).
  */
-export function customPrompt(message, defaultValue = '', maxLength = 100, title = 'Session name') {
+export function customPrompt(message, defaultValue = '', maxLength = 100, title = 'Session name', placeholder = '') {
     return new Promise((resolve) => {
         const overlay = document.getElementById('prompt-overlay');
         const titleEl = document.getElementById('prompt-title');
@@ -131,21 +151,25 @@ export function customPrompt(message, defaultValue = '', maxLength = 100, title 
         msgEl.style.display = message ? 'block' : 'none';
         inputEl.value = defaultValue;
         inputEl.maxLength = maxLength;
+        inputEl.placeholder = placeholder;
 
-        // Cleanup function
         const cleanup = () => {
             overlay.classList.remove('active');
             btnOk.removeEventListener('click', onOk);
-            btnCancel.removeEventListener('click', onCancel);
+            btnCancel.removeEventListener('click', onDiscard);
             btnClose.removeEventListener('click', onCancel);
             overlay.removeEventListener('click', onOverlayClick);
             document.removeEventListener('keydown', onKeydown);
+            inputEl.removeEventListener('input', onInput);
+            if (document.activeElement) document.activeElement.blur();
         };
 
         // Handlers
         const onOk = () => { cleanup(); resolve(inputEl.value); };
-        const onCancel = () => { cleanup(); resolve(null); };
+        const onDiscard = () => { cleanup(); resolve(null); };
+        const onCancel = () => { cleanup(); resolve(inputEl.value); };
         const onOverlayClick = (e) => { if (e.target === overlay) onCancel(); };
+        const onInput = () => autoResizeTextarea(inputEl);
         const onKeydown = (e) => {
             if (!overlay.classList.contains('active')) return;
             if (e.key === 'Escape') {
@@ -153,26 +177,46 @@ export function customPrompt(message, defaultValue = '', maxLength = 100, title 
                 e.preventDefault();
                 onCancel();
             }
-            if (e.key === 'Enter') onOk();
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                onOk();
+            }
             e.stopPropagation();
         };
 
         // Attach listeners
         btnOk.addEventListener('click', onOk);
-        btnCancel.addEventListener('click', onCancel);
+        btnCancel.addEventListener('click', onDiscard);
         btnClose.addEventListener('click', onCancel);
         overlay.addEventListener('click', onOverlayClick);
         document.addEventListener('keydown', onKeydown);
+        inputEl.addEventListener('input', onInput);
 
         // Show modal and wait for user interaction
         overlay.classList.add('active');
 
-        // Focus input and select all text
+        // Focus input and move cursor to end, and trigger initial resize
         requestAnimationFrame(() => {
             inputEl.focus();
-            inputEl.select();
+            inputEl.setSelectionRange(inputEl.value.length, inputEl.value.length);
+            autoResizeTextarea(inputEl);
         });
     });
+}
+
+
+
+function autoResizeTextarea(el) {
+    el.style.height = 'auto';
+    // Constrain maximum height to avoid breaking the modal
+    const maxHeight = window.innerHeight * 0.4;
+    if (el.scrollHeight > maxHeight) {
+        el.style.height = maxHeight + 'px';
+        el.style.overflowY = 'auto';
+    } else {
+        el.style.height = el.scrollHeight + 'px';
+        el.style.overflowY = 'hidden';
+    }
 }
 
 export function closeModal() {
@@ -189,7 +233,7 @@ export function showSolveDetail(solve, index) {
     const title = `Solve #${index + 1}`;
 
     const text = [
-        `Generated by CubeTimer on ${formatDate(solve.timestamp)}`,
+        `Generated by CubeTimer on ${formatReadableDate(Date.now())}`,
         ``,
         `Time: ${timeStr}`,
         `Scramble: ${solve.scramble}`,
@@ -218,7 +262,7 @@ export function showAverageDetail(label, value, solves, trim = 1) {
     const worstIndices = new Set(sorted.slice(-trim).map(s => s.index));
 
     const lines = [
-        `Generated by CubeTimer on ${formatDate(Date.now())}`,
+        `Generated by CubeTimer on ${formatReadableDate(Date.now())}`,
         `${label}: ${valueStr}`,
         ``,
         `Time List:`,
@@ -240,10 +284,37 @@ function _showModal(title, text, solveContext = null) {
     document.getElementById('modal-title').textContent = title;
     _textarea.value = text;
 
+    const lineCount = text.split('\n').length;
+    if (lineCount <= 4) {
+        _textarea.rows = 4;
+        _textarea.style.height = 'auto';
+        _textarea.style.minHeight = 'auto';
+    } else if (lineCount <= 7) {
+        _textarea.rows = 7;
+        _textarea.style.height = 'auto';
+        _textarea.style.minHeight = 'auto';
+    } else if (lineCount <= 9) {
+        _textarea.rows = 9;
+        _textarea.style.height = 'auto';
+        _textarea.style.minHeight = 'auto';
+    } else {
+        _textarea.rows = 16;
+        _textarea.style.height = '358px';
+        _textarea.style.minHeight = '358px';
+    }
+
+    const dateInfo = document.getElementById('modal-date-info');
+
     // Toggle actions visibility based on context
     if (solveContext) {
         _modalActions.style.display = 'flex';
         _modalActions.dataset.solveId = solveContext.id;
+
+        // Show solve date/time in header
+        if (dateInfo) {
+            dateInfo.textContent = formatDateTime(solveContext.timestamp);
+            dateInfo.style.display = 'block';
+        }
 
         // Setup button states
         const btnPlus2 = document.getElementById('modal-btn-plus2');
@@ -259,9 +330,21 @@ function _showModal(title, text, solveContext = null) {
         btnDnf.style.borderColor = solveContext.penalty === 'DNF' ? 'rgba(248, 81, 73, 0.5)' : 'var(--text-muted)';
         btnDnf.style.background = solveContext.penalty === 'DNF' ? 'rgba(248, 81, 73, 0.1)' : 'var(--surface)';
         btnDnf.style.color = solveContext.penalty === 'DNF' ? 'var(--stat-worst)' : 'var(--text-secondary)';
+
+        // Setup comment input
+        _commentInput.style.display = 'block';
+        _commentInput.value = solveContext.comment || '';
+        requestAnimationFrame(() => autoResizeTextarea(_commentInput));
     } else {
         _modalActions.style.display = 'none';
         delete _modalActions.dataset.solveId;
+
+        // Hide date info for non-solve modals (averages)
+        if (dateInfo) {
+            dateInfo.textContent = '';
+            dateInfo.style.display = 'none';
+        }
+        _commentInput.style.display = 'none';
     }
 
     _overlay.classList.add('active');

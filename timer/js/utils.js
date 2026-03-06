@@ -52,7 +52,7 @@ export function formatSolveTime(solve) {
     str = formatTime(time);
     if (solve.penalty === '+2') str += '+';
   }
-  return solve.isManual ? str + '*' : str;
+  return str;
 }
 
 /**
@@ -85,13 +85,27 @@ export function formatDate(timestamp) {
 }
 
 /**
+ * Format a timestamp to a readable date (e.g., 6 March 2026).
+ * @param {number} timestamp
+ * @returns {string}
+ */
+export function formatReadableDate(timestamp) {
+  const d = new Date(timestamp);
+  const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+/**
  * Format a timestamp to a readable date-time string.
  * @param {number} timestamp
  * @returns {string}
  */
 export function formatDateTime(timestamp) {
   const d = new Date(timestamp);
-  return d.toLocaleString();
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const seconds = String(d.getSeconds()).padStart(2, '0');
+  return `${formatReadableDate(timestamp)}, ${hours}:${minutes}:${seconds}`;
 }
 
 /**

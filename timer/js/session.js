@@ -113,6 +113,15 @@ class SessionManager extends EventEmitter {
         this.emit('solveUpdated', solve);
     }
 
+    setSolveComment(solveId, comment) {
+        const session = this.getActiveSession();
+        const solve = session.solves.find(s => s.id === solveId);
+        if (!solve) return;
+        solve.comment = comment;
+        this._save();
+        this.emit('solveUpdated', solve);
+    }
+
     deleteSolve(solveId) {
         const session = this.getActiveSession();
         session.solves = session.solves.filter(s => s.id !== solveId);

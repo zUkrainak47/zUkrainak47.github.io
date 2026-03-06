@@ -49,6 +49,15 @@
     font-weight: 700;
 }
 
+#modal-date-info {
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+    font-weight: 500;
+    margin-right: 8px;
+    margin-left: auto;
+    white-space: nowrap;
+}
+
 .modal-close {
     font-size: var(--text-xl);
     color: var(--text-secondary);

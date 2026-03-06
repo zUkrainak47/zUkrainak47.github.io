@@ -150,9 +150,9 @@
             <thead>
               <tr>
                 <th>#</th>
-                <th>time</th>
-                <th>ao5</th>
-                <th>ao12</th>
+                <th data-sort="time" style="cursor: pointer;">time</th>
+                <th data-sort="ao5" style="cursor: pointer;">ao5</th>
+                <th data-sort="ao12" style="cursor: pointer;">ao12</th>
               </tr>
             </thead>
             <tbody id="solves-tbody"></tbody>
@@ -247,14 +247,20 @@
           <button id="modal-btn-dnf" class="btn-action" title="DNF">DNF</button>
           <button id="modal-btn-delete" class="btn-action btn-danger" title="Delete">✕</button>
         </div>
+        <span id="modal-date-info"></span>
         <button class="modal-close"
           onclick="document.getElementById('modal-overlay').classList.remove('active')">✕</button>
       </div>
       <div class="modal-body">
+        <textarea id="modal-solve-comment" placeholder="Add a comment..." autocomplete="off" spellcheck="false"
+          maxlength="1000" rows="1"
+          style="display:none; margin-bottom: 12px; width: 100%; box-sizing: border-box; background: var(--bg-color); border: 1px solid var(--border-color); color: var(--text-primary); padding: 8px 12px; border-radius: 6px; font-family: inherit; font-size: var(--text-base); resize: none; min-height: 40px;"></textarea>
         <textarea id="modal-textarea" readonly></textarea>
       </div>
     </div>
   </div>
+
+
 
   <!-- ─── Confirm Modal ─── -->
   <div id="confirm-overlay" class="modal-overlay">
@@ -282,7 +288,8 @@
       <div class="modal-body">
         <p id="prompt-message" style="margin: 0 0 12px 0; font-size: var(--text-base); color: var(--text-secondary);">
         </p>
-        <input type="text" id="prompt-input" autocomplete="off" spellcheck="false">
+        <textarea id="prompt-input" autocomplete="off" spellcheck="false" rows="1"
+          style="width: 100%; box-sizing: border-box; background: var(--bg-color); border: 1px solid var(--border-color); color: var(--text-primary); padding: 8px 12px; border-radius: 6px; font-family: inherit; font-size: var(--text-base); margin-bottom: 12px; resize: none; min-height: 40px; overflow: hidden;"></textarea>
         <div class="confirm-actions">
           <button id="prompt-btn-cancel" class="btn btn-secondary">Cancel</button>
           <button id="prompt-btn-ok" class="btn btn-primary-action">OK</button>
@@ -307,11 +314,11 @@
               <small>How often the display refreshes while running</small>
             </div>
             <select id="setting-timer-update">
+              <option value="inspection">Inspection</option>
               <option value="none">None</option>
               <option value="1s">1s</option>
               <option value="0.1s">0.1s</option>
               <option value="0.01s">0.01s</option>
-              <option value="inspection">Inspection</option>
             </select>
           </div>
           <div class="setting-row">
@@ -344,9 +351,10 @@
           </div>
           <div class="setting-row">
             <div class="setting-label">
-              Stats pills size
+              ao5 / ao12 below timer
             </div>
             <select id="setting-pill-size">
+              <option value="hidden">Hidden</option>
               <option value="small">Small</option>
               <option value="medium">Medium</option>
               <option value="large">Large</option>

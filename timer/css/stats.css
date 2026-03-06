@@ -125,7 +125,7 @@
 }
 
 #solves-table th:first-child {
-    text-align: center;
+    text-align: left;
     width: 40px;
     border-top-left-radius: var(--radius-md);
 }
@@ -143,7 +143,7 @@
 }
 
 #solves-table td:first-child {
-    text-align: center;
+    text-align: left;
     color: var(--text-tertiary);
     cursor: default;
     font-size: var(--text-sm);

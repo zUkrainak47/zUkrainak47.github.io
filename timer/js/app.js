@@ -10,6 +10,8 @@ import { initGraph, updateGraph, setLineVisibility, getLineVisibility, applyActi
 import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer } from './storage.js';
 
 let currentScramble = '';
+let currentSortCol = null;
+let currentSortDir = null; // 'asc' or 'desc'
 
 // ──── Bootstrap ────
 async function init() {
@@ -46,6 +48,7 @@ async function init() {
     initZenMode();
     initScrambleControls();
     initTimerInfoControls();
+    initTableSorting();
     initGraphLineToggles();
     initKeyboardShortcuts();
 }
@@ -253,6 +256,28 @@ function initScrambleControls() {
     });
 }
 
+// ──── Table Sorting ────
+function initTableSorting() {
+    const headers = document.querySelectorAll('#solves-table th[data-sort]');
+    headers.forEach(th => {
+        th.addEventListener('click', () => {
+            const col = th.dataset.sort;
+            if (currentSortCol === col) {
+                if (currentSortDir === 'asc') {
+                    currentSortDir = 'desc';
+                } else {
+                    currentSortCol = null;
+                    currentSortDir = null;
+                }
+            } else {
+                currentSortCol = col;
+                currentSortDir = 'asc';
+            }
+            refreshUI();
+        });
+    });
+}
+
 // ──── Keyboard Shortcuts ────
 function initKeyboardShortcuts() {
     document.addEventListener('keydown', (e) => {
@@ -279,6 +304,20 @@ function initKeyboardShortcuts() {
         if (timer.getState() !== 'idle' && timer.getState() !== 'stopped') return;
 
         switch (e.code) {
+            case 'Tab':
+                e.preventDefault();
+                if (isSolveModalActive || document.getElementById('settings-overlay').classList.contains('active')) return;
+
+                const activeSession = sessionManager.getActiveSession();
+                if (activeSession && activeSession.solves.length > 0) {
+                    const lastSolve = activeSession.solves[activeSession.solves.length - 1];
+                    customPrompt('', lastSolve.comment || '', 1000, 'Comment on last solve', 'Type a comment and press Enter...').then(comment => {
+                        if (comment !== null && comment !== (lastSolve.comment || '')) {
+                            sessionManager.setSolveComment(lastSolve.id, comment);
+                        }
+                    });
+                }
+                break;
             case 'KeyC':
                 document.getElementById('scramble-text').click();
                 break;
@@ -677,9 +716,52 @@ function renderSolvesTable(solves, pss, stats) {
         }
     }
 
-    // Build rows newest first
+    // Update headers to show sort direction
+    document.querySelectorAll('#solves-table th[data-sort]').forEach(th => {
+        const col = th.dataset.sort;
+        let text = col;
+        if (col === currentSortCol) {
+            text += currentSortDir === 'asc' ? ' ▴' : ' ▾';
+        }
+        th.textContent = text;
+    });
+
+    // Build rows according to sort order
     let html = '';
-    for (let i = solves.length - 1; i >= 0; i--) {
+    let indices = solves.map((_, i) => i);
+
+    if (currentSortCol) {
+        indices.sort((a, b) => {
+            let valA, valB;
+            if (currentSortCol === 'time') {
+                valA = getEffectiveTime(solves[a]);
+                valB = getEffectiveTime(solves[b]);
+            } else if (currentSortCol === 'ao5') {
+                valA = pss[a].ao5 != null ? pss[a].ao5 : Infinity;
+                valB = pss[b].ao5 != null ? pss[b].ao5 : Infinity;
+            } else if (currentSortCol === 'ao12') {
+                valA = pss[a].ao12 != null ? pss[a].ao12 : Infinity;
+                valB = pss[b].ao12 != null ? pss[b].ao12 : Infinity;
+            }
+
+            if (valA === valB) {
+                // Secondary sort: chronological (newest first fallback)
+                return currentSortDir === 'asc' ? b - a : a - b;
+            }
+
+            // Always sink Infinity (DNF/empty) to the bottom
+            if (valA === Infinity && valB !== Infinity) return 1;
+            if (valB === Infinity && valA !== Infinity) return -1;
+
+            if (currentSortDir === 'asc') return valA - valB;
+            return valB - valA;
+        });
+    } else {
+        indices.reverse(); // Default: newest first
+    }
+
+    for (let idx of indices) {
+        let i = idx;
         const solve = solves[i];
         const ps = pss[i];
         const t = getEffectiveTime(solve);
@@ -692,8 +774,12 @@ function renderSolvesTable(solves, pss, stats) {
         const ao5Str = ps.ao5 != null ? formatTime(ps.ao5) : '';
         const ao12Str = ps.ao12 != null ? formatTime(ps.ao12) : '';
 
+        let indicator = '';
+        if (solve.comment) indicator += '*';
+        if (solve.isManual) indicator += (indicator ? '\u2009' : '') + '✎';
+
         html += `<tr data-solve-id="${solve.id}" data-solve-index="${i}">
-      <td>${i + 1}</td>
+      <td style="white-space: nowrap; position: relative;">${i + 1}<span style="position: absolute; margin-left: 4px; z-index: 10;">${indicator}</span></td>
       <td class="solve-time-cell ${solve.penalty === 'DNF' ? 'dnf-time' : ''} ${isBestTime ? 'new-best-cell' : ''}">
         ${timeStr}
       </td>
@@ -746,7 +832,7 @@ function initSessionControls() {
 
     document.getElementById('btn-rename-session').onclick = async () => {
         const session = sessionManager.getActiveSession();
-        const name = await customPrompt('', session.name, 50);
+        const name = await customPrompt('', session.name, 50, 'Session name', 'Enter session name...');
         if (name && name.trim()) {
             sessionManager.renameSession(session.id, name.trim());
             refreshSessionList();

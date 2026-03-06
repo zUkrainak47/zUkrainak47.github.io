@@ -22,6 +22,7 @@ While idle:
 - . = next scramble
 - , = previous scramble
 - c = copy scramble
+- tab = add comment
 
 While solving:
 - esc/backspace/delete = mark solve as DNF
