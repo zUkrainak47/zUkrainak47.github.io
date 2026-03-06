@@ -18,7 +18,9 @@ export function initModal() {
     });
 
     document.addEventListener('keydown', (e) => {
-        if (e.code === 'Escape' && _overlay.classList.contains('active')) {
+        // Ignore Escape if the confirm modal is active so it doesn't close both
+        const isConfirmActive = document.getElementById('confirm-overlay').classList.contains('active');
+        if (e.code === 'Escape' && _overlay.classList.contains('active') && !isConfirmActive) {
             closeModal();
             e.stopPropagation();
         }
@@ -85,7 +87,11 @@ export function customConfirm(message) {
         const onOverlayClick = (e) => { if (e.target === overlay) onCancel(); };
         const onKeydown = (e) => {
             if (!overlay.classList.contains('active')) return;
-            if (e.key === 'Escape') onCancel();
+            if (e.key === 'Escape') {
+                e.stopImmediatePropagation();
+                e.preventDefault();
+                onCancel();
+            }
             if (e.key === 'Enter') onOk();
             e.stopPropagation();
         };
@@ -102,6 +108,70 @@ export function customConfirm(message) {
 
         // Focus OK button for enter key support
         requestAnimationFrame(() => btnOk.focus());
+    });
+}
+
+/**
+ * Custom async prompt modal matching the application aesthetics.
+ * Returns a Promise that resolves to the input value (string) or null (Cancel).
+ */
+export function customPrompt(message, defaultValue = '', maxLength = 100, title = 'Session name') {
+    return new Promise((resolve) => {
+        const overlay = document.getElementById('prompt-overlay');
+        const titleEl = document.getElementById('prompt-title');
+        const msgEl = document.getElementById('prompt-message');
+        const inputEl = document.getElementById('prompt-input');
+        const btnOk = document.getElementById('prompt-btn-ok');
+        const btnCancel = document.getElementById('prompt-btn-cancel');
+        const btnClose = document.getElementById('prompt-btn-close');
+
+        // Set title, message and default value
+        titleEl.textContent = title;
+        msgEl.textContent = message;
+        msgEl.style.display = message ? 'block' : 'none';
+        inputEl.value = defaultValue;
+        inputEl.maxLength = maxLength;
+
+        // Cleanup function
+        const cleanup = () => {
+            overlay.classList.remove('active');
+            btnOk.removeEventListener('click', onOk);
+            btnCancel.removeEventListener('click', onCancel);
+            btnClose.removeEventListener('click', onCancel);
+            overlay.removeEventListener('click', onOverlayClick);
+            document.removeEventListener('keydown', onKeydown);
+        };
+
+        // Handlers
+        const onOk = () => { cleanup(); resolve(inputEl.value); };
+        const onCancel = () => { cleanup(); resolve(null); };
+        const onOverlayClick = (e) => { if (e.target === overlay) onCancel(); };
+        const onKeydown = (e) => {
+            if (!overlay.classList.contains('active')) return;
+            if (e.key === 'Escape') {
+                e.stopImmediatePropagation();
+                e.preventDefault();
+                onCancel();
+            }
+            if (e.key === 'Enter') onOk();
+            e.stopPropagation();
+        };
+
+        // Attach listeners
+        btnOk.addEventListener('click', onOk);
+        btnCancel.addEventListener('click', onCancel);
+        btnClose.addEventListener('click', onCancel);
+        overlay.addEventListener('click', onOverlayClick);
+        document.addEventListener('keydown', onKeydown);
+
+        // Show modal and wait for user interaction
+        overlay.classList.add('active');
+
+        // Focus input and select all text
+        requestAnimationFrame(() => {
+            inputEl.focus();
+            inputEl.select();
+        });
     });
 }
 

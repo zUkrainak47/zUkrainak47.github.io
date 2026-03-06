@@ -230,8 +230,7 @@ body.zen #btn-settings,
 body.zen #btn-edit-scramble,
 body.zen #btn-prev-scramble,
 body.zen #btn-next-scramble,
-body.zen #timer-hint,
-body.zen #timer-info {
+body.zen #timer-hint {
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.3s ease;

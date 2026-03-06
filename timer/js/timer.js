@@ -47,24 +47,26 @@ class Timer extends EventEmitter {
         if (document.querySelector('.modal-overlay.active')) return;
 
         const isEscape = e.code === 'Escape' || e.key === 'Escape' || e.keyCode === 27;
+        const isDnfKey = isEscape || e.code === 'Backspace' || e.key === 'Backspace' || e.keyCode === 8 || e.code === 'Delete' || e.key === 'Delete' || e.keyCode === 46;
 
-        if (isEscape) {
-            if (this.state === State.RUNNING) {
-                this._stopTimer(true); // Stop and trigger DNF
-                e.preventDefault();
-                return;
-            } else if (this.state === State.HOLDING || this.state === State.READY) {
-                this._cancelHold();
-                this._setState(State.IDLE);
-                this._setColor('idle');
-                e.preventDefault();
-                return;
-            }
+        if (isDnfKey && this.state === State.RUNNING) {
+            this._stopTimer(true); // Stop and trigger DNF
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            return;
+        } else if (isEscape && (this.state === State.HOLDING || this.state === State.READY)) {
+            this._cancelHold();
+            this._setState(State.IDLE);
+            this._setColor('idle');
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            return;
         }
 
         if (this.state === State.RUNNING) {
             // Any key stops the timer
             e.preventDefault();
+            e.stopImmediatePropagation();
             this._stopTimer();
             return;
         }

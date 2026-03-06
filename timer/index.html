@@ -42,7 +42,8 @@
         <button id="btn-edit-scramble" class="btn-icon" title="Edit scramble">✎</button>
         <div id="scramble-text-wrapper">
           <span id="scramble-text" class="loading" title="Click to copy">Loading scrambler...</span>
-          <input type="text" id="scramble-input" style="display: none;" spellcheck="false" autocomplete="off" />
+          <input type="text" id="scramble-input" style="display: none;" spellcheck="false" autocomplete="off"
+            maxlength="1000" />
         </div>
         <button id="btn-prev-scramble" class="btn-icon" title="Previous scramble">‹</button>
         <button id="btn-next-scramble" class="btn-icon" title="Next scramble">›</button>
@@ -94,7 +95,7 @@
             <option value="month">This month</option>
             <option value="custom">Custom</option>
           </select>
-          <input id="custom-filter-input" type="text" placeholder="e.g. 3d, 2h" style="display:none;">
+          <input id="custom-filter-input" type="text" placeholder="e.g. 3d, 2h" style="display:none;" maxlength="20">
         </div>
 
         <!-- Summary stats -->
@@ -272,6 +273,24 @@
     </div>
   </div>
 
+  <div id="prompt-overlay" class="modal-overlay">
+    <div class="modal-box confirm-box">
+      <div class="modal-header">
+        <h2 id="prompt-title">Session name</h2>
+        <button class="modal-close" id="prompt-btn-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <p id="prompt-message" style="margin: 0 0 12px 0; font-size: var(--text-base); color: var(--text-secondary);">
+        </p>
+        <input type="text" id="prompt-input" autocomplete="off" spellcheck="false">
+        <div class="confirm-actions">
+          <button id="prompt-btn-cancel" class="btn btn-secondary">Cancel</button>
+          <button id="prompt-btn-ok" class="btn btn-primary-action">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ─── Settings Overlay ─── -->
   <div id="settings-overlay" class="settings-overlay">
     <div class="settings-box">
@@ -321,6 +340,16 @@
               <input type="checkbox" id="setting-hints">
               <span class="toggle-slider"></span>
             </label>
+          </div>
+          <div class="setting-row">
+            <div class="setting-label">
+              Stats pills size
+            </div>
+            <select id="setting-pill-size">
+              <option value="small">Small</option>
+              <option value="medium">Medium</option>
+              <option value="large">Large</option>
+            </select>
           </div>
         </div>
 

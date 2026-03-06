@@ -15,11 +15,11 @@
     font-weight: 600;
     white-space: nowrap;
     opacity: 0;
-    transition: opacity var(--transition-base);
 }
 
 #timer-delta.visible {
     opacity: 1;
+    transition: opacity var(--transition-base);
 }
 
 #timer-delta.delta-negative {
@@ -107,6 +107,52 @@
     letter-spacing: 0.5px;
     margin-right: var(--space-xs);
     font-weight: 600;
+}
+
+/* Pill sizes */
+body.pill-size-large #timer-info {
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-xs);
+    margin-top: calc(var(--space-md) * -1.5);
+}
+
+/* Medium size (stacked, larger text) */
+body.pill-size-medium #timer-info>span {
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    padding: 8px 24px;
+    border-radius: 40px;
+}
+
+body.pill-size-medium #timer-info .stat-label {
+    font-size: var(--text-base);
+    color: var(--text-secondary);
+}
+
+/* Large size (stacked, even larger text) */
+body.pill-size-large #timer-info {
+    gap: 0;
+}
+
+body.pill-size-large #timer-info>span {
+    font-size: clamp(3rem, 6vw, 4rem);
+    padding: 4px 24px;
+    line-height: 1.1;
+    border-radius: 48px;
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+}
+
+body.pill-size-large #timer-info>span:hover {
+    background: var(--surface);
+    border-color: var(--surface-border);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+body.pill-size-large #timer-info .stat-label {
+    font-size: var(--text-lg);
+    color: var(--text-secondary);
 }
 
 /* Timer hold hint */

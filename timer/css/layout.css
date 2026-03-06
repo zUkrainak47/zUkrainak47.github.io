@@ -1,14 +1,16 @@
 #scramble-bar,
 #left-panel,
 #right-panel,
-#timer-hint {
+#timer-hint,
+#timer-info {
     transition: opacity var(--transition-base), visibility var(--transition-base);
 }
 
 body.solving #scramble-bar,
 body.solving #left-panel,
 body.solving #right-panel,
-body.solving #timer-hint {
+body.solving #timer-hint,
+body.solving #timer-info {
     opacity: 0;
     visibility: hidden;
     pointer-events: none;

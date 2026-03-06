@@ -6,6 +6,7 @@ const DEFAULTS = {
     holdDuration: 300,       // ms
     animationsEnabled: true,
     shortcutHintsEnabled: true,
+    pillSize: 'small',       // 'small', 'medium', 'large'
     statsFilter: 'all',     // 'all', 'today', 'week', 'month', 'custom'
     customFilterDuration: '', // e.g. '3d', '2h'
     zenMode: false,
@@ -66,6 +67,10 @@ class Settings extends EventEmitter {
     _apply() {
         document.body.classList.toggle('no-animations', !this._settings.animationsEnabled);
         document.body.classList.toggle('hide-hints', !this._settings.shortcutHintsEnabled);
+
+        document.body.classList.remove('pill-size-small', 'pill-size-medium', 'pill-size-large');
+        document.body.classList.add(`pill-size-${this._settings.pillSize}`);
+
         document.documentElement.style.setProperty('--stat-new-best', this._settings.newBestColor);
         document.documentElement.style.setProperty('--graph-color-time', this._settings.graphColorTime);
         document.documentElement.style.setProperty('--graph-color-ao5', this._settings.graphColorAo5);

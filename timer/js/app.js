@@ -4,7 +4,7 @@ import { sessionManager } from './session.js';
 import { settings, DEFAULTS } from './settings.js';
 import { computeAll, perSolveStats } from './stats.js';
 import { formatTime, formatSolveTime, getEffectiveTime, formatDate } from './utils.js';
-import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm } from './modal.js';
+import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt } from './modal.js';
 import { initCubeDisplay, updateCubeDisplay } from './cube-display.js';
 import { initGraph, updateGraph, setLineVisibility, getLineVisibility, applyAction } from './graph.js';
 import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer } from './storage.js';
@@ -256,77 +256,146 @@ function initScrambleControls() {
 // ──── Keyboard Shortcuts ────
 function initKeyboardShortcuts() {
     document.addEventListener('keydown', (e) => {
-        // Ignore input fields
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
-        // Ignore if modal is active
-        if (document.querySelector('.modal-overlay.active') || document.querySelector('#settings-overlay.active')) return;
+        // Ignore input fields, unless it's the modal textarea and we are pressing our special shortcut keys
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
+            const isModalTextarea = e.target.id === 'modal-textarea';
+            const isShortcutKey = ['Equal', 'NumpadAdd', 'Minus', 'NumpadSubtract', 'KeyD', 'Backspace', 'Delete'].includes(e.code);
+
+            if (!(isModalTextarea && isShortcutKey)) {
+                return;
+            }
+        }
+
+        // Ignore if confirm or settings modal is active
+        if (document.getElementById('confirm-overlay').classList.contains('active') ||
+            document.getElementById('settings-overlay').classList.contains('active')) return;
+
+        const isSolveModalActive = document.getElementById('modal-overlay').classList.contains('active');
+
         // Ignore if timer is running or holding
         if (timer.getState() !== 'idle' && timer.getState() !== 'stopped') return;
 
         switch (e.code) {
+            case 'KeyC':
+                document.getElementById('scramble-text').click();
+                break;
+            case 'Backspace':
+            case 'Delete':
+                if (isSolveModalActive) {
+                    const btn = document.getElementById('modal-btn-delete');
+                    if (btn && btn.offsetParent !== null) btn.click();
+                } else {
+                    const session = sessionManager.getActiveSession();
+                    if (session && session.solves.length > 0) {
+                        const targetId = session.solves[session.solves.length - 1].id;
+                        customConfirm('Are you sure you want to delete the last solve?').then(confirmed => {
+                            if (confirmed) sessionManager.deleteSolve(targetId);
+                        });
+                    }
+                }
+                break;
+            case 'Equal':
+            case 'NumpadAdd':
+                if (isSolveModalActive) {
+                    const btn = document.getElementById('modal-btn-plus2');
+                    if (btn && btn.offsetParent !== null) btn.click();
+                } else {
+                    const session = sessionManager.getActiveSession();
+                    if (session && session.solves.length > 0) {
+                        sessionManager.togglePenalty(session.solves[session.solves.length - 1].id, '+2');
+                    }
+                }
+                break;
+            case 'KeyD':
+            case 'Minus':
+            case 'NumpadSubtract':
+                if (isSolveModalActive) {
+                    const btn = document.getElementById('modal-btn-dnf');
+                    if (btn && btn.offsetParent !== null) btn.click();
+                } else {
+                    const session = sessionManager.getActiveSession();
+                    if (session && session.solves.length > 0) {
+                        sessionManager.togglePenalty(session.solves[session.solves.length - 1].id, 'DNF');
+                    }
+                }
+                break;
             case 'KeyZ':
+                if (isSolveModalActive) return;
                 const currentlyZen = document.body.classList.toggle('zen');
                 settings.set('zenMode', currentlyZen);
                 break;
             case 'KeyT':
+                if (isSolveModalActive) return;
                 document.getElementById('graph-panel').querySelector('.panel-header').click();
                 break;
             case 'KeyS':
+                if (isSolveModalActive) return;
                 document.getElementById('cube-panel').querySelector('.panel-header').click();
                 break;
             case 'Digit1':
+                if (isSolveModalActive) return;
                 if (e.shiftKey) {
                     const el = document.querySelector('td[data-stat-type="time"][data-stat-which="current"]');
                     if (el) el.click();
                 }
                 break;
             case 'Digit2':
+                if (isSolveModalActive) return;
                 if (e.shiftKey) {
                     const el = document.querySelector('td[data-stat-type="ao5"][data-stat-which="current"]');
                     if (el) el.click();
                 }
                 break;
             case 'Digit3':
+                if (isSolveModalActive) return;
                 if (e.shiftKey) {
                     const el = document.querySelector('td[data-stat-type="ao12"][data-stat-which="current"]');
                     if (el) el.click();
                 }
                 break;
             case 'Digit4':
+                if (isSolveModalActive) return;
                 if (e.shiftKey) {
                     const el = document.querySelector('td[data-stat-type="ao100"][data-stat-which="current"]');
                     if (el) el.click();
                 }
                 break;
             case 'Period':
+                if (isSolveModalActive) return;
                 document.getElementById('btn-next-scramble').click();
                 break;
             case 'Comma':
+                if (isSolveModalActive) return;
                 if (!document.getElementById('btn-prev-scramble').disabled) {
                     document.getElementById('btn-prev-scramble').click();
                 }
                 break;
             case 'ArrowLeft':
+                if (isSolveModalActive) return;
                 e.preventDefault();
                 if (e.shiftKey) applyAction('zoom-x-in');
                 else applyAction('pan-left');
                 break;
             case 'ArrowRight':
+                if (isSolveModalActive) return;
                 e.preventDefault();
                 if (e.shiftKey) applyAction('zoom-x-out');
                 else applyAction('pan-right');
                 break;
             case 'ArrowUp':
+                if (isSolveModalActive) return;
                 e.preventDefault();
                 if (e.shiftKey) applyAction('zoom-y-in');
                 else applyAction('pan-up');
                 break;
             case 'ArrowDown':
+                if (isSolveModalActive) return;
                 e.preventDefault();
                 if (e.shiftKey) applyAction('zoom-y-out');
                 else applyAction('pan-down');
                 break;
             case 'Enter':
+                if (isSolveModalActive) return;
                 e.preventDefault();
                 if (e.shiftKey) applyAction('last25');
                 else applyAction('reset');
@@ -400,7 +469,9 @@ function refreshUI() {
     if (state === 'idle' || state === 'stopped') {
         const lastSolve = solves[solves.length - 1];
         if (lastSolve) {
-            timer.setDisplay(formatTime(lastSolve.time));
+            let displayTime = formatTime(lastSolve.penalty === '+2' ? lastSolve.time + 2000 : lastSolve.time);
+            if (lastSolve.penalty === '+2') displayTime += '+';
+            timer.setDisplay(displayTime);
         } else {
             timer.resetDisplay();
         }
@@ -436,11 +507,28 @@ function updateDelta(solves) {
 
     // Clear if disabled, not enough solves, or timer is active
     if (!showDelta || solves.length < 2 || state === 'running' || state === 'holding' || state === 'ready') {
+        // However, if the current solve is a DNF, we still want to show (DNF) regardless of showDelta
+        if (solves.length > 0 && solves[solves.length - 1].penalty === 'DNF' && !(state === 'running' || state === 'holding' || state === 'ready')) {
+            deltaEl.textContent = '(DNF)';
+            deltaEl.classList.remove('delta-negative', 'delta-zero');
+            deltaEl.classList.add('delta-positive', 'visible');
+            return;
+        }
+
         deltaEl.classList.remove('visible');
         return;
     }
 
     const current = solves[solves.length - 1];
+
+    // If we have >= 2 solves and delta is enabled, we still first check if current is DNF
+    if (current.penalty === 'DNF') {
+        deltaEl.textContent = '(DNF)';
+        deltaEl.classList.remove('delta-negative', 'delta-zero');
+        deltaEl.classList.add('delta-positive', 'visible');
+        return;
+    }
+
     const previous = solves[solves.length - 2];
     const curTime = getEffectiveTime(current);
     const prevTime = getEffectiveTime(previous);
@@ -653,9 +741,9 @@ function initSessionControls() {
         refreshSessionList();
     };
 
-    document.getElementById('btn-rename-session').onclick = () => {
+    document.getElementById('btn-rename-session').onclick = async () => {
         const session = sessionManager.getActiveSession();
-        const name = prompt('Session name:', session.name);
+        const name = await customPrompt('', session.name, 50);
         if (name && name.trim()) {
             sessionManager.renameSession(session.id, name.trim());
             refreshSessionList();
@@ -745,6 +833,11 @@ function initSettingsPanel() {
     const hintsToggle = document.getElementById('setting-hints');
     hintsToggle.checked = settings.get('shortcutHintsEnabled');
     hintsToggle.onchange = () => settings.set('shortcutHintsEnabled', hintsToggle.checked);
+
+    // Pill size select
+    const pillSizeSelect = document.getElementById('setting-pill-size');
+    pillSizeSelect.value = settings.get('pillSize');
+    pillSizeSelect.onchange = () => settings.set('pillSize', pillSizeSelect.value);
 
     // Show delta toggle
     const deltaToggle = document.getElementById('setting-show-delta');
