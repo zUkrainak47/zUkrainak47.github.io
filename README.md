@@ -8,15 +8,15 @@ I hope this is helpful to some. Good luck on your pulls! :) -->
 I like clean UI so decided to remake csTimer in a more modern way, feedback appreciated!
 
 shortcuts:
-shift+1/2/3/4 = current time/ao5/ao12/ao100
-arrows = pan graph
-shift + arrows = zoom graph
-enter = reset graph
-shift + enter = show last 25 solves
-z = zen mode
-t = collapse/expand time trend
-s = collapse/expand scramble preview
-. = next scramble
-, = previous scramble
+- shift+1/2/3/4 = current time/ao5/ao12/ao100
+- arrows = pan graph
+- shift + arrows = zoom graph
+- enter = reset graph
+- shift + enter = show last 25 solves
+- z = zen mode
+- t = collapse/expand time trend
+- s = collapse/expand scramble preview
+- . = next scramble
+- , = previous scramble
 
 not optimized for mobile yet!
