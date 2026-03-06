@@ -839,6 +839,7 @@ function initSettingsPanel() {
             }
 
             const data = JSON.parse(text);
+            document.getElementById('settings-overlay').classList.remove('active');
             if (await customConfirm('This will replace all your current data. Continue?')) {
                 if (isCsTimerFormat(data)) {
                     importCsTimer(data);
