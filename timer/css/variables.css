@@ -1,0 +1,106 @@
+:root {
+  /* Background layers */
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-tertiary: #21262d;
+  --bg-overlay: rgba(0, 0, 0, 0.6);
+
+  /* Surface / panels */
+  --surface: #1c2128;
+  --surface-hover: #262c36;
+  --surface-active: #2d333b;
+  --surface-border: #30363d;
+
+  /* Text */
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --text-tertiary: #6e7681;
+  --text-muted: #484f58;
+
+  /* Accent */
+  --accent: #58a6ff;
+  --accent-hover: #79c0ff;
+  --accent-subtle: rgba(56, 139, 253, 0.15);
+
+  /* Timer states */
+  --timer-idle: #e6edf3;
+  --timer-holding: #f85149;
+  --timer-ready: #3fb950;
+  --timer-running: #e6edf3;
+  --timer-stopped: #e6edf3;
+
+  /* Statistics */
+  --stat-best: #3fb950;
+  --stat-worst: #f85149;
+  --stat-ao5: #f0883e;
+  --stat-ao12: #a371f7;
+  --stat-ao100: #58a6ff;
+
+  /* Graph */
+  --graph-color-time: #8b949e;
+  --graph-color-ao5: #ff2020;
+  --graph-color-ao12: #2b91ff;
+  --graph-color-ao100: #a371f7;
+  --graph-grid: #21262d;
+
+  /* Cube face colors */
+  --cube-white: #FFF;
+  --cube-yellow: #FFFF05;
+  --cube-red: #F00;
+  --cube-orange: #FFA503;
+  --cube-blue: #00F;
+  --cube-green: #33CD32;
+  --cube-bg: #333333;
+
+  /* Spacing */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 24px;
+  --space-2xl: 32px;
+  --space-3xl: 48px;
+
+  /* Typography */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  --font-timer: 'JetBrains Mono', monospace;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.875rem;
+  --text-lg: 1rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 2rem;
+  --text-timer: clamp(4rem, 12vw, 8rem);
+  --text-timer-small: clamp(1.5rem, 4vw, 2.5rem);
+
+  /* Border radius */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+
+  /* Transitions */
+  --transition-fast: 100ms ease;
+  --transition-base: 200ms ease;
+  --transition-slow: 300ms ease;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+
+  /* Layout */
+  --sidebar-width: 280px;
+  --right-panel-width: 300px;
+  --header-height: 48px;
+  --scramble-bar-height: 56px;
+}
+
+body.no-animations,
+body.no-animations * {
+  transition: none !important;
+  animation: none !important;
+}

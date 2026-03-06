@@ -1,0 +1,126 @@
+/* Timer display wrapper – keeps timer centered while delta hangs off the right */
+#timer-display-wrapper {
+    position: relative;
+    display: inline-block;
+    font-size: var(--text-timer);
+}
+
+#timer-delta {
+    position: absolute;
+    left: 100%;
+    bottom: 1.47em;
+    margin-left: 0.5em;
+    font-family: var(--font-mono);
+    font-size: 0.22em;
+    font-weight: 600;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity var(--transition-base);
+}
+
+#timer-delta.visible {
+    opacity: 1;
+}
+
+#timer-delta.delta-negative {
+    color: #3fb950;
+}
+
+#timer-delta.delta-positive {
+    color: #f85149;
+}
+
+#timer-delta.delta-zero {
+    color: var(--text-tertiary);
+}
+
+/* Timer display */
+#timer-display {
+    font-family: var(--font-timer);
+    font-size: var(--text-timer);
+    font-weight: 700;
+    letter-spacing: 2px;
+    user-select: none;
+    transition: color var(--transition-fast);
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+}
+
+#timer-display[data-timer-state="idle"] {
+    color: var(--timer-idle);
+}
+
+#timer-display[data-timer-state="holding"] {
+    color: var(--timer-holding);
+}
+
+#timer-display[data-timer-state="ready"] {
+    color: var(--timer-ready);
+}
+
+#timer-display[data-timer-state="running"] {
+    color: var(--timer-running);
+}
+
+#timer-display[data-timer-state="stopped"] {
+    color: var(--timer-stopped);
+}
+
+#timer-info {
+    display: flex;
+    gap: var(--space-md);
+    justify-content: center;
+    margin-top: var(--space-md);
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    color: var(--text-secondary);
+}
+
+#timer-info>span {
+    background: var(--surface);
+    border: 1px solid var(--surface-border);
+    padding: 10px 24px;
+    border-radius: 24px;
+    display: inline-flex;
+    align-items: baseline;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+    transition: all var(--transition-base);
+    font-size: var(--text-lg);
+}
+
+#timer-info>span:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--text-muted);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+#timer-info>span:active {
+    transform: translateY(0);
+}
+
+#timer-info .stat-label {
+    color: var(--text-tertiary);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-right: var(--space-xs);
+    font-weight: 600;
+}
+
+/* Timer hold hint */
+#timer-hint {
+    position: absolute;
+    bottom: var(--space-xl);
+    left: 50%;
+    transform: translateX(-50%);
+    color: var(--text-tertiary);
+    font-size: var(--text-sm);
+    text-align: center;
+    transition: opacity var(--transition-base);
+}
+
+body.hide-hints #timer-hint {
+    display: none;
+}

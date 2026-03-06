@@ -1,0 +1,99 @@
+#scramble-bar,
+#left-panel,
+#right-panel,
+#timer-hint {
+    transition: opacity var(--transition-base), visibility var(--transition-base);
+}
+
+body.solving #scramble-bar,
+body.solving #left-panel,
+body.solving #right-panel,
+body.solving #timer-hint {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: none;
+}
+
+#app-layout {
+    display: grid;
+    grid-template-columns: var(--sidebar-width) 1fr var(--right-panel-width);
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+        "scramble scramble scramble"
+        "left     center   right";
+    height: 100vh;
+    gap: var(--space-sm);
+    padding: var(--space-sm);
+    padding-top: 0;
+}
+
+#scramble-bar {
+    grid-area: scramble;
+}
+
+#left-panel {
+    grid-area: left;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    overflow: hidden;
+    min-height: 0;
+}
+
+#center-panel {
+    grid-area: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    min-height: 0;
+    padding-bottom: 12vh;
+    /* Shift up to compensate for ao5/12 text */
+}
+
+#right-panel {
+    grid-area: right;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    gap: var(--space-sm);
+    padding-bottom: calc(var(--space-xl) * 2.5);
+    overflow: hidden;
+    min-height: 0;
+}
+
+/* Responsive: stack on narrow screens */
+@media (max-width: 1024px) {
+    #app-layout {
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: auto 1fr auto;
+        grid-template-areas:
+            "scramble scramble"
+            "center   center"
+            "left     right";
+    }
+
+    #left-panel,
+    #right-panel {
+        max-height: 40vh;
+    }
+}
+
+@media (max-width: 640px) {
+    #app-layout {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto 1fr auto;
+        grid-template-areas:
+            "scramble"
+            "center"
+            "left"
+            "right";
+    }
+
+    :root {
+        --sidebar-width: 100%;
+        --right-panel-width: 100%;
+    }
+}

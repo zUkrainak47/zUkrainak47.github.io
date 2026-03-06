@@ -1,0 +1,113 @@
+/* Scramble bar */
+#scramble-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--scramble-bar-height);
+    padding: var(--space-sm) var(--space-lg);
+    user-select: text;
+    position: relative;
+}
+
+#btn-settings,
+#btn-zen {
+    position: absolute;
+    font-size: 18px;
+    opacity: 0.5;
+    transition: opacity var(--transition-fast);
+}
+
+#btn-settings {
+    left: var(--space-md);
+    font-size: 24px;
+}
+
+#btn-zen {
+    right: var(--space-md);
+}
+
+#btn-settings:hover,
+#btn-zen:hover {
+    opacity: 1;
+}
+
+#scramble-text {
+    font-family: var(--font-mono);
+    font-size: var(--text-lg);
+    font-weight: 500;
+    color: var(--text-primary);
+    text-align: center;
+    letter-spacing: 0.5px;
+    line-height: 1.6;
+    word-spacing: 4px;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    padding: 0 var(--space-xs);
+    transition: background var(--transition-fast);
+}
+
+#scramble-text:hover {
+    background: var(--surface-hover);
+}
+
+#scramble-text.loading {
+    color: var(--text-tertiary);
+    font-style: italic;
+    pointer-events: none;
+}
+
+#scramble-container {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    width: 100%;
+    max-width: 850px;
+    justify-content: center;
+}
+
+#scramble-text-wrapper {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    min-width: 0;
+}
+
+#scramble-input {
+    width: 100%;
+    font-family: var(--font-mono);
+    font-size: var(--text-lg);
+    font-weight: 500;
+    text-align: center;
+    letter-spacing: 0.5px;
+    word-spacing: 4px;
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    color: var(--text-primary);
+    padding: 2px var(--space-xs);
+}
+
+#btn-prev-scramble,
+#btn-next-scramble,
+#btn-edit-scramble {
+    opacity: 0.5;
+    transition: opacity var(--transition-fast);
+    font-size: 16px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+#btn-prev-scramble:hover,
+#btn-next-scramble:hover,
+#btn-edit-scramble:hover {
+    opacity: 1;
+}
+
+#btn-prev-scramble:disabled,
+#btn-next-scramble:disabled {
+    opacity: 0.2;
+    cursor: not-allowed;
+}

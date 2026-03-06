@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description"
+    content="A modern, lightweight speedcubing timer with WCA scrambles, statistics, and cube visualization.">
+  <title>CubeTimer</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
+    rel="stylesheet">
+
+  <!-- Favicon -->
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect x='10' y='10' width='25' height='25' rx='3' fill='%23ff5800'/><rect x='38' y='10' width='25' height='25' rx='3' fill='%23fff'/><rect x='65' y='10' width='25' height='25' rx='3' fill='%23009b48'/><rect x='10' y='38' width='25' height='25' rx='3' fill='%23ffd500'/><rect x='38' y='38' width='25' height='25' rx='3' fill='%23b71234'/><rect x='65' y='38' width='25' height='25' rx='3' fill='%230046ad'/><rect x='10' y='65' width='25' height='25' rx='3' fill='%23009b48'/><rect x='38' y='65' width='25' height='25' rx='3' fill='%23ff5800'/><rect x='65' y='65' width='25' height='25' rx='3' fill='%23fff'/></svg>">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/variables.css?v=2">
+  <link rel="stylesheet" href="css/base.css?v=3">
+  <link rel="stylesheet" href="css/layout.css?v=2">
+  <link rel="stylesheet" href="css/scramble.css?v=2">
+  <link rel="stylesheet" href="css/timer.css?v=3">
+  <link rel="stylesheet" href="css/stats.css?v=2">
+  <link rel="stylesheet" href="css/cube.css?v=2">
+  <link rel="stylesheet" href="css/graph.css?v=2">
+  <link rel="stylesheet" href="css/modal.css?v=2">
+  <link rel="stylesheet" href="css/settings.css?v=2">
+</head>
+
+<body>
+  <div id="app-layout">
+
+    <!-- ─── Scramble Bar ─── -->
+    <div id="scramble-bar">
+      <button id="btn-settings" class="btn-icon" title="Settings">⚙</button>
+
+      <div id="scramble-container">
+        <button id="btn-edit-scramble" class="btn-icon" title="Edit scramble">✎</button>
+        <div id="scramble-text-wrapper">
+          <span id="scramble-text" class="loading" title="Click to copy">Loading scrambler...</span>
+          <input type="text" id="scramble-input" style="display: none;" spellcheck="false" autocomplete="off" />
+        </div>
+        <button id="btn-prev-scramble" class="btn-icon" title="Previous scramble">‹</button>
+        <button id="btn-next-scramble" class="btn-icon" title="Next scramble">›</button>
+      </div>
+
+      <button id="btn-zen" class="btn-icon" title="Zen mode (hide panels)">🧘</button>
+    </div>
+
+    <!-- ─── Left Panel: Statistics ─── -->
+    <div id="left-panel">
+      <div id="stats-panel" class="panel">
+        <div class="panel-header" id="session-header">
+          <div id="session-bar">
+            <div class="session-select-wrapper">
+              <select id="session-select"></select>
+            </div>
+            <div class="session-actions">
+              <button id="btn-new-session" title="New session" class="btn-icon-small">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+              </button>
+              <button id="btn-rename-session" title="Rename session" class="btn-icon-small">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+              </button>
+              <button id="btn-delete-session" title="Delete session" class="btn-icon-small btn-danger">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stats filter -->
+        <div id="stats-filter-bar">
+          <select id="stats-filter-select">
+            <option value="all">All</option>
+            <option value="today">Today</option>
+            <option value="week">This week</option>
+            <option value="month">This month</option>
+            <option value="custom">Custom</option>
+          </select>
+          <input id="custom-filter-input" type="text" placeholder="e.g. 3d, 2h" style="display:none;">
+        </div>
+
+        <!-- Summary stats -->
+        <div id="stats-summary">
+          <table>
+            <thead>
+              <tr>
+                <th></th>
+                <th>current</th>
+                <th>best</th>
+              </tr>
+            </thead>
+            <tbody id="stats-summary-body">
+              <tr>
+                <td>time</td>
+                <td>-</td>
+                <td>-</td>
+              </tr>
+              <tr>
+                <td>mo3</td>
+                <td>-</td>
+                <td>-</td>
+              </tr>
+              <tr>
+                <td>ao5</td>
+                <td>-</td>
+                <td>-</td>
+              </tr>
+              <tr>
+                <td>ao12</td>
+                <td>-</td>
+                <td>-</td>
+              </tr>
+              <tr>
+                <td>ao100</td>
+                <td>-</td>
+                <td>-</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Session info -->
+        <div id="session-info">
+          <span id="solve-count">solve: 0/0</span>
+          <span id="session-mean">mean: -</span>
+        </div>
+
+        <!-- Solves list -->
+        <div id="solves-container">
+          <table id="solves-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>time</th>
+                <th>ao5</th>
+                <th>ao12</th>
+              </tr>
+            </thead>
+            <tbody id="solves-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Center Panel: Timer ─── -->
+    <div id="center-panel">
+      <div id="timer-display-wrapper">
+        <div id="timer-display" data-timer-state="idle">0.00</div>
+        <span id="timer-delta"></span>
+      </div>
+      <div id="timer-info">
+        <span id="info-ao5-box"><span class="stat-label">ao5:</span> <span id="info-ao5">-</span></span>
+        <span id="info-ao12-box"><span class="stat-label">ao12:</span> <span id="info-ao12">-</span></span>
+      </div>
+      <div id="timer-hint">Hold <span class="shortcut-hint">SPACE</span> to start</div>
+    </div>
+
+    <!-- ─── Right Panel: Cube + Graph ─── -->
+    <div id="right-panel">
+      <div id="cube-panel" class="panel collapsible">
+        <div class="panel-header" data-collapse-target="cube-body">Scramble Preview <span
+            class="collapse-chevron">▾</span></div>
+        <div id="cube-body" class="collapsible-body">
+          <div id="cube-canvas-container">
+            <canvas id="cube-canvas"></canvas>
+          </div>
+        </div>
+      </div>
+      <div id="graph-panel" class="panel collapsible">
+        <div class="panel-header" data-collapse-target="graph-body">
+          <span class="graph-title">Time Trend</span>
+          <span class="graph-legend">
+            <span class="legend-item"><span class="legend-dot"
+                style="background:var(--graph-color-time)"></span>time</span>
+            <span class="legend-item"><span class="legend-dot"
+                style="background:var(--graph-color-ao5)"></span>ao5</span>
+            <span class="legend-item"><span class="legend-dot"
+                style="background:var(--graph-color-ao12)"></span>ao12</span>
+            <span class="legend-item"><span class="legend-dot"
+                style="background:var(--graph-color-ao100)"></span>ao100</span>
+          </span>
+          <span class="collapse-chevron">▾</span>
+        </div>
+        <div id="graph-body" class="collapsible-body">
+          <div id="graph-canvas-container">
+            <canvas id="graph-canvas"></canvas>
+          </div>
+          <div id="graph-controls">
+            <div class="graph-controls-primary">
+              <button data-action="last25" title="Show last 25 solves">25</button>
+              <button data-action="reset" title="Reset view" style="font-size:18px">⟲</button>
+              <span style="flex:1"></span>
+              <button class="graph-line-toggle active" data-line="time" title="Toggle time line"
+                style="color:var(--graph-color-time)">●</button>
+              <button class="graph-line-toggle active" data-line="ao5" title="Toggle ao5 line"
+                style="color:var(--graph-color-ao5)">●</button>
+              <button class="graph-line-toggle active" data-line="ao12" title="Toggle ao12 line"
+                style="color:var(--graph-color-ao12)">●</button>
+              <button class="graph-line-toggle active" data-line="ao100" title="Toggle ao100 line"
+                style="color:var(--graph-color-ao100)">●</button>
+              <button id="btn-graph-tools" class="btn-graph-toggle" title="Toggle zoom/pan controls"
+                style="font-size:16px">⚙</button>
+            </div>
+            <div class="graph-controls-secondary collapsed" id="graph-tools-drawer">
+              <button data-action="zoom-x-in" title="Zoom in horizontally">X+</button>
+              <button data-action="zoom-x-out" title="Zoom out horizontally">X−</button>
+              <button data-action="pan-left" title="Pan left">←</button>
+              <button data-action="pan-right" title="Pan right">→</button>
+              <span class="graph-controls-sep"></span>
+              <button data-action="zoom-y-in" title="Zoom in vertically">Y+</button>
+              <button data-action="zoom-y-out" title="Zoom out vertically">Y−</button>
+              <button data-action="pan-up" title="Pan up">↑</button>
+              <button data-action="pan-down" title="Pan down">↓</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Detail Modal ─── -->
+  <div id="modal-overlay" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h2 id="modal-title"></h2>
+        <div id="modal-actions" style="display:none; gap: 6px; margin-left: 12px; margin-right: auto;">
+          <button id="modal-btn-plus2" class="btn-action" title="+2">+2</button>
+          <button id="modal-btn-dnf" class="btn-action" title="DNF">DNF</button>
+          <button id="modal-btn-delete" class="btn-action btn-danger" title="Delete">✕</button>
+        </div>
+        <button class="modal-close"
+          onclick="document.getElementById('modal-overlay').classList.remove('active')">✕</button>
+      </div>
+      <div class="modal-body">
+        <textarea id="modal-textarea" readonly></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Confirm Modal ─── -->
+  <div id="confirm-overlay" class="modal-overlay">
+    <div class="modal-box confirm-box">
+      <div class="modal-header">
+        <h2 id="confirm-title">Confirm</h2>
+        <button class="modal-close" id="confirm-btn-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <p id="confirm-message" style="margin: 0; font-size: var(--text-base); color: var(--text-secondary);"></p>
+        <div class="confirm-actions">
+          <button id="confirm-btn-cancel" class="btn btn-secondary">Cancel</button>
+          <button id="confirm-btn-ok" class="btn btn-danger">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Settings Overlay ─── -->
+  <div id="settings-overlay" class="settings-overlay">
+    <div class="settings-box">
+      <div class="settings-header">
+        <h2>Settings</h2>
+        <button id="settings-close" class="modal-close">✕</button>
+      </div>
+      <div class="settings-body">
+        <div class="setting-group">
+          <h3>Timer</h3>
+          <div class="setting-row">
+            <div class="setting-label">
+              Timer update
+              <small>How often the display refreshes while running</small>
+            </div>
+            <select id="setting-timer-update">
+              <option value="none">None</option>
+              <option value="1s">1s</option>
+              <option value="0.1s">0.1s</option>
+              <option value="0.01s">0.01s</option>
+            </select>
+          </div>
+          <div class="setting-row">
+            <div class="setting-label">
+              Show delta
+              <small>Show time difference from previous solve</small>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="setting-show-delta">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <h3>Interface</h3>
+          <div class="setting-row">
+            <div class="setting-label">Animations</div>
+            <label class="toggle">
+              <input type="checkbox" id="setting-animations">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="setting-row">
+            <div class="setting-label">Keyboard hints</div>
+            <label class="toggle">
+              <input type="checkbox" id="setting-hints">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <h3>Colors</h3>
+          <div class="setting-row">
+            <div class="setting-label" style="flex:1">New best color</div>
+            <input type="color" id="setting-new-best-color">
+            <button id="btn-reset-best-color" class="btn-icon-small" title="Reset color"
+              style="margin-left:8px">⟲</button>
+          </div>
+          <div class="setting-row">
+            <div class="setting-label" style="flex:1">Time line</div>
+            <input type="color" id="setting-graph-time-color">
+            <button id="btn-reset-time-color" class="btn-icon-small" title="Reset color"
+              style="margin-left:8px">⟲</button>
+          </div>
+          <div class="setting-row">
+            <div class="setting-label" style="flex:1">ao5 line</div>
+            <input type="color" id="setting-graph-ao5-color">
+            <button id="btn-reset-ao5-color" class="btn-icon-small" title="Reset color"
+              style="margin-left:8px">⟲</button>
+          </div>
+          <div class="setting-row">
+            <div class="setting-label" style="flex:1">ao12 line</div>
+            <input type="color" id="setting-graph-ao12-color">
+            <button id="btn-reset-ao12-color" class="btn-icon-small" title="Reset color"
+              style="margin-left:8px">⟲</button>
+          </div>
+          <div class="setting-row">
+            <div class="setting-label" style="flex:1">ao100 line</div>
+            <input type="color" id="setting-graph-ao100-color">
+            <button id="btn-reset-ao100-color" class="btn-icon-small" title="Reset color"
+              style="margin-left:8px">⟲</button>
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <h3>Data</h3>
+          <div class="settings-actions">
+            <button id="btn-export" class="btn">📥 Export</button>
+            <button id="btn-export-cstimer" class="btn">📥 Export (csTimer)</button>
+          </div>
+          <div class="settings-actions" style="margin-top: 6px;">
+            <button id="btn-import" class="btn">📤 Import</button>
+          </div>
+          <small style="color: var(--text-tertiary); margin-top: 4px; display: block;">Import auto-detects CubeTimer and
+            csTimer formats</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- App Script -->
+  <script type="module" src="js/app.js"></script>
+</body>
+
+</html>
