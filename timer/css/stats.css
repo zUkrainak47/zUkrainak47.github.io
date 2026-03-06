@@ -83,13 +83,14 @@
 /* Solves table */
 #solves-container {
     flex: 1;
-    overflow-y: auto;
+    overflow-y: scroll;
     min-height: 0;
     padding: 0 var(--space-xs);
 }
 
 #solves-table {
     width: 100%;
+    table-layout: fixed;
     border-collapse: separate;
     border-spacing: 0;
     font-size: var(--text-base);
@@ -126,8 +127,17 @@
 
 #solves-table th:first-child {
     text-align: left;
-    width: 40px;
+    width: 20%;
     border-top-left-radius: var(--radius-md);
+}
+
+#solves-table th:nth-child(2) {
+    width: 26%;
+}
+
+#solves-table th:nth-child(3),
+#solves-table th:nth-child(4) {
+    width: 27%;
 }
 
 #solves-table th:last-child {
