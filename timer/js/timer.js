@@ -45,6 +45,8 @@ class Timer extends EventEmitter {
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
         // Ignore if modal is open
         if (document.querySelector('.modal-overlay.active')) return;
+        // Ignore if modifiers (Ctrl/Cmd) are pressed
+        if (e.ctrlKey || e.metaKey) return;
 
         const isEscape = e.code === 'Escape' || e.key === 'Escape' || e.keyCode === 27;
         const isDnfKey = isEscape || e.code === 'Backspace' || e.key === 'Backspace' || e.keyCode === 8 || e.code === 'Delete' || e.key === 'Delete' || e.keyCode === 46;
@@ -84,6 +86,7 @@ class Timer extends EventEmitter {
 
     _onKeyUp(e) {
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+        if (e.ctrlKey || e.metaKey) return;
 
         if (e.code === 'Space') {
             e.preventDefault();

@@ -7,13 +7,11 @@ I hope this is helpful to some. Good luck on your pulls! :) -->
 
 I like clean UI so decided to remake csTimer in a more modern way, feedback appreciated!
 
-Shortcuts:
-
 While idle:
 - =/+ = toggle +2
 - d/- = toggle DNF
 - backspace/delete = delete solve
-- shift+1/2/3/4 = current time/ao5/ao12/ao100
+- shift + 1/2/3/4 = current time/ao5/ao12/ao100
 - arrows = pan graph
 - shift + arrows = zoom graph
 - enter = reset graph

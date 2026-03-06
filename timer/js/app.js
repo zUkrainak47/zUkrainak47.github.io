@@ -270,6 +270,9 @@ function initKeyboardShortcuts() {
         if (document.getElementById('confirm-overlay').classList.contains('active') ||
             document.getElementById('settings-overlay').classList.contains('active')) return;
 
+        // Ignore if Ctrl or Cmd is pressed (e.g. browser zoom Ctrl+/-)
+        if (e.ctrlKey || e.metaKey) return;
+
         const isSolveModalActive = document.getElementById('modal-overlay').classList.contains('active');
 
         // Ignore if timer is running or holding
