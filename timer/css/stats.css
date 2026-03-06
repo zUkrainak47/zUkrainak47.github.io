@@ -232,7 +232,6 @@ tr:hover .solve-actions {
     font-weight: 600;
 }
 
-/* Filter bar */
 #stats-filter-bar {
     display: flex;
     align-items: center;
@@ -241,25 +240,69 @@ tr:hover .solve-actions {
     border-bottom: 1px solid var(--surface-border);
 }
 
-#stats-filter-bar select {
-    font-size: var(--text-xs);
-    padding: 2px 20px 2px 6px;
+.stats-filter-select-wrapper {
+    position: relative;
     flex: 1;
 }
 
+.stats-filter-select-wrapper::after {
+    content: "▾";
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: var(--text-tertiary);
+    font-size: 14px;
+}
+
+#stats-filter-bar select {
+    width: 100%;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    padding: 6px 24px 6px 10px;
+    border-radius: var(--radius-md);
+    background-color: var(--surface);
+    background-image: none;
+    color: var(--text-primary);
+    border: 1px solid var(--text-muted);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+#stats-filter-bar select:hover {
+    background-color: var(--surface-hover);
+    border-color: var(--text-tertiary);
+}
+
+#stats-filter-bar select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-subtle);
+}
+
 #custom-filter-input {
-    font-size: var(--text-xs);
-    padding: 2px 6px;
-    width: 60px;
+    font-size: var(--text-sm);
+    padding: 6px 10px;
+    flex: 1;
+    /* Make it take up the rest of the flex space, equaling the select's width */
+    min-width: 0;
+    box-sizing: border-box;
 }
 
 /* Session selector */
+#session-header {
+    padding: var(--space-xs) var(--space-sm);
+}
+
 #session-bar {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: var(--space-sm);
-    padding: var(--space-xs) var(--space-sm);
+    gap: 4px;
+    width: 100%;
 }
 
 .session-select-wrapper {

@@ -88,14 +88,16 @@
 
         <!-- Stats filter -->
         <div id="stats-filter-bar">
-          <select id="stats-filter-select">
-            <option value="all">All</option>
-            <option value="today">Today</option>
-            <option value="week">This week</option>
-            <option value="month">This month</option>
-            <option value="custom">Custom</option>
-          </select>
-          <input id="custom-filter-input" type="text" placeholder="e.g. 3d, 2h" style="display:none;" maxlength="20">
+          <div class="stats-filter-select-wrapper">
+            <select id="stats-filter-select">
+              <option value="all">All</option>
+              <option value="today">Today</option>
+              <option value="week">This week</option>
+              <option value="month">This month</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+          <input id="custom-filter-input" type="text" placeholder="e.g. 1d 12h" style="display:none;" maxlength="20">
         </div>
 
         <!-- Summary stats -->

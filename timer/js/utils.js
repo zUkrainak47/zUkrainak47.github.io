@@ -117,11 +117,10 @@ export function parseDuration(str) {
   if (!str) return null;
   str = str.trim().toLowerCase();
 
-  const match = str.match(/^(\d+)\s*(d|h|m|w)$/);
-  if (!match) return null;
+  if (!/^(\s*\d+\s*[dhmw]\s*)+$/.test(str)) {
+    return null;
+  }
 
-  const value = parseInt(match[1], 10);
-  const unit = match[2];
   const multipliers = {
     m: 60 * 1000,
     h: 60 * 60 * 1000,
@@ -129,7 +128,17 @@ export function parseDuration(str) {
     w: 7 * 24 * 60 * 60 * 1000,
   };
 
-  return value * multipliers[unit];
+  let totalMs = 0;
+  const regex = /(\d+)\s*([dhmw])/g;
+  let match;
+
+  while ((match = regex.exec(str)) !== null) {
+    const value = parseInt(match[1], 10);
+    const unit = match[2];
+    totalMs += value * multipliers[unit];
+  }
+
+  return totalMs;
 }
 
 /**
