@@ -262,16 +262,26 @@ function initTableSorting() {
     headers.forEach(th => {
         th.addEventListener('click', () => {
             const col = th.dataset.sort;
-            if (currentSortCol === col) {
-                if (currentSortDir === 'asc') {
-                    currentSortDir = 'desc';
-                } else {
+
+            if (col === 'comments') {
+                if (currentSortCol === 'comments') {
                     currentSortCol = null;
-                    currentSortDir = null;
+                } else {
+                    currentSortCol = 'comments';
                 }
+                currentSortDir = null;
             } else {
-                currentSortCol = col;
-                currentSortDir = 'asc';
+                if (currentSortCol === col) {
+                    if (currentSortDir === 'asc') {
+                        currentSortDir = 'desc';
+                    } else {
+                        currentSortCol = null;
+                        currentSortDir = null;
+                    }
+                } else {
+                    currentSortCol = col;
+                    currentSortDir = 'asc';
+                }
             }
             refreshUI();
         });
@@ -719,18 +729,29 @@ function renderSolvesTable(solves, pss, stats) {
     // Update headers to show sort direction
     document.querySelectorAll('#solves-table th[data-sort]').forEach(th => {
         const col = th.dataset.sort;
-        let text = col;
+        let text = col === 'comments' ? '#' : col;
         if (col === currentSortCol) {
-            text += currentSortDir === 'asc' ? ' ▴' : ' ▾';
+            if (col === 'comments') {
+                text += '\u2009*';
+            } else {
+                text += currentSortDir === 'asc' ? ' ▴' : ' ▾';
+            }
         }
         th.textContent = text;
     });
 
     // Build rows according to sort order
     let html = '';
-    let indices = solves.map((_, i) => i);
 
-    if (currentSortCol) {
+    // First, filter indices based on comment toggle if active
+    let indices = [];
+    if (currentSortCol === 'comments') {
+        indices = solves.map((_, i) => i).filter(i => solves[i].comment && solves[i].comment.trim() !== '');
+    } else {
+        indices = solves.map((_, i) => i);
+    }
+
+    if (currentSortCol && currentSortCol !== 'comments') {
         indices.sort((a, b) => {
             let valA, valB;
             if (currentSortCol === 'time') {
