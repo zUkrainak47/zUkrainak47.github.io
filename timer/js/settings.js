@@ -2,7 +2,7 @@ import { load, save } from './storage.js';
 import { EventEmitter } from './utils.js';
 
 const DEFAULTS = {
-    timerUpdate: '0.01s',   // 'none', '1s', '0.1s', '0.01s'
+    timerUpdate: '0.01s',   // 'none', '1s', '0.1s', '0.01s', 'inspection'
     holdDuration: 300,       // ms
     animationsEnabled: true,
     shortcutHintsEnabled: true,

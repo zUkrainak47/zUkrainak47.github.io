@@ -168,16 +168,30 @@ export function importCsTimer(csData) {
 
     if (toSave.length === 0) return;
 
+    // Map timer update frequency from csTimer
+    const timeU = csData.properties ? csData.properties.timeU : null;
+    let timerUpdate = '0.1s'; // default
+    if (timeU === 'n') timerUpdate = 'none';
+    else if (timeU === 's') timerUpdate = '1s';
+    else if (timeU === 'u') timerUpdate = '0.01s';
+    else if (timeU === 'i') timerUpdate = 'inspection';
+
     // Clear existing data and write
     const keysToRemove = [];
     for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);
         if (k.startsWith(STORAGE_PREFIX)) keysToRemove.push(k);
     }
+
+    // Load existing settings to preserve what we can
+    const existingSettings = load('settings', {});
+    const newSettings = { ...existingSettings, timerUpdate };
+
     keysToRemove.forEach(k => localStorage.removeItem(k));
 
     save('sessions', toSave);
     save('activeSessionId', toSave[0].id);
+    save('settings', newSettings);
 }
 
 /**
@@ -228,6 +242,15 @@ export function exportCsTimer() {
         };
     }
 
+    // Map timer update frequency to csTimer
+    const settings = load('settings', {});
+    const timerUpdate = settings.timerUpdate || '0.01s';
+    let timeU = 'u';
+    if (timerUpdate === 'none') timeU = 'n';
+    else if (timerUpdate === '1s') timeU = 's';
+    else if (timerUpdate === '0.1s') timeU = null; // omitted
+    else if (timerUpdate === 'inspection') timeU = 'i';
+
     csData.properties = {
         sessionData: JSON.stringify(sessionMeta),
         showad: false,
@@ -240,9 +263,10 @@ export function exportCsTimer() {
         'col-font': '#ffffff',
         'col-link': '#aaaaaa',
         'col-logoback': '#aaaaaa',
-        timeU: 'n',
+        timeU,
         toolsfunc: '["trend","stats","cross","distribution"]',
     };
+    if (timeU === null) delete csData.properties.timeU;
 
     return csData;
 }
