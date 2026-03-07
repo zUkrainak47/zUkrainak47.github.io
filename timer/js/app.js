@@ -564,9 +564,12 @@ function onTimerStateChange(state) {
         if (settings.get('centerTimer') && (state === 'ready' || state === 'running')) {
             if (!timerDisplayWrapper.style.transform) {
                 const rect = timerDisplayWrapper.getBoundingClientRect();
-                const viewportCenterY = window.innerHeight / 2;
+                const centerPanel = document.getElementById('center-panel');
+                const panelRect = centerPanel.getBoundingClientRect();
+                const paddingBottom = parseFloat(getComputedStyle(centerPanel).paddingBottom);
+                const targetY = panelRect.top + (panelRect.height - paddingBottom) / 2;
                 const timerCenterY = rect.top + rect.height / 2;
-                const offset = viewportCenterY - timerCenterY;
+                const offset = targetY - timerCenterY;
                 timerDisplayWrapper.style.transform = `translateY(${offset}px)`;
             }
         } else {
