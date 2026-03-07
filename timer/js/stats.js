@@ -36,6 +36,14 @@ export function mo3(times) {
 }
 
 /**
+ * Compute mo3 at a specific index (using solves up to and including index).
+ */
+export function mo3At(times, index) {
+    if (index < 2) return null;
+    return mean(times.slice(index - 2, index + 1));
+}
+
+/**
  * Average of N with trimming.
  * @param {number[]} times
  * @param {number} n - window size
@@ -163,7 +171,7 @@ export function computeAll(solves) {
     // All mo3
     const allMo3 = [];
     for (let i = 2; i < times.length; i++) {
-        const m = mean(times.slice(i - 2, i + 1));
+        const m = mo3At(times, i);
         allMo3.push(m);
     }
 
@@ -195,7 +203,7 @@ export function computeAll(solves) {
 /**
  * Compute per-solve ao5 and ao12 for display in the solves table.
  * @param {object[]} solves
- * @returns {{ ao5: (number|null), ao12: (number|null) }[]}
+ * @returns {{ ao5: (number|null), ao12: (number|null), ao100: (number|null) }[]}
  */
 export function perSolveStats(solves) {
     const times = solves.map(s => getEffectiveTime(s));

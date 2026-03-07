@@ -2,9 +2,9 @@ import { timer } from './timer.js';
 import { getScramble, getCurrentScramble, getPrevScramble, getNextScramble, setCurrentScramble, isCurrentScrambleManual, hasPrevScramble } from './scramble.js';
 import { sessionManager } from './session.js';
 import { settings, DEFAULTS } from './settings.js';
-import { computeAll, perSolveStats } from './stats.js';
+import { computeAll, perSolveStats, mo3At, ao5At, ao12At, ao100At } from './stats.js';
 import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate } from './utils.js';
-import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt } from './modal.js';
+import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator } from './modal.js';
 import { initCubeDisplay, updateCubeDisplay } from './cube-display.js';
 import { initGraph, updateGraph, setLineVisibility, getLineVisibility, applyAction, graphEvents } from './graph.js';
 import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer } from './storage.js';
@@ -23,6 +23,13 @@ const bestPopupTypes = [
     { key: 'ao12', label: 'ao12' },
     { key: 'ao100', label: 'ao100' },
 ];
+const statShortcutMap = {
+    Digit1: 'time',
+    Digit2: 'mo3',
+    Digit3: 'ao5',
+    Digit4: 'ao12',
+    Digit5: 'ao100',
+};
 const keyboardShortcutGroups = [
     {
         title: 'Settings',
@@ -84,20 +91,24 @@ const keyboardShortcutGroups = [
                 bindings: [['D'], ['-']],
             },
             {
-                action: 'Open current single details',
+                action: 'Open single details',
                 bindings: [['Shift', '1']],
             },
             {
-                action: 'Open current ao5 details',
+                action: 'Open mo3 details',
                 bindings: [['Shift', '2']],
             },
             {
-                action: 'Open current ao12 details',
+                action: 'Open ao5 details',
                 bindings: [['Shift', '3']],
             },
             {
-                action: 'Open current ao100 details',
+                action: 'Open ao12 details',
                 bindings: [['Shift', '4']],
+            },
+            {
+                action: 'Open ao100 details',
+                bindings: [['Shift', '5']],
             },
         ],
     },
@@ -153,12 +164,33 @@ const keyboardShortcutGroups = [
     },
 ];
 const blockingOverlayIds = ['modal-overlay', 'confirm-overlay', 'prompt-overlay', 'shortcuts-overlay'];
+const transientShortcutSelectIds = ['session-select', 'stats-filter-select'];
+const passthroughSelectShortcutCodes = new Set([
+    'Space',
+    'Slash',
+    'Tab',
+    'Backspace',
+    'Delete',
+    'Equal',
+    'NumpadAdd',
+    'Minus',
+    'NumpadSubtract',
+    'KeyC',
+    'KeyD',
+    'KeyS',
+    'KeyT',
+    'KeyZ',
+    'Period',
+    'Comma',
+]);
 let settingsOverlayEl = null;
 let shortcutsOverlayEl = null;
+let transientSelectOutsideBlurBound = false;
 
 // ──── Bootstrap ────
 async function init() {
     initModal();
+    setModalStatNavigator(openShortcutStatDetail);
     timer.init(document.getElementById('timer-display'));
     initCubeDisplay(document.getElementById('cube-canvas'));
     initGraph(document.getElementById('graph-canvas'));
@@ -232,18 +264,16 @@ function initTimerInfoControls() {
 
     ao5Box.addEventListener('click', () => {
         const solves = sessionManager.getFilteredSolves();
+        if (solves.length === 0) return;
         const stats = computeAll(solves);
-        if (stats.current.ao5 != null) {
-            showAverageDetail('ao5', stats.current.ao5, solves.slice(-5), 1);
-        }
+        openStatDetailAtIndex('ao5', solves, stats, solves.length - 1);
     });
 
     ao12Box.addEventListener('click', () => {
         const solves = sessionManager.getFilteredSolves();
+        if (solves.length === 0) return;
         const stats = computeAll(solves);
-        if (stats.current.ao12 != null) {
-            showAverageDetail('ao12', stats.current.ao12, solves.slice(-12), 1);
-        }
+        openStatDetailAtIndex('ao12', solves, stats, solves.length - 1);
     });
 }
 
@@ -348,6 +378,7 @@ function initZenMode() {
     btn.addEventListener('click', () => {
         const currentlyZen = document.body.classList.toggle('zen');
         settings.set('zenMode', currentlyZen);
+        btn.blur();
     });
 }
 
@@ -510,6 +541,72 @@ function isSlashShortcut(event) {
     return event.code === 'Slash' || event.key === '/';
 }
 
+function isTransientShortcutSelect(element) {
+    return element instanceof HTMLSelectElement && transientShortcutSelectIds.includes(element.id);
+}
+
+function getShiftStatShortcutType(event) {
+    if (!event.shiftKey) return null;
+    return statShortcutMap[event.code] || null;
+}
+
+function shouldPassthroughTransientSelectShortcut(event) {
+    if (passthroughSelectShortcutCodes.has(event.code)) return true;
+    if (getShiftStatShortcutType(event)) return true;
+    return false;
+}
+
+function redispatchKeyboardEvent(event) {
+    const forwardedEvent = new KeyboardEvent(event.type, {
+        key: event.key,
+        code: event.code,
+        location: event.location,
+        repeat: event.repeat,
+        shiftKey: event.shiftKey,
+        ctrlKey: event.ctrlKey,
+        altKey: event.altKey,
+        metaKey: event.metaKey,
+        bubbles: true,
+        cancelable: true,
+    });
+
+    document.dispatchEvent(forwardedEvent);
+}
+
+function handleTransientSelectClick(event) {
+    const activeSelect = document.activeElement;
+    if (!isTransientShortcutSelect(activeSelect)) return;
+    if (event.target === activeSelect) return;
+    activeSelect.blur();
+}
+
+function initTransientSelectBehavior(select) {
+    if (!select || !isTransientShortcutSelect(select)) return;
+
+    if (!transientSelectOutsideBlurBound) {
+        document.addEventListener('click', handleTransientSelectClick, true);
+        transientSelectOutsideBlurBound = true;
+    }
+
+    select.addEventListener('keydown', (event) => {
+        const isEscape = event.code === 'Escape' || event.key === 'Escape';
+        if (!isEscape && !shouldPassthroughTransientSelectShortcut(event)) return;
+
+        event.stopPropagation();
+
+        if (isEscape) {
+            window.requestAnimationFrame(() => {
+                if (document.activeElement === select) select.blur();
+            });
+            return;
+        }
+
+        event.preventDefault();
+        select.blur();
+        redispatchKeyboardEvent(event);
+    });
+}
+
 function canOpenSettingsPanel() {
     const state = timer.getState();
     return state === 'idle' || state === 'stopped';
@@ -601,9 +698,10 @@ function initKeyboardShortcuts() {
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
             const isModalTextarea = e.target.id === 'modal-textarea';
             const isShortcutKey = ['Equal', 'NumpadAdd', 'Minus', 'NumpadSubtract', 'KeyD', 'Backspace', 'Delete'].includes(e.code);
+            const isShiftStatShortcut = Boolean(getShiftStatShortcutType(e));
             const isSlashInSettings = slashShortcutPressed && settingsOverlayEl?.classList.contains('active');
 
-            if (!(isModalTextarea && isShortcutKey) && !isSlashInSettings) {
+            if (!(isModalTextarea && (isShortcutKey || isShiftStatShortcut)) && !isSlashInSettings) {
                 return;
             }
         }
@@ -640,6 +738,13 @@ function initKeyboardShortcuts() {
 
         // Ignore if timer is running or holding
         if (timer.getState() !== 'idle' && timer.getState() !== 'stopped') return;
+
+        const shortcutStatType = getShiftStatShortcutType(e);
+        if (shortcutStatType) {
+            e.preventDefault();
+            openShortcutStatDetail(shortcutStatType);
+            return;
+        }
 
         switch (e.code) {
             case 'Tab':
@@ -711,34 +816,6 @@ function initKeyboardShortcuts() {
             case 'KeyS':
                 if (isSolveModalActive) return;
                 document.getElementById('cube-panel').querySelector('.panel-header').click();
-                break;
-            case 'Digit1':
-                if (isSolveModalActive) return;
-                if (e.shiftKey) {
-                    const el = document.querySelector('td[data-stat-type="time"][data-stat-which="current"]');
-                    if (el) el.click();
-                }
-                break;
-            case 'Digit2':
-                if (isSolveModalActive) return;
-                if (e.shiftKey) {
-                    const el = document.querySelector('td[data-stat-type="ao5"][data-stat-which="current"]');
-                    if (el) el.click();
-                }
-                break;
-            case 'Digit3':
-                if (isSolveModalActive) return;
-                if (e.shiftKey) {
-                    const el = document.querySelector('td[data-stat-type="ao12"][data-stat-which="current"]');
-                    if (el) el.click();
-                }
-                break;
-            case 'Digit4':
-                if (isSolveModalActive) return;
-                if (e.shiftKey) {
-                    const el = document.querySelector('td[data-stat-type="ao100"][data-stat-which="current"]');
-                    if (el) el.click();
-                }
                 break;
             case 'Period':
                 if (isSolveModalActive) return;
@@ -1060,6 +1137,64 @@ function updateDelta(solves) {
     deltaEl.classList.add('visible');
 }
 
+function getRollingStatConfig(type) {
+    if (type === 'mo3') return { windowSize: 3, trim: 0, getValue: mo3At };
+    if (type === 'ao5') return { windowSize: 5, trim: 1, getValue: ao5At };
+    if (type === 'ao12') return { windowSize: 12, trim: 1, getValue: ao12At };
+    if (type === 'ao100') return { windowSize: 100, trim: 5, getValue: ao100At };
+    return null;
+}
+
+function getSelectedStatSolveIndex(solves) {
+    const selection = getModalSelectionContext();
+    if (!selection) return solves.length - 1;
+
+    if (selection.endSolveId) {
+        const solveIndex = solves.findIndex(solve => solve.id === selection.endSolveId);
+        if (solveIndex >= 0) return solveIndex;
+    }
+
+    if (Number.isInteger(selection.endIndex) && selection.endIndex >= 0 && selection.endIndex < solves.length) {
+        return selection.endIndex;
+    }
+
+    return solves.length - 1;
+}
+
+function openStatDetailAtIndex(type, solves, stats, index, options = {}) {
+    if (index < 0 || index >= solves.length) return false;
+
+    if (type === 'time') {
+        const isBest = options.isBest ?? (stats.best.time != null && getEffectiveTime(solves[index]) === stats.best.time);
+        showSolveDetail(solves[index], index, isBest);
+        return true;
+    }
+
+    const config = getRollingStatConfig(type);
+    if (!config || index < config.windowSize - 1) return false;
+
+    const times = solves.map(solve => getEffectiveTime(solve));
+    const value = config.getValue(times, index);
+    if (value == null) return false;
+
+    const window = solves.slice(index - config.windowSize + 1, index + 1);
+    showAverageDetail(options.label || type, value, window, config.trim, {
+        statType: type,
+        endIndex: index,
+        endSolveId: solves[index].id,
+    });
+    return true;
+}
+
+function openShortcutStatDetail(type) {
+    const solves = sessionManager.getFilteredSolves();
+    if (solves.length === 0) return false;
+
+    const stats = computeAll(solves);
+    const index = getSelectedStatSolveIndex(solves);
+    return openStatDetailAtIndex(type, solves, stats, index);
+}
+
 // ──── Summary Stats ────
 function renderSummaryStats(stats, solves) {
     const tbody = document.getElementById('stats-summary-body');
@@ -1104,7 +1239,7 @@ function handleStatClick(type, which, solves, stats) {
     if (type === 'time') {
         // Show the single solve
         if (which === 'current' && solves.length > 0) {
-            showSolveDetail(solves[solves.length - 1], solves.length - 1);
+            openStatDetailAtIndex(type, solves, stats, solves.length - 1);
         } else if (which === 'best') {
             const times = solves.map(s => getEffectiveTime(s));
             const bestTime = stats.best.time;
@@ -1120,9 +1255,7 @@ function handleStatClick(type, which, solves, stats) {
     const trim = trimMap[type];
 
     if (which === 'current' && solves.length >= n) {
-        const window = solves.slice(-n);
-        const value = stats.current[type];
-        showAverageDetail(type, value, window, trim);
+        openStatDetailAtIndex(type, solves, stats, solves.length - 1);
     } else if (which === 'best') {
         // Find the best window position
         const times = solves.map(s => getEffectiveTime(s));
@@ -1145,8 +1278,7 @@ function handleStatClick(type, which, solves, stats) {
         }
 
         if (bestIdx >= 0) {
-            const window = solves.slice(bestIdx - n + 1, bestIdx + 1);
-            showAverageDetail(`Best ${type}`, bestVal, window, trim);
+            openStatDetailAtIndex(type, solves, stats, bestIdx, { label: `Best ${type}` });
         }
     }
 }
@@ -1270,9 +1402,7 @@ function renderSolvesTable(solves, pss, stats) {
         cell.addEventListener('click', () => {
             const tr = cell.closest('tr');
             const idx = parseInt(tr.dataset.solveIndex);
-            const stats = computeAll(solves);
-            const isBest = getEffectiveTime(solves[idx]) === stats.best.time;
-            showSolveDetail(solves[idx], idx, isBest);
+            openStatDetailAtIndex('time', solves, stats, idx);
         });
     });
 
@@ -1281,10 +1411,7 @@ function renderSolvesTable(solves, pss, stats) {
         cell.addEventListener('click', () => {
             const tr = cell.closest('tr');
             const idx = parseInt(tr.dataset.solveIndex);
-            if (idx < 4) return;
-            const window = solves.slice(idx - 4, idx + 1);
-            const ps = pss[idx];
-            showAverageDetail('ao5', ps.ao5, window, 1);
+            openStatDetailAtIndex('ao5', solves, stats, idx);
         });
     });
 
@@ -1292,16 +1419,16 @@ function renderSolvesTable(solves, pss, stats) {
         cell.addEventListener('click', () => {
             const tr = cell.closest('tr');
             const idx = parseInt(tr.dataset.solveIndex);
-            if (idx < 11) return;
-            const window = solves.slice(idx - 11, idx + 1);
-            const ps = pss[idx];
-            showAverageDetail('ao12', ps.ao12, window, 1);
+            openStatDetailAtIndex('ao12', solves, stats, idx);
         });
     });
 }
 
 // ──── Session Controls ────
 function initSessionControls() {
+    const sessionSelect = document.getElementById('session-select');
+    initTransientSelectBehavior(sessionSelect);
+
     document.getElementById('btn-new-session').onclick = () => {
         sessionManager.createSession();
         refreshSessionList();
@@ -1323,7 +1450,7 @@ function initSessionControls() {
         }
     };
 
-    document.getElementById('session-select').onchange = (e) => {
+    sessionSelect.onchange = (e) => {
         sessionManager.setActiveSession(e.target.value);
         e.target.blur();
     };
@@ -1353,6 +1480,7 @@ function onSessionChanged() {
 function initFilterControls() {
     const filterSelect = document.getElementById('stats-filter-select');
     const customInput = document.getElementById('custom-filter-input');
+    initTransientSelectBehavior(filterSelect);
 
     filterSelect.value = settings.get('statsFilter');
     customInput.value = settings.get('customFilterDuration');
@@ -1374,7 +1502,10 @@ function initSettingsPanel() {
     settingsOverlayEl = document.getElementById('settings-overlay');
     const btn = document.getElementById('btn-settings');
 
-    btn.onclick = () => openSettingsPanel();
+    btn.onclick = () => {
+        openSettingsPanel();
+        btn.blur();
+    };
     document.getElementById('btn-show-shortcuts').onclick = () => {
         openKeyboardShortcutsOverlay({ closeSettings: true });
     };

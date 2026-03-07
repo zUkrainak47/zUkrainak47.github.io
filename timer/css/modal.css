@@ -107,6 +107,20 @@
     transform: scale(0.95);
 }
 
+.btn-action:disabled {
+    background: var(--surface-hover);
+    color: var(--text-muted);
+    border-color: var(--surface-border);
+    cursor: default;
+    transform: none;
+}
+
+.btn-action:disabled:hover {
+    background: var(--surface-hover);
+    color: var(--text-muted);
+    border-color: var(--surface-border);
+}
+
 .btn-action.btn-danger:hover {
     background: rgba(248, 81, 73, 0.1);
     color: var(--stat-worst);
@@ -136,6 +150,17 @@
 .modal-body textarea:focus {
     border-color: var(--accent);
     outline: none;
+}
+
+.modal-stat-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 12px;
+}
+
+.modal-stat-nav .btn-action {
+    min-width: 36px;
 }
 
 #prompt-input {

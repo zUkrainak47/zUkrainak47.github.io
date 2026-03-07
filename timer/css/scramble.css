@@ -16,6 +16,9 @@
     opacity: 0.5;
     transition: opacity var(--transition-fast);
     top: calc(var(--space-lg) + 4px);
+    outline: none;
+    box-shadow: none;
+    -webkit-tap-highlight-color: transparent;
 }
 
 #btn-settings {
@@ -31,6 +34,14 @@
 #btn-settings:hover,
 #btn-zen:hover {
     opacity: 1;
+}
+
+#btn-settings:focus,
+#btn-settings:focus-visible,
+#btn-zen:focus,
+#btn-zen:focus-visible {
+    outline: none;
+    box-shadow: none;
 }
 
 #scramble-text {

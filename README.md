@@ -13,7 +13,7 @@ While idle:
 - `=`/`+` = toggle +2
 - `d`/`-` = toggle DNF
 - `Backspace`/`Delete` = delete solve
-- `Shift` + `1`/`2`/`3`/`4` = current time/ao5/ao12/ao100
+- `Shift` + `1`/`2`/`3`/`4`/`5` = selected or current time/mo3/ao5/ao12/ao100
 - `Arrow keys` = pan graph
 - `Shift` + `Arrow keys` = zoom graph
 - `Enter` = reset graph
