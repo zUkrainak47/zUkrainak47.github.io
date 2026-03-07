@@ -167,7 +167,8 @@
     <div id="center-panel">
       <div id="timer-display-wrapper">
         <div id="timer-display" data-timer-state="idle">0.00</div>
-        <span id="inspection-alert" aria-live="polite"></span>
+        <span id="inspection-alert" class="timer-popup timer-popup-inspection" aria-live="polite"></span>
+        <span id="new-best-alert" class="timer-popup timer-popup-best" aria-live="polite"></span>
         <span id="timer-delta"></span>
       </div>
       <div id="timer-info">
@@ -315,10 +316,10 @@
               WCA inspection
               <small>Use a 15 second inspection period before the solve</small>
             </div>
-            <select id="setting-inspection-time">
-              <option value="off">Off</option>
-              <option value="15s">15s</option>
-            </select>
+            <label class="toggle">
+              <input type="checkbox" id="setting-inspection-time">
+              <span class="toggle-slider"></span>
+            </label>
           </div>
           <div class="setting-row">
             <div class="setting-label">

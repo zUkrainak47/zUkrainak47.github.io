@@ -22,17 +22,16 @@
     transition: opacity var(--transition-base);
 }
 
-#inspection-alert {
+.timer-popup {
     position: absolute;
     left: 50%;
     bottom: 100%;
     margin-bottom: 1.1em;
     transform: translate(-50%, 8px);
     padding: 0.35em 0.9em;
-    border: 1px solid rgba(227, 179, 65, 0.45);
     border-radius: 999px;
     background: rgba(13, 17, 23, 0.92);
-    color: #e3b341;
+    border: 1px solid transparent;
     font-family: var(--font-mono);
     font-size: 0.18em;
     font-weight: 700;
@@ -44,9 +43,19 @@
     white-space: nowrap;
 }
 
-#inspection-alert.visible {
+.timer-popup.visible {
     opacity: 1;
     transform: translate(-50%, 0);
+}
+
+#inspection-alert {
+    border-color: rgba(227, 179, 65, 0.45);
+    color: #e3b341;
+}
+
+#new-best-alert {
+    border-color: rgba(63, 185, 80, 0.45);
+    color: var(--stat-best);
 }
 
 #timer-delta.visible {

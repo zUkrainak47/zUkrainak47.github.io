@@ -12,8 +12,17 @@ import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer } f
 let currentScramble = '';
 let currentSortCol = null;
 let currentSortDir = null; // 'asc' or 'desc'
-let inspectionAlertTimeout = null;
-let inspectionAlertClearTimeout = null;
+const popupState = {
+    inspection: { elementId: 'inspection-alert', hideTimeout: null, clearTimeout: null },
+    newBest: { elementId: 'new-best-alert', hideTimeout: null, clearTimeout: null },
+};
+const bestPopupTypes = [
+    { key: 'time', label: 'single' },
+    { key: 'mo3', label: 'mo3' },
+    { key: 'ao5', label: 'ao5' },
+    { key: 'ao12', label: 'ao12' },
+    { key: 'ao100', label: 'ao100' },
+];
 
 // ──── Bootstrap ────
 async function init() {
@@ -544,8 +553,10 @@ function initKeyboardShortcuts() {
 
 // ──── Timer Events ────
 async function onSolveComplete(elapsed, penalty = null) {
+    const previousStats = computeAll(sessionManager.getFilteredSolves());
     const wasManual = isCurrentScrambleManual();
     sessionManager.addSolve(elapsed, currentScramble, wasManual, penalty);
+    maybeShowNewBestAlert(previousStats, computeAll(sessionManager.getFilteredSolves()));
     await loadNewScramble();
 }
 
@@ -561,54 +572,76 @@ function isInspectionState(state) {
 }
 
 function clearInspectionAlert() {
-    const alertEl = document.getElementById('inspection-alert');
+    clearPopup('inspection');
+}
+
+function clearNewBestAlert() {
+    clearPopup('newBest');
+}
+
+function clearPopup(kind) {
+    const popup = popupState[kind];
+    if (!popup) return;
+
+    const alertEl = document.getElementById(popup.elementId);
     if (!alertEl) return;
 
-    if (inspectionAlertTimeout) {
-        clearTimeout(inspectionAlertTimeout);
-        inspectionAlertTimeout = null;
+    if (popup.hideTimeout) {
+        clearTimeout(popup.hideTimeout);
+        popup.hideTimeout = null;
     }
 
-    if (inspectionAlertClearTimeout) {
-        clearTimeout(inspectionAlertClearTimeout);
-        inspectionAlertClearTimeout = null;
+    if (popup.clearTimeout) {
+        clearTimeout(popup.clearTimeout);
+        popup.clearTimeout = null;
     }
 
     alertEl.classList.remove('visible');
-    inspectionAlertClearTimeout = setTimeout(() => {
+    popup.clearTimeout = setTimeout(() => {
         if (!alertEl.classList.contains('visible')) {
             alertEl.textContent = '';
         }
-        inspectionAlertClearTimeout = null;
+        popup.clearTimeout = null;
     }, 220);
 }
 
 function showInspectionAlert(text) {
-    const alertEl = document.getElementById('inspection-alert');
+    showPopup('inspection', text);
+}
+
+function showNewBestAlert(text) {
+    showPopup('newBest', text, 4500);
+}
+
+function showPopup(kind, text, duration = 1500) {
+    const popup = popupState[kind];
+    if (!popup) return;
+
+    const alertEl = document.getElementById(popup.elementId);
     if (!alertEl) return;
 
-    if (inspectionAlertTimeout) {
-        clearTimeout(inspectionAlertTimeout);
-        inspectionAlertTimeout = null;
+    if (popup.hideTimeout) {
+        clearTimeout(popup.hideTimeout);
+        popup.hideTimeout = null;
     }
 
-    if (inspectionAlertClearTimeout) {
-        clearTimeout(inspectionAlertClearTimeout);
-        inspectionAlertClearTimeout = null;
+    if (popup.clearTimeout) {
+        clearTimeout(popup.clearTimeout);
+        popup.clearTimeout = null;
     }
 
     alertEl.textContent = text;
     alertEl.classList.add('visible');
-    inspectionAlertTimeout = setTimeout(() => {
+    popup.hideTimeout = setTimeout(() => {
         alertEl.classList.remove('visible');
-        inspectionAlertClearTimeout = setTimeout(() => {
+        popup.clearTimeout = setTimeout(() => {
             if (!alertEl.classList.contains('visible')) {
                 alertEl.textContent = '';
             }
-            inspectionAlertClearTimeout = null;
+            popup.clearTimeout = null;
         }, 220);
-        inspectionAlertTimeout = null;
-    }, 1500);
+        popup.hideTimeout = null;
+    }, duration);
 }
 
 function speakInspectionAlert(seconds) {
@@ -667,6 +700,10 @@ function onTimerStateChange(state) {
         clearInspectionAlert();
     }
 
+    if (state !== 'idle' && state !== 'stopped') {
+        clearNewBestAlert();
+    }
+
     // Hide delta when timer is ready, running, or in inspection
     if (deltaEl) {
         if (state === 'running' || state === 'ready' || isInspectionState(state)) {
@@ -677,6 +714,22 @@ function onTimerStateChange(state) {
     }
 
 
+}
+
+function didSetNewBest(previousBest, currentBest) {
+    if (currentBest == null || currentBest === Infinity) return false;
+    if (previousBest == null || previousBest === Infinity) return true;
+    return currentBest < previousBest;
+}
+
+function maybeShowNewBestAlert(previousStats, currentStats) {
+    const labels = bestPopupTypes
+        .filter(({ key }) => currentStats.current[key] === currentStats.best[key]
+            && didSetNewBest(previousStats.best[key], currentStats.best[key]))
+        .map(({ label }) => label);
+
+    if (labels.length === 0) return;
+    showNewBestAlert(`Best ${labels.join(', ')}`);
 }
 
 // ──── UI Refresh ────
@@ -1106,12 +1159,12 @@ function initSettingsPanel() {
         }
     });
 
-    // Timer update frequency
-    const inspectionTimeSelect = document.getElementById('setting-inspection-time');
-    inspectionTimeSelect.value = settings.get('inspectionTime');
-    inspectionTimeSelect.onchange = () => {
-        settings.set('inspectionTime', inspectionTimeSelect.value);
-        inspectionTimeSelect.blur();
+    // WCA inspection toggle
+    const inspectionTimeToggle = document.getElementById('setting-inspection-time');
+    inspectionTimeToggle.checked = settings.get('inspectionTime') === '15s';
+    inspectionTimeToggle.onchange = () => {
+        settings.set('inspectionTime', inspectionTimeToggle.checked ? '15s' : 'off');
+        inspectionTimeToggle.blur();
     };
 
     const inspectionAlertsSelect = document.getElementById('setting-inspection-alerts');
