@@ -242,7 +242,6 @@ export function closeModal() {
     _overlay.classList.remove('active');
     _currentSolveIndex = null;
     _selectedStatContext = null;
-    updateStatNavigation();
     if (document.activeElement) document.activeElement.blur();
 }
 
