@@ -7,14 +7,19 @@ import { settings } from './settings.js';
 
 const PADDING = { top: 12, right: 15, bottom: 22, left: 45 };
 function getColors() {
+    const styles = getComputedStyle(document.documentElement);
+    const readVar = (name, fallback) => styles.getPropertyValue(name).trim() || fallback;
+
     return {
         time: settings.get('graphColorTime') || '#8b949e',
         ao5: settings.get('graphColorAo5') || 'rgba(255, 32, 32, 1)',
         ao12: settings.get('graphColorAo12') || '#2b91ffff',
         ao100: settings.get('graphColorAo100') || '#a371f7',
-        grid: '#21262d',
-        axis: '#30363d',
-        text: '#6e7681',
+        grid: readVar('--graph-grid', '#21262d'),
+        axis: readVar('--surface-border', '#30363d'),
+        text: readVar('--text-tertiary', '#6e7681'),
+        textPrimary: readVar('--text-primary', '#e6edf3'),
+        accent: readVar('--accent', '#58a6ff'),
     };
 }
 
@@ -22,6 +27,7 @@ let _canvas = null;
 let _ctx = null;
 let _solves = [];
 let _perSolve = [];
+let _newBestSingles = [];
 let _hoveredIndex = -1;
 export const graphEvents = new EventEmitter();
 
@@ -46,6 +52,7 @@ if (savedView && savedView.xZoom !== undefined) {
 let _target = savedView || { visibleCount: 0, yZoom: 1, xPan: 1, yPan: 0 };
 let _view = { ..._target };
 let _animating = false;
+const BASE_PAN_STEP = 0.15;
 
 function saveView() {
     settings.set('graphView', _target);
@@ -128,10 +135,34 @@ function animateStep() {
 let _holdInterval = null;
 let _holdTimeout = null;
 
-export function applyAction(action) {
-    const step = 0.15;
+function getTargetVisibleCount() {
     const tot = Math.max(2, _solves.length);
-    let curVis = _target.visibleCount === 0 ? tot : _target.visibleCount;
+    return _target.visibleCount === 0 ? tot : Math.max(2, Math.min(tot, _target.visibleCount));
+}
+
+function getPanStep(action) {
+    if (action === 'pan-left' || action === 'pan-right') {
+        const tot = Math.max(2, _solves.length);
+        const visibleCount = getTargetVisibleCount();
+        const maxStart = Math.max(0, _solves.length - visibleCount);
+        if (maxStart === 0) return 0;
+
+        const scaledStep = BASE_PAN_STEP * (visibleCount / tot);
+        const minSingleSolveStep = 1 / maxStart;
+        return Math.min(1, Math.max(minSingleSolveStep, scaledStep));
+    }
+
+    if (action === 'pan-up' || action === 'pan-down') {
+        return BASE_PAN_STEP / Math.max(1, _target.yZoom);
+    }
+
+    return BASE_PAN_STEP;
+}
+
+export function applyAction(action) {
+    const tot = Math.max(2, _solves.length);
+    let curVis = getTargetVisibleCount();
+    const panStep = getPanStep(action);
 
     // Use immutable-style updates for better persistence reliability
     let nextTarget = { ..._target };
@@ -150,10 +181,10 @@ export function applyAction(action) {
             break;
         case 'zoom-y-in': nextTarget.yZoom = Math.min(10, _target.yZoom * 1.15); break;
         case 'zoom-y-out': nextTarget.yZoom = Math.max(0.3, _target.yZoom / 1.15); break;
-        case 'pan-left': nextTarget.xPan = Math.max(0, _target.xPan - step); break;
-        case 'pan-right': nextTarget.xPan = Math.min(1, _target.xPan + step); break;
-        case 'pan-up': nextTarget.yPan = Math.max(-1, _target.yPan - step); break;
-        case 'pan-down': nextTarget.yPan = Math.min(1, _target.yPan + step); break;
+        case 'pan-left': nextTarget.xPan = Math.max(0, _target.xPan - panStep); break;
+        case 'pan-right': nextTarget.xPan = Math.min(1, _target.xPan + panStep); break;
+        case 'pan-up': nextTarget.yPan = Math.max(-1, _target.yPan - panStep); break;
+        case 'pan-down': nextTarget.yPan = Math.min(1, _target.yPan + panStep); break;
         case 'reset': resetView(); return;
         case 'last25': showLast25(); return;
     }
@@ -285,6 +316,7 @@ export function initGraph(canvas) {
 export function updateGraph(solves, perSolveStats) {
     _solves = solves;
     _perSolve = perSolveStats;
+    _newBestSingles = getNewBestSingleFlags(solves);
 
     // Conditionally show/hide the "25" button
     const last25Btn = document.querySelector('#graph-controls button[data-action="last25"]');
@@ -318,6 +350,32 @@ function niceXTickInterval(visibleCount) {
         if (s >= rough) return s;
     }
     return Math.ceil(rough / 1000) * 1000;
+}
+
+function roundedRectPath(ctx, x, y, width, height, radius) {
+    const rr = Math.min(radius, width / 2, height / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + rr, y);
+    ctx.arcTo(x + width, y, x + width, y + height, rr);
+    ctx.arcTo(x + width, y + height, x, y + height, rr);
+    ctx.arcTo(x, y + height, x, y, rr);
+    ctx.arcTo(x, y, x + width, y, rr);
+    ctx.closePath();
+}
+
+function getNewBestSingleFlags(solves) {
+    let rollingBestTime = Infinity;
+    const flags = new Array(solves.length).fill(false);
+
+    for (let i = 0; i < solves.length; i++) {
+        const t = getEffectiveTime(solves[i]);
+        if (t !== Infinity && t < rollingBestTime) {
+            rollingBestTime = t;
+            flags[i] = true;
+        }
+    }
+
+    return flags;
 }
 
 function render() {
@@ -467,9 +525,14 @@ function render() {
         const y = toY(allTimes[_hoveredIndex]);
         const text = formatTime(allTimes[_hoveredIndex]);
         const ps = _perSolve[_hoveredIndex];
+        const solve = _solves[_hoveredIndex];
+        const hasComment = !!solve?.comment?.trim();
+        const isNewBestSingle = !!_newBestSingles[_hoveredIndex];
+        const highlightColor = isNewBestSingle ? '#e3b341' : hasComment ? COLORS.accent : null;
 
         ctx.font = '11px JetBrains Mono, monospace';
-        let lines = [`#${_hoveredIndex + 1}: ${text}`];
+        const solveLabelPrefix = hasComment ? '*' : '#';
+        let lines = [`${solveLabelPrefix}${_hoveredIndex + 1}: ${text}`];
         if (ps && ps.ao5 != null) lines.push(`ao5: ${formatTime(ps.ao5)}`);
         if (ps && ps.ao12 != null) lines.push(`ao12: ${formatTime(ps.ao12)}`);
         if (ps && ps.ao100 != null) lines.push(`ao100: ${formatTime(ps.ao100)}`);
@@ -488,22 +551,16 @@ function render() {
         if (boxY + boxH > h) boxY = h - boxH - 4;
 
         ctx.fillStyle = 'rgba(22, 27, 34, 0.95)';
-        ctx.beginPath();
-        const rr = 4;
-        ctx.moveTo(boxX + rr, boxY);
-        ctx.arcTo(boxX + boxW, boxY, boxX + boxW, boxY + boxH, rr);
-        ctx.arcTo(boxX + boxW, boxY + boxH, boxX, boxY + boxH, rr);
-        ctx.arcTo(boxX, boxY + boxH, boxX, boxY, rr);
-        ctx.arcTo(boxX, boxY, boxX + boxW, boxY, rr);
-        ctx.closePath();
+        roundedRectPath(ctx, boxX, boxY, boxW, boxH, 4);
         ctx.fill();
-        ctx.strokeStyle = COLORS.axis;
+        ctx.strokeStyle = highlightColor || COLORS.axis;
         ctx.lineWidth = 1;
         ctx.stroke();
 
-        ctx.fillStyle = '#e6edf3';
         ctx.textAlign = 'left';
         lines.forEach((line, idx) => {
+            ctx.font = idx === 0 && highlightColor ? '600 11px JetBrains Mono, monospace' : '11px JetBrains Mono, monospace';
+            ctx.fillStyle = idx === 0 && highlightColor ? highlightColor : COLORS.textPrimary;
             ctx.fillText(line, boxX + 6, boxY + 14 + idx * lineHeight);
         });
     }
