@@ -6,7 +6,7 @@ import { computeAll, perSolveStats } from './stats.js';
 import { formatTime, formatSolveTime, getEffectiveTime, formatDate } from './utils.js';
 import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt } from './modal.js';
 import { initCubeDisplay, updateCubeDisplay } from './cube-display.js';
-import { initGraph, updateGraph, setLineVisibility, getLineVisibility, applyAction } from './graph.js';
+import { initGraph, updateGraph, setLineVisibility, getLineVisibility, applyAction, graphEvents } from './graph.js';
 import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer } from './storage.js';
 
 let currentScramble = '';
@@ -52,6 +52,13 @@ async function init() {
     initGraphLineToggles();
     initKeyboardShortcuts();
     initTimerClick();
+
+    graphEvents.on('nodeClick', (idx) => {
+        const solves = sessionManager.getFilteredSolves();
+        if (idx >= 0 && idx < solves.length) {
+            showSolveDetail(solves[idx], idx);
+        }
+    });
 }
 
 // ──── Graph Line Toggles ────

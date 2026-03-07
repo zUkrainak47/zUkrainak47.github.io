@@ -1,4 +1,4 @@
-import { formatTime, getEffectiveTime } from './utils.js';
+import { formatTime, getEffectiveTime, EventEmitter } from './utils.js';
 import { settings } from './settings.js';
 
 /**
@@ -23,6 +23,7 @@ let _ctx = null;
 let _solves = [];
 let _perSolve = [];
 let _hoveredIndex = -1;
+export const graphEvents = new EventEmitter();
 
 // Line visibility state
 let _lineVisibility = settings.get('graphLines') || { time: true, ao5: true, ao12: true, ao100: true };
@@ -197,6 +198,24 @@ export function initGraph(canvas) {
         if (idx >= 0 && idx < _solves.length && idx !== _hoveredIndex) {
             _hoveredIndex = idx;
             render();
+        }
+    });
+
+    canvas.addEventListener('click', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const drawW = rect.width - PADDING.left - PADDING.right;
+        if (_solves.length < 2) return;
+
+        const x = e.clientX - rect.left;
+        const tot = Math.max(2, _solves.length);
+        const visibleCount = _view.visibleCount === 0 ? tot : Math.max(2, Math.min(tot, Math.ceil(_view.visibleCount)));
+        const maxStart = Math.max(0, _solves.length - visibleCount);
+        const startIdx = Math.round(_view.xPan * maxStart);
+        const step = drawW / (visibleCount - 1);
+        const idx = startIdx + Math.round((x - PADDING.left) / step);
+
+        if (idx >= 0 && idx < _solves.length) {
+            graphEvents.emit('nodeClick', idx);
         }
     });
 
