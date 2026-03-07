@@ -60,7 +60,7 @@
 
 #scramble-container {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: var(--space-sm);
     width: 100%;
     max-width: 850px;
