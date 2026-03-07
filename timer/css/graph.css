@@ -128,6 +128,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    outline: none;
 }
 
 #graph-controls button:hover {

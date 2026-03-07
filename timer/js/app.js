@@ -51,6 +51,7 @@ async function init() {
     initTableSorting();
     initGraphLineToggles();
     initKeyboardShortcuts();
+    initTimerClick();
 }
 
 // ──── Graph Line Toggles ────
@@ -86,6 +87,25 @@ function initTimerInfoControls() {
         const stats = computeAll(solves);
         if (stats.current.ao12 != null) {
             showAverageDetail('Average of 12', stats.current.ao12, solves.slice(-12));
+        }
+    });
+}
+
+// ──── Timer Click ────
+function initTimerClick() {
+    const timerDisplay = document.getElementById('timer-display');
+    if (!timerDisplay) return;
+
+    timerDisplay.addEventListener('click', () => {
+        const state = timer.getState();
+        // Only open modal if timer is not running/holding
+        if (state === 'idle' || state === 'stopped') {
+            const solves = sessionManager.getFilteredSolves();
+            if (solves.length > 0) {
+                // Open the most recent solve (at the end of the array)
+                const idx = solves.length - 1;
+                showSolveDetail(solves[idx], idx);
+            }
         }
     });
 }
@@ -148,7 +168,14 @@ function initCollapsiblePanels() {
                 body.style.maxHeight = '0px';
 
                 if (panel.id === 'cube-panel') settings.set('cubeCollapsed', true);
-                if (panel.id === 'graph-panel') settings.set('graphCollapsed', true);
+                if (panel.id === 'graph-panel') {
+                    settings.set('graphCollapsed', true);
+                    const toggleBtn = document.getElementById('btn-graph-tools');
+                    const drawer = document.getElementById('graph-tools-drawer');
+                    if (toggleBtn && drawer && !drawer.classList.contains('collapsed')) {
+                        toggleBtn.click();
+                    }
+                }
             }
         });
     });
@@ -238,7 +265,35 @@ function initScrambleControls() {
         }
     });
     inputEl.addEventListener('input', (e) => {
-        const val = e.target.value;
+        let val = e.target.value;
+
+        // 1. Normalize all possible apostrophes/backticks to a single '
+        val = val.replace(/[`´‘’′]/g, "'");
+
+        // 2. Auto-capitalize available letters
+        val = val.toUpperCase();
+
+        // 3. Keep only allowed characters: R, L, U, D, B, F, 2, ', and Space
+        // We include 'x','y','z' and 'M','E','S' if you want full cube notation, 
+        // but user specifically asked for "RLUDBF, space, 2, and apostrophes".
+        val = val.replace(/[^RLUDBF2' ]/g, '');
+
+        // 4. Force a space if a letter is written before another letter or modifier
+        // e.g. "RU" -> "R U", "R2U" -> "R2 U", "R'U" -> "R' U"
+        val = val.replace(/([RLUDBF2'])([RLUDBF])/g, '$1 $2');
+
+        // 5. Stricter modifiers: only allow ' or 2 directly after a letter
+        // Remove standalone modifiers at start or after a space
+        val = val.replace(/(^| )['2]+/g, '$1');
+        // Remove repeated modifiers or invalid sequences like '2 or 2'
+        // (Keeping it simple recursively: only the first modifier after a letter stays)
+        val = val.replace(/([RLUDBF])(['2])(['2]+)/g, '$1$2');
+
+        // 6. Disallow two spaces next to each other
+        val = val.replace(/ +/g, ' ');
+
+        // Update the input value and the cube display
+        e.target.value = val;
         updateCubeDisplay(document.getElementById('cube-canvas'), val);
     });
 
