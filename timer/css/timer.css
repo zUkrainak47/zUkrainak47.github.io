@@ -22,6 +22,33 @@
     transition: opacity var(--transition-base);
 }
 
+#inspection-alert {
+    position: absolute;
+    left: 50%;
+    bottom: 100%;
+    margin-bottom: 1.1em;
+    transform: translate(-50%, 8px);
+    padding: 0.35em 0.9em;
+    border: 1px solid rgba(227, 179, 65, 0.45);
+    border-radius: 999px;
+    background: rgba(13, 17, 23, 0.92);
+    color: #e3b341;
+    font-family: var(--font-mono);
+    font-size: 0.18em;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    opacity: 0;
+    pointer-events: none;
+    text-transform: uppercase;
+    transition: opacity var(--transition-base), transform var(--transition-base);
+    white-space: nowrap;
+}
+
+#inspection-alert.visible {
+    opacity: 1;
+    transform: translate(-50%, 0);
+}
+
 #timer-delta.visible {
     opacity: 1;
 }
@@ -61,6 +88,19 @@
 
 #timer-display[data-timer-state="holding"] {
     color: var(--timer-holding);
+}
+
+#timer-display[data-timer-state="inspection-primed"],
+#timer-display[data-timer-state="inspection-ready"] {
+    color: var(--timer-ready);
+}
+
+#timer-display[data-timer-state="inspecting"] {
+    color: var(--timer-holding);
+}
+
+#timer-display[data-timer-state="inspection-holding"] {
+    color: #e3b341;
 }
 
 #timer-display[data-timer-state="ready"] {

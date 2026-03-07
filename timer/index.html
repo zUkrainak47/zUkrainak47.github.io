@@ -167,6 +167,7 @@
     <div id="center-panel">
       <div id="timer-display-wrapper">
         <div id="timer-display" data-timer-state="idle">0.00</div>
+        <span id="inspection-alert" aria-live="polite"></span>
         <span id="timer-delta"></span>
       </div>
       <div id="timer-info">
@@ -311,8 +312,30 @@
           <h3>Timer</h3>
           <div class="setting-row">
             <div class="setting-label">
+              WCA inspection
+              <small>Use a 15 second inspection period before the solve</small>
+            </div>
+            <select id="setting-inspection-time">
+              <option value="off">Off</option>
+              <option value="15s">15s</option>
+            </select>
+          </div>
+          <div class="setting-row">
+            <div class="setting-label">
+              Inspection alerts
+              <small>8s and 12s alerts during inspection</small>
+            </div>
+            <select id="setting-inspection-alerts">
+              <option value="off">Off</option>
+              <option value="voice">Voice</option>
+              <option value="screen">Screen</option>
+              <option value="both">Both</option>
+            </select>
+          </div>
+          <div class="setting-row">
+            <div class="setting-label">
               Timer update
-              <small>How often the display refreshes while running</small>
+              <small>How often the display refreshes while solving</small>
             </div>
             <select id="setting-timer-update">
               <option value="none">None</option>

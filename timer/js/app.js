@@ -3,7 +3,7 @@ import { getScramble, getCurrentScramble, getPrevScramble, getNextScramble, setC
 import { sessionManager } from './session.js';
 import { settings, DEFAULTS } from './settings.js';
 import { computeAll, perSolveStats } from './stats.js';
-import { formatTime, formatSolveTime, getEffectiveTime, formatDate } from './utils.js';
+import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate } from './utils.js';
 import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt } from './modal.js';
 import { initCubeDisplay, updateCubeDisplay } from './cube-display.js';
 import { initGraph, updateGraph, setLineVisibility, getLineVisibility, applyAction, graphEvents } from './graph.js';
@@ -12,6 +12,8 @@ import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer } f
 let currentScramble = '';
 let currentSortCol = null;
 let currentSortDir = null; // 'asc' or 'desc'
+let inspectionAlertTimeout = null;
+let inspectionAlertClearTimeout = null;
 
 // ──── Bootstrap ────
 async function init() {
@@ -27,6 +29,7 @@ async function init() {
     timer.on('stopped', onSolveComplete);
     timer.on('started', onTimerStarted);
     timer.on('stateChange', onTimerStateChange);
+    timer.on('inspectionAlert', onInspectionAlert);
 
     sessionManager.on('solveAdded', refreshUI);
     sessionManager.on('solveUpdated', refreshUI);
@@ -35,6 +38,7 @@ async function init() {
     sessionManager.on('sessionDeleted', refreshSessionList);
 
     settings.on('change', (key) => {
+        if (key === 'inspectionAlerts') clearInspectionAlert();
         if (key === 'statsFilter' || key === 'customFilterDuration' || key === 'showDelta' || key.startsWith('graphColor') || key === 'newBestColor') refreshUI();
     });
 
@@ -539,9 +543,8 @@ function initKeyboardShortcuts() {
 }
 
 // ──── Timer Events ────
-async function onSolveComplete(elapsed, isDNF = false) {
+async function onSolveComplete(elapsed, penalty = null) {
     const wasManual = isCurrentScrambleManual();
-    const penalty = (isDNF === true) ? 'DNF' : null;
     sessionManager.addSolve(elapsed, currentScramble, wasManual, penalty);
     await loadNewScramble();
 }
@@ -550,18 +553,96 @@ function onTimerStarted() {
     // Info hidden via onTimerStateChange
 }
 
+function isInspectionState(state) {
+    return state === 'inspection-primed'
+        || state === 'inspecting'
+        || state === 'inspection-holding'
+        || state === 'inspection-ready';
+}
+
+function clearInspectionAlert() {
+    const alertEl = document.getElementById('inspection-alert');
+    if (!alertEl) return;
+
+    if (inspectionAlertTimeout) {
+        clearTimeout(inspectionAlertTimeout);
+        inspectionAlertTimeout = null;
+    }
+
+    if (inspectionAlertClearTimeout) {
+        clearTimeout(inspectionAlertClearTimeout);
+        inspectionAlertClearTimeout = null;
+    }
+
+    alertEl.classList.remove('visible');
+    inspectionAlertClearTimeout = setTimeout(() => {
+        if (!alertEl.classList.contains('visible')) {
+            alertEl.textContent = '';
+        }
+        inspectionAlertClearTimeout = null;
+    }, 220);
+}
+
+function showInspectionAlert(text) {
+    const alertEl = document.getElementById('inspection-alert');
+    if (!alertEl) return;
+
+    if (inspectionAlertTimeout) {
+        clearTimeout(inspectionAlertTimeout);
+        inspectionAlertTimeout = null;
+    }
+
+    if (inspectionAlertClearTimeout) {
+        clearTimeout(inspectionAlertClearTimeout);
+        inspectionAlertClearTimeout = null;
+    }
+
+    alertEl.textContent = text;
+    alertEl.classList.add('visible');
+    inspectionAlertTimeout = setTimeout(() => {
+        alertEl.classList.remove('visible');
+        inspectionAlertClearTimeout = setTimeout(() => {
+            if (!alertEl.classList.contains('visible')) {
+                alertEl.textContent = '';
+            }
+            inspectionAlertClearTimeout = null;
+        }, 220);
+        inspectionAlertTimeout = null;
+    }, 1500);
+}
+
+function speakInspectionAlert(seconds) {
+    if (!('speechSynthesis' in window)) return;
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(`${seconds} seconds`);
+    utterance.rate = 1.5;
+    window.speechSynthesis.speak(utterance);
+}
+
+function onInspectionAlert(seconds) {
+    const alertMode = settings.get('inspectionAlerts');
+    if (alertMode === 'screen' || alertMode === 'both') {
+        showInspectionAlert(`${seconds}s`);
+    }
+    if (alertMode === 'voice' || alertMode === 'both') {
+        speakInspectionAlert(seconds);
+    }
+}
+
 function onTimerStateChange(state) {
 
     const infoEl = document.getElementById('timer-info');
     const deltaEl = document.getElementById('timer-delta');
     const timerDisplayWrapper = document.getElementById('timer-display-wrapper');
+    const shouldFocusTimer = state === 'running' || state === 'ready' || isInspectionState(state);
 
     // Toggle solving class for focus mode
-    document.body.classList.toggle('solving', state === 'running' || state === 'ready');
+    document.body.classList.toggle('solving', shouldFocusTimer);
 
     // Center timer perfectly based on actual screen position
     if (timerDisplayWrapper) {
-        if (settings.get('centerTimer') && (state === 'ready' || state === 'running')) {
+        if (settings.get('centerTimer') && shouldFocusTimer) {
             if (!timerDisplayWrapper.style.transform) {
                 const rect = timerDisplayWrapper.getBoundingClientRect();
                 const centerPanel = document.getElementById('center-panel');
@@ -582,9 +663,13 @@ function onTimerStateChange(state) {
         infoEl.style.opacity = '';
     }
 
-    // Hide delta when timer is ready or running
+    if (state === 'inspection-primed' || !isInspectionState(state)) {
+        clearInspectionAlert();
+    }
+
+    // Hide delta when timer is ready, running, or in inspection
     if (deltaEl) {
-        if (state === 'running' || state === 'ready') {
+        if (state === 'running' || state === 'ready' || isInspectionState(state)) {
             deltaEl.classList.remove('visible');
         } else if (state === 'idle' || state === 'stopped') {
             updateDelta(sessionManager.getFilteredSolves());
@@ -611,9 +696,7 @@ function refreshUI() {
     if (state === 'idle' || state === 'stopped') {
         const lastSolve = solves[solves.length - 1];
         if (lastSolve) {
-            let displayTime = formatTime(lastSolve.penalty === '+2' ? lastSolve.time + 2000 : lastSolve.time);
-            if (lastSolve.penalty === '+2') displayTime += '+';
-            timer.setDisplay(displayTime);
+            timer.setDisplay(formatTimerDisplayTime(lastSolve));
         } else {
             timer.resetDisplay();
         }
@@ -641,11 +724,12 @@ function updateDelta(solves) {
 
     const state = timer.getState();
     const showDelta = settings.get('showDelta');
+    const isTimerActive = state === 'running' || state === 'ready' || isInspectionState(state);
 
     // Clear if disabled, not enough solves, or timer is active
-    if (!showDelta || solves.length < 2 || state === 'running' || state === 'ready') {
+    if (!showDelta || solves.length < 2 || isTimerActive) {
         // However, if the current solve is a DNF, we still want to show (DNF) regardless of showDelta
-        if (solves.length > 0 && solves[solves.length - 1].penalty === 'DNF' && !(state === 'running' || state === 'ready')) {
+        if (solves.length > 0 && solves[solves.length - 1].penalty === 'DNF' && !isTimerActive) {
             deltaEl.textContent = '(DNF)';
             deltaEl.classList.remove('delta-negative', 'delta-zero');
             deltaEl.classList.add('delta-positive', 'visible');
@@ -954,6 +1038,7 @@ function initSessionControls() {
 
     document.getElementById('session-select').onchange = (e) => {
         sessionManager.setActiveSession(e.target.value);
+        e.target.blur();
     };
 }
 
@@ -989,6 +1074,7 @@ function initFilterControls() {
     filterSelect.onchange = () => {
         settings.set('statsFilter', filterSelect.value);
         customInput.style.display = filterSelect.value === 'custom' ? 'block' : 'none';
+        filterSelect.blur();
     };
 
     customInput.onchange = () => {
@@ -1021,9 +1107,26 @@ function initSettingsPanel() {
     });
 
     // Timer update frequency
+    const inspectionTimeSelect = document.getElementById('setting-inspection-time');
+    inspectionTimeSelect.value = settings.get('inspectionTime');
+    inspectionTimeSelect.onchange = () => {
+        settings.set('inspectionTime', inspectionTimeSelect.value);
+        inspectionTimeSelect.blur();
+    };
+
+    const inspectionAlertsSelect = document.getElementById('setting-inspection-alerts');
+    inspectionAlertsSelect.value = settings.get('inspectionAlerts');
+    inspectionAlertsSelect.onchange = () => {
+        settings.set('inspectionAlerts', inspectionAlertsSelect.value);
+        inspectionAlertsSelect.blur();
+    };
+
     const timerUpdateSelect = document.getElementById('setting-timer-update');
     timerUpdateSelect.value = settings.get('timerUpdate');
-    timerUpdateSelect.onchange = () => settings.set('timerUpdate', timerUpdateSelect.value);
+    timerUpdateSelect.onchange = () => {
+        settings.set('timerUpdate', timerUpdateSelect.value);
+        timerUpdateSelect.blur();
+    };
 
     // Animations toggle
     const animToggle = document.getElementById('setting-animations');
@@ -1040,7 +1143,10 @@ function initSettingsPanel() {
     // Pill size select
     const pillSizeSelect = document.getElementById('setting-pill-size');
     pillSizeSelect.value = settings.get('pillSize');
-    pillSizeSelect.onchange = () => settings.set('pillSize', pillSizeSelect.value);
+    pillSizeSelect.onchange = () => {
+        settings.set('pillSize', pillSizeSelect.value);
+        pillSizeSelect.blur();
+    };
 
     // Show delta toggle
     const deltaToggle = document.getElementById('setting-show-delta');

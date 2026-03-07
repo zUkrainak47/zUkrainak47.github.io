@@ -2,7 +2,9 @@ import { load, save } from './storage.js';
 import { EventEmitter } from './utils.js';
 
 const DEFAULTS = {
-    timerUpdate: '0.01s',   // 'none', '1s', '0.1s', '0.01s', 'inspection'
+    inspectionTime: 'off',  // 'off', '15s'
+    inspectionAlerts: 'off', // 'off', 'voice', 'screen', 'both'
+    timerUpdate: '0.01s',   // 'none', 'inspection', '1s', '0.1s', '0.01s'
     holdDuration: 300,       // ms
     animationsEnabled: true,
     pillSize: 'small',       // 'small', 'medium', 'large', 'hidden'

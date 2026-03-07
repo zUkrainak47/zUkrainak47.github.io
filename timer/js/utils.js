@@ -56,6 +56,20 @@ export function formatSolveTime(solve) {
 }
 
 /**
+ * Format the large timer display for a solve.
+ * DNF keeps the measured time and shows the penalty separately in the UI.
+ * @param {object} solve
+ * @returns {string}
+ */
+export function formatTimerDisplayTime(solve) {
+  let str = formatTime(solve.time);
+  if (solve.penalty === '+2') {
+    str = formatTime(solve.time + 2000) + '+';
+  }
+  return str;
+}
+
+/**
  * Get the effective time for a solve (with penalty applied).
  * @param {object} solve
  * @returns {number}
