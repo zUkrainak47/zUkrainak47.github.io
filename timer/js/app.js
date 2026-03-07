@@ -48,6 +48,7 @@ async function init() {
 
     settings.on('change', (key) => {
         if (key === 'inspectionAlerts') clearInspectionAlert();
+        if (key === 'newBestPopupEnabled' && !settings.get('newBestPopupEnabled')) clearNewBestAlert();
         if (key === 'statsFilter' || key === 'customFilterDuration' || key === 'showDelta' || key.startsWith('graphColor') || key === 'newBestColor') refreshUI();
     });
 
@@ -610,6 +611,7 @@ function showInspectionAlert(text) {
 }
 
 function showNewBestAlert(text) {
+    if (!settings.get('newBestPopupEnabled')) return;
     showPopup('newBest', text, 4500);
 }
 
@@ -1205,6 +1207,10 @@ function initSettingsPanel() {
     const deltaToggle = document.getElementById('setting-show-delta');
     deltaToggle.checked = settings.get('showDelta');
     deltaToggle.onchange = () => settings.set('showDelta', deltaToggle.checked);
+
+    const newBestPopupToggle = document.getElementById('setting-new-best-popup');
+    newBestPopupToggle.checked = settings.get('newBestPopupEnabled');
+    newBestPopupToggle.onchange = () => settings.set('newBestPopupEnabled', newBestPopupToggle.checked);
 
     // Colors
     const setupColorSetting = (inputId, resetId, settingKey) => {

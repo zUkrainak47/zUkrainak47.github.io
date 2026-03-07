@@ -15,7 +15,8 @@ const DEFAULTS = {
     graphCollapsed: false,
     graphView: { visibleCount: 0, yZoom: 1, xPan: 1, yPan: 0 },
     showDelta: false,
-    newBestColor: '#FE2B2B', // Default changed matched variables.css slightly, actually best is #3fb950, but original was '#FE2B2B'. Let's keep original default but change defaults for others.
+    newBestPopupEnabled: true,
+    newBestColor: '#FE2B2B',
     graphColorTime: '#8b949e',
     graphColorAo5: '#ff2020',
     graphColorAo12: '#2b91ff',
