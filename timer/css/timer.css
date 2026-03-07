@@ -84,15 +84,16 @@
     transition: all var(--transition-base);
     font-variant-numeric: tabular-nums;
     text-align: center;
-    cursor: pointer;
-}
-
-#timer-display:hover {
-    transform: translateY(-3px);
+    cursor: default;
 }
 
 #timer-display[data-timer-state="idle"] {
+    cursor: pointer;
     color: var(--timer-idle);
+}
+
+#timer-display[data-timer-state="idle"]:hover {
+    transform: translateY(-3px);
 }
 
 #timer-display[data-timer-state="holding"] {

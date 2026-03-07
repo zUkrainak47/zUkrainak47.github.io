@@ -120,8 +120,8 @@ function initTimerClick() {
 
     timerDisplay.addEventListener('click', () => {
         const state = timer.getState();
-        // Only open modal if timer is not running/holding
-        if (state === 'idle' || state === 'stopped') {
+        // Only open modal when the timer is idle.
+        if (state === 'idle') {
             const solves = sessionManager.getFilteredSolves();
             if (solves.length > 0) {
                 // Open the most recent solve (at the end of the array)
