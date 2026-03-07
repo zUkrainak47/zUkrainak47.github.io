@@ -23,6 +23,138 @@ const bestPopupTypes = [
     { key: 'ao12', label: 'ao12' },
     { key: 'ao100', label: 'ao100' },
 ];
+const keyboardShortcutGroups = [
+    {
+        title: 'Settings',
+        items: [
+            {
+                action: 'Open keyboard shortcuts',
+                bindings: [['Ctrl', '/']],
+            },
+            {
+                action: 'Open settings',
+                bindings: [['/']],
+            },
+        ],
+    },
+    {
+        title: 'Timer',
+        items: [
+            {
+                action: 'Start timer',
+                bindings: [['Space']],
+            },
+            {
+                action: 'Stackmat-style start',
+                // detail: 'Press both hands together',
+                bindings: [['Left Ctrl', 'Right Ctrl']],
+            },
+            {
+                action: 'Stop timer',
+                bindings: [['Any key']],
+            },
+            {
+                action: 'Stop timer and mark as DNF',
+                // detail: 'While the timer is running',
+                bindings: [['Esc'], ['Backspace']],
+            },
+
+        ],
+    },
+    {
+        title: 'Solves',
+        items: [
+            {
+                action: 'Comment on last solve',
+                bindings: [['Tab']],
+            },
+            {
+                action: 'Delete solve',
+                detail: 'Deletes last solve or selected solve',
+                bindings: [['Backspace']],
+            },
+            {
+                action: 'Add or remove +2',
+                // detail: 'Affects the last solve or selected solve',
+                bindings: [['='], ['+']],
+            },
+            {
+                action: 'Add or remove DNF',
+                // detail: 'Affects the last solve or selected solve',
+                bindings: [['D'], ['-']],
+            },
+            {
+                action: 'Open current single details',
+                bindings: [['Shift', '1']],
+            },
+            {
+                action: 'Open current ao5 details',
+                bindings: [['Shift', '2']],
+            },
+            {
+                action: 'Open current ao12 details',
+                bindings: [['Shift', '3']],
+            },
+            {
+                action: 'Open current ao100 details',
+                bindings: [['Shift', '4']],
+            },
+        ],
+    },
+    {
+        title: 'Scramble and layout',
+        items: [
+            {
+                action: 'Copy current scramble',
+                bindings: [['C']],
+            },
+            {
+                action: 'Previous scramble',
+                bindings: [[',']],
+            },
+            {
+                action: 'Next scramble',
+                bindings: [['.']],
+            },
+            {
+                action: 'Toggle zen mode',
+                bindings: [['Z']],
+            },
+            {
+                action: 'Toggle scramble preview',
+                bindings: [['S']],
+            },
+            {
+                action: 'Toggle graph panel',
+                bindings: [['T']],
+            },
+        ],
+    },
+    {
+        title: 'Graph',
+        items: [
+            {
+                action: 'Pan graph',
+                bindings: [['Arrow keys']],
+            },
+            {
+                action: 'Zoom graph',
+                bindings: [['Shift', 'Arrow keys']],
+            },
+            {
+                action: 'Reset graph view',
+                bindings: [['Enter']],
+            },
+            {
+                action: 'Show last 25 solves',
+                bindings: [['Shift', 'Enter']],
+            },
+        ],
+    },
+];
+const blockingOverlayIds = ['modal-overlay', 'confirm-overlay', 'prompt-overlay', 'shortcuts-overlay'];
+let settingsOverlayEl = null;
+let shortcutsOverlayEl = null;
 
 // ──── Bootstrap ────
 async function init() {
@@ -56,6 +188,7 @@ async function init() {
     refreshSessionList();
     refreshUI();
     initSettingsPanel();
+    initShortcutsOverlay();
     initSessionControls();
     initFilterControls();
     initCollapsiblePanels();
@@ -369,37 +502,136 @@ function initTableSorting() {
     });
 }
 
+function hasBlockingOverlayOpen() {
+    return blockingOverlayIds.some(id => document.getElementById(id)?.classList.contains('active'));
+}
+
+function isSlashShortcut(event) {
+    return event.code === 'Slash' || event.key === '/';
+}
+
+function canOpenSettingsPanel() {
+    const state = timer.getState();
+    return state === 'idle' || state === 'stopped';
+}
+
+function isShortcutsOverlayOpen() {
+    return shortcutsOverlayEl?.classList.contains('active');
+}
+
+function openSettingsPanel() {
+    if (!settingsOverlayEl) return false;
+    if (!settingsOverlayEl.classList.contains('active') && !canOpenSettingsPanel()) return false;
+
+    settingsOverlayEl.classList.add('active');
+    return true;
+}
+
+function closeSettingsPanel() {
+    if (!settingsOverlayEl) return;
+    settingsOverlayEl.classList.remove('active');
+    if (document.activeElement) document.activeElement.blur();
+}
+
+function openKeyboardShortcutsOverlay({ closeSettings = false } = {}) {
+    if (!shortcutsOverlayEl) return false;
+    if (!shortcutsOverlayEl.classList.contains('active') && !canOpenSettingsPanel()) return false;
+
+    if (closeSettings) closeSettingsPanel();
+    shortcutsOverlayEl.classList.add('active');
+    return true;
+}
+
+function closeKeyboardShortcutsOverlay() {
+    if (!shortcutsOverlayEl) return;
+    shortcutsOverlayEl.classList.remove('active');
+    if (document.activeElement) document.activeElement.blur();
+}
+
+function renderShortcutBinding(binding) {
+    return `<span class="shortcut-binding">${binding.map(key => `<kbd>${key}</kbd>`).join('<span class="shortcut-plus">+</span>')}</span>`;
+}
+
+function renderKeyboardShortcuts() {
+    const container = document.getElementById('shortcut-groups');
+    if (!container) return;
+
+    container.innerHTML = keyboardShortcutGroups.map(group => `
+        <section class="shortcut-group">
+            <div class="shortcut-group-title">${group.title}</div>
+            ${group.items.map(item => `
+                <div class="shortcut-row">
+                    <div class="shortcut-label">
+                        ${item.action}
+                        ${item.detail ? `<small>${item.detail}</small>` : ''}
+                    </div>
+                    <div class="shortcut-bindings">
+                        ${item.bindings.map(renderShortcutBinding).join('<span class="shortcut-binding-separator">or</span>')}
+                    </div>
+                </div>
+            `).join('')}
+        </section>
+    `).join('');
+}
+
 // ──── Keyboard Shortcuts ────
 function initKeyboardShortcuts() {
     document.addEventListener('keydown', (e) => {
+        const slashShortcutPressed = isSlashShortcut(e);
+        const isShortcutHelpKey = slashShortcutPressed && (e.ctrlKey || e.metaKey);
+        if (isShortcutHelpKey) {
+            e.preventDefault();
+
+            if (isShortcutsOverlayOpen()) {
+                closeKeyboardShortcutsOverlay();
+                return;
+            }
+
+            if (document.getElementById('modal-overlay').classList.contains('active') ||
+                document.getElementById('confirm-overlay').classList.contains('active') ||
+                document.getElementById('prompt-overlay').classList.contains('active')) return;
+
+            if (!openKeyboardShortcutsOverlay({ closeSettings: settingsOverlayEl?.classList.contains('active') })) return;
+
+            e.stopPropagation();
+            return;
+        }
+
         // Ignore input fields, unless it's the modal textarea and we are pressing our special shortcut keys
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
             const isModalTextarea = e.target.id === 'modal-textarea';
             const isShortcutKey = ['Equal', 'NumpadAdd', 'Minus', 'NumpadSubtract', 'KeyD', 'Backspace', 'Delete'].includes(e.code);
-            const isSlashInSettings = e.code === 'Slash' && document.getElementById('settings-overlay').classList.contains('active');
+            const isSlashInSettings = slashShortcutPressed && settingsOverlayEl?.classList.contains('active');
 
             if (!(isModalTextarea && isShortcutKey) && !isSlashInSettings) {
                 return;
             }
         }
 
-        if (e.code === 'Slash') {
-            if (document.getElementById('modal-overlay').classList.contains('active')) return;
-            if (timer.getState() !== 'idle' && timer.getState() !== 'stopped') return;
-            if (e.ctrlKey || e.metaKey) return;
-
-            const overlay = document.getElementById('settings-overlay');
-            if (overlay.classList.contains('active')) {
-                document.getElementById('settings-close').click();
-            } else {
-                document.getElementById('btn-settings').click();
+        if (slashShortcutPressed) {
+            if (isShortcutsOverlayOpen()) {
+                e.preventDefault();
+                closeKeyboardShortcutsOverlay();
+                openSettingsPanel();
+                return;
             }
+
+            if (hasBlockingOverlayOpen()) return;
+
+            e.preventDefault();
+            if (settingsOverlayEl?.classList.contains('active')) {
+                closeSettingsPanel();
+                return;
+            }
+
+            openSettingsPanel();
             return;
         }
 
         // Ignore if confirm or settings modal is active
         if (document.getElementById('confirm-overlay').classList.contains('active') ||
-            document.getElementById('settings-overlay').classList.contains('active')) return;
+            settingsOverlayEl?.classList.contains('active') ||
+            isShortcutsOverlayOpen()) return;
 
         // Ignore if Ctrl or Cmd is pressed (e.g. browser zoom Ctrl+/-)
         if (e.ctrlKey || e.metaKey) return;
@@ -1139,24 +1371,22 @@ function initFilterControls() {
 
 // ──── Settings Panel ────
 function initSettingsPanel() {
-    const overlay = document.getElementById('settings-overlay');
+    settingsOverlayEl = document.getElementById('settings-overlay');
     const btn = document.getElementById('btn-settings');
 
-    const closeSettings = () => {
-        overlay.classList.remove('active');
-        if (document.activeElement) document.activeElement.blur();
+    btn.onclick = () => openSettingsPanel();
+    document.getElementById('btn-show-shortcuts').onclick = () => {
+        openKeyboardShortcutsOverlay({ closeSettings: true });
     };
-
-    btn.onclick = () => overlay.classList.add('active');
-    document.getElementById('settings-close').onclick = closeSettings;
-    overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) closeSettings();
+    document.getElementById('settings-close').onclick = closeSettingsPanel;
+    settingsOverlayEl.addEventListener('click', (e) => {
+        if (e.target === settingsOverlayEl) closeSettingsPanel();
     });
 
     // Close on Escape
     document.addEventListener('keydown', (e) => {
-        if (e.code === 'Escape' && overlay.classList.contains('active')) {
-            closeSettings();
+        if (e.code === 'Escape' && settingsOverlayEl.classList.contains('active')) {
+            closeSettingsPanel();
             e.stopPropagation();
         }
     });
@@ -1300,7 +1530,7 @@ function initSettingsPanel() {
             }
 
             const data = JSON.parse(text);
-            document.getElementById('settings-overlay').classList.remove('active');
+            closeSettingsPanel();
             if (await customConfirm('This will replace all your current data. Continue?')) {
                 if (isCsTimerFormat(data)) {
                     importCsTimer(data);
@@ -1316,6 +1546,23 @@ function initSettingsPanel() {
             alert('Invalid file format.');
         }
     };
+}
+
+function initShortcutsOverlay() {
+    shortcutsOverlayEl = document.getElementById('shortcuts-overlay');
+    renderKeyboardShortcuts();
+
+    document.getElementById('shortcuts-close').onclick = closeKeyboardShortcutsOverlay;
+    shortcutsOverlayEl.addEventListener('click', (e) => {
+        if (e.target === shortcutsOverlayEl) closeKeyboardShortcutsOverlay();
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.code === 'Escape' && shortcutsOverlayEl.classList.contains('active')) {
+            closeKeyboardShortcutsOverlay();
+            e.stopPropagation();
+        }
+    });
 }
 
 // ──── Init ────

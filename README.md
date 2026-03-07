@@ -7,25 +7,27 @@ I hope this is helpful to some. Good luck on your pulls! :) -->
 
 I like clean UI so decided to remake csTimer in a more modern way, feedback appreciated!
 
+`Ctrl` + `/` to view shortcuts inside timer
+
 While idle:
 - `=`/`+` = toggle +2
 - `d`/`-` = toggle DNF
-- `backspace`/`delete` = delete solve
-- `shift` + `1`/`2`/`3`/`4` = current time/ao5/ao12/ao100
-- `arrows` = pan graph
-- `shift` + `arrows` = zoom graph
-- `enter` = reset graph
-- `shift` + `enter` = show last 25 solves
+- `Backspace`/`Delete` = delete solve
+- `Shift` + `1`/`2`/`3`/`4` = current time/ao5/ao12/ao100
+- `Arrow keys` = pan graph
+- `Shift` + `Arrow keys` = zoom graph
+- `Enter` = reset graph
+- `Shift` + `Enter` = show last 25 solves
 - `/` = settings
-- `z` = zen mode
-- `t` = collapse/expand time trend
-- `s` = collapse/expand scramble preview
+- `Z` = zen mode
+- `T` = collapse/expand time trend
+- `S` = collapse/expand scramble preview
 - `.` = next scramble
 - `,` = previous scramble
-- `c` = copy scramble
-- `tab` = add comment
+- `C` = copy scramble
+- `Tab` = add comment
 
 While solving:
-- `esc`/`backspace`/`delete` = mark solve as DNF
+- `Esc`/`Backspace`/`Delete` = mark solve as DNF
 
 not optimized for mobile yet!

@@ -55,7 +55,7 @@ class Timer extends EventEmitter {
 
     _onKeyDown(e) {
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
-        if (document.querySelector('.modal-overlay.active')) return;
+        if (this._hasBlockingOverlayOpen()) return;
 
         const isStackmatKey = this._isStackmatKey(e);
         const isEscape = e.code === 'Escape' || e.key === 'Escape' || e.keyCode === 27;
@@ -113,8 +113,14 @@ class Timer extends EventEmitter {
 
     _onKeyUp(e) {
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
-
         const isStackmatKey = this._isStackmatKey(e);
+
+        if (this._hasBlockingOverlayOpen()) {
+            if (e.code === 'Space') this._spaceDown = false;
+            if (isStackmatKey) this._setStackmatFlag(e.code, false);
+            return;
+        }
+
         if ((e.ctrlKey || e.metaKey) && !isStackmatKey) return;
 
         if (e.code === 'Space') {
@@ -402,6 +408,10 @@ class Timer extends EventEmitter {
 
     _isInspectionPreSolveState(state) {
         return state === State.INSPECTION_PRIMED || this._isInspectionTickingState(state);
+    }
+
+    _hasBlockingOverlayOpen() {
+        return Boolean(document.querySelector('.modal-overlay.active, .settings-overlay.active'));
     }
 
     _isStackmatKey(e) {

@@ -92,6 +92,150 @@
     margin-top: 2px;
 }
 
+.setting-row-button {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-md);
+    padding: 0;
+    text-align: left;
+}
+
+.setting-row-button .shortcut-bindings {
+    flex-shrink: 0;
+    max-width: none;
+}
+
+.setting-row-shortcut {
+    justify-content: flex-end;
+}
+
+.setting-row-button:hover .setting-label {
+    color: var(--accent-hover);
+}
+
+.setting-row-button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 4px;
+    border-radius: var(--radius-md);
+}
+
+.shortcuts-box {
+    max-width: 560px;
+}
+
+.shortcuts-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+}
+
+.shortcuts-intro {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+}
+
+.shortcut-groups {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+}
+
+.shortcut-group {
+    border: 1px solid var(--surface-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+}
+
+.shortcut-group-title {
+    padding: var(--space-sm) var(--space-md);
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--surface-border);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.shortcut-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-md);
+    padding: var(--space-md);
+    border-bottom: 1px solid var(--surface-border);
+}
+
+.shortcut-row:last-child {
+    border-bottom: none;
+}
+
+.shortcut-label {
+    min-width: 0;
+    flex: 1;
+    color: var(--text-primary);
+    font-size: var(--text-sm);
+}
+
+.shortcut-label small {
+    display: block;
+    margin-top: 3px;
+    color: var(--text-tertiary);
+    font-size: var(--text-xs);
+}
+
+.shortcut-bindings {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
+    gap: var(--space-xs);
+    max-width: 48%;
+}
+
+.shortcut-binding {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.shortcut-plus,
+.shortcut-binding-separator {
+    color: var(--text-tertiary);
+    font-size: var(--text-xs);
+}
+
+.shortcut-bindings kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 26px;
+    padding: 0 var(--space-sm);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--surface-border);
+    border-bottom-width: 2px;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+    .shortcut-row {
+        flex-direction: column;
+    }
+
+    .shortcut-bindings {
+        justify-content: flex-start;
+        max-width: 100%;
+    }
+}
+
 /* Toggle switch */
 .toggle {
     position: relative;

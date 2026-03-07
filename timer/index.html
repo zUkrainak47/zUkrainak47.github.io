@@ -400,6 +400,21 @@
               <option value="large">Large</option>
             </select>
           </div>
+          <div class="setting-row">
+            <button id="btn-show-shortcuts" class="setting-row-button" type="button">
+              <div class="setting-label">
+                Show Keyboard Shortcuts
+                <!-- <small>Open the standalone shortcuts window</small> -->
+              </div>
+              <span class="shortcut-bindings setting-row-shortcut">
+                <span class="shortcut-binding">
+                  <kbd>Ctrl</kbd>
+                  <span class="shortcut-plus">+</span>
+                  <kbd>/</kbd>
+                </span>
+              </span>
+            </button>
+          </div>
         </div>
 
         <div class="setting-group">
@@ -448,6 +463,19 @@
           <small style="color: var(--text-tertiary); margin-top: 4px; display: block;">Import auto-detects CubeTimer and
             csTimer formats</small>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="shortcuts-overlay" class="modal-overlay">
+    <div class="modal-box shortcuts-box">
+      <div class="modal-header">
+        <h2>Keyboard Shortcuts</h2>
+        <button id="shortcuts-close" class="modal-close">✕</button>
+      </div>
+      <div class="modal-body shortcuts-body">
+        <!-- <p class="shortcuts-intro">All available keyboard shortcuts are listed here in a separate window.</p> -->
+        <div id="shortcut-groups" class="shortcut-groups"></div>
       </div>
     </div>
   </div>
