@@ -8,23 +8,24 @@ I hope this is helpful to some. Good luck on your pulls! :) -->
 I like clean UI so decided to remake csTimer in a more modern way, feedback appreciated!
 
 While idle:
-- =/+ = toggle +2
-- d/- = toggle DNF
-- backspace/delete = delete solve
-- shift + 1/2/3/4 = current time/ao5/ao12/ao100
-- arrows = pan graph
-- shift + arrows = zoom graph
-- enter = reset graph
-- shift + enter = show last 25 solves
-- z = zen mode
-- t = collapse/expand time trend
-- s = collapse/expand scramble preview
-- . = next scramble
-- , = previous scramble
-- c = copy scramble
-- tab = add comment
+- `=`/`+` = toggle +2
+- `d`/`-` = toggle DNF
+- `backspace`/`delete` = delete solve
+- `shift` + `1`/`2`/`3`/`4` = current time/ao5/ao12/ao100
+- `arrows` = pan graph
+- `shift` + `arrows` = zoom graph
+- `enter` = reset graph
+- `shift` + `enter` = show last 25 solves
+- `/` = settings
+- `z` = zen mode
+- `t` = collapse/expand time trend
+- `s` = collapse/expand scramble preview
+- `.` = next scramble
+- `,` = previous scramble
+- `c` = copy scramble
+- `tab` = add comment
 
 While solving:
-- esc/backspace/delete = mark solve as DNF
+- `esc`/`backspace`/`delete` = mark solve as DNF
 
 not optimized for mobile yet!

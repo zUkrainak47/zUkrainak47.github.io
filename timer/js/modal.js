@@ -299,8 +299,8 @@ function _showModal(title, text, solveContext = null) {
         _textarea.style.minHeight = 'auto';
     } else {
         _textarea.rows = 16;
-        _textarea.style.height = '358px';
-        _textarea.style.minHeight = '358px';
+        _textarea.style.height = '359px';
+        _textarea.style.minHeight = '359px';
     }
 
     const dateInfo = document.getElementById('modal-date-info');

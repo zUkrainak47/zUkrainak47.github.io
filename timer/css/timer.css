@@ -3,6 +3,7 @@
     position: relative;
     display: inline-block;
     font-size: var(--text-timer);
+    z-index: 1;
 }
 
 #timer-delta {
@@ -81,6 +82,8 @@
     font-family: var(--font-mono);
     font-size: var(--text-sm);
     color: var(--text-secondary);
+    position: relative;
+    z-index: 2;
 }
 
 #timer-info>span {

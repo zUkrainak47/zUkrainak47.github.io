@@ -356,6 +356,20 @@ function initKeyboardShortcuts() {
             }
         }
 
+        if (e.code === 'Slash') {
+            if (document.getElementById('modal-overlay').classList.contains('active')) return;
+            if (timer.getState() !== 'idle' && timer.getState() !== 'stopped') return;
+            if (e.ctrlKey || e.metaKey) return;
+
+            const overlay = document.getElementById('settings-overlay');
+            if (overlay.classList.contains('active')) {
+                overlay.classList.remove('active');
+            } else {
+                document.getElementById('btn-settings').click();
+            }
+            return;
+        }
+
         // Ignore if confirm or settings modal is active
         if (document.getElementById('confirm-overlay').classList.contains('active') ||
             document.getElementById('settings-overlay').classList.contains('active')) return;
