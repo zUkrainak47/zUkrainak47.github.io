@@ -175,6 +175,7 @@ select {
     font-weight: 500;
     transition: background var(--transition-fast), color var(--transition-fast);
     user-select: none;
+    -webkit-user-select: none;
 }
 
 .btn:hover {
@@ -202,6 +203,8 @@ select {
     align-items: center;
     justify-content: center;
     border-radius: var(--radius-md);
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 .shortcut-hint {

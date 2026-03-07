@@ -139,6 +139,12 @@
     background: var(--surface-active);
 }
 
+#graph-controls button,
+.graph-line-toggle {
+    user-select: none;
+    -webkit-user-select: none;
+}
+
 .btn-graph-toggle.active {
     background: var(--surface-hover) !important;
     color: var(--text-primary) !important;

@@ -123,6 +123,9 @@
     text-transform: uppercase;
     letter-spacing: 1px;
     background: var(--surface);
+    user-select: none;
+    -webkit-user-select: none;
+    /* Safari */
 }
 
 #solves-table th:first-child {
@@ -364,6 +367,8 @@ tr:hover .solve-actions {
     border: 1px solid var(--text-muted);
     cursor: pointer;
     transition: all var(--transition-fast);
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 .btn-icon-small:hover {

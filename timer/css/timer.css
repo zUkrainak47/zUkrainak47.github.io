@@ -15,6 +15,8 @@
     font-weight: 600;
     white-space: nowrap;
     opacity: 0;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 #timer-delta.visible {
@@ -87,6 +89,8 @@
     cursor: pointer;
     transition: all var(--transition-base);
     font-size: var(--text-lg);
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 #timer-info>span:hover {
@@ -169,6 +173,8 @@ body.pill-size-large #timer-info .stat-label {
     font-size: var(--text-sm);
     text-align: center;
     transition: opacity var(--transition-base);
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 body.hide-hints #timer-hint {
