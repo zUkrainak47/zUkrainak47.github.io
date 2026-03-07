@@ -77,13 +77,25 @@ class SessionManager extends EventEmitter {
     }
 
     deleteSession(id) {
-        if (this._sessions.length <= 1) return;
+        const deletedIndex = this._sessions.findIndex(s => s.id === id);
+        if (deletedIndex === -1) return;
+
         this._sessions = this._sessions.filter(s => s.id !== id);
-        this._save();
-        if (this._activeId === id) {
-            this.setActiveSession(this._sessions[0].id);
+
+        if (this._sessions.length === 0) {
+            this._createDefault();
+            this._activeId = this._sessions[0].id;
+            save('activeSessionId', this._activeId);
+            this._save();
+            this.emit('sessionDeleted', id);
+            this.emit('sessionChanged', this._activeId);
+        } else {
+            this._save();
+            if (this._activeId === id) {
+                this.setActiveSession(this._sessions[0].id);
+            }
+            this.emit('sessionDeleted', id);
         }
-        this.emit('sessionDeleted', id);
     }
 
     // --- Solve CRUD ---

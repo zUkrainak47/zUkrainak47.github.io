@@ -604,6 +604,7 @@ function refreshUI() {
     renderSolvesTable(solves, pss, stats);
     updateGraph(solves, pss);
     updateTimerInfo(stats);
+    refreshSessionList();
 
     // Sync timer display with last solve if not running
     const state = timer.getState();
