@@ -55,8 +55,10 @@ async function init() {
 
     graphEvents.on('nodeClick', (idx) => {
         const solves = sessionManager.getFilteredSolves();
+        const stats = computeAll(solves);
         if (idx >= 0 && idx < solves.length) {
-            showSolveDetail(solves[idx], idx);
+            const isBest = getEffectiveTime(solves[idx]) === stats.best.time;
+            showSolveDetail(solves[idx], idx, isBest);
         }
     });
 }
@@ -85,7 +87,7 @@ function initTimerInfoControls() {
         const solves = sessionManager.getFilteredSolves();
         const stats = computeAll(solves);
         if (stats.current.ao5 != null) {
-            showAverageDetail('Average of 5', stats.current.ao5, solves.slice(-5));
+            showAverageDetail('ao5', stats.current.ao5, solves.slice(-5), 1);
         }
     });
 
@@ -93,7 +95,7 @@ function initTimerInfoControls() {
         const solves = sessionManager.getFilteredSolves();
         const stats = computeAll(solves);
         if (stats.current.ao12 != null) {
-            showAverageDetail('Average of 12', stats.current.ao12, solves.slice(-12));
+            showAverageDetail('ao12', stats.current.ao12, solves.slice(-12), 1);
         }
     });
 }
@@ -111,7 +113,9 @@ function initTimerClick() {
             if (solves.length > 0) {
                 // Open the most recent solve (at the end of the array)
                 const idx = solves.length - 1;
-                showSolveDetail(solves[idx], idx);
+                const stats = computeAll(solves);
+                const isBest = getEffectiveTime(solves[idx]) === stats.best.time;
+                showSolveDetail(solves[idx], idx, isBest);
             }
         }
     });
@@ -269,6 +273,7 @@ function initScrambleControls() {
         if (e.key === 'Escape') {
             textEl.style.display = 'block';
             inputEl.style.display = 'none';
+            inputEl.blur();
         }
     });
     inputEl.addEventListener('input', (e) => {
@@ -357,8 +362,9 @@ function initKeyboardShortcuts() {
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
             const isModalTextarea = e.target.id === 'modal-textarea';
             const isShortcutKey = ['Equal', 'NumpadAdd', 'Minus', 'NumpadSubtract', 'KeyD', 'Backspace', 'Delete'].includes(e.code);
+            const isSlashInSettings = e.code === 'Slash' && document.getElementById('settings-overlay').classList.contains('active');
 
-            if (!(isModalTextarea && isShortcutKey)) {
+            if (!(isModalTextarea && isShortcutKey) && !isSlashInSettings) {
                 return;
             }
         }
@@ -370,7 +376,7 @@ function initKeyboardShortcuts() {
 
             const overlay = document.getElementById('settings-overlay');
             if (overlay.classList.contains('active')) {
-                overlay.classList.remove('active');
+                document.getElementById('settings-close').click();
             } else {
                 document.getElementById('btn-settings').click();
             }
@@ -545,40 +551,44 @@ function onTimerStarted() {
 }
 
 function onTimerStateChange(state) {
-    const hint = document.getElementById('timer-hint');
+
     const infoEl = document.getElementById('timer-info');
     const deltaEl = document.getElementById('timer-delta');
+    const timerDisplayWrapper = document.getElementById('timer-display-wrapper');
 
     // Toggle solving class for focus mode
-    document.body.classList.toggle('solving', state === 'running');
+    document.body.classList.toggle('solving', state === 'running' || state === 'ready');
+
+    // Center timer perfectly based on actual screen position
+    if (timerDisplayWrapper) {
+        if (settings.get('centerTimer') && (state === 'ready' || state === 'running')) {
+            if (!timerDisplayWrapper.style.transform) {
+                const rect = timerDisplayWrapper.getBoundingClientRect();
+                const viewportCenterY = window.innerHeight / 2;
+                const timerCenterY = rect.top + rect.height / 2;
+                const offset = viewportCenterY - timerCenterY;
+                timerDisplayWrapper.style.transform = `translateY(${offset}px)`;
+            }
+        } else {
+            timerDisplayWrapper.style.transform = '';
+        }
+    }
 
     if (infoEl) {
-        if (state === 'running') {
-            infoEl.style.visibility = 'hidden';
-            infoEl.style.opacity = '0';
-        } else {
-            infoEl.style.visibility = 'visible';
-            infoEl.style.opacity = '1';
-        }
+        infoEl.style.visibility = '';
+        infoEl.style.opacity = '';
     }
 
-    // Hide delta when timer starts running
+    // Hide delta when timer is ready or running
     if (deltaEl) {
-        if (state === 'running') {
+        if (state === 'running' || state === 'ready') {
             deltaEl.classList.remove('visible');
+        } else if (state === 'idle' || state === 'stopped') {
+            updateDelta(sessionManager.getFilteredSolves());
         }
     }
 
-    if (hint) {
-        const messages = {
-            idle: 'Hold <span class="shortcut-hint">SPACE</span> to start',
-            holding: 'Keep holding...',
-            ready: 'Release to start!',
-            running: 'Press any key to stop',
-            stopped: 'Hold <span class="shortcut-hint">SPACE</span> for next solve',
-        };
-        hint.innerHTML = messages[state] || '';
-    }
+
 }
 
 // ──── UI Refresh ────
@@ -611,14 +621,9 @@ function refreshUI() {
 
 function updateTimerInfo(stats) {
     const infoEl = document.getElementById('timer-info');
-    const state = timer.getState();
-    if (state === 'running') {
-        infoEl.style.visibility = 'hidden';
-        infoEl.style.opacity = '0';
-        return;
-    }
-    infoEl.style.visibility = 'visible';
-    infoEl.style.opacity = '1';
+
+    infoEl.style.visibility = '';
+    infoEl.style.opacity = '';
 
     const ao5El = document.getElementById('info-ao5');
     const ao12El = document.getElementById('info-ao12');
@@ -634,9 +639,9 @@ function updateDelta(solves) {
     const showDelta = settings.get('showDelta');
 
     // Clear if disabled, not enough solves, or timer is active
-    if (!showDelta || solves.length < 2 || state === 'running' || state === 'holding' || state === 'ready') {
+    if (!showDelta || solves.length < 2 || state === 'running' || state === 'ready') {
         // However, if the current solve is a DNF, we still want to show (DNF) regardless of showDelta
-        if (solves.length > 0 && solves[solves.length - 1].penalty === 'DNF' && !(state === 'running' || state === 'holding' || state === 'ready')) {
+        if (solves.length > 0 && solves[solves.length - 1].penalty === 'DNF' && !(state === 'running' || state === 'ready')) {
             deltaEl.textContent = '(DNF)';
             deltaEl.classList.remove('delta-negative', 'delta-zero');
             deltaEl.classList.add('delta-positive', 'visible');
@@ -729,7 +734,7 @@ function handleStatClick(type, which, solves, stats) {
             const times = solves.map(s => getEffectiveTime(s));
             const bestTime = stats.best.time;
             const idx = times.indexOf(bestTime);
-            if (idx >= 0) showSolveDetail(solves[idx], idx);
+            if (idx >= 0) showSolveDetail(solves[idx], idx, true);
         }
         return;
     }
@@ -742,8 +747,7 @@ function handleStatClick(type, which, solves, stats) {
     if (which === 'current' && solves.length >= n) {
         const window = solves.slice(-n);
         const value = stats.current[type];
-        const label = type === 'mo3' ? `Mean of 3` : `Average of ${n}`;
-        showAverageDetail(label, value, window, trim);
+        showAverageDetail(type, value, window, trim);
     } else if (which === 'best') {
         // Find the best window position
         const times = solves.map(s => getEffectiveTime(s));
@@ -767,8 +771,7 @@ function handleStatClick(type, which, solves, stats) {
 
         if (bestIdx >= 0) {
             const window = solves.slice(bestIdx - n + 1, bestIdx + 1);
-            const label = type === 'mo3' ? `Mean of 3` : `Average of ${n}`;
-            showAverageDetail(`Best ${label}`, bestVal, window, trim);
+            showAverageDetail(`Best ${type}`, bestVal, window, trim);
         }
     }
 }
@@ -892,7 +895,9 @@ function renderSolvesTable(solves, pss, stats) {
         cell.addEventListener('click', () => {
             const tr = cell.closest('tr');
             const idx = parseInt(tr.dataset.solveIndex);
-            showSolveDetail(solves[idx], idx);
+            const stats = computeAll(solves);
+            const isBest = getEffectiveTime(solves[idx]) === stats.best.time;
+            showSolveDetail(solves[idx], idx, isBest);
         });
     });
 
@@ -904,7 +909,7 @@ function renderSolvesTable(solves, pss, stats) {
             if (idx < 4) return;
             const window = solves.slice(idx - 4, idx + 1);
             const ps = pss[idx];
-            showAverageDetail('Average of 5', ps.ao5, window, 1);
+            showAverageDetail('ao5', ps.ao5, window, 1);
         });
     });
 
@@ -915,7 +920,7 @@ function renderSolvesTable(solves, pss, stats) {
             if (idx < 11) return;
             const window = solves.slice(idx - 11, idx + 1);
             const ps = pss[idx];
-            showAverageDetail('Average of 12', ps.ao12, window, 1);
+            showAverageDetail('ao12', ps.ao12, window, 1);
         });
     });
 }
@@ -992,16 +997,22 @@ function initSettingsPanel() {
     const overlay = document.getElementById('settings-overlay');
     const btn = document.getElementById('btn-settings');
 
+    const closeSettings = () => {
+        overlay.classList.remove('active');
+        if (document.activeElement) document.activeElement.blur();
+    };
+
     btn.onclick = () => overlay.classList.add('active');
-    document.getElementById('settings-close').onclick = () => overlay.classList.remove('active');
+    document.getElementById('settings-close').onclick = closeSettings;
     overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) overlay.classList.remove('active');
+        if (e.target === overlay) closeSettings();
     });
 
     // Close on Escape
     document.addEventListener('keydown', (e) => {
         if (e.code === 'Escape' && overlay.classList.contains('active')) {
-            overlay.classList.remove('active');
+            closeSettings();
+            e.stopPropagation();
         }
     });
 
@@ -1015,10 +1026,12 @@ function initSettingsPanel() {
     animToggle.checked = settings.get('animationsEnabled');
     animToggle.onchange = () => settings.set('animationsEnabled', animToggle.checked);
 
-    // Hints toggle
-    const hintsToggle = document.getElementById('setting-hints');
-    hintsToggle.checked = settings.get('shortcutHintsEnabled');
-    hintsToggle.onchange = () => settings.set('shortcutHintsEnabled', hintsToggle.checked);
+    // Center Timer toggle
+    const centerTimerToggle = document.getElementById('setting-center-timer');
+    if (centerTimerToggle) {
+        centerTimerToggle.checked = settings.get('centerTimer');
+        centerTimerToggle.onchange = () => settings.set('centerTimer', centerTimerToggle.checked);
+    }
 
     // Pill size select
     const pillSizeSelect = document.getElementById('setting-pill-size');

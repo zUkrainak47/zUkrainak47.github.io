@@ -4,6 +4,7 @@
     display: inline-block;
     font-size: var(--text-timer);
     z-index: 1;
+    transition: transform var(--transition-base);
 }
 
 #timer-delta {
@@ -18,11 +19,11 @@
     opacity: 0;
     user-select: none;
     -webkit-user-select: none;
+    transition: opacity var(--transition-base);
 }
 
 #timer-delta.visible {
     opacity: 1;
-    transition: opacity var(--transition-base);
 }
 
 #timer-delta.delta-negative {
@@ -169,22 +170,4 @@ body.pill-size-large #timer-info>span:hover {
 body.pill-size-large #timer-info .stat-label {
     font-size: var(--text-lg);
     color: var(--text-secondary);
-}
-
-/* Timer hold hint */
-#timer-hint {
-    position: absolute;
-    bottom: var(--space-xl);
-    left: 50%;
-    transform: translateX(-50%);
-    color: var(--text-tertiary);
-    font-size: var(--text-sm);
-    text-align: center;
-    transition: opacity var(--transition-base);
-    user-select: none;
-    -webkit-user-select: none;
-}
-
-body.hide-hints #timer-hint {
-    display: none;
 }

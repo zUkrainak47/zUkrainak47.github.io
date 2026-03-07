@@ -173,7 +173,7 @@
         <span id="info-ao5-box"><span class="stat-label">ao5:</span> <span id="info-ao5">-</span></span>
         <span id="info-ao12-box"><span class="stat-label">ao12:</span> <span id="info-ao12">-</span></span>
       </div>
-      <div id="timer-hint">Hold <span class="shortcut-hint">SPACE</span> to start</div>
+
     </div>
 
     <!-- ─── Right Panel: Cube + Graph ─── -->
@@ -250,8 +250,7 @@
           <button id="modal-btn-delete" class="btn-action btn-danger" title="Delete">✕</button>
         </div>
         <span id="modal-date-info"></span>
-        <button class="modal-close"
-          onclick="document.getElementById('modal-overlay').classList.remove('active')">✕</button>
+        <button class="modal-close">✕</button>
       </div>
       <div class="modal-body">
         <textarea id="modal-solve-comment" placeholder="Add a comment..." autocomplete="off" spellcheck="false"
@@ -316,8 +315,8 @@
               <small>How often the display refreshes while running</small>
             </div>
             <select id="setting-timer-update">
-              <option value="inspection">Inspection</option>
               <option value="none">None</option>
+              <option value="inspection">Inspection only</option>
               <option value="1s">1s</option>
               <option value="0.1s">0.1s</option>
               <option value="0.01s">0.01s</option>
@@ -344,13 +343,18 @@
               <span class="toggle-slider"></span>
             </label>
           </div>
+
           <div class="setting-row">
-            <div class="setting-label">Keyboard hints</div>
+            <div class="setting-label">
+              Center Timer
+              <small>Move timer to center during solve</small>
+            </div>
             <label class="toggle">
-              <input type="checkbox" id="setting-hints">
+              <input type="checkbox" id="setting-center-timer">
               <span class="toggle-slider"></span>
             </label>
           </div>
+
           <div class="setting-row">
             <div class="setting-label">
               ao5 / ao12 below timer

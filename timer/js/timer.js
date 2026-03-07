@@ -19,6 +19,10 @@ class Timer extends EventEmitter {
         this._rafId = null;
         this._displayEl = null;
         this._spaceDown = false;
+        this._leftDown = false;
+        this._rightDown = false;
+        this._leftAltDown = false;
+        this._rightAltDown = false;
 
         this._onKeyDown = this._onKeyDown.bind(this);
         this._onKeyUp = this._onKeyUp.bind(this);
@@ -45,11 +49,12 @@ class Timer extends EventEmitter {
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
         // Ignore if modal is open
         if (document.querySelector('.modal-overlay.active')) return;
-        // Ignore if modifiers (Ctrl/Cmd) are pressed
-        if (e.ctrlKey || e.metaKey) return;
-
+        const isStackmatKey = e.code === 'ControlLeft' || e.code === 'ControlRight' || e.code === 'MetaLeft' || e.code === 'MetaRight' || e.code === 'AltLeft' || e.code === 'AltRight';
         const isEscape = e.code === 'Escape' || e.key === 'Escape' || e.keyCode === 27;
         const isDnfKey = isEscape || e.code === 'Backspace' || e.key === 'Backspace' || e.keyCode === 8 || e.code === 'Delete' || e.key === 'Delete' || e.keyCode === 46;
+
+        // Ignore if modifiers (Ctrl/Cmd) are pressed, unless it's a Stackmat key or Escape
+        if ((e.ctrlKey || e.metaKey) && !isStackmatKey && !isEscape) return;
 
         if (isDnfKey && this.state === State.RUNNING) {
             this._stopTimer(true); // Stop and trigger DNF
@@ -82,11 +87,29 @@ class Timer extends EventEmitter {
                 this._startHold();
             }
         }
+
+        if (isStackmatKey) {
+            e.preventDefault();
+            if (e.code === 'ControlLeft' || e.code === 'MetaLeft') this._leftDown = true;
+            if (e.code === 'ControlRight' || e.code === 'MetaRight') this._rightDown = true;
+            if (e.code === 'AltLeft') this._leftAltDown = true;
+            if (e.code === 'AltRight') this._rightAltDown = true;
+
+            const isBothCtrlCmd = this._leftDown && this._rightDown;
+            const isBothAltOpt = this._leftAltDown && this._rightAltDown;
+
+            if (isBothCtrlCmd || isBothAltOpt) {
+                if (this.state === State.IDLE || this.state === State.STOPPED) {
+                    this._startHold();
+                }
+            }
+        }
     }
 
     _onKeyUp(e) {
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
-        if (e.ctrlKey || e.metaKey) return;
+        const isStackmatKey = e.code === 'ControlLeft' || e.code === 'ControlRight' || e.code === 'MetaLeft' || e.code === 'MetaRight' || e.code === 'AltLeft' || e.code === 'AltRight';
+        if ((e.ctrlKey || e.metaKey) && !isStackmatKey) return;
 
         if (e.code === 'Space') {
             e.preventDefault();
@@ -100,6 +123,27 @@ class Timer extends EventEmitter {
             } else if (this.state === State.READY) {
                 // GO!
                 this._startTimer();
+            }
+        }
+
+        if (isStackmatKey) {
+            e.preventDefault();
+            const wasBothCtrlCmd = this._leftDown && this._rightDown;
+            const wasBothAltOpt = this._leftAltDown && this._rightAltDown;
+
+            if (e.code === 'ControlLeft' || e.code === 'MetaLeft') this._leftDown = false;
+            if (e.code === 'ControlRight' || e.code === 'MetaRight') this._rightDown = false;
+            if (e.code === 'AltLeft') this._leftAltDown = false;
+            if (e.code === 'AltRight') this._rightAltDown = false;
+
+            if (wasBothCtrlCmd || wasBothAltOpt) {
+                if (this.state === State.HOLDING) {
+                    this._cancelHold();
+                    this._setState(State.STOPPED);
+                    this._setColor('stopped');
+                } else if (this.state === State.READY) {
+                    this._startTimer();
+                }
             }
         }
     }
