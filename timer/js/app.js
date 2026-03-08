@@ -628,10 +628,16 @@ function syncViewportLayout() {
     const isZen = document.body.classList.contains('zen');
     const isSolving = document.body.classList.contains('solving');
     const isMobileTimerView = mobileViewportQuery.matches && document.body.dataset.mobilePanel === 'timer';
+    const centerTimerEnabled = settings.get('centerTimer');
+    const shouldApplyMobileTimerPositioning = isMobileTimerView && (centerTimerEnabled || isZen);
     const shouldFocusTimer = state === 'running' || state === 'ready' || isInspectionState(state);
-    const shouldViewportCenterTimer = shouldFocusTimer && (settings.get('centerTimer') || (isMobileTimerView && isZen));
-    const shouldPositionIdleMobileTimer = isMobileTimerView && !shouldFocusTimer;
-    const shouldPositionMobileScramble = isMobileTimerView && !isSolving && scrambleContainer && scrambleTextWrapper && zenButton;
+    const shouldViewportCenterTimer = shouldFocusTimer && shouldApplyMobileTimerPositioning;
+    const shouldPositionIdleMobileTimer = shouldApplyMobileTimerPositioning && !shouldFocusTimer;
+    const shouldPositionMobileScramble = shouldApplyMobileTimerPositioning
+        && !isSolving
+        && scrambleContainer
+        && scrambleTextWrapper
+        && zenButton;
     const shouldFreezeMobileManualEntryLayout = isMobileTimerView && quickActionsState.manualEntryActive;
 
     let targetTimerCenterY = null;
