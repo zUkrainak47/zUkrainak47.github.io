@@ -328,22 +328,25 @@ function getLastSessionSolve() {
 }
 
 function toggleLastSolvePenaltyFromMainTimerShortcut(penalty) {
-    const lastSolve = getLastSessionSolve();
-    if (!lastSolve) return;
+    const session = sessionManager.getActiveSession();
+    if (!session || session.solves.length === 0) return;
+
+    const lastSolve = session.solves[session.solves.length - 1];
+    const solveNumber = session.solves.length;
 
     const previousPenalty = lastSolve.penalty;
     const updatedSolve = sessionManager.togglePenalty(lastSolve.id, penalty);
     if (!updatedSolve) return;
 
-    if (!isDesktopTypingEntryModeEnabled()) return;
+    if (mobileViewportQuery.matches) return;
 
     if (updatedSolve.penalty === penalty) {
-        showPenaltyShortcutAlert('applied', penalty);
+        showPenaltyShortcutAlert('applied', penalty, solveNumber);
         return;
     }
 
     if (previousPenalty === penalty && updatedSolve.penalty == null) {
-        showPenaltyShortcutAlert('cleared');
+        showPenaltyShortcutAlert('cleared', null, solveNumber);
     }
 }
 
@@ -1906,7 +1909,7 @@ function showNewBestAlert(text) {
     showPopup('newBest', text, 4500);
 }
 
-function showPenaltyShortcutAlert(state, penalty = null) {
+function showPenaltyShortcutAlert(state, penalty = null, solveNumber = null) {
     const alertEl = document.getElementById(popupState.penaltyShortcut.elementId);
     if (!alertEl) return;
 
@@ -1917,7 +1920,12 @@ function showPenaltyShortcutAlert(state, penalty = null) {
     alertEl.classList.toggle('timer-popup-danger', isApplied);
     alertEl.classList.toggle('timer-popup-success', isCleared);
     clearNewBestAlert();
-    showPopup('penaltyShortcut', isCleared ? 'OK' : `${penalty} applied`, 1700);
+
+    showPopup(
+        'penaltyShortcut',
+        isCleared ? `#${solveNumber}: OK` : `#${solveNumber}: ${penalty} applied`,
+        1700,
+    );
 }
 
 function showPopup(kind, text, duration = 1500) {
