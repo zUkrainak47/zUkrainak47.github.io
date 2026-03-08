@@ -633,7 +633,7 @@ function syncViewportLayout() {
     const shouldFocusTimer = state === 'running' || state === 'ready' || isInspectionState(state);
     const shouldViewportCenterTimer = shouldFocusTimer && shouldApplyMobileTimerPositioning;
     const shouldPositionIdleMobileTimer = shouldApplyMobileTimerPositioning && !shouldFocusTimer;
-    const shouldPositionMobileScramble = shouldApplyMobileTimerPositioning
+    const shouldPositionMobileScramble = isMobileTimerView
         && !isSolving
         && scrambleContainer
         && scrambleTextWrapper
@@ -650,7 +650,7 @@ function syncViewportLayout() {
     if (shouldViewportCenterTimer) {
         if (isMobileTimerView) targetTimerCenterX = window.innerWidth / 2;
         targetTimerCenterY = window.innerHeight / 2;
-    } else if (shouldPositionIdleMobileTimer) {
+    } else if (isMobileTimerView && !shouldFocusTimer) {
         const rightRect = rightPanel?.getBoundingClientRect();
         const zenRect = zenButton?.getBoundingClientRect();
         const scrambleRect = getLayoutRect(scrambleText || scrambleTextWrapper);
@@ -662,18 +662,22 @@ function syncViewportLayout() {
         const zenCenterY = zenRect ? zenRect.top + zenRect.height / 2 : 0;
         const freeBottom = rightRect?.top ?? window.innerHeight;
         if (isZen) {
-            targetTimerCenterX = window.innerWidth / 2;
-            targetTimerCenterY = window.innerHeight / 2;
+            if (shouldPositionIdleMobileTimer) {
+                targetTimerCenterX = window.innerWidth / 2;
+                targetTimerCenterY = window.innerHeight / 2;
+            }
         } else {
             const preservedScrambleCenterY = scrambleRect
                 ? ((3 * zenCenterY) + (freeBottom - 12)) / 4
                 : zenCenterY;
-            const scrambleBottom = scrambleRect
-                ? preservedScrambleCenterY + (scrambleRect.height / 2)
-                : zenCenterY;
-            targetTimerCenterY = (scrambleBottom + freeBottom) / 2;
-            targetTimerRect = duetRect || timerRect;
             targetScrambleCenterY = preservedScrambleCenterY;
+            if (shouldPositionIdleMobileTimer) {
+                const scrambleBottom = scrambleRect
+                    ? preservedScrambleCenterY + (scrambleRect.height / 2)
+                    : zenCenterY;
+                targetTimerCenterY = (scrambleBottom + freeBottom) / 2;
+                targetTimerRect = duetRect || timerRect;
+            }
         }
     }
 
@@ -694,7 +698,7 @@ function syncViewportLayout() {
         applyCachedTransform(timerDisplayWrapper, 'timerTransform', '');
     }
 
-    if (!shouldPositionMobileScramble || targetTimerCenterY == null) {
+    if (!shouldPositionMobileScramble || (targetScrambleCenterY == null && targetTimerCenterY == null)) {
         if (!isSolving) applyCachedTransform(scrambleContainer, 'scrambleTransform', '');
         return;
     }
