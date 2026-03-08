@@ -1713,6 +1713,18 @@ function initSettingsPanel() {
         centerTimerToggle.onchange = () => settings.set('centerTimer', centerTimerToggle.checked);
     }
 
+    const displayFontSelect = document.getElementById('setting-display-font');
+    if (displayFontSelect) {
+        displayFontSelect.value = settings.get('displayFont');
+        if (!displayFontSelect.value) {
+            displayFontSelect.value = DEFAULTS.displayFont;
+        }
+        displayFontSelect.onchange = () => {
+            settings.set('displayFont', displayFontSelect.value);
+            displayFontSelect.blur();
+        };
+    }
+
     const shortcutTooltipsToggle = document.getElementById('setting-shortcut-tooltips');
     if (shortcutTooltipsToggle) {
         shortcutTooltipsToggle.checked = settings.get('shortcutTooltipsEnabled');

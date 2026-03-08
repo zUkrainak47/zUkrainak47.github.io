@@ -7,6 +7,7 @@ const DEFAULTS = {
     timerUpdate: '0.01s',   // 'none', 'inspection', '1s', '0.1s', '0.01s'
     holdDuration: 300,       // ms
     animationsEnabled: true,
+    displayFont: 'jetbrains-mono',
     pillSize: 'small',       // 'small', 'medium', 'large', 'hidden'
     statsFilter: 'all',     // 'all', 'today', 'week', 'month', 'custom'
     customFilterDuration: '', // e.g. '3d', '2h'
@@ -26,6 +27,13 @@ const DEFAULTS = {
 };
 
 export { DEFAULTS };
+
+const DISPLAY_FONT_STACKS = {
+    arial: "Arial, 'Helvetica Neue', Helvetica, sans-serif",
+    'jetbrains-mono': "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
+    'roboto-mono': "'Roboto Mono', 'JetBrains Mono', 'Consolas', monospace",
+    monospace: "monospace",
+};
 
 class Settings extends EventEmitter {
     constructor() {
@@ -75,6 +83,9 @@ class Settings extends EventEmitter {
         document.body.classList.remove('pill-size-small', 'pill-size-medium', 'pill-size-large', 'pill-size-hidden');
         document.body.classList.add(`pill-size-${this._settings.pillSize}`);
 
+        const displayFont = DISPLAY_FONT_STACKS[this._settings.displayFont] || DISPLAY_FONT_STACKS[DEFAULTS.displayFont];
+        document.documentElement.style.setProperty('--font-mono', displayFont);
+        document.documentElement.style.setProperty('--font-timer', displayFont);
         document.documentElement.style.setProperty('--stat-new-best', this._settings.newBestColor);
         document.documentElement.style.setProperty('--graph-color-time', this._settings.graphColorTime);
         document.documentElement.style.setProperty('--graph-color-ao5', this._settings.graphColorAo5);
