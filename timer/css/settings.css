@@ -80,6 +80,10 @@
     border-bottom: none;
 }
 
+body.mobile-viewport #setting-shortcut-tooltips-row {
+    display: none;
+}
+
 .setting-label {
     font-size: var(--text-sm);
     color: var(--text-primary);

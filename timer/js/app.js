@@ -240,6 +240,10 @@ function isTouchPrimaryInput() {
     return touchPrimaryQuery.matches;
 }
 
+function areShortcutTooltipsAvailable() {
+    return !mobileViewportQuery.matches;
+}
+
 function getEl(id) {
     if (!domCache.has(id)) {
         domCache.set(id, document.getElementById(id));
@@ -692,6 +696,7 @@ function setActiveMobilePanel(panel) {
 
 function syncMobilePanelState() {
     const isMobileViewport = mobileViewportQuery.matches;
+    hideShortcutTooltip();
     document.body.classList.toggle('mobile-viewport', isMobileViewport);
     syncManualTimeInputMode();
 
@@ -1341,7 +1346,7 @@ function positionShortcutTooltip(target) {
 }
 
 function showShortcutTooltip(target) {
-    if (!settings.get('shortcutTooltipsEnabled')) return;
+    if (!areShortcutTooltipsAvailable() || !settings.get('shortcutTooltipsEnabled')) return;
     if (!shortcutTooltipEl || !target?.dataset.shortcutTooltip) return;
 
     const wasActive = shortcutTooltipEl.classList.contains('active');
