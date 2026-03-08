@@ -22,6 +22,7 @@ const DEFAULTS = {
     graphColorAo12: '#2b91ff',
     graphColorAo100: '#a371f7',
     centerTimer: true,
+    shortcutTooltipsEnabled: true,
 };
 
 export { DEFAULTS };
@@ -69,6 +70,7 @@ class Settings extends EventEmitter {
 
     _apply() {
         document.body.classList.toggle('no-animations', !this._settings.animationsEnabled);
+        document.body.classList.toggle('shortcut-tooltips-disabled', !this._settings.shortcutTooltipsEnabled);
 
         document.body.classList.remove('pill-size-small', 'pill-size-medium', 'pill-size-large', 'pill-size-hidden');
         document.body.classList.add(`pill-size-${this._settings.pillSize}`);

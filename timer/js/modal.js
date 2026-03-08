@@ -397,14 +397,12 @@ function _showModal(title, text, solveContext = null) {
 
         btnPlus2.classList.toggle('active-penalty', solveContext.penalty === '+2');
         btnDnf.classList.toggle('active-penalty', solveContext.penalty === 'DNF');
-
-        btnPlus2.style.borderColor = solveContext.penalty === '+2' ? 'rgba(248, 81, 73, 0.5)' : 'var(--text-muted)';
-        btnPlus2.style.background = solveContext.penalty === '+2' ? 'rgba(248, 81, 73, 0.1)' : 'var(--surface)';
-        btnPlus2.style.color = solveContext.penalty === '+2' ? 'var(--stat-worst)' : 'var(--text-secondary)';
-
-        btnDnf.style.borderColor = solveContext.penalty === 'DNF' ? 'rgba(248, 81, 73, 0.5)' : 'var(--text-muted)';
-        btnDnf.style.background = solveContext.penalty === 'DNF' ? 'rgba(248, 81, 73, 0.1)' : 'var(--surface)';
-        btnDnf.style.color = solveContext.penalty === 'DNF' ? 'var(--stat-worst)' : 'var(--text-secondary)';
+        btnPlus2.style.borderColor = '';
+        btnPlus2.style.background = '';
+        btnPlus2.style.color = '';
+        btnDnf.style.borderColor = '';
+        btnDnf.style.background = '';
+        btnDnf.style.color = '';
 
         // Setup comment input
         _commentInput.style.display = 'block';

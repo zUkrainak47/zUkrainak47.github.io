@@ -217,6 +217,73 @@ select {
     font-family: var(--font-mono);
 }
 
+#shortcut-tooltip {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 2000;
+    padding: 5px 8px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--surface-border);
+    background: rgba(28, 33, 40, 0.96);
+    color: var(--text-secondary);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
+    font-weight: 500;
+    font-size: var(--text-xs);
+    line-height: 1;
+    white-space: nowrap;
+    box-shadow: var(--shadow-md);
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transform: translate(-50%, -4px);
+    transition: opacity var(--transition-fast), transform var(--transition-fast), visibility var(--transition-fast);
+}
+
+#shortcut-tooltip.no-transition {
+    transition: none;
+}
+
+#shortcut-tooltip[data-placement="right"] {
+    transform: translate(4px, -50%);
+}
+
+#shortcut-tooltip::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: -5px;
+    transform: translateX(-50%) rotate(45deg);
+    width: 8px;
+    height: 8px;
+    background: rgba(28, 33, 40, 0.96);
+    border-left: 1px solid var(--surface-border);
+    border-top: 1px solid var(--surface-border);
+}
+
+#shortcut-tooltip[data-placement="right"]::before {
+    left: -5px;
+    top: 50%;
+    transform: translateY(-50%) rotate(45deg);
+    border-left: 1px solid var(--surface-border);
+    border-top: 0;
+    border-bottom: 1px solid var(--surface-border);
+}
+
+#shortcut-tooltip.active {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, 0);
+}
+
+#shortcut-tooltip[data-placement="right"].active {
+    transform: translate(0, -50%);
+}
+
+body.shortcut-tooltips-disabled #shortcut-tooltip {
+    display: none;
+}
+
 
 
 /* Zen mode — hide panels but keep grid intact so timer doesn't shift */

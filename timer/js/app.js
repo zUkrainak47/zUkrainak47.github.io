@@ -30,6 +30,31 @@ const statShortcutMap = {
     Digit4: 'ao12',
     Digit5: 'ao100',
 };
+const buttonShortcutTooltipBindings = [
+    { selector: '#btn-settings', binding: ['/'], placement: 'right' },
+    { selector: '#scramble-text', binding: ['C'] },
+    { selector: '#btn-prev-scramble', binding: [','] },
+    { selector: '#btn-next-scramble', binding: ['.'] },
+    { selector: '#btn-zen', binding: ['Z'] },
+    { selector: 'button[data-action="last25"]', binding: ['Shift', 'Enter'] },
+    { selector: 'button[data-action="reset"]', binding: ['Enter'] },
+    { selector: 'button[data-action="zoom-x-in"]', binding: ['Shift', 'ArrowLeft'] },
+    { selector: 'button[data-action="zoom-x-out"]', binding: ['Shift', 'ArrowRight'] },
+    { selector: 'button[data-action="pan-left"]', binding: ['ArrowLeft'] },
+    { selector: 'button[data-action="pan-right"]', binding: ['ArrowRight'] },
+    { selector: 'button[data-action="zoom-y-in"]', binding: ['Shift', 'ArrowUp'] },
+    { selector: 'button[data-action="zoom-y-out"]', binding: ['Shift', 'ArrowDown'] },
+    { selector: 'button[data-action="pan-up"]', binding: ['ArrowUp'] },
+    { selector: 'button[data-action="pan-down"]', binding: ['ArrowDown'] },
+    { selector: '#modal-btn-dnf', binding: ['-'] },
+    { selector: '#modal-btn-plus2', binding: ['+'] },
+    { selector: '#modal-btn-delete', binding: ['Backspace'] },
+    { selector: '#modal-stat-nav [data-stat-type="time"]', binding: ['Shift', '1'] },
+    { selector: '#modal-stat-nav [data-stat-type="mo3"]', binding: ['Shift', '2'] },
+    { selector: '#modal-stat-nav [data-stat-type="ao5"]', binding: ['Shift', '3'] },
+    { selector: '#modal-stat-nav [data-stat-type="ao12"]', binding: ['Shift', '4'] },
+    { selector: '#modal-stat-nav [data-stat-type="ao100"]', binding: ['Shift', '5'] },
+];
 const keyboardShortcutGroups = [
     {
         title: 'Settings',
@@ -186,11 +211,13 @@ const passthroughSelectShortcutCodes = new Set([
 let settingsOverlayEl = null;
 let shortcutsOverlayEl = null;
 let transientSelectOutsideBlurBound = false;
+let shortcutTooltipEl = null;
 
 // ──── Bootstrap ────
 async function init() {
     initModal();
     setModalStatNavigator(openShortcutStatDetail);
+    initShortcutTooltips();
     timer.init(document.getElementById('timer-display'));
     initCubeDisplay(document.getElementById('cube-canvas'));
     initGraph(document.getElementById('graph-canvas'));
@@ -213,6 +240,7 @@ async function init() {
     settings.on('change', (key) => {
         if (key === 'inspectionAlerts') clearInspectionAlert();
         if (key === 'newBestPopupEnabled' && !settings.get('newBestPopupEnabled')) clearNewBestAlert();
+        if (key === 'shortcutTooltipsEnabled' && !settings.get('shortcutTooltipsEnabled')) hideShortcutTooltip();
         if (key === 'statsFilter' || key === 'customFilterDuration' || key === 'showDelta' || key.startsWith('graphColor') || key === 'newBestColor') refreshUI();
     });
 
@@ -543,6 +571,135 @@ function isSlashShortcut(event) {
 
 function isTransientShortcutSelect(element) {
     return element instanceof HTMLSelectElement && transientShortcutSelectIds.includes(element.id);
+}
+
+function formatShortcutTooltip(binding) {
+    const tokenMap = {
+        Shift: '⇧',
+        Backspace: '⌫',
+        Delete: '⌫',
+        Enter: '⏎',
+        ArrowLeft: '←',
+        ArrowRight: '→',
+        ArrowUp: '↑',
+        ArrowDown: '↓',
+        Control: 'Ctrl',
+        Ctrl: 'Ctrl',
+        Meta: 'Ctrl',
+        Alt: 'Ctrl',
+        Option: 'Ctrl',
+        Equal: '+',
+        NumpadAdd: '+',
+        Minus: '-',
+        NumpadSubtract: '-',
+    };
+
+    return binding.map(token => tokenMap[token] || token).join('');
+}
+
+function positionShortcutTooltip(target) {
+    if (!shortcutTooltipEl) return;
+
+    const rect = target.getBoundingClientRect();
+    const gap = 10;
+    const margin = 8;
+    const placement = target.dataset.shortcutTooltipPlacement || 'bottom';
+
+    if (placement === 'right') {
+        shortcutTooltipEl.style.left = `${rect.right + gap}px`;
+        shortcutTooltipEl.style.top = `${rect.top + rect.height / 2}px`;
+
+        const tooltipRect = shortcutTooltipEl.getBoundingClientRect();
+        const minLeft = margin;
+        const maxLeft = window.innerWidth - margin - tooltipRect.width;
+        const preferredLeft = rect.right + gap;
+        const centeredTop = rect.top + rect.height / 2;
+        const minTop = margin + tooltipRect.height / 2;
+        const maxTop = window.innerHeight - margin - tooltipRect.height / 2;
+        const clampedLeft = Math.min(Math.max(preferredLeft, minLeft), maxLeft);
+        const clampedTop = Math.min(Math.max(centeredTop, minTop), maxTop);
+
+        shortcutTooltipEl.style.left = `${clampedLeft}px`;
+        shortcutTooltipEl.style.top = `${clampedTop}px`;
+        return;
+    }
+
+    shortcutTooltipEl.style.left = `${rect.left + rect.width / 2}px`;
+    shortcutTooltipEl.style.top = `${rect.bottom + gap}px`;
+
+    const tooltipRect = shortcutTooltipEl.getBoundingClientRect();
+    const minLeft = margin + tooltipRect.width / 2;
+    const maxLeft = window.innerWidth - margin - tooltipRect.width / 2;
+    const centeredLeft = rect.left + rect.width / 2;
+    const clampedLeft = Math.min(Math.max(centeredLeft, minLeft), maxLeft);
+    const maxTop = window.innerHeight - margin - tooltipRect.height;
+    const preferredTop = rect.bottom + gap;
+
+    shortcutTooltipEl.style.left = `${clampedLeft}px`;
+    shortcutTooltipEl.style.top = `${Math.min(preferredTop, maxTop)}px`;
+}
+
+function showShortcutTooltip(target) {
+    if (!settings.get('shortcutTooltipsEnabled')) return;
+    if (!shortcutTooltipEl || !target?.dataset.shortcutTooltip) return;
+
+    const wasActive = shortcutTooltipEl.classList.contains('active');
+    shortcutTooltipEl.dataset.placement = target.dataset.shortcutTooltipPlacement || 'bottom';
+    shortcutTooltipEl.textContent = target.dataset.shortcutTooltip;
+
+    if (!wasActive) {
+        shortcutTooltipEl.classList.add('no-transition');
+        positionShortcutTooltip(target);
+        shortcutTooltipEl.getBoundingClientRect();
+        shortcutTooltipEl.classList.remove('no-transition');
+    }
+
+    shortcutTooltipEl.classList.add('active');
+    positionShortcutTooltip(target);
+}
+
+function hideShortcutTooltip() {
+    if (!shortcutTooltipEl) return;
+    shortcutTooltipEl.classList.remove('active');
+}
+
+function registerShortcutTooltip(element, binding, placement = 'bottom') {
+    if (!element) return;
+
+    const shortcut = formatShortcutTooltip(binding);
+    if (!shortcut) return;
+
+    if (element.title && !element.getAttribute('aria-label')) {
+        element.setAttribute('aria-label', element.title);
+    }
+
+    element.dataset.shortcutTooltip = shortcut;
+    element.dataset.shortcutTooltipPlacement = placement;
+    element.removeAttribute('title');
+    element.addEventListener('mouseenter', () => showShortcutTooltip(element));
+    element.addEventListener('mouseleave', hideShortcutTooltip);
+    element.addEventListener('focus', () => showShortcutTooltip(element));
+    element.addEventListener('blur', hideShortcutTooltip);
+}
+
+function initShortcutTooltips() {
+    shortcutTooltipEl = document.getElementById('shortcut-tooltip');
+    if (!shortcutTooltipEl) {
+        shortcutTooltipEl = document.createElement('div');
+        shortcutTooltipEl.id = 'shortcut-tooltip';
+        shortcutTooltipEl.setAttribute('aria-hidden', 'true');
+        document.body.appendChild(shortcutTooltipEl);
+    }
+
+    buttonShortcutTooltipBindings.forEach(({ selector, binding, placement }) => {
+        document.querySelectorAll(selector).forEach(element => {
+            registerShortcutTooltip(element, binding, placement);
+        });
+    });
+
+    window.addEventListener('resize', hideShortcutTooltip);
+    document.addEventListener('scroll', hideShortcutTooltip, true);
+    document.addEventListener('pointerdown', hideShortcutTooltip, true);
 }
 
 function getShiftStatShortcutType(event) {
@@ -1554,6 +1711,12 @@ function initSettingsPanel() {
     if (centerTimerToggle) {
         centerTimerToggle.checked = settings.get('centerTimer');
         centerTimerToggle.onchange = () => settings.set('centerTimer', centerTimerToggle.checked);
+    }
+
+    const shortcutTooltipsToggle = document.getElementById('setting-shortcut-tooltips');
+    if (shortcutTooltipsToggle) {
+        shortcutTooltipsToggle.checked = settings.get('shortcutTooltipsEnabled');
+        shortcutTooltipsToggle.onchange = () => settings.set('shortcutTooltipsEnabled', shortcutTooltipsToggle.checked);
     }
 
     // Pill size select
