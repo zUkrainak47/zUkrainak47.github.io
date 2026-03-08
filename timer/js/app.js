@@ -496,7 +496,7 @@ function blurManualTimeInput() {
     syncManualTimeInputFocusState();
 }
 
-function openManualTimeEntry({ initialDigits = '' } = {}) {
+function openManualTimeEntry({ initialDigits = '', focusStrategy = 'deferred' } = {}) {
     if (timer.getState() !== 'idle' && timer.getState() !== 'stopped') return;
 
     const manualEntryEl = getEl('manual-time-entry');
@@ -515,7 +515,15 @@ function openManualTimeEntry({ initialDigits = '' } = {}) {
     updateManualTimeEntryUI();
     syncQuickActionsUI();
     syncManualTimeInputFocusState();
-    window.requestAnimationFrame(focusManualTimeInput);
+
+    if (focusStrategy === 'immediate') {
+        focusManualTimeInput();
+        return;
+    }
+
+    window.requestAnimationFrame(() => {
+        if (!isManualTimeInputFocused()) focusManualTimeInput();
+    });
 }
 
 function closeManualTimeEntry({ restoreQuickActions = quickActionsState.restoreVisibleAfterManual, pinned = quickActionsState.restorePinnedAfterManual, resetDigits = true } = {}) {
@@ -634,7 +642,7 @@ function syncViewportLayout() {
     const centerTimerEnabled = settings.get('centerTimer');
     const shouldApplyMobileTimerPositioning = isMobileTimerView && (centerTimerEnabled || isZen);
     const shouldFocusTimer = state === 'running' || state === 'ready' || isInspectionState(state);
-    const shouldViewportCenterTimer = shouldFocusTimer && shouldApplyMobileTimerPositioning;
+    const shouldViewportCenterTimer = shouldFocusTimer && (centerTimerEnabled || (isMobileTimerView && isZen));
     const shouldPositionIdleMobileTimer = shouldApplyMobileTimerPositioning && !shouldFocusTimer;
     const shouldPositionMobileScramble = isMobileTimerView
         && !isSolving
@@ -958,7 +966,7 @@ function initTimerQuickActions() {
     });
 
     addBtn?.addEventListener('click', () => {
-        openManualTimeEntry();
+        openManualTimeEntry({ focusStrategy: 'immediate' });
     });
 
     manualEntryEl.addEventListener('click', (event) => {
@@ -1708,7 +1716,7 @@ function initKeyboardShortcuts() {
             if (e.key === 'Escape') {
                 e.preventDefault();
                 if (!isManualTimeEntryActive()) {
-                    openManualTimeEntry();
+                    openManualTimeEntry({ focusStrategy: 'immediate' });
                     return;
                 }
 
@@ -1719,7 +1727,7 @@ function initKeyboardShortcuts() {
             if (/^\d$/.test(e.key)) {
                 e.preventDefault();
                 if (!isManualTimeEntryActive()) {
-                    openManualTimeEntry({ initialDigits: e.key });
+                    openManualTimeEntry({ initialDigits: e.key, focusStrategy: 'immediate' });
                     return;
                 }
 
