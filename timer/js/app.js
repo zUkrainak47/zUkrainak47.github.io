@@ -15,6 +15,7 @@ let currentSortDir = null; // 'asc' or 'desc'
 const popupState = {
     inspection: { elementId: 'inspection-alert', hideTimeout: null, clearTimeout: null },
     newBest: { elementId: 'new-best-alert', hideTimeout: null, clearTimeout: null },
+    penaltyShortcut: { elementId: 'penalty-shortcut-alert', hideTimeout: null, clearTimeout: null },
 };
 const bestPopupTypes = [
     { key: 'time', label: 'single' },
@@ -263,6 +264,15 @@ function isManualTimeEntryActive() {
     return quickActionsState.manualEntryActive;
 }
 
+function isManualTimeInputFocused() {
+    const hiddenInput = getEl('manual-time-hidden-input');
+    return Boolean(hiddenInput) && document.activeElement === hiddenInput;
+}
+
+function syncManualTimeInputFocusState() {
+    document.body.classList.toggle('manual-time-input-focused', isManualTimeInputFocused());
+}
+
 function sanitizeManualDigits(value) {
     return String(value ?? '').replace(/\D/g, '').slice(0, 7);
 }
@@ -315,6 +325,26 @@ function getLastSessionSolve() {
     const session = sessionManager.getActiveSession();
     if (!session || session.solves.length === 0) return null;
     return session.solves[session.solves.length - 1];
+}
+
+function toggleLastSolvePenaltyFromMainTimerShortcut(penalty) {
+    const lastSolve = getLastSessionSolve();
+    if (!lastSolve) return;
+
+    const previousPenalty = lastSolve.penalty;
+    const updatedSolve = sessionManager.togglePenalty(lastSolve.id, penalty);
+    if (!updatedSolve) return;
+
+    if (!isDesktopTypingEntryModeEnabled()) return;
+
+    if (updatedSolve.penalty === penalty) {
+        showPenaltyShortcutAlert('applied', penalty);
+        return;
+    }
+
+    if (previousPenalty === penalty && updatedSolve.penalty == null) {
+        showPenaltyShortcutAlert('cleared');
+    }
 }
 
 function ensurePanelExpanded(panelId) {
@@ -442,10 +472,10 @@ function syncManualTimeInputMode() {
     const hiddenInput = getEl('manual-time-hidden-input');
     if (!hiddenInput) return;
     hiddenInput.tabIndex = isDesktopTypingEntryModeEnabled() ? -1 : 0;
+    syncManualTimeInputFocusState();
 }
 
 function focusManualTimeInput() {
-    if (isDesktopTypingEntryModeEnabled()) return;
     const hiddenInput = getEl('manual-time-hidden-input');
     if (!hiddenInput) return;
     hiddenInput.focus({ preventScroll: true });
@@ -453,6 +483,14 @@ function focusManualTimeInput() {
         const len = hiddenInput.value.length;
         hiddenInput.setSelectionRange(len, len);
     }
+    syncManualTimeInputFocusState();
+}
+
+function blurManualTimeInput() {
+    const hiddenInput = getEl('manual-time-hidden-input');
+    if (!hiddenInput) return;
+    if (document.activeElement === hiddenInput) hiddenInput.blur();
+    syncManualTimeInputFocusState();
 }
 
 function openManualTimeEntry({ initialDigits = '' } = {}) {
@@ -473,9 +511,8 @@ function openManualTimeEntry({ initialDigits = '' } = {}) {
     syncManualTimeInputMode();
     updateManualTimeEntryUI();
     syncQuickActionsUI();
-    if (!isDesktopTypingEntryModeEnabled()) {
-        window.requestAnimationFrame(focusManualTimeInput);
-    }
+    syncManualTimeInputFocusState();
+    window.requestAnimationFrame(focusManualTimeInput);
 }
 
 function closeManualTimeEntry({ restoreQuickActions = quickActionsState.restoreVisibleAfterManual, pinned = quickActionsState.restorePinnedAfterManual, resetDigits = true } = {}) {
@@ -490,6 +527,7 @@ function closeManualTimeEntry({ restoreQuickActions = quickActionsState.restoreV
 
     if (resetDigits) quickActionsState.manualDigits = '';
     syncManualTimeInputMode();
+    syncManualTimeInputFocusState();
     updateManualTimeEntryUI();
 
     if (restoreQuickActions && isMobileTimerPanelActive()) {
@@ -754,7 +792,10 @@ async function init() {
         if (key === 'newBestPopupEnabled' && !settings.get('newBestPopupEnabled')) clearNewBestAlert();
         if (key === 'shortcutTooltipsEnabled' && !settings.get('shortcutTooltipsEnabled')) hideShortcutTooltip();
         if (key === 'statsFilter' || key === 'customFilterDuration' || key === 'showDelta' || key.startsWith('graphColor') || key === 'newBestColor') refreshUI();
-        if (key === 'timeEntryMode') syncPersistentManualEntryMode();
+        if (key === 'timeEntryMode') {
+            clearPenaltyShortcutAlert();
+            syncPersistentManualEntryMode();
+        }
         if (key === 'centerTimer' || key === 'displayFont' || key === 'pillSize') scheduleViewportLayoutSync();
     });
 
@@ -907,9 +948,19 @@ function initTimerQuickActions() {
         openManualTimeEntry();
     });
 
-    manualEntryEl.addEventListener('click', () => {
-        if (isDesktopTypingEntryModeEnabled()) return;
+    manualEntryEl.addEventListener('click', (event) => {
+        if (!quickActionsState.manualEntryActive) return;
+        if (settingsOverlayEl?.classList.contains('active') || hasBlockingOverlayOpen()) return;
+        if (event.target instanceof Element && event.target.closest('button')) return;
         focusManualTimeInput();
+    });
+
+    hiddenInput.addEventListener('focus', () => {
+        syncManualTimeInputFocusState();
+    });
+
+    hiddenInput.addEventListener('blur', () => {
+        syncManualTimeInputFocusState();
     });
 
     hiddenInput.addEventListener('input', (event) => {
@@ -918,6 +969,11 @@ function initTimerQuickActions() {
     });
 
     hiddenInput.addEventListener('keydown', (event) => {
+        if (event.key === '.' || event.key === ',') {
+            event.preventDefault();
+            return;
+        }
+
         if (event.key === 'Enter') {
             event.preventDefault();
             submitManualTimeEntry();
@@ -927,8 +983,7 @@ function initTimerQuickActions() {
         if (event.key === 'Escape') {
             event.preventDefault();
             if (isDesktopTypingEntryModeEnabled()) {
-                quickActionsState.manualDigits = '';
-                updateManualTimeEntryUI();
+                hiddenInput.blur();
                 return;
             }
             closeManualTimeEntry({
@@ -940,6 +995,14 @@ function initTimerQuickActions() {
 
     submitBtn?.addEventListener('click', () => {
         submitManualTimeEntry();
+    });
+
+    document.addEventListener('pointerdown', (event) => {
+        if (!isDesktopTypingEntryModeEnabled()) return;
+        if (!isManualTimeEntryActive() || !isManualTimeInputFocused()) return;
+        if (!(event.target instanceof Node)) return;
+        if (manualEntryEl.contains(event.target)) return;
+        hiddenInput.blur();
     });
 
     centerPanel.addEventListener('pointerdown', (event) => {
@@ -1484,6 +1547,7 @@ function openSettingsPanel() {
     if (!settingsOverlayEl.classList.contains('active') && !canOpenSettingsPanel()) return false;
 
     settingsOverlayEl.classList.add('active');
+    blurManualTimeInput();
     return true;
 }
 
@@ -1499,6 +1563,7 @@ function openKeyboardShortcutsOverlay({ closeSettings = false } = {}) {
 
     if (closeSettings) closeSettingsPanel();
     shortcutsOverlayEl.classList.add('active');
+    blurManualTimeInput();
     return true;
 }
 
@@ -1537,6 +1602,8 @@ function renderKeyboardShortcuts() {
 // ──── Keyboard Shortcuts ────
 function initKeyboardShortcuts() {
     document.addEventListener('keydown', (e) => {
+        if (e.defaultPrevented) return;
+
         const slashShortcutPressed = isSlashShortcut(e);
         const isShortcutHelpKey = slashShortcutPressed && (e.ctrlKey || e.metaKey);
         if (isShortcutHelpKey) {
@@ -1565,7 +1632,22 @@ function initKeyboardShortcuts() {
             const isShiftStatShortcut = Boolean(getShiftStatShortcutType(e));
             const isSlashInSettings = slashShortcutPressed && settingsOverlayEl?.classList.contains('active');
             const isGraphShortcut = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Enter'].includes(e.code);
-            const isManualInputPassthrough = isManualTimeInput && (e.ctrlKey || e.metaKey || e.altKey || isGraphShortcut);
+            const isManualInputEditingKey = isManualTimeInput && (
+                /^\d$/.test(e.key)
+                || e.key === 'Backspace'
+                || e.key === 'Delete'
+                || e.key === 'Enter'
+                || e.key === 'Escape'
+                || e.key === '.'
+                || e.key === ','
+            );
+            const isManualInputPassthrough = isManualTimeInput && (
+                (isDesktopTypingEntryModeEnabled() && !isManualInputEditingKey)
+                || e.ctrlKey
+                || e.metaKey
+                || e.altKey
+                || isGraphShortcut
+            );
 
             if (!(isModalTextarea && (isShortcutKey || isShiftStatShortcut))
                 && !isSlashInSettings
@@ -1604,37 +1686,32 @@ function initKeyboardShortcuts() {
 
         const isSolveModalActive = document.getElementById('modal-overlay').classList.contains('active');
 
+        if (isManualTimeInputFocused() && (e.code === 'Period' || e.code === 'Comma')) return;
+
         // Ignore if timer is running or holding
         if (timer.getState() !== 'idle' && timer.getState() !== 'stopped') return;
 
-        if (isDesktopTypingEntryModeEnabled() && !isSolveModalActive) {
+        if (isDesktopTypingEntryModeEnabled() && !isSolveModalActive && !isManualTimeInputFocused()) {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                if (!isManualTimeEntryActive()) {
+                    openManualTimeEntry();
+                    return;
+                }
+
+                focusManualTimeInput();
+                return;
+            }
+
             if (/^\d$/.test(e.key)) {
                 e.preventDefault();
                 if (!isManualTimeEntryActive()) {
                     openManualTimeEntry({ initialDigits: e.key });
-                } else {
-                    quickActionsState.manualDigits = sanitizeManualDigits(`${quickActionsState.manualDigits}${e.key}`);
-                    updateManualTimeEntryUI();
+                    return;
                 }
-                return;
-            }
 
-            if (e.key === 'Backspace' && quickActionsState.manualDigits.length > 0) {
-                e.preventDefault();
-                quickActionsState.manualDigits = quickActionsState.manualDigits.slice(0, -1);
-                updateManualTimeEntryUI();
-                return;
-            }
-
-            if (e.key === 'Enter' && quickActionsState.manualDigits.length > 0) {
-                e.preventDefault();
-                submitManualTimeEntry();
-                return;
-            }
-
-            if (e.key === 'Escape' && quickActionsState.manualDigits.length > 0) {
-                e.preventDefault();
-                quickActionsState.manualDigits = '';
+                focusManualTimeInput();
+                quickActionsState.manualDigits = sanitizeManualDigits(`${quickActionsState.manualDigits}${e.key}`);
                 updateManualTimeEntryUI();
                 return;
             }
@@ -1686,10 +1763,7 @@ function initKeyboardShortcuts() {
                     const btn = document.getElementById('modal-btn-plus2');
                     if (btn && btn.offsetParent !== null) btn.click();
                 } else {
-                    const session = sessionManager.getActiveSession();
-                    if (session && session.solves.length > 0) {
-                        sessionManager.togglePenalty(session.solves[session.solves.length - 1].id, '+2');
-                    }
+                    toggleLastSolvePenaltyFromMainTimerShortcut('+2');
                 }
                 break;
             case 'KeyD':
@@ -1699,10 +1773,7 @@ function initKeyboardShortcuts() {
                     const btn = document.getElementById('modal-btn-dnf');
                     if (btn && btn.offsetParent !== null) btn.click();
                 } else {
-                    const session = sessionManager.getActiveSession();
-                    if (session && session.solves.length > 0) {
-                        sessionManager.togglePenalty(session.solves[session.solves.length - 1].id, 'DNF');
-                    }
+                    toggleLastSolvePenaltyFromMainTimerShortcut('DNF');
                 }
                 break;
             case 'KeyZ':
@@ -1786,6 +1857,10 @@ function clearNewBestAlert() {
     clearPopup('newBest');
 }
 
+function clearPenaltyShortcutAlert() {
+    clearPopup('penaltyShortcut');
+}
+
 function clearPopup(kind) {
     const popup = popupState[kind];
     if (!popup) return;
@@ -1819,6 +1894,20 @@ function showInspectionAlert(text) {
 function showNewBestAlert(text) {
     if (!settings.get('newBestPopupEnabled')) return;
     showPopup('newBest', text, 4500);
+}
+
+function showPenaltyShortcutAlert(state, penalty = null) {
+    const alertEl = document.getElementById(popupState.penaltyShortcut.elementId);
+    if (!alertEl) return;
+
+    const isApplied = state === 'applied' && (penalty === '+2' || penalty === 'DNF');
+    const isCleared = state === 'cleared';
+    if (!isApplied && !isCleared) return;
+
+    alertEl.classList.toggle('timer-popup-danger', isApplied);
+    alertEl.classList.toggle('timer-popup-success', isCleared);
+    clearNewBestAlert();
+    showPopup('penaltyShortcut', isCleared ? 'OK' : `${penalty} applied`, 1700);
 }
 
 function showPopup(kind, text, duration = 1500) {
@@ -1906,6 +1995,7 @@ function onTimerStateChange(state) {
 
     if (state !== 'idle' && state !== 'stopped') {
         clearNewBestAlert();
+        clearPenaltyShortcutAlert();
     }
 
     // Hide delta when timer is ready, running, or in inspection
@@ -2424,8 +2514,9 @@ function initSettingsPanel() {
     // Close on Escape
     document.addEventListener('keydown', (e) => {
         if (e.code === 'Escape' && settingsOverlayEl.classList.contains('active')) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
             closeSettingsPanel();
-            e.stopPropagation();
         }
     });
 
@@ -2624,8 +2715,9 @@ function initShortcutsOverlay() {
 
     document.addEventListener('keydown', (e) => {
         if (e.code === 'Escape' && shortcutsOverlayEl.classList.contains('active')) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
             closeKeyboardShortcutsOverlay();
-            e.stopPropagation();
         }
     });
 }

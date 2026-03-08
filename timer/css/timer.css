@@ -66,6 +66,18 @@
     color: var(--stat-best);
 }
 
+.timer-popup-danger {
+    background: rgba(50, 14, 18, 0.94);
+    border-color: rgba(248, 81, 73, 0.5);
+    color: #ff7b72;
+}
+
+.timer-popup-success {
+    background: rgba(11, 31, 18, 0.94);
+    border-color: rgba(63, 185, 80, 0.5);
+    color: #3fb950;
+}
+
 #timer-delta.visible {
     opacity: 1;
 }
@@ -177,6 +189,12 @@
     border-radius: 999px;
     background: #2f81f7;
     box-shadow: 0 0 0 1px rgba(47, 129, 247, 0.16);
+    opacity: 0;
+    animation: none;
+}
+
+body.manual-time-input-focused #manual-time-entry .manual-time-caret {
+    opacity: 1;
     animation: manual-time-caret-blink 1s steps(1) infinite;
 }
 
@@ -252,7 +270,7 @@ body.typing-entry-mode:not(.mobile-viewport) #timer-delta {
 }
 
 body.typing-entry-mode:not(.mobile-viewport) #manual-time-entry {
-    pointer-events: none;
+    pointer-events: auto;
 }
 
 body:not(.mobile-viewport) #manual-time-entry {
@@ -260,7 +278,7 @@ body:not(.mobile-viewport) #manual-time-entry {
 }
 
 body.typing-entry-mode:not(.mobile-viewport) #manual-time-entry-display {
-    cursor: default;
+    cursor: text;
 }
 
 #timer-quick-actions {

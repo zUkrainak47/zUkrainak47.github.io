@@ -48,8 +48,9 @@ export function initModal() {
         // Ignore Escape if the confirm modal is active so it doesn't close both
         const isConfirmActive = document.getElementById('confirm-overlay').classList.contains('active');
         if (e.code === 'Escape' && _overlay.classList.contains('active') && !isConfirmActive) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
             closeModal();
-            e.stopPropagation();
         }
     });
 

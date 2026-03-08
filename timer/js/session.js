@@ -119,10 +119,11 @@ class SessionManager extends EventEmitter {
     togglePenalty(solveId, penalty) {
         const session = this.getActiveSession();
         const solve = session.solves.find(s => s.id === solveId);
-        if (!solve) return;
+        if (!solve) return null;
         solve.penalty = solve.penalty === penalty ? null : penalty;
         this._save();
         this.emit('solveUpdated', solve);
+        return solve;
     }
 
     setSolveComment(solveId, comment) {
