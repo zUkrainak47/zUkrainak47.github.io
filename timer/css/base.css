@@ -338,7 +338,6 @@ body.zen:not(.mobile-viewport) #btn-next-scramble {
 body.zen #btn-zen {
     opacity: 1;
     background: transparent;
-    color: transparent;
 }
 
 body.zen.mobile-viewport #btn-zen {
@@ -359,28 +358,6 @@ body.zen.mobile-viewport #btn-prev-scramble,
 body.zen.mobile-viewport #btn-next-scramble {
     opacity: 1;
     pointer-events: auto;
-}
-
-body.zen #btn-zen::before,
-body.zen #btn-zen::after {
-    content: "";
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 14px;
-    height: 2px;
-    margin-left: -7px;
-    margin-top: -1px;
-    border-radius: 999px;
-    background: #fff;
-}
-
-body.zen #btn-zen::before {
-    transform: rotate(45deg);
-}
-
-body.zen #btn-zen::after {
-    transform: rotate(-45deg);
 }
 
 /* Smooth transitions back when exiting zen */

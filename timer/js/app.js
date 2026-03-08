@@ -1158,16 +1158,37 @@ function initCollapsiblePanels() {
 }
 
 // ──── Zen Mode ────
+function syncZenButtonState() {
+    const btn = getEl('btn-zen');
+    if (!btn) return;
+
+    const isZen = document.body.classList.contains('zen');
+    btn.textContent = isZen ? '×' : '🧘';
+    btn.title = isZen ? 'Exit zen mode' : 'Zen mode (hide panels)';
+    btn.setAttribute('aria-label', btn.title);
+    btn.classList.toggle('is-active', isZen);
+}
+
+function setZenMode(isZen) {
+    const nextZen = Boolean(isZen);
+    document.body.classList.toggle('zen', nextZen);
+    settings.set('zenMode', nextZen);
+    syncZenButtonState();
+    scheduleViewportLayoutSync();
+}
+
+function toggleZenMode() {
+    setZenMode(!document.body.classList.contains('zen'));
+}
+
 function initZenMode() {
-    const btn = document.getElementById('btn-zen');
-    const isZen = settings.get('zenMode');
-    if (isZen) document.body.classList.add('zen');
+    const btn = getEl('btn-zen');
+    document.body.classList.toggle('zen', Boolean(settings.get('zenMode')));
+    syncZenButtonState();
     scheduleViewportLayoutSync();
 
-    btn.addEventListener('click', () => {
-        const currentlyZen = document.body.classList.toggle('zen');
-        settings.set('zenMode', currentlyZen);
-        scheduleViewportLayoutSync();
+    btn?.addEventListener('click', () => {
+        toggleZenMode();
         btn.blur();
     });
 }
@@ -1799,8 +1820,7 @@ function initKeyboardShortcuts() {
                 break;
             case 'KeyZ':
                 if (isSolveModalActive) return;
-                const currentlyZen = document.body.classList.toggle('zen');
-                settings.set('zenMode', currentlyZen);
+                toggleZenMode();
                 break;
             case 'KeyT':
                 if (isSolveModalActive) return;
