@@ -27,21 +27,32 @@ class Timer extends EventEmitter {
         this._holdTimer = null;
         this._rafId = null;
         this._displayEl = null;
+        this._interactionEls = [];
         this._spaceDown = false;
         this._leftDown = false;
         this._rightDown = false;
         this._leftAltDown = false;
         this._rightAltDown = false;
+        this._activePointerId = null;
 
         this._onKeyDown = this._onKeyDown.bind(this);
         this._onKeyUp = this._onKeyUp.bind(this);
+        this._onPointerDown = this._onPointerDown.bind(this);
+        this._onPointerUp = this._onPointerUp.bind(this);
+        this._onPointerCancel = this._onPointerCancel.bind(this);
         this._tick = this._tick.bind(this);
     }
 
-    init(displayEl) {
+    init(displayEl, interactionEls = [displayEl]) {
         this._displayEl = displayEl;
+        this._interactionEls = Array.from(new Set(interactionEls.filter(Boolean)));
         document.addEventListener('keydown', this._onKeyDown);
         document.addEventListener('keyup', this._onKeyUp);
+        this._interactionEls.forEach((el) => {
+            el.addEventListener('pointerdown', this._onPointerDown);
+            el.addEventListener('pointerup', this._onPointerUp);
+            el.addEventListener('pointercancel', this._onPointerCancel);
+        });
         this._updateDisplay('0.00');
         this._setColor(State.IDLE);
     }
@@ -49,6 +60,12 @@ class Timer extends EventEmitter {
     destroy() {
         document.removeEventListener('keydown', this._onKeyDown);
         document.removeEventListener('keyup', this._onKeyUp);
+        this._interactionEls.forEach((el) => {
+            el.removeEventListener('pointerdown', this._onPointerDown);
+            el.removeEventListener('pointerup', this._onPointerUp);
+            el.removeEventListener('pointercancel', this._onPointerCancel);
+        });
+        this._interactionEls = [];
         this._cancelHold();
         this._cancelRaf();
     }
@@ -56,10 +73,17 @@ class Timer extends EventEmitter {
     _onKeyDown(e) {
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
         if (this._hasBlockingOverlayOpen()) return;
+        if (this._isManualTimeEntryActive()) return;
 
         const isStackmatKey = this._isStackmatKey(e);
         const isEscape = e.code === 'Escape' || e.key === 'Escape' || e.keyCode === 27;
         const isDnfKey = isEscape || e.code === 'Backspace' || e.key === 'Backspace' || e.keyCode === 8 || e.code === 'Delete' || e.key === 'Delete' || e.keyCode === 46;
+
+        if (this._isDesktopTypingEntryMode()) {
+            if (e.code === 'Space') this._spaceDown = false;
+            if (isStackmatKey) this._setStackmatFlag(e.code, false);
+            return;
+        }
 
         if ((e.ctrlKey || e.metaKey) && !isStackmatKey && !isEscape) return;
 
@@ -115,6 +139,12 @@ class Timer extends EventEmitter {
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
         const isStackmatKey = this._isStackmatKey(e);
 
+        if (this._isManualTimeEntryActive() || this._isDesktopTypingEntryMode()) {
+            if (e.code === 'Space') this._spaceDown = false;
+            if (isStackmatKey) this._setStackmatFlag(e.code, false);
+            return;
+        }
+
         if (this._hasBlockingOverlayOpen()) {
             if (e.code === 'Space') this._spaceDown = false;
             if (isStackmatKey) this._setStackmatFlag(e.code, false);
@@ -140,6 +170,61 @@ class Timer extends EventEmitter {
         }
     }
 
+    _onPointerDown(e) {
+        if (!this._isTouchPointer(e)) return;
+        if (this._hasBlockingOverlayOpen()) return;
+        if (this._isManualTimeEntryActive()) return;
+        if (this._isInteractivePointerTarget(e.target)) return;
+        if (this._activePointerId != null) return;
+
+        e.preventDefault();
+        this._activePointerId = e.pointerId;
+
+        if (this._displayEl?.setPointerCapture) {
+            try {
+                this._displayEl.setPointerCapture(e.pointerId);
+            } catch {
+                // Ignore pointer capture failures on browsers that reject it for synthetic events.
+            }
+        }
+
+        if (this.state === State.RUNNING) {
+            this._stopTimer();
+            return;
+        }
+
+        this._handleStartPress();
+    }
+
+    _onPointerUp(e) {
+        if (!this._isTouchPointer(e) || e.pointerId !== this._activePointerId) return;
+        e.preventDefault();
+        this._releaseActivePointer(e.pointerId);
+        this._handleStartRelease();
+    }
+
+    _onPointerCancel(e) {
+        if (!this._isTouchPointer(e) || e.pointerId !== this._activePointerId) return;
+        this._releaseActivePointer(e.pointerId);
+        this._cancelHold();
+
+        if (this.state === State.HOLDING || this.state === State.READY) {
+            this._setState(State.IDLE);
+            this._setColor(State.IDLE);
+            return;
+        }
+
+        if (this.state === State.INSPECTION_PRIMED) {
+            this._cancelInspection();
+            return;
+        }
+
+        if (this.state === State.INSPECTION_HOLDING || this.state === State.INSPECTION_READY) {
+            this._setState(State.INSPECTING);
+            this._setColor(State.INSPECTING);
+        }
+    }
+
     _handleStartPress() {
         if (this.state === State.IDLE || this.state === State.STOPPED) {
             if (this._inspectionEnabled()) {
@@ -158,8 +243,8 @@ class Timer extends EventEmitter {
     _handleStartRelease() {
         if (this.state === State.HOLDING) {
             this._cancelHold();
-            this._setState(State.STOPPED);
-            this._setColor(State.STOPPED);
+            this._setState(State.IDLE);
+            this._setColor(State.IDLE);
             return;
         }
 
@@ -414,6 +499,39 @@ class Timer extends EventEmitter {
         return Boolean(document.querySelector('.modal-overlay.active, .settings-overlay.active'));
     }
 
+    _isManualTimeEntryActive() {
+        return document.body.classList.contains('manual-time-entry-active');
+    }
+
+    _isDesktopTypingEntryMode() {
+        return settings.get('timeEntryMode') === 'typing' && !document.body.classList.contains('mobile-viewport');
+    }
+
+    _isInteractivePointerTarget(target) {
+        return target instanceof Element
+            && Boolean(target.closest('button, input, textarea, select, a, [data-no-timer-start]'));
+    }
+
+    _releaseActivePointer(pointerId) {
+        if (!this._displayEl || pointerId == null) {
+            this._activePointerId = null;
+            return;
+        }
+
+        if (this._displayEl.releasePointerCapture) {
+            try {
+                this._displayEl.releasePointerCapture(pointerId);
+            } catch {
+                // Ignore capture release failures when the browser already released the pointer.
+            }
+        }
+        this._activePointerId = null;
+    }
+
+    _isTouchPointer(e) {
+        return e.pointerType === 'touch' || e.pointerType === 'pen';
+    }
+
     _isStackmatKey(e) {
         return e.code === 'ControlLeft'
             || e.code === 'ControlRight'
@@ -453,6 +571,27 @@ class Timer extends EventEmitter {
 
     setDisplay(text) {
         this._updateDisplay(text);
+    }
+
+    cancelPendingStart() {
+        this._cancelHold();
+        this._releaseActivePointer(this._activePointerId);
+
+        if (this.state === State.HOLDING || this.state === State.READY) {
+            this._setState(State.IDLE);
+            this._setColor(State.IDLE);
+            return;
+        }
+
+        if (this.state === State.INSPECTION_PRIMED) {
+            this._cancelInspection();
+            return;
+        }
+
+        if (this.state === State.INSPECTION_HOLDING || this.state === State.INSPECTION_READY) {
+            this._setState(State.INSPECTING);
+            this._setColor(State.INSPECTING);
+        }
     }
 
     resetDisplay() {

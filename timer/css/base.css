@@ -88,11 +88,15 @@ select {
 }
 
 .panel {
-    background: var(--surface);
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0)),
+        var(--surface-elevated);
     border: 1px solid var(--surface-border);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-xl);
     overflow: hidden;
     transition: border-radius 0.2s ease;
+    backdrop-filter: blur(18px);
+    box-shadow: var(--shadow-card);
 }
 
 .panel.overflow-visible {
@@ -170,12 +174,13 @@ select {
     align-items: center;
     gap: var(--space-xs);
     padding: var(--space-xs) var(--space-sm);
-    border-radius: var(--radius-md);
+    border-radius: 999px;
     font-size: var(--text-sm);
     font-weight: 500;
     transition: background var(--transition-fast), color var(--transition-fast);
     user-select: none;
     -webkit-user-select: none;
+    min-height: 36px;
 }
 
 .btn:hover {
@@ -205,6 +210,11 @@ select {
     border-radius: var(--radius-md);
     user-select: none;
     -webkit-user-select: none;
+    transition: opacity var(--transition-fast), transform var(--transition-fast);
+}
+
+.btn-icon:active {
+    transform: scale(0.96);
 }
 
 .shortcut-hint {
@@ -295,9 +305,10 @@ body.zen #right-panel {
 }
 
 body.zen #btn-settings,
-body.zen #btn-edit-scramble,
-body.zen #btn-prev-scramble,
-body.zen #btn-next-scramble {
+body.zen:not(.mobile-viewport) #btn-edit-scramble,
+body.zen:not(.mobile-viewport) #btn-copy-scramble,
+body.zen:not(.mobile-viewport) #btn-prev-scramble,
+body.zen:not(.mobile-viewport) #btn-next-scramble {
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.3s ease;
@@ -307,7 +318,26 @@ body.zen #btn-zen {
     opacity: 1;
     background: transparent;
     color: transparent;
-    font-size: 0;
+}
+
+body.zen.mobile-viewport #btn-zen {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+body.zen.mobile-viewport .mobile-session-select-wrapper {
+    display: none;
+}
+
+body.zen.mobile-viewport #scramble-top-row {
+    justify-content: flex-end;
+}
+
+body.zen.mobile-viewport #btn-copy-scramble,
+body.zen.mobile-viewport #btn-edit-scramble,
+body.zen.mobile-viewport #btn-prev-scramble,
+body.zen.mobile-viewport #btn-next-scramble {
+    opacity: 1;
+    pointer-events: auto;
 }
 
 body.zen #btn-zen::before,
@@ -337,6 +367,12 @@ body.zen #btn-zen::after {
 #right-panel,
 #btn-settings,
 #scramble-container,
-#timer-info {
-    transition: opacity 0.3s ease;
+#timer-info,
+#timer-display-wrapper {
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+body.instant-mobile-timer-layout #scramble-container,
+body.instant-mobile-timer-layout #timer-display-wrapper {
+    transition: none !important;
 }

@@ -290,11 +290,14 @@ export function initGraph(canvas) {
             });
         }
 
-        controls.addEventListener('mousedown', (e) => {
+        controls.addEventListener('pointerdown', (e) => {
+            if (e.button !== undefined && e.button !== 0) return;
             const btn = e.target.closest('button');
             if (!btn) return;
             const action = btn.dataset.action;
             if (!action) return; // Skip non-action buttons like ⚙
+
+            e.preventDefault();
 
             // Immediate first action
             applyAction(action);
@@ -305,9 +308,9 @@ export function initGraph(canvas) {
             }, 300);
         });
 
-        // Stop holding on mouseup/mouseleave
-        controls.addEventListener('mouseup', stopHold);
-        controls.addEventListener('mouseleave', stopHold);
+        controls.addEventListener('pointerup', stopHold);
+        controls.addEventListener('pointerleave', stopHold);
+        controls.addEventListener('pointercancel', stopHold);
     }
 
     return observer;

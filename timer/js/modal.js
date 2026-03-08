@@ -1,23 +1,39 @@
-import { formatTime, formatSolveTime, formatDate, formatReadableDate, formatDateTime, getEffectiveTime } from './utils.js';
+import { formatTime, formatSolveTime, formatReadableDate, formatDateTime, getEffectiveTime } from './utils.js';
 import { sessionManager } from './session.js';
 
 let _overlay = null;
-let _content = null;
 let _textarea = null;
 let _commentInput = null;
 let _modalActions = null;
 let _statNav = null;
+let _mobileSummary = null;
+let _mobileSummaryValue = null;
+let _mobileSummaryMeta = null;
+let _mobileShareActions = null;
+let _mobileCopyButton = null;
+let _mobileShareButton = null;
+let _mobileListPanel = null;
+let _mobileList = null;
 let _currentSolveIndex = null;
 let _selectedStatContext = null;
 let _onStatNavigate = null;
+let _currentDetailPayload = null;
+const mobileDetailQuery = window.matchMedia('(max-width: 900px)');
 
 export function initModal() {
     _overlay = document.getElementById('modal-overlay');
-    _content = document.getElementById('modal-content');
     _textarea = document.getElementById('modal-textarea');
     _commentInput = document.getElementById('modal-solve-comment');
     _modalActions = document.getElementById('modal-actions');
     _statNav = document.getElementById('modal-stat-nav');
+    _mobileSummary = document.getElementById('modal-mobile-summary');
+    _mobileSummaryValue = document.getElementById('modal-mobile-value');
+    _mobileSummaryMeta = document.getElementById('modal-mobile-meta');
+    _mobileShareActions = document.getElementById('modal-mobile-share-actions');
+    _mobileCopyButton = document.getElementById('modal-copy-detail');
+    _mobileShareButton = document.getElementById('modal-share-detail');
+    _mobileListPanel = document.getElementById('modal-mobile-list-panel');
+    _mobileList = document.getElementById('modal-mobile-list');
 
     _overlay.addEventListener('click', (e) => {
         if (e.target === _overlay) closeModal();
@@ -88,6 +104,26 @@ export function initModal() {
         if (!button || button.disabled || typeof _onStatNavigate !== 'function') return;
         _onStatNavigate(button.dataset.statType);
     });
+
+    _mobileCopyButton?.addEventListener('click', () => {
+        copyCurrentDetailToClipboard();
+    });
+
+    _mobileShareButton?.addEventListener('click', () => {
+        shareCurrentDetail();
+    });
+
+    const handleMobileDetailViewportChange = () => {
+        if (_overlay?.classList.contains('active')) {
+            renderMobileDetail(_currentDetailPayload);
+        }
+    };
+
+    if (typeof mobileDetailQuery.addEventListener === 'function') {
+        mobileDetailQuery.addEventListener('change', handleMobileDetailViewportChange);
+    } else {
+        mobileDetailQuery.addListener(handleMobileDetailViewportChange);
+    }
 }
 
 export function setModalStatNavigator(callback) {
@@ -238,10 +274,157 @@ function autoResizeTextarea(el) {
     }
 }
 
+function isMobileDetailLayout() {
+    return mobileDetailQuery.matches;
+}
+
+function getActiveSessionName() {
+    return sessionManager.getActiveSession()?.name || 'Session';
+}
+
+function setActionButtonFeedback(button, label) {
+    if (!button) return;
+    const originalLabel = button.dataset.originalLabel || button.textContent;
+    if (!button.dataset.originalLabel) button.dataset.originalLabel = originalLabel;
+    button.textContent = label;
+    window.clearTimeout(button._feedbackTimeout);
+    button._feedbackTimeout = window.setTimeout(() => {
+        button.textContent = button.dataset.originalLabel || originalLabel;
+    }, 1200);
+}
+
+async function copyCurrentDetailToClipboard(feedbackButton = _mobileCopyButton) {
+    if (!_currentDetailPayload?.shareText) return false;
+
+    try {
+        await navigator.clipboard.writeText(_currentDetailPayload.shareText);
+        setActionButtonFeedback(feedbackButton, 'Copied');
+        return true;
+    } catch {
+        setActionButtonFeedback(feedbackButton, 'Copy failed');
+        return false;
+    }
+}
+
+async function shareCurrentDetail() {
+    if (!_currentDetailPayload?.shareText) return;
+
+    if (navigator.share) {
+        try {
+            await navigator.share({
+                title: _currentDetailPayload.title,
+                text: _currentDetailPayload.shareText,
+            });
+            return;
+        } catch (error) {
+            if (error?.name === 'AbortError') return;
+        }
+    }
+
+    await copyCurrentDetailToClipboard(_mobileShareButton);
+}
+
+function clearMobileList() {
+    if (_mobileList) _mobileList.replaceChildren();
+}
+
+function createMobileEntry(entry) {
+    const item = document.createElement('div');
+    item.className = 'modal-mobile-entry';
+    if (entry.trimmed) item.classList.add('trimmed');
+
+    const head = document.createElement('div');
+    head.className = 'modal-mobile-entry-head';
+
+    const timeBlock = document.createElement('div');
+    timeBlock.className = 'modal-mobile-entry-time';
+
+    const index = document.createElement('span');
+    index.className = 'modal-mobile-entry-index';
+    index.textContent = `${entry.position}.`;
+
+    const time = document.createElement('span');
+    time.textContent = entry.time;
+
+    const date = document.createElement('div');
+    date.className = 'modal-mobile-entry-date';
+    date.textContent = entry.date;
+
+    const scramble = document.createElement('div');
+    scramble.className = 'modal-mobile-entry-scramble';
+    scramble.textContent = entry.scramble;
+
+    timeBlock.append(index, time);
+    head.append(timeBlock, date);
+    item.append(head, scramble);
+    return item;
+}
+
+function renderMobileDetail(detailPayload) {
+    if (!_overlay || !_mobileSummary || !_mobileShareActions || !_mobileListPanel) return;
+
+    const shouldUseMobileDetail = Boolean(detailPayload) && isMobileDetailLayout();
+    _overlay.classList.toggle('mobile-detail-active', shouldUseMobileDetail);
+    _mobileSummary.hidden = !shouldUseMobileDetail;
+    _mobileShareActions.hidden = !shouldUseMobileDetail;
+    _mobileListPanel.hidden = !shouldUseMobileDetail;
+
+    if (!shouldUseMobileDetail) {
+        clearMobileList();
+        return;
+    }
+
+    _mobileSummaryValue.textContent = detailPayload.value;
+    _mobileSummaryMeta.textContent = detailPayload.meta;
+    _mobileCopyButton.textContent = detailPayload.copyLabel;
+    _mobileCopyButton.dataset.originalLabel = detailPayload.copyLabel;
+    _mobileShareButton.textContent = detailPayload.shareLabel;
+    _mobileShareButton.dataset.originalLabel = detailPayload.shareLabel;
+    _mobileListPanel.querySelector('.modal-mobile-list-heading').textContent = detailPayload.listTitle;
+
+    clearMobileList();
+    _mobileList.append(...detailPayload.entries.map(createMobileEntry));
+    _mobileList.scrollTop = 0;
+}
+
+function buildSolveDetailPayload(title, timeStr, solve, index, singleLabel, shareText) {
+    return {
+        title,
+        value: timeStr,
+        meta: `${getActiveSessionName()} | ${singleLabel.toLowerCase()}`,
+        copyLabel: 'Copy Solve',
+        shareLabel: 'Share Solve',
+        listTitle: 'Solve',
+        shareText,
+        entries: [{
+            position: index + 1,
+            time: timeStr,
+            scramble: solve.scramble,
+            date: formatDateTime(solve.timestamp),
+            trimmed: false,
+        }],
+    };
+}
+
+function buildAverageDetailPayload(title, valueStr, label, entries, shareText) {
+    return {
+        title,
+        value: valueStr,
+        meta: `${getActiveSessionName()} | ${label.toLowerCase()}`,
+        copyLabel: 'Copy Average',
+        shareLabel: 'Share Average',
+        listTitle: 'Times',
+        shareText,
+        entries,
+    };
+}
+
 export function closeModal() {
     _overlay.classList.remove('active');
     _currentSolveIndex = null;
     _selectedStatContext = null;
+    _currentDetailPayload = null;
+    renderMobileDetail(null);
     if (document.activeElement) document.activeElement.blur();
 }
 
@@ -279,7 +462,8 @@ export function showSolveDetail(solve, index, isBest = null) {
         `Scramble: ${solve.scramble}`,
     ].join('\n');
 
-    _showModal(title, text, solve);
+    const detailPayload = buildSolveDetailPayload(title, timeStr, solve, index, singleLabel, text);
+    _showModal(title, text, solve, detailPayload);
 }
 
 /**
@@ -319,6 +503,7 @@ export function showAverageDetail(label, value, solves, trim = 1, selectionConte
         ``,
         `Time List:`,
     ];
+    const mobileEntries = [];
 
     solves.forEach((solve, i) => {
         const tStr = formatSolveTime(solve);
@@ -327,9 +512,18 @@ export function showAverageDetail(label, value, solves, trim = 1, selectionConte
         const display = (isBest || isWorst) ? `(${tStr})` : tStr;
         const pad = display.length < 10 ? ' '.repeat(10 - display.length) : ' ';
         lines.push(`${String(i + 1).padStart(2)}. ${display}${pad}${solve.scramble}`);
+        mobileEntries.push({
+            position: i + 1,
+            time: display,
+            scramble: solve.scramble,
+            date: formatDateTime(solve.timestamp),
+            trimmed: isBest || isWorst,
+        });
     });
 
-    _showModal(title, lines.join('\n'), null);
+    const shareText = lines.join('\n');
+    const detailPayload = buildAverageDetailPayload(title, valueStr, label, mobileEntries, shareText);
+    _showModal(title, shareText, null, detailPayload);
 }
 
 function updateStatNavigation() {
@@ -355,9 +549,10 @@ function updateStatNavigation() {
     });
 }
 
-function _showModal(title, text, solveContext = null) {
+function _showModal(title, text, solveContext = null, detailPayload = null) {
     document.getElementById('modal-title').textContent = title;
     _textarea.value = text;
+    _currentDetailPayload = detailPayload;
 
     const lineCount = text.split('\n').length;
     if (lineCount <= 4) {
@@ -421,12 +616,14 @@ function _showModal(title, text, solveContext = null) {
     }
 
     updateStatNavigation();
+    renderMobileDetail(detailPayload);
 
     _overlay.classList.add('active');
 
-    // Select all text for easy copy
-    requestAnimationFrame(() => {
-        _textarea.focus();
-        _textarea.select();
-    });
+    if (!isMobileDetailLayout() || !detailPayload) {
+        requestAnimationFrame(() => {
+            _textarea.focus();
+            _textarea.select();
+        });
+    }
 }

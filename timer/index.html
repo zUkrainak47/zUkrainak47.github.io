@@ -3,8 +3,9 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="description" content="Ukra's take on speedcubing timers.">
+  <meta name="theme-color" content="#0d1117">
   <title>CubeTimer</title>
 
   <!-- Fonts -->
@@ -19,37 +20,45 @@
     href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect x='10' y='10' width='25' height='25' rx='3' fill='%23ff5800'/><rect x='38' y='10' width='25' height='25' rx='3' fill='%23fff'/><rect x='65' y='10' width='25' height='25' rx='3' fill='%23009b48'/><rect x='10' y='38' width='25' height='25' rx='3' fill='%23ffd500'/><rect x='38' y='38' width='25' height='25' rx='3' fill='%23b71234'/><rect x='65' y='38' width='25' height='25' rx='3' fill='%230046ad'/><rect x='10' y='65' width='25' height='25' rx='3' fill='%23009b48'/><rect x='38' y='65' width='25' height='25' rx='3' fill='%23ff5800'/><rect x='65' y='65' width='25' height='25' rx='3' fill='%23fff'/></svg>">
 
   <!-- Styles -->
-  <link rel="stylesheet" href="css/variables.css?v=2">
-  <link rel="stylesheet" href="css/base.css?v=3">
-  <link rel="stylesheet" href="css/layout.css?v=2">
-  <link rel="stylesheet" href="css/scramble.css?v=2">
-  <link rel="stylesheet" href="css/timer.css?v=3">
-  <link rel="stylesheet" href="css/stats.css?v=2">
-  <link rel="stylesheet" href="css/cube.css?v=2">
-  <link rel="stylesheet" href="css/graph.css?v=2">
-  <link rel="stylesheet" href="css/modal.css?v=2">
-  <link rel="stylesheet" href="css/settings.css?v=3">
+  <link rel="stylesheet" href="css/variables.css?v=3">
+  <link rel="stylesheet" href="css/base.css?v=8">
+  <link rel="stylesheet" href="css/layout.css?v=10">
+  <link rel="stylesheet" href="css/scramble.css?v=11">
+  <link rel="stylesheet" href="css/timer.css?v=23">
+  <link rel="stylesheet" href="css/stats.css?v=8">
+  <link rel="stylesheet" href="css/cube.css?v=3">
+  <link rel="stylesheet" href="css/graph.css?v=3">
+  <link rel="stylesheet" href="css/modal.css?v=5">
+  <link rel="stylesheet" href="css/settings.css?v=7">
 </head>
 
 <body>
+  <button id="btn-settings" class="btn-icon" title="Settings">⚙</button>
+
   <div id="app-layout">
 
     <!-- ─── Scramble Bar ─── -->
     <div id="scramble-bar">
-      <button id="btn-settings" class="btn-icon" title="Settings">⚙</button>
+      <div id="scramble-top-row">
+        <div class="mobile-session-select-wrapper">
+          <select id="mobile-session-select"></select>
+        </div>
+        <button id="btn-zen" class="btn-icon" title="Zen mode (hide panels)">🧘</button>
+      </div>
 
       <div id="scramble-container">
-        <button id="btn-edit-scramble" class="btn-icon" title="Edit scramble">✎</button>
         <div id="scramble-text-wrapper">
           <span id="scramble-text" class="loading" title="Click to copy">Loading scrambler...</span>
           <input type="text" id="scramble-input" style="display: none;" spellcheck="false" autocomplete="off"
             maxlength="1000" />
         </div>
-        <button id="btn-prev-scramble" class="btn-icon" title="Previous scramble">‹</button>
-        <button id="btn-next-scramble" class="btn-icon" title="Next scramble">›</button>
+        <div id="scramble-actions">
+          <button id="btn-copy-scramble" class="btn-icon" title="Copy scramble">⧉</button>
+          <button id="btn-edit-scramble" class="btn-icon" title="Edit scramble">✎</button>
+          <button id="btn-prev-scramble" class="btn-icon" title="Previous scramble">‹</button>
+          <button id="btn-next-scramble" class="btn-icon" title="Next scramble">›</button>
+        </div>
       </div>
-
-      <button id="btn-zen" class="btn-icon" title="Zen mode (hide panels)">🧘</button>
     </div>
 
     <!-- ─── Left Panel: Statistics ─── -->
@@ -166,7 +175,27 @@
     <!-- ─── Center Panel: Timer ─── -->
     <div id="center-panel">
       <div id="timer-display-wrapper">
-        <div id="timer-display" data-timer-state="idle">0.00</div>
+        <div id="timer-display-stack">
+          <div id="timer-display" data-timer-state="idle">0.00</div>
+          <div id="manual-time-entry" hidden>
+            <input id="manual-time-hidden-input" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off"
+              spellcheck="false" />
+            <div id="manual-time-entry-display">
+              <span id="manual-time-formatted">0.00</span>
+              <span class="manual-time-caret" aria-hidden="true"></span>
+            </div>
+            <button id="manual-time-submit" class="btn-action" type="button" disabled>Done</button>
+          </div>
+          <div id="timer-quick-actions" hidden>
+            <button id="timer-action-plus2" class="timer-action-btn timer-action-danger" type="button">+2</button>
+            <button id="timer-action-dnf" class="timer-action-btn timer-action-danger timer-action-text" type="button">DNF</button>
+            <button id="timer-action-delete" class="timer-action-btn timer-action-danger timer-action-icon" type="button"
+              aria-label="Delete last solve">✕</button>
+            <span class="timer-action-divider" aria-hidden="true"></span>
+            <button id="timer-action-add" class="timer-action-btn timer-action-add timer-action-icon" type="button"
+              aria-label="Add time manually">+</button>
+          </div>
+        </div>
         <span id="inspection-alert" class="timer-popup timer-popup-inspection" aria-live="polite"></span>
         <span id="new-best-alert" class="timer-popup timer-popup-best" aria-live="polite"></span>
         <span id="timer-delta"></span>
@@ -175,7 +204,12 @@
         <span id="info-ao5-box"><span class="stat-label">ao5:</span> <span id="info-ao5">-</span></span>
         <span id="info-ao12-box"><span class="stat-label">ao12:</span> <span id="info-ao12">-</span></span>
       </div>
+    </div>
 
+    <div id="mobile-panel-tabs" aria-label="Mobile sections">
+      <button class="mobile-panel-tab active" type="button" data-mobile-panel="timer">Timer</button>
+      <button class="mobile-panel-tab" type="button" data-mobile-panel="stats">Stats</button>
+      <button class="mobile-panel-tab" type="button" data-mobile-panel="trend">Trend</button>
     </div>
 
     <!-- ─── Right Panel: Cube + Graph ─── -->
@@ -186,6 +220,26 @@
         <div id="cube-body" class="collapsible-body">
           <div id="cube-canvas-container">
             <canvas id="cube-canvas"></canvas>
+          </div>
+        </div>
+      </div>
+      <div id="mobile-summary-card" class="panel">
+        <div class="mobile-summary-grid">
+          <div class="mobile-summary-cell">
+            <span class="mobile-summary-label">AO5</span>
+            <span id="mobile-summary-ao5" class="mobile-summary-value">-</span>
+          </div>
+          <div class="mobile-summary-cell">
+            <span class="mobile-summary-label">AO12</span>
+            <span id="mobile-summary-ao12" class="mobile-summary-value">-</span>
+          </div>
+          <div class="mobile-summary-cell">
+            <span class="mobile-summary-label">AO100</span>
+            <span id="mobile-summary-ao100" class="mobile-summary-value">-</span>
+          </div>
+          <div class="mobile-summary-cell">
+            <span class="mobile-summary-label">MEAN</span>
+            <span id="mobile-summary-mean" class="mobile-summary-value">-</span>
           </div>
         </div>
       </div>
@@ -259,12 +313,24 @@
           maxlength="1000" rows="1"
           style="display:none; margin-bottom: 12px; width: 100%; box-sizing: border-box; background: var(--bg-color); border: 1px solid var(--border-color); color: var(--text-primary); padding: 8px 12px; border-radius: 6px; font-family: inherit; font-size: var(--text-base); resize: none; min-height: 40px;"></textarea>
         <textarea id="modal-textarea" readonly></textarea>
+        <div id="modal-mobile-summary" class="modal-mobile-card" hidden>
+          <div id="modal-mobile-value" class="modal-mobile-value"></div>
+          <div id="modal-mobile-meta" class="modal-mobile-meta"></div>
+        </div>
+        <div id="modal-mobile-share-actions" class="modal-mobile-share-actions" hidden>
+          <button id="modal-copy-detail" class="btn-action btn-action-primary" type="button">Copy Detail</button>
+          <button id="modal-share-detail" class="btn-action btn-action-primary" type="button">Share Detail</button>
+        </div>
         <div id="modal-stat-nav" class="modal-stat-nav" style="display:none;">
           <button class="btn-action" data-stat-type="time" data-min-index="0" title="Single">1</button>
           <button class="btn-action" data-stat-type="mo3" data-min-index="2" title="Mean of 3">3</button>
           <button class="btn-action" data-stat-type="ao5" data-min-index="4" title="Average of 5">5</button>
           <button class="btn-action" data-stat-type="ao12" data-min-index="11" title="Average of 12">12</button>
           <button class="btn-action" data-stat-type="ao100" data-min-index="99" title="Average of 100">100</button>
+        </div>
+        <div id="modal-mobile-list-panel" class="modal-mobile-list-panel" hidden>
+          <div class="modal-mobile-list-heading">Times</div>
+          <div id="modal-mobile-list" class="modal-mobile-list"></div>
         </div>
       </div>
     </div>
@@ -353,6 +419,16 @@
               <option value="0.01s">0.01s</option>
             </select>
           </div>
+          <div class="setting-row" id="setting-time-entry-row">
+            <div class="setting-label">
+              Enter times with
+              <small>Desktop keyboard input method</small>
+            </div>
+            <select id="setting-time-entry-mode">
+              <option value="timer">Timer</option>
+              <option value="typing">Typing</option>
+            </select>
+          </div>
           <div class="setting-row">
             <div class="setting-label">
               Show delta
@@ -396,6 +472,18 @@
             </label>
           </div>
 
+          <div class="setting-row" id="setting-pill-size-row">
+            <div class="setting-label">
+              ao5 / ao12 below timer
+            </div>
+            <select id="setting-pill-size">
+              <option value="hidden">Hidden</option>
+              <option value="small">Small</option>
+              <option value="medium">Medium</option>
+              <option value="large">Large</option>
+            </select>
+          </div>
+
           <div class="setting-row">
             <div class="setting-label">
               Display font
@@ -409,17 +497,6 @@
             </select>
           </div>
 
-          <div class="setting-row">
-            <div class="setting-label">
-              ao5 / ao12 below timer
-            </div>
-            <select id="setting-pill-size">
-              <option value="hidden">Hidden</option>
-              <option value="small">Small</option>
-              <option value="medium">Medium</option>
-              <option value="large">Large</option>
-            </select>
-          </div>
           <div class="setting-row">
             <button id="btn-show-shortcuts" class="setting-row-button" type="button">
               <div class="setting-label">
@@ -513,7 +590,7 @@
   </div>
 
   <!-- App Script -->
-  <script type="module" src="js/app.js"></script>
+  <script type="module" src="js/app.js?v=16"></script>
 </body>
 
 </html>

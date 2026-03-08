@@ -296,3 +296,53 @@
     background: var(--bg-tertiary);
     border: 1px solid var(--surface-border);
 }
+
+@media (max-width: 900px) {
+    #setting-pill-size-row {
+        display: none;
+    }
+
+    #setting-time-entry-row {
+        display: none;
+    }
+
+    .settings-overlay {
+        align-items: flex-end;
+    }
+
+    .settings-box {
+        width: 100vw;
+        max-width: none;
+        max-height: min(92dvh, 840px);
+        border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
+        transform: translateY(24px);
+    }
+
+    .settings-header {
+        padding-top: calc(var(--space-md) + 4px);
+    }
+
+    .settings-body {
+        padding: var(--space-md);
+        padding-bottom: calc(var(--space-lg) + var(--safe-area-bottom));
+    }
+
+    .setting-row {
+        gap: var(--space-md);
+    }
+}
+
+@media (max-width: 640px) {
+    .setting-row {
+        align-items: flex-start;
+    }
+
+    .setting-row select,
+    .setting-row input[type="color"] {
+        flex-shrink: 0;
+    }
+
+    .settings-actions {
+        flex-direction: column;
+    }
+}

@@ -1,12 +1,12 @@
-import { timer } from './timer.js';
+import { timer } from './timer.js?v=4';
 import { getScramble, getCurrentScramble, getPrevScramble, getNextScramble, setCurrentScramble, isCurrentScrambleManual, hasPrevScramble } from './scramble.js';
 import { sessionManager } from './session.js';
 import { settings, DEFAULTS } from './settings.js';
 import { computeAll, perSolveStats, mo3At, ao5At, ao12At, ao100At } from './stats.js';
 import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate } from './utils.js';
-import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator } from './modal.js';
+import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator } from './modal.js?v=5';
 import { initCubeDisplay, updateCubeDisplay } from './cube-display.js';
-import { initGraph, updateGraph, setLineVisibility, getLineVisibility, applyAction, graphEvents } from './graph.js';
+import { initGraph, updateGraph, setLineVisibility, getLineVisibility, applyAction, graphEvents } from './graph.js?v=2';
 import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer } from './storage.js';
 
 let currentScramble = '';
@@ -33,6 +33,7 @@ const statShortcutMap = {
 const buttonShortcutTooltipBindings = [
     { selector: '#btn-settings', binding: ['/'], placement: 'right' },
     { selector: '#scramble-text', binding: ['C'] },
+    { selector: '#btn-copy-scramble', binding: ['C'] },
     { selector: '#btn-prev-scramble', binding: [','] },
     { selector: '#btn-next-scramble', binding: ['.'] },
     { selector: '#btn-zen', binding: ['Z'] },
@@ -189,7 +190,7 @@ const keyboardShortcutGroups = [
     },
 ];
 const blockingOverlayIds = ['modal-overlay', 'confirm-overlay', 'prompt-overlay', 'shortcuts-overlay'];
-const transientShortcutSelectIds = ['session-select', 'stats-filter-select'];
+const transientShortcutSelectIds = ['session-select', 'mobile-session-select', 'stats-filter-select'];
 const passthroughSelectShortcutCodes = new Set([
     'Space',
     'Slash',
@@ -212,13 +213,519 @@ let settingsOverlayEl = null;
 let shortcutsOverlayEl = null;
 let transientSelectOutsideBlurBound = false;
 let shortcutTooltipEl = null;
+let viewportLayoutFrame = null;
+let instantTimerTabLayoutCleanupFrame = null;
+const domCache = new Map();
+const viewportLayoutState = {
+    timerTransform: null,
+    scrambleTransform: null,
+};
+const quickActionsState = {
+    visible: false,
+    pinned: false,
+    manualEntryActive: false,
+    manualDigits: '',
+    restoreVisibleAfterManual: false,
+    restorePinnedAfterManual: false,
+    swipePointerId: null,
+    swipeStartX: 0,
+    swipeStartY: 0,
+    swipeHandled: false,
+};
+const mobilePanelIds = new Set(['timer', 'stats', 'trend']);
+const mobileViewportQuery = window.matchMedia('(max-width: 900px)');
+const touchPrimaryQuery = window.matchMedia('(hover: none) and (pointer: coarse)');
+
+function isTouchPrimaryInput() {
+    return touchPrimaryQuery.matches;
+}
+
+function getEl(id) {
+    if (!domCache.has(id)) {
+        domCache.set(id, document.getElementById(id));
+    }
+    return domCache.get(id);
+}
+
+function isMobileTimerPanelActive() {
+    return mobileViewportQuery.matches && document.body.dataset.mobilePanel === 'timer';
+}
+
+function isDesktopTypingEntryModeEnabled() {
+    return settings.get('timeEntryMode') === 'typing' && !mobileViewportQuery.matches;
+}
+
+function isManualTimeEntryActive() {
+    return quickActionsState.manualEntryActive;
+}
+
+function sanitizeManualDigits(value) {
+    return String(value ?? '').replace(/\D/g, '').slice(0, 7);
+}
+
+function getManualTimeParts(digits) {
+    const sanitized = sanitizeManualDigits(digits);
+    const integerSource = sanitized.slice(0, -2);
+    const fractionSource = sanitized.slice(-2);
+
+    return {
+        sanitized,
+        integerText: integerSource || '0',
+        fractionText: fractionSource.padStart(2, '0') || '00',
+        integerTypedCount: integerSource.length,
+        fractionTypedCount: fractionSource.length,
+    };
+}
+
+function formatManualTimeDigits(digits) {
+    const { integerText, fractionText } = getManualTimeParts(digits);
+    return `${integerText}.${fractionText}`;
+}
+
+function renderManualTimeMarkup(digits) {
+    const {
+        integerText,
+        fractionText,
+        integerTypedCount,
+        fractionTypedCount,
+    } = getManualTimeParts(digits);
+
+    const integerTypedStart = Math.max(0, integerText.length - integerTypedCount);
+    const fractionTypedStart = Math.max(0, fractionText.length - fractionTypedCount);
+
+    const integerMarkup = Array.from(integerText, (char, index) => (
+        `<span class="manual-time-char${index >= integerTypedStart ? ' is-typed' : ''}">${char}</span>`
+    )).join('');
+
+    const dotIsTyped = integerTypedCount > 0 && fractionTypedCount > 0;
+    const dotMarkup = `<span class="manual-time-char${dotIsTyped ? ' is-typed' : ''}">.</span>`;
+
+    const fractionMarkup = Array.from(fractionText, (char, index) => (
+        `<span class="manual-time-char${index >= fractionTypedStart ? ' is-typed' : ''}">${char}</span>`
+    )).join('');
+
+    return `${integerMarkup}${dotMarkup}${fractionMarkup}`;
+}
+
+function getLastSessionSolve() {
+    const session = sessionManager.getActiveSession();
+    if (!session || session.solves.length === 0) return null;
+    return session.solves[session.solves.length - 1];
+}
+
+function ensurePanelExpanded(panelId) {
+    const panel = getEl(panelId);
+    const header = panel?.querySelector('.panel-header');
+    if (panel?.classList.contains('collapsed') && header) {
+        header.click();
+    }
+}
+
+function hideMobileScrambleActions() {
+    getEl('scramble-container')?.classList.remove('scramble-actions-visible');
+}
+
+function getSessionSelects() {
+    return Array.from(document.querySelectorAll('#session-select, #mobile-session-select'));
+}
+
+function getLayoutRect(el) {
+    if (!el) return null;
+
+    const width = el.offsetWidth;
+    const height = el.offsetHeight;
+    if (!width && !height) return el.getBoundingClientRect();
+
+    let left = 0;
+    let top = 0;
+    let node = el;
+    while (node) {
+        left += node.offsetLeft || 0;
+        top += node.offsetTop || 0;
+        node = node.offsetParent;
+    }
+
+    left -= window.scrollX;
+    top -= window.scrollY;
+
+    return {
+        left,
+        top,
+        width,
+        height,
+        right: left + width,
+        bottom: top + height,
+    };
+}
+
+function combineLayoutRects(...rects) {
+    const validRects = rects.filter(Boolean);
+    if (!validRects.length) return null;
+
+    const left = Math.min(...validRects.map((rect) => rect.left));
+    const top = Math.min(...validRects.map((rect) => rect.top));
+    const right = Math.max(...validRects.map((rect) => rect.right));
+    const bottom = Math.max(...validRects.map((rect) => rect.bottom));
+
+    return {
+        left,
+        top,
+        width: right - left,
+        height: bottom - top,
+        right,
+        bottom,
+    };
+}
+
+function updateManualTimeEntryUI() {
+    const hiddenInput = getEl('manual-time-hidden-input');
+    const formattedEl = getEl('manual-time-formatted');
+    const submitBtn = getEl('manual-time-submit');
+    const hasValue = Number(quickActionsState.manualDigits || 0) > 0;
+
+    if (hiddenInput) hiddenInput.value = quickActionsState.manualDigits;
+    if (formattedEl) formattedEl.innerHTML = renderManualTimeMarkup(quickActionsState.manualDigits);
+    if (submitBtn) submitBtn.disabled = !hasValue;
+}
+
+function updateQuickActionButtons() {
+    const lastSolve = getLastSessionSolve();
+    const plus2Btn = getEl('timer-action-plus2');
+    const dnfBtn = getEl('timer-action-dnf');
+    const deleteBtn = getEl('timer-action-delete');
+    const addBtn = getEl('timer-action-add');
+
+    if (plus2Btn) {
+        plus2Btn.disabled = !lastSolve;
+        plus2Btn.classList.toggle('is-active', lastSolve?.penalty === '+2');
+    }
+
+    if (dnfBtn) {
+        dnfBtn.disabled = !lastSolve;
+        dnfBtn.classList.toggle('is-active', lastSolve?.penalty === 'DNF');
+    }
+
+    if (deleteBtn) {
+        deleteBtn.disabled = !lastSolve;
+        deleteBtn.classList.remove('is-active');
+    }
+
+    if (addBtn) {
+        addBtn.classList.toggle('is-active', quickActionsState.manualEntryActive);
+    }
+}
+
+function syncQuickActionsUI() {
+    const quickActionsEl = getEl('timer-quick-actions');
+    if (!quickActionsEl) return;
+
+    const shouldShow = quickActionsState.visible && isMobileTimerPanelActive() && !quickActionsState.manualEntryActive;
+    quickActionsEl.hidden = false;
+    quickActionsEl.classList.toggle('is-visible', shouldShow);
+    quickActionsEl.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
+    document.body.classList.toggle('timer-quick-actions-visible', shouldShow);
+    updateQuickActionButtons();
+    scheduleViewportLayoutSync();
+}
+
+function setQuickActionsVisible(visible, { pinned = quickActionsState.pinned } = {}) {
+    quickActionsState.visible = Boolean(visible);
+    quickActionsState.pinned = quickActionsState.visible ? Boolean(pinned) : false;
+    syncQuickActionsUI();
+}
+
+function syncManualTimeInputMode() {
+    const hiddenInput = getEl('manual-time-hidden-input');
+    if (!hiddenInput) return;
+    hiddenInput.tabIndex = isDesktopTypingEntryModeEnabled() ? -1 : 0;
+}
+
+function focusManualTimeInput() {
+    if (isDesktopTypingEntryModeEnabled()) return;
+    const hiddenInput = getEl('manual-time-hidden-input');
+    if (!hiddenInput) return;
+    hiddenInput.focus({ preventScroll: true });
+    if (typeof hiddenInput.setSelectionRange === 'function') {
+        const len = hiddenInput.value.length;
+        hiddenInput.setSelectionRange(len, len);
+    }
+}
+
+function openManualTimeEntry({ initialDigits = '' } = {}) {
+    if (timer.getState() !== 'idle' && timer.getState() !== 'stopped') return;
+
+    const manualEntryEl = getEl('manual-time-entry');
+    if (!manualEntryEl) return;
+
+    if (!quickActionsState.manualEntryActive) {
+        quickActionsState.restoreVisibleAfterManual = quickActionsState.visible;
+        quickActionsState.restorePinnedAfterManual = quickActionsState.pinned;
+    }
+
+    quickActionsState.manualEntryActive = true;
+    quickActionsState.manualDigits = sanitizeManualDigits(initialDigits || quickActionsState.manualDigits);
+    manualEntryEl.hidden = false;
+    document.body.classList.add('manual-time-entry-active');
+    syncManualTimeInputMode();
+    updateManualTimeEntryUI();
+    syncQuickActionsUI();
+    if (!isDesktopTypingEntryModeEnabled()) {
+        window.requestAnimationFrame(focusManualTimeInput);
+    }
+}
+
+function closeManualTimeEntry({ restoreQuickActions = quickActionsState.restoreVisibleAfterManual, pinned = quickActionsState.restorePinnedAfterManual, resetDigits = true } = {}) {
+    const manualEntryEl = getEl('manual-time-entry');
+    const hiddenInput = getEl('manual-time-hidden-input');
+
+    quickActionsState.manualEntryActive = false;
+    document.body.classList.remove('manual-time-entry-active');
+
+    if (manualEntryEl) manualEntryEl.hidden = true;
+    if (hiddenInput && document.activeElement === hiddenInput) hiddenInput.blur();
+
+    if (resetDigits) quickActionsState.manualDigits = '';
+    syncManualTimeInputMode();
+    updateManualTimeEntryUI();
+
+    if (restoreQuickActions && isMobileTimerPanelActive()) {
+        setQuickActionsVisible(true, { pinned });
+    } else {
+        setQuickActionsVisible(false);
+    }
+}
+
+function syncPersistentManualEntryMode() {
+    syncManualTimeInputMode();
+
+    if (isDesktopTypingEntryModeEnabled()) {
+        openManualTimeEntry();
+        return;
+    }
+
+    if (!mobileViewportQuery.matches && quickActionsState.manualEntryActive) {
+        closeManualTimeEntry({ restoreQuickActions: false });
+    }
+}
+
+async function commitSolve(elapsed, penalty = null, { isManual = false } = {}) {
+    const previousStats = computeAll(sessionManager.getFilteredSolves());
+    sessionManager.addSolve(elapsed, currentScramble, isManual, penalty);
+    maybeShowNewBestAlert(previousStats, computeAll(sessionManager.getFilteredSolves()));
+    await loadNewScramble();
+}
+
+async function submitManualTimeEntry() {
+    const digits = quickActionsState.manualDigits;
+    if (Number(digits || 0) <= 0) return;
+
+    if (isDesktopTypingEntryModeEnabled()) {
+        const elapsed = Number(digits) * 10;
+        quickActionsState.manualDigits = '';
+        updateManualTimeEntryUI();
+        await commitSolve(elapsed, null, { isManual: true });
+        return;
+    }
+
+    closeManualTimeEntry({
+        restoreQuickActions: isMobileTimerPanelActive(),
+        pinned: true,
+    });
+
+    await commitSolve(Number(digits) * 10, null, { isManual: true });
+
+    if (isMobileTimerPanelActive()) {
+        setQuickActionsVisible(true, { pinned: true });
+    }
+}
+
+function applyCachedTransform(el, stateKey, transform) {
+    const normalizedTransform = transform || '';
+    if (!el || viewportLayoutState[stateKey] === normalizedTransform) return;
+    el.style.transform = normalizedTransform;
+    viewportLayoutState[stateKey] = normalizedTransform;
+}
+
+function scheduleViewportLayoutSync() {
+    if (viewportLayoutFrame != null) return;
+    viewportLayoutFrame = window.requestAnimationFrame(() => {
+        viewportLayoutFrame = null;
+        syncViewportLayout();
+    });
+}
+
+function syncTimerTabLayoutWithoutAnimation() {
+    if (instantTimerTabLayoutCleanupFrame != null) {
+        window.cancelAnimationFrame(instantTimerTabLayoutCleanupFrame);
+        instantTimerTabLayoutCleanupFrame = null;
+    }
+
+    document.body.classList.add('instant-mobile-timer-layout');
+    syncViewportLayout();
+
+    instantTimerTabLayoutCleanupFrame = window.requestAnimationFrame(() => {
+        syncViewportLayout();
+        document.body.classList.remove('instant-mobile-timer-layout');
+        instantTimerTabLayoutCleanupFrame = null;
+    });
+}
+
+function syncViewportLayout() {
+    const timerDisplayWrapper = getEl('timer-display-wrapper');
+    const timerDisplay = getEl('timer-display');
+    const scrambleContainer = getEl('scramble-container');
+    const scrambleText = getEl('scramble-text');
+    const scrambleTextWrapper = getEl('scramble-text-wrapper');
+    const quickActions = getEl('timer-quick-actions');
+    const rightPanel = getEl('right-panel');
+    const zenButton = getEl('btn-zen');
+
+    if (!timerDisplayWrapper) return;
+
+    const state = timer.getState();
+    const isZen = document.body.classList.contains('zen');
+    const isSolving = document.body.classList.contains('solving');
+    const isMobileTimerView = mobileViewportQuery.matches && document.body.dataset.mobilePanel === 'timer';
+    const shouldFocusTimer = state === 'running' || state === 'ready' || isInspectionState(state);
+    const shouldViewportCenterTimer = shouldFocusTimer && (settings.get('centerTimer') || (isMobileTimerView && isZen));
+    const shouldPositionIdleMobileTimer = isMobileTimerView && !shouldFocusTimer;
+    const shouldPositionMobileScramble = isMobileTimerView && !isSolving && scrambleContainer && scrambleTextWrapper && zenButton;
+    const shouldFreezeMobileManualEntryLayout = isMobileTimerView && quickActionsState.manualEntryActive;
+
+    let targetTimerCenterY = null;
+    let targetTimerCenterX = null;
+    let targetTimerRect = null;
+    let targetScrambleCenterY = null;
+
+    if (shouldFreezeMobileManualEntryLayout) return;
+
+    if (shouldViewportCenterTimer) {
+        if (isMobileTimerView) targetTimerCenterX = window.innerWidth / 2;
+        targetTimerCenterY = window.innerHeight / 2;
+    } else if (shouldPositionIdleMobileTimer) {
+        const rightRect = rightPanel?.getBoundingClientRect();
+        const zenRect = zenButton?.getBoundingClientRect();
+        const scrambleRect = getLayoutRect(scrambleText || scrambleTextWrapper);
+        const timerRect = getLayoutRect(timerDisplay || timerDisplayWrapper);
+        const quickActionsRect = quickActions && !quickActions.hidden
+            ? getLayoutRect(quickActions)
+            : null;
+        const duetRect = combineLayoutRects(timerRect, quickActionsRect);
+        const zenCenterY = zenRect ? zenRect.top + zenRect.height / 2 : 0;
+        const freeBottom = rightRect?.top ?? window.innerHeight;
+        if (isZen) {
+            targetTimerCenterX = window.innerWidth / 2;
+            targetTimerCenterY = window.innerHeight / 2;
+        } else {
+            const preservedScrambleCenterY = scrambleRect
+                ? ((3 * zenCenterY) + (freeBottom - 12)) / 4
+                : zenCenterY;
+            const scrambleBottom = scrambleRect
+                ? preservedScrambleCenterY + (scrambleRect.height / 2)
+                : zenCenterY;
+            targetTimerCenterY = (scrambleBottom + freeBottom) / 2;
+            targetTimerRect = duetRect || timerRect;
+            targetScrambleCenterY = preservedScrambleCenterY;
+        }
+    }
+
+    if (targetTimerCenterY != null) {
+        const targetRect = targetTimerRect || getLayoutRect(timerDisplay || timerDisplayWrapper);
+        const timerCenterX = targetRect.left + targetRect.width / 2;
+        const timerCenterY = targetRect.top + targetRect.height / 2;
+        const offsetX = targetTimerCenterX != null && targetRect.width < window.innerWidth - 24
+            ? targetTimerCenterX - timerCenterX
+            : 0;
+        const offsetY = targetTimerCenterY - timerCenterY;
+        applyCachedTransform(
+            timerDisplayWrapper,
+            'timerTransform',
+            `translate(${Math.round(offsetX * 10) / 10}px, ${Math.round(offsetY * 10) / 10}px)`,
+        );
+    } else {
+        applyCachedTransform(timerDisplayWrapper, 'timerTransform', '');
+    }
+
+    if (!shouldPositionMobileScramble || targetTimerCenterY == null) {
+        if (!isSolving) applyCachedTransform(scrambleContainer, 'scrambleTransform', '');
+        return;
+    }
+
+    const zenRect = zenButton.getBoundingClientRect();
+    const scrambleRect = getLayoutRect(scrambleTextWrapper);
+    const resolvedScrambleCenterY = targetScrambleCenterY ?? (((zenRect.top + zenRect.height / 2) + targetTimerCenterY) / 2);
+    const scrambleOffsetY = resolvedScrambleCenterY - (scrambleRect.top + scrambleRect.height / 2);
+    applyCachedTransform(
+        scrambleContainer,
+        'scrambleTransform',
+        `translateY(${Math.round(scrambleOffsetY * 10) / 10}px)`,
+    );
+}
+
+function setActiveMobilePanel(panel) {
+    if (!mobilePanelIds.has(panel)) return;
+    const previousPanel = document.body.dataset.mobilePanel;
+
+    if (panel !== 'timer' && quickActionsState.manualEntryActive) {
+        closeManualTimeEntry({ restoreQuickActions: false });
+    }
+
+    document.body.dataset.mobilePanel = panel;
+    document.querySelectorAll('.mobile-panel-tab').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.mobilePanel === panel);
+    });
+    hideMobileScrambleActions();
+    syncQuickActionsUI();
+
+    if (mobileViewportQuery.matches) {
+        if (panel === 'timer') ensurePanelExpanded('cube-panel');
+        if (panel === 'trend') ensurePanelExpanded('graph-panel');
+    }
+
+    if (mobileViewportQuery.matches && panel === 'timer' && previousPanel && previousPanel !== 'timer') {
+        syncTimerTabLayoutWithoutAnimation();
+        return;
+    }
+
+    scheduleViewportLayoutSync();
+}
+
+function syncMobilePanelState() {
+    const isMobileViewport = mobileViewportQuery.matches;
+    document.body.classList.toggle('mobile-viewport', isMobileViewport);
+    syncManualTimeInputMode();
+
+    if (!isMobileViewport) {
+        if (quickActionsState.manualEntryActive) {
+            closeManualTimeEntry({ restoreQuickActions: false });
+        }
+        delete document.body.dataset.mobilePanel;
+        document.querySelectorAll('.mobile-panel-tab').forEach((btn) => btn.classList.remove('active'));
+        hideMobileScrambleActions();
+        syncQuickActionsUI();
+        syncPersistentManualEntryMode();
+        return;
+    }
+
+    const activePanel = mobilePanelIds.has(document.body.dataset.mobilePanel)
+        ? document.body.dataset.mobilePanel
+        : 'timer';
+    setActiveMobilePanel(activePanel);
+
+    if (isMobileViewport && settings.get('timeEntryMode') === 'typing' && quickActionsState.manualEntryActive) {
+        closeManualTimeEntry({ restoreQuickActions: false });
+    }
+}
 
 // ──── Bootstrap ────
 async function init() {
     initModal();
     setModalStatNavigator(openShortcutStatDetail);
     initShortcutTooltips();
-    timer.init(document.getElementById('timer-display'));
+    timer.init(
+        document.getElementById('timer-display'),
+        [document.getElementById('timer-display'), document.getElementById('center-panel')],
+    );
     initCubeDisplay(document.getElementById('cube-canvas'));
     initGraph(document.getElementById('graph-canvas'));
 
@@ -242,6 +749,8 @@ async function init() {
         if (key === 'newBestPopupEnabled' && !settings.get('newBestPopupEnabled')) clearNewBestAlert();
         if (key === 'shortcutTooltipsEnabled' && !settings.get('shortcutTooltipsEnabled')) hideShortcutTooltip();
         if (key === 'statsFilter' || key === 'customFilterDuration' || key === 'showDelta' || key.startsWith('graphColor') || key === 'newBestColor') refreshUI();
+        if (key === 'timeEntryMode') syncPersistentManualEntryMode();
+        if (key === 'centerTimer' || key === 'displayFont' || key === 'pillSize') scheduleViewportLayoutSync();
     });
 
     // Init UI
@@ -257,8 +766,14 @@ async function init() {
     initTimerInfoControls();
     initTableSorting();
     initGraphLineToggles();
+    initMobilePanels();
+    initTimerQuickActions();
+    syncPersistentManualEntryMode();
     initKeyboardShortcuts();
     initTimerClick();
+    window.addEventListener('resize', scheduleViewportLayoutSync);
+    window.addEventListener('orientationchange', scheduleViewportLayoutSync);
+    scheduleViewportLayoutSync();
 
     graphEvents.on('nodeClick', (idx) => {
         const solves = sessionManager.getFilteredSolves();
@@ -268,6 +783,27 @@ async function init() {
             showSolveDetail(solves[idx], idx, isBest);
         }
     });
+}
+
+function initMobilePanels() {
+    document.querySelectorAll('.mobile-panel-tab').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            setActiveMobilePanel(btn.dataset.mobilePanel);
+        });
+    });
+
+    document.getElementById('mobile-summary-card')?.addEventListener('click', () => {
+        if (mobileViewportQuery.matches) setActiveMobilePanel('stats');
+    });
+
+    const handleViewportChange = () => syncMobilePanelState();
+    if (typeof mobileViewportQuery.addEventListener === 'function') {
+        mobileViewportQuery.addEventListener('change', handleViewportChange);
+    } else {
+        mobileViewportQuery.addListener(handleViewportChange);
+    }
+
+    syncMobilePanelState();
 }
 
 // ──── Graph Line Toggles ────
@@ -311,6 +847,7 @@ function initTimerClick() {
     if (!timerDisplay) return;
 
     timerDisplay.addEventListener('click', () => {
+        if (isTouchPrimaryInput()) return;
         const state = timer.getState();
         // Only open modal when the timer is idle.
         if (state === 'idle') {
@@ -324,6 +861,140 @@ function initTimerClick() {
             }
         }
     });
+}
+
+function initTimerQuickActions() {
+    const centerPanel = getEl('center-panel');
+    const manualEntryEl = getEl('manual-time-entry');
+    const hiddenInput = getEl('manual-time-hidden-input');
+    const submitBtn = getEl('manual-time-submit');
+    const plus2Btn = getEl('timer-action-plus2');
+    const dnfBtn = getEl('timer-action-dnf');
+    const deleteBtn = getEl('timer-action-delete');
+    const addBtn = getEl('timer-action-add');
+
+    if (!centerPanel || !manualEntryEl || !hiddenInput) return;
+
+    plus2Btn?.addEventListener('click', () => {
+        const lastSolve = getLastSessionSolve();
+        if (!lastSolve) return;
+        sessionManager.togglePenalty(lastSolve.id, '+2');
+        updateQuickActionButtons();
+    });
+
+    dnfBtn?.addEventListener('click', () => {
+        const lastSolve = getLastSessionSolve();
+        if (!lastSolve) return;
+        sessionManager.togglePenalty(lastSolve.id, 'DNF');
+        updateQuickActionButtons();
+    });
+
+    deleteBtn?.addEventListener('click', async () => {
+        const lastSolve = getLastSessionSolve();
+        if (!lastSolve) return;
+        const confirmed = await customConfirm('Are you sure you want to delete the last solve?');
+        if (!confirmed) return;
+        sessionManager.deleteSolve(lastSolve.id);
+        updateQuickActionButtons();
+    });
+
+    addBtn?.addEventListener('click', () => {
+        openManualTimeEntry();
+    });
+
+    manualEntryEl.addEventListener('click', () => {
+        if (isDesktopTypingEntryModeEnabled()) return;
+        focusManualTimeInput();
+    });
+
+    hiddenInput.addEventListener('input', (event) => {
+        quickActionsState.manualDigits = sanitizeManualDigits(event.target.value);
+        updateManualTimeEntryUI();
+    });
+
+    hiddenInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            submitManualTimeEntry();
+            return;
+        }
+
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            if (isDesktopTypingEntryModeEnabled()) {
+                quickActionsState.manualDigits = '';
+                updateManualTimeEntryUI();
+                return;
+            }
+            closeManualTimeEntry({
+                restoreQuickActions: isMobileTimerPanelActive(),
+                pinned: quickActionsState.restorePinnedAfterManual,
+            });
+        }
+    });
+
+    submitBtn?.addEventListener('click', () => {
+        submitManualTimeEntry();
+    });
+
+    centerPanel.addEventListener('pointerdown', (event) => {
+        if (!isMobileTimerPanelActive()) return;
+        if (quickActionsState.manualEntryActive) return;
+        if (event.pointerType !== 'touch' && event.pointerType !== 'pen') return;
+        if (event.target instanceof Element && event.target.closest('button, input, textarea, select, a, [data-no-timer-start]')) return;
+
+        quickActionsState.swipePointerId = event.pointerId;
+        quickActionsState.swipeStartX = event.clientX;
+        quickActionsState.swipeStartY = event.clientY;
+        quickActionsState.swipeHandled = false;
+    });
+
+    centerPanel.addEventListener('pointermove', (event) => {
+        if (!isMobileTimerPanelActive()) return;
+        if (quickActionsState.swipePointerId !== event.pointerId) return;
+        if (quickActionsState.swipeHandled) return;
+
+        const deltaX = event.clientX - quickActionsState.swipeStartX;
+        const deltaY = event.clientY - quickActionsState.swipeStartY;
+
+        if (Math.abs(deltaY) < 18 || Math.abs(deltaY) < Math.abs(deltaX) + 6) return;
+
+        if (deltaY > 0) {
+            quickActionsState.swipeHandled = true;
+            timer.cancelPendingStart();
+            setQuickActionsVisible(true, { pinned: true });
+            return;
+        }
+
+        if (deltaY < 0 && quickActionsState.visible) {
+            quickActionsState.swipeHandled = true;
+            timer.cancelPendingStart();
+            setQuickActionsVisible(false);
+        }
+    });
+
+    const resetSwipeState = (event) => {
+        if (event && quickActionsState.swipePointerId !== event.pointerId) return;
+        quickActionsState.swipePointerId = null;
+        quickActionsState.swipeHandled = false;
+    };
+
+    centerPanel.addEventListener('pointerup', resetSwipeState);
+    centerPanel.addEventListener('pointercancel', resetSwipeState);
+
+    document.addEventListener('pointerdown', (event) => {
+        if (!quickActionsState.manualEntryActive) return;
+        if (isDesktopTypingEntryModeEnabled()) return;
+        if (manualEntryEl.contains(event.target)) return;
+
+        closeManualTimeEntry({
+            restoreQuickActions: isMobileTimerPanelActive(),
+            pinned: quickActionsState.restorePinnedAfterManual || quickActionsState.pinned,
+        });
+    });
+
+    updateManualTimeEntryUI();
+    syncQuickActionsUI();
 }
 
 // ──── Collapsible Panels ────
@@ -402,10 +1073,12 @@ function initZenMode() {
     const btn = document.getElementById('btn-zen');
     const isZen = settings.get('zenMode');
     if (isZen) document.body.classList.add('zen');
+    scheduleViewportLayoutSync();
 
     btn.addEventListener('click', () => {
         const currentlyZen = document.body.classList.toggle('zen');
         settings.set('zenMode', currentlyZen);
+        scheduleViewportLayoutSync();
         btn.blur();
     });
 }
@@ -430,27 +1103,49 @@ function updateScrambleUI(scrambleStr) {
 
     // Update nav button states
     document.getElementById('btn-prev-scramble').disabled = !hasPrevScramble();
+    scheduleViewportLayoutSync();
 }
 
 function initScrambleControls() {
     const textEl = document.getElementById('scramble-text');
     const inputEl = document.getElementById('scramble-input');
+    const copyBtn = document.getElementById('btn-copy-scramble');
     const editBtn = document.getElementById('btn-edit-scramble');
     const prevBtn = document.getElementById('btn-prev-scramble');
     const nextBtn = document.getElementById('btn-next-scramble');
+    const containerEl = document.getElementById('scramble-container');
+
+    function setScrambleActionsVisible(visible) {
+        if (!mobileViewportQuery.matches) return;
+        containerEl.classList.toggle('scramble-actions-visible', visible);
+    }
+
+    function copyCurrentScramble() {
+        if (textEl.classList.contains('loading')) return;
+        navigator.clipboard.writeText(currentScramble);
+        const origColor = textEl.style.color;
+        textEl.style.color = 'var(--stat-best)';
+        setTimeout(() => textEl.style.color = origColor, 500);
+    }
 
     // 1. Copy
     textEl.addEventListener('click', () => {
-        if (!textEl.classList.contains('loading')) {
-            navigator.clipboard.writeText(currentScramble);
-            const origColor = textEl.style.color;
-            textEl.style.color = 'var(--stat-best)';
-            setTimeout(() => textEl.style.color = origColor, 500);
+        if (textEl.classList.contains('loading')) return;
+        if (mobileViewportQuery.matches) {
+            containerEl.classList.toggle('scramble-actions-visible');
+        } else {
+            copyCurrentScramble();
         }
+    });
+
+    copyBtn?.addEventListener('click', () => {
+        copyCurrentScramble();
+        setScrambleActionsVisible(false);
     });
 
     // 2. Edit
     function startEdit() {
+        setScrambleActionsVisible(false);
         textEl.style.display = 'none';
         inputEl.style.display = 'block';
         inputEl.value = currentScramble;
@@ -527,6 +1222,12 @@ function initScrambleControls() {
         const s = await getNextScramble();
         updateScrambleUI(s);
     });
+
+    document.addEventListener('pointerdown', (event) => {
+        if (!mobileViewportQuery.matches) return;
+        if (containerEl.contains(event.target)) return;
+        setScrambleActionsVisible(false);
+    }, true);
 }
 
 // ──── Table Sorting ────
@@ -851,14 +1552,19 @@ function initKeyboardShortcuts() {
             return;
         }
 
-        // Ignore input fields, unless it's the modal textarea and we are pressing our special shortcut keys
+        // Ignore input fields, unless they are one of the explicit shortcut passthrough cases.
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
+            const isManualTimeInput = e.target.id === 'manual-time-hidden-input';
             const isModalTextarea = e.target.id === 'modal-textarea';
             const isShortcutKey = ['Equal', 'NumpadAdd', 'Minus', 'NumpadSubtract', 'KeyD', 'Backspace', 'Delete'].includes(e.code);
             const isShiftStatShortcut = Boolean(getShiftStatShortcutType(e));
             const isSlashInSettings = slashShortcutPressed && settingsOverlayEl?.classList.contains('active');
+            const isGraphShortcut = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Enter'].includes(e.code);
+            const isManualInputPassthrough = isManualTimeInput && (e.ctrlKey || e.metaKey || e.altKey || isGraphShortcut);
 
-            if (!(isModalTextarea && (isShortcutKey || isShiftStatShortcut)) && !isSlashInSettings) {
+            if (!(isModalTextarea && (isShortcutKey || isShiftStatShortcut))
+                && !isSlashInSettings
+                && !isManualInputPassthrough) {
                 return;
             }
         }
@@ -895,6 +1601,39 @@ function initKeyboardShortcuts() {
 
         // Ignore if timer is running or holding
         if (timer.getState() !== 'idle' && timer.getState() !== 'stopped') return;
+
+        if (isDesktopTypingEntryModeEnabled() && !isSolveModalActive) {
+            if (/^\d$/.test(e.key)) {
+                e.preventDefault();
+                if (!isManualTimeEntryActive()) {
+                    openManualTimeEntry({ initialDigits: e.key });
+                } else {
+                    quickActionsState.manualDigits = sanitizeManualDigits(`${quickActionsState.manualDigits}${e.key}`);
+                    updateManualTimeEntryUI();
+                }
+                return;
+            }
+
+            if (e.key === 'Backspace' && quickActionsState.manualDigits.length > 0) {
+                e.preventDefault();
+                quickActionsState.manualDigits = quickActionsState.manualDigits.slice(0, -1);
+                updateManualTimeEntryUI();
+                return;
+            }
+
+            if (e.key === 'Enter' && quickActionsState.manualDigits.length > 0) {
+                e.preventDefault();
+                submitManualTimeEntry();
+                return;
+            }
+
+            if (e.key === 'Escape' && quickActionsState.manualDigits.length > 0) {
+                e.preventDefault();
+                quickActionsState.manualDigits = '';
+                updateManualTimeEntryUI();
+                return;
+            }
+        }
 
         const shortcutStatType = getShiftStatShortcutType(e);
         if (shortcutStatType) {
@@ -1020,11 +1759,7 @@ function initKeyboardShortcuts() {
 
 // ──── Timer Events ────
 async function onSolveComplete(elapsed, penalty = null) {
-    const previousStats = computeAll(sessionManager.getFilteredSolves());
-    const wasManual = isCurrentScrambleManual();
-    sessionManager.addSolve(elapsed, currentScramble, wasManual, penalty);
-    maybeShowNewBestAlert(previousStats, computeAll(sessionManager.getFilteredSolves()));
-    await loadNewScramble();
+    await commitSolve(elapsed, penalty, { isManual: isCurrentScrambleManual() });
 }
 
 function onTimerStarted() {
@@ -1138,26 +1873,22 @@ function onTimerStateChange(state) {
     const timerDisplayWrapper = document.getElementById('timer-display-wrapper');
     const shouldFocusTimer = state === 'running' || state === 'ready' || isInspectionState(state);
 
+    if (mobileViewportQuery.matches && shouldFocusTimer) {
+        setActiveMobilePanel('timer');
+    }
+
+    if (state !== 'idle' && state !== 'stopped') {
+        if (quickActionsState.manualEntryActive) {
+            closeManualTimeEntry({ restoreQuickActions: false });
+        } else if (quickActionsState.visible) {
+            setQuickActionsVisible(false);
+        }
+    }
+
     // Toggle solving class for focus mode
     document.body.classList.toggle('solving', shouldFocusTimer);
 
-    // Center timer perfectly based on actual screen position
-    if (timerDisplayWrapper) {
-        if (settings.get('centerTimer') && shouldFocusTimer) {
-            if (!timerDisplayWrapper.style.transform) {
-                const rect = timerDisplayWrapper.getBoundingClientRect();
-                const centerPanel = document.getElementById('center-panel');
-                const panelRect = centerPanel.getBoundingClientRect();
-                const paddingBottom = parseFloat(getComputedStyle(centerPanel).paddingBottom);
-                const targetY = panelRect.top + (panelRect.height - paddingBottom) / 2;
-                const timerCenterY = rect.top + rect.height / 2;
-                const offset = targetY - timerCenterY;
-                timerDisplayWrapper.style.transform = `translateY(${offset}px)`;
-            }
-        } else {
-            timerDisplayWrapper.style.transform = '';
-        }
-    }
+    if (timerDisplayWrapper) scheduleViewportLayoutSync();
 
     if (infoEl) {
         infoEl.style.visibility = '';
@@ -1209,7 +1940,7 @@ function refreshUI() {
     renderSummaryStats(stats, solves);
     renderSolvesTable(solves, pss, stats);
     updateGraph(solves, pss);
-    updateTimerInfo(stats);
+    updateTimerInfo(stats, solves);
     refreshSessionList();
 
     // Sync timer display with last solve if not running
@@ -1225,9 +1956,11 @@ function refreshUI() {
 
     // Update delta display
     updateDelta(solves);
+    updateQuickActionButtons();
+    scheduleViewportLayoutSync();
 }
 
-function updateTimerInfo(stats) {
+function updateTimerInfo(stats, solves) {
     const infoEl = document.getElementById('timer-info');
 
     infoEl.style.visibility = '';
@@ -1237,6 +1970,16 @@ function updateTimerInfo(stats) {
     const ao12El = document.getElementById('info-ao12');
     ao5El.textContent = stats.current.ao5 != null ? formatTime(stats.current.ao5) : '-';
     ao12El.textContent = stats.current.ao12 != null ? formatTime(stats.current.ao12) : '-';
+
+    const validTimes = solves.map(s => getEffectiveTime(s)).filter(t => t !== Infinity);
+    const mean = validTimes.length > 0
+        ? formatTime(validTimes.reduce((a, b) => a + b, 0) / validTimes.length)
+        : '-';
+
+    document.getElementById('mobile-summary-ao5').textContent = stats.current.ao5 != null ? formatTime(stats.current.ao5) : '-';
+    document.getElementById('mobile-summary-ao12').textContent = stats.current.ao12 != null ? formatTime(stats.current.ao12) : '-';
+    document.getElementById('mobile-summary-ao100').textContent = stats.current.ao100 != null ? formatTime(stats.current.ao100) : '-';
+    document.getElementById('mobile-summary-mean').textContent = mean;
 }
 
 function updateDelta(solves) {
@@ -1540,10 +2283,9 @@ function renderSolvesTable(solves, pss, stats) {
 
         let indicator = '';
         if (solve.comment) indicator += '*';
-        if (solve.isManual) indicator += (indicator ? '\u2009' : '') + '✎';
 
         html += `<tr data-solve-id="${solve.id}" data-solve-index="${i}">
-      <td style="white-space: nowrap; position: relative;">${i + 1}<span style="position: absolute; margin-left: 4px; z-index: 10;">${indicator}</span></td>
+      <td>${i + 1}${indicator ? `<span class="solve-index-indicator">${indicator}</span>` : ''}</td>
       <td class="solve-time-cell ${solve.penalty === 'DNF' ? 'dnf-time' : ''} ${isBestTime ? 'new-best-cell' : ''}">
         ${timeStr}
       </td>
@@ -1583,8 +2325,13 @@ function renderSolvesTable(solves, pss, stats) {
 
 // ──── Session Controls ────
 function initSessionControls() {
-    const sessionSelect = document.getElementById('session-select');
-    initTransientSelectBehavior(sessionSelect);
+    getSessionSelects().forEach((select) => {
+        initTransientSelectBehavior(select);
+        select.onchange = (e) => {
+            sessionManager.setActiveSession(e.target.value);
+            e.target.blur();
+        };
+    });
 
     document.getElementById('btn-new-session').onclick = () => {
         sessionManager.createSession();
@@ -1606,21 +2353,19 @@ function initSessionControls() {
             refreshSessionList();
         }
     };
-
-    sessionSelect.onchange = (e) => {
-        sessionManager.setActiveSession(e.target.value);
-        e.target.blur();
-    };
 }
 
 function refreshSessionList() {
-    const select = document.getElementById('session-select');
     const sessions = sessionManager.getSessions();
     const activeId = sessionManager.getActiveSessionId();
-
-    select.innerHTML = sessions.map(s =>
+    const optionsMarkup = sessions.map(s =>
         `<option value="${s.id}" ${s.id === activeId ? 'selected' : ''}>${s.name} (${s.solveCount})</option>`
     ).join('');
+
+    getSessionSelects().forEach((select) => {
+        select.innerHTML = optionsMarkup;
+        select.value = activeId;
+    });
 }
 
 function onSessionChanged() {
@@ -1700,6 +2445,15 @@ function initSettingsPanel() {
         settings.set('timerUpdate', timerUpdateSelect.value);
         timerUpdateSelect.blur();
     };
+
+    const timeEntryModeSelect = document.getElementById('setting-time-entry-mode');
+    if (timeEntryModeSelect) {
+        timeEntryModeSelect.value = settings.get('timeEntryMode');
+        timeEntryModeSelect.onchange = () => {
+            settings.set('timeEntryMode', timeEntryModeSelect.value);
+            timeEntryModeSelect.blur();
+        };
+    }
 
     // Animations toggle
     const animToggle = document.getElementById('setting-animations');

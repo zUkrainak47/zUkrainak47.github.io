@@ -5,6 +5,7 @@ const DEFAULTS = {
     inspectionTime: 'off',  // 'off', '15s'
     inspectionAlerts: 'off', // 'off', 'voice', 'screen', 'both'
     timerUpdate: '0.01s',   // 'none', 'inspection', '1s', '0.1s', '0.01s'
+    timeEntryMode: 'timer', // 'timer', 'typing'
     holdDuration: 300,       // ms
     animationsEnabled: true,
     displayFont: 'jetbrains-mono',
@@ -79,6 +80,7 @@ class Settings extends EventEmitter {
     _apply() {
         document.body.classList.toggle('no-animations', !this._settings.animationsEnabled);
         document.body.classList.toggle('shortcut-tooltips-disabled', !this._settings.shortcutTooltipsEnabled);
+        document.body.classList.toggle('typing-entry-mode', this._settings.timeEntryMode === 'typing');
 
         document.body.classList.remove('pill-size-small', 'pill-size-medium', 'pill-size-large', 'pill-size-hidden');
         document.body.classList.add(`pill-size-${this._settings.pillSize}`);

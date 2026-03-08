@@ -5,7 +5,7 @@
 ### Everything is backed up in your browser locally as well, so you won't have to input all of your data every time.
 I hope this is helpful to some. Good luck on your pulls! :) -->
 
-I like clean UI so decided to remake csTimer in a more modern way, feedback appreciated!
+I like clean UI so decided to remake [csTimer](https://cstimer.net/) in a more modern way, feedback appreciated! Mobile version inspired by [CubeTime](https://cubetime.app/).
 
 `Ctrl` + `/` to view shortcuts inside timer
 
@@ -29,5 +29,3 @@ While idle:
 
 While solving:
 - `Esc`/`Backspace`/`Delete` = mark solve as DNF
-
-not optimized for mobile yet!
