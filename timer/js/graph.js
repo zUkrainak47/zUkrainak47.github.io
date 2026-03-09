@@ -273,13 +273,20 @@ export function initGraph(canvas) {
     _ctx = canvas.getContext('2d');
     const panel = document.getElementById('graph-panel');
 
-    const observer = new ResizeObserver(() => {
-        const parent = canvas.parentElement;
-        canvas.width = parent.clientWidth * devicePixelRatio;
-        canvas.height = parent.clientHeight * devicePixelRatio;
+    const resizeCanvas = () => {
+        const pixelRatio = window.devicePixelRatio || 1;
+        const rect = canvas.getBoundingClientRect();
+        const nextWidth = Math.max(1, Math.round(rect.width * pixelRatio));
+        const nextHeight = Math.max(1, Math.round(rect.height * pixelRatio));
+
+        if (canvas.width !== nextWidth) canvas.width = nextWidth;
+        if (canvas.height !== nextHeight) canvas.height = nextHeight;
         render();
-    });
-    observer.observe(canvas.parentElement);
+    };
+
+    const observer = new ResizeObserver(resizeCanvas);
+    observer.observe(canvas);
+    resizeCanvas();
 
     canvas.addEventListener('mousemove', (e) => {
         if (mobileViewportQuery.matches) return;
@@ -541,12 +548,13 @@ function render() {
     if (!_canvas || !_ctx) return;
     const ctx = _ctx;
     const COLORS = getColors();
-    const w = _canvas.width / devicePixelRatio;
-    const h = _canvas.height / devicePixelRatio;
+    const pixelRatio = window.devicePixelRatio || 1;
+    const w = _canvas.width / pixelRatio;
+    const h = _canvas.height / pixelRatio;
     const activeIndex = getActiveFocusedIndex();
     _tooltipHitArea = null;
 
-    ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+    ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
     ctx.clearRect(0, 0, w, h);
 
     if (_solves.length === 0) {

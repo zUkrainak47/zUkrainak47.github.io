@@ -6,7 +6,7 @@ import { computeAll, perSolveStats, mo3At, ao5At, ao12At, ao100At } from './stat
 import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate } from './utils.js';
 import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, armModalGhostClickGuard } from './modal.js?v=6';
 import { initCubeDisplay, updateCubeDisplay } from './cube-display.js';
-import { initGraph, updateGraph, setLineVisibility, getLineVisibility, applyAction, graphEvents } from './graph.js?v=5';
+import { initGraph, updateGraph, setLineVisibility, getLineVisibility, applyAction, graphEvents } from './graph.js?v=6';
 import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer } from './storage.js';
 
 let currentScramble = '';
