@@ -361,7 +361,18 @@ export function initGraph(canvas) {
 
         const { x, y } = getCanvasPointerPosition(canvas, e);
         if (_tooltipTapPending && isPointInsideTooltip(x, y) && _touchFocusedIndex >= 0) {
-            graphEvents.emit('nodeClick', _touchFocusedIndex);
+            const focusedIndex = _touchFocusedIndex;
+            const touchPoint = { clientX: e.clientX, clientY: e.clientY };
+            e.preventDefault();
+
+            // Defer opening the detail view until the touch interaction fully settles.
+            window.setTimeout(() => {
+                graphEvents.emit('nodeClick', {
+                    idx: focusedIndex,
+                    source: 'touch',
+                    ...touchPoint,
+                });
+            }, 0);
         }
 
         canvas.releasePointerCapture?.(e.pointerId);
@@ -465,8 +476,11 @@ export function updateGraph(solves, perSolveStats) {
 
     // Conditionally show/hide the "25" button
     const last25Btn = document.querySelector('#graph-controls button[data-action="last25"]');
+    const primaryControls = document.querySelector('.graph-controls-primary');
     if (last25Btn) {
-        last25Btn.style.display = _solves.length > 25 ? '' : 'none';
+        const showLast25Button = _solves.length > 25;
+        last25Btn.style.display = showLast25Button ? '' : 'none';
+        primaryControls?.classList.toggle('graph-controls-primary-single-action', !showLast25Button);
     }
 
     render();

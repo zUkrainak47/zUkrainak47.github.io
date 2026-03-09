@@ -199,21 +199,42 @@
     }
 
     .graph-controls-primary {
-        flex-wrap: wrap;
-        gap: 6px;
-        padding: 8px;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 8px;
+        padding: 10px 8px 8px;
+        align-items: stretch;
+    }
+
+    .graph-controls-primary>span {
+        display: none;
+    }
+
+    .graph-controls-primary>button[data-action="last25"],
+    .graph-controls-primary>button[data-action="reset"] {
+        grid-column: span 2;
+    }
+
+    .graph-controls-primary.graph-controls-primary-single-action>button[data-action="reset"] {
+        grid-column: 1 / -1;
+    }
+
+    .graph-controls-sep {
+        display: none;
     }
 
     .graph-controls-secondary {
         position: static;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         width: 100%;
         left: auto;
         border-left: none;
         border-right: none;
         border-bottom: none;
         border-radius: 0;
-        flex-wrap: wrap;
-        padding: 0 8px 8px;
+        gap: 8px;
+        padding: 0 8px 10px;
         background: transparent;
         max-height: none;
         opacity: 1;
@@ -222,16 +243,61 @@
 
     .graph-controls-secondary.collapsed {
         max-height: none;
-        padding: 0 8px 8px;
+        padding: 0 8px 10px;
         opacity: 1;
         border-color: transparent;
     }
 
     #graph-controls button {
-        width: 38px;
-        height: 38px;
-        border-radius: 12px;
+        width: 100%;
+        min-width: 0;
+        height: auto;
+        min-height: 42px;
+        padding: 0 10px;
+        border-radius: 14px;
         font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+
+    .graph-controls-primary>button[data-action] {
+        background: linear-gradient(180deg, rgba(88, 166, 255, 0.16), rgba(88, 166, 255, 0.06));
+        border-color: rgba(121, 192, 255, 0.22);
+        color: var(--text-primary);
+    }
+
+    .graph-controls-primary .graph-line-toggle {
+        font-size: 0 !important;
+        gap: 8px;
+        opacity: 0.72;
+        background: rgba(255, 255, 255, 0.02);
+        border-color: rgba(255, 255, 255, 0.08);
+    }
+
+    .graph-controls-primary .graph-line-toggle::before {
+        content: "";
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: currentColor;
+        flex: 0 0 auto;
+    }
+
+    .graph-controls-primary .graph-line-toggle::after {
+        content: attr(data-mobile-label);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        line-height: 1;
+    }
+
+    .graph-controls-primary .graph-line-toggle.active {
+        opacity: 1;
+        background: rgba(255, 255, 255, 0.07);
+        border-color: currentColor;
     }
 }
 

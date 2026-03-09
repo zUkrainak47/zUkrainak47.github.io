@@ -18,7 +18,56 @@ let _currentSolveIndex = null;
 let _selectedStatContext = null;
 let _onStatNavigate = null;
 let _currentDetailPayload = null;
+let _ghostClickGuardCleanup = null;
+let _ghostClickGuardTimeout = null;
 const mobileDetailQuery = window.matchMedia('(max-width: 900px)');
+const MODAL_GHOST_CLICK_GUARD_MS = 450;
+const MODAL_GHOST_CLICK_RADIUS_PX = 42;
+
+function clearModalGhostClickGuard() {
+    _ghostClickGuardCleanup?.();
+    _ghostClickGuardCleanup = null;
+
+    if (_ghostClickGuardTimeout !== null) {
+        clearTimeout(_ghostClickGuardTimeout);
+        _ghostClickGuardTimeout = null;
+    }
+}
+
+export function armModalGhostClickGuard(point = null) {
+    clearModalGhostClickGuard();
+
+    const expiresAt = performance.now() + MODAL_GHOST_CLICK_GUARD_MS;
+    const origin = point && Number.isFinite(point.x) && Number.isFinite(point.y)
+        ? { x: point.x, y: point.y }
+        : null;
+
+    const handleCapturedClick = (event) => {
+        if (!event.isTrusted) return;
+
+        if (performance.now() > expiresAt) {
+            clearModalGhostClickGuard();
+            return;
+        }
+
+        if (origin) {
+            const dx = event.clientX - origin.x;
+            const dy = event.clientY - origin.y;
+            if ((dx * dx) + (dy * dy) > MODAL_GHOST_CLICK_RADIUS_PX ** 2) return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        clearModalGhostClickGuard();
+    };
+
+    document.addEventListener('click', handleCapturedClick, true);
+    _ghostClickGuardCleanup = () => {
+        document.removeEventListener('click', handleCapturedClick, true);
+    };
+    _ghostClickGuardTimeout = window.setTimeout(clearModalGhostClickGuard, MODAL_GHOST_CLICK_GUARD_MS);
+}
 
 export function initModal() {
     _overlay = document.getElementById('modal-overlay');
@@ -421,6 +470,7 @@ function buildAverageDetailPayload(title, valueStr, label, entries, shareText) {
 }
 
 export function closeModal() {
+    clearModalGhostClickGuard();
     _overlay.classList.remove('active');
     _currentSolveIndex = null;
     _selectedStatContext = null;

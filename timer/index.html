@@ -27,8 +27,8 @@
   <link rel="stylesheet" href="css/timer.css?v=24">
   <link rel="stylesheet" href="css/stats.css?v=8">
   <link rel="stylesheet" href="css/cube.css?v=3">
-  <link rel="stylesheet" href="css/graph.css?v=4">
-  <link rel="stylesheet" href="css/modal.css?v=5">
+  <link rel="stylesheet" href="css/graph.css?v=5">
+  <link rel="stylesheet" href="css/modal.css?v=6">
   <link rel="stylesheet" href="css/settings.css?v=8">
 </head>
 
@@ -271,16 +271,16 @@
           </div>
           <div id="graph-controls">
             <div class="graph-controls-primary">
-              <button data-action="last25" title="Show last 25 solves">25</button>
-              <button data-action="reset" title="Reset view" style="font-size:18px">⟲</button>
+              <button data-action="last25" data-mobile-label="Last 25" title="Show last 25 solves">25</button>
+              <button data-action="reset" data-mobile-label="Reset" title="Reset view" style="font-size:18px">⟲</button>
               <span style="flex:1"></span>
-              <button class="graph-line-toggle active" data-line="time" title="Toggle time line"
+              <button class="graph-line-toggle active" data-line="time" data-mobile-label="Time" title="Toggle time line"
                 style="color:var(--graph-color-time)">●</button>
-              <button class="graph-line-toggle active" data-line="ao5" title="Toggle ao5 line"
+              <button class="graph-line-toggle active" data-line="ao5" data-mobile-label="AO5" title="Toggle ao5 line"
                 style="color:var(--graph-color-ao5)">●</button>
-              <button class="graph-line-toggle active" data-line="ao12" title="Toggle ao12 line"
+              <button class="graph-line-toggle active" data-line="ao12" data-mobile-label="AO12" title="Toggle ao12 line"
                 style="color:var(--graph-color-ao12)">●</button>
-              <button class="graph-line-toggle active" data-line="ao100" title="Toggle ao100 line"
+              <button class="graph-line-toggle active" data-line="ao100" data-mobile-label="AO100" title="Toggle ao100 line"
                 style="color:var(--graph-color-ao100)">●</button>
               <button id="btn-graph-tools" class="btn-graph-toggle" title="Toggle zoom/pan controls"
                 style="font-size:16px">⚙</button>
@@ -597,7 +597,7 @@
   </div>
 
   <!-- App Script -->
-  <script type="module" src="js/app.js?v=20"></script>
+  <script type="module" src="js/app.js?v=21"></script>
 </body>
 
 </html>

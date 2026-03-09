@@ -4,9 +4,9 @@ import { sessionManager } from './session.js';
 import { settings, DEFAULTS } from './settings.js';
 import { computeAll, perSolveStats, mo3At, ao5At, ao12At, ao100At } from './stats.js';
 import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate } from './utils.js';
-import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator } from './modal.js?v=5';
+import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, armModalGhostClickGuard } from './modal.js?v=6';
 import { initCubeDisplay, updateCubeDisplay } from './cube-display.js';
-import { initGraph, updateGraph, setLineVisibility, getLineVisibility, applyAction, graphEvents } from './graph.js?v=4';
+import { initGraph, updateGraph, setLineVisibility, getLineVisibility, applyAction, graphEvents } from './graph.js?v=5';
 import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer } from './storage.js';
 
 let currentScramble = '';
@@ -852,10 +852,18 @@ async function init() {
     window.addEventListener('orientationchange', scheduleViewportLayoutSync);
     scheduleViewportLayoutSync();
 
-    graphEvents.on('nodeClick', (idx) => {
+    graphEvents.on('nodeClick', (payload) => {
+        const interaction = typeof payload === 'number' ? { idx: payload } : payload;
+        const idx = interaction?.idx;
         const solves = sessionManager.getFilteredSolves();
         const stats = computeAll(solves);
         if (idx >= 0 && idx < solves.length) {
+            if (interaction?.source === 'touch') {
+                armModalGhostClickGuard({
+                    x: interaction.clientX,
+                    y: interaction.clientY,
+                });
+            }
             const isBest = getEffectiveTime(solves[idx]) === stats.best.time;
             showSolveDetail(solves[idx], idx, isBest);
         }
