@@ -5,14 +5,8 @@ import { settings } from './settings.js';
  * Time trend graph with pan/zoom controls.
  */
 
-const BASE_PADDING = { top: 12, right: 15, bottom: 22, left: 45 };
+const PADDING = { top: 12, right: 15, bottom: 22, left: 45 };
 const mobileViewportQuery = window.matchMedia('(max-width: 900px)');
-
-function getPadding() {
-    return mobileViewportQuery.matches
-        ? { ...BASE_PADDING, bottom: 32 }
-        : BASE_PADDING;
-}
 function getColors() {
     const styles = getComputedStyle(document.documentElement);
     const readVar = (name, fallback) => styles.getPropertyValue(name).trim() || fallback;
@@ -279,20 +273,13 @@ export function initGraph(canvas) {
     _ctx = canvas.getContext('2d');
     const panel = document.getElementById('graph-panel');
 
-    const resizeCanvas = () => {
-        const pixelRatio = window.devicePixelRatio || 1;
-        const rect = canvas.getBoundingClientRect();
-        const nextWidth = Math.max(1, Math.round(rect.width * pixelRatio));
-        const nextHeight = Math.max(1, Math.round(rect.height * pixelRatio));
-
-        if (canvas.width !== nextWidth) canvas.width = nextWidth;
-        if (canvas.height !== nextHeight) canvas.height = nextHeight;
+    const observer = new ResizeObserver(() => {
+        const parent = canvas.parentElement;
+        canvas.width = parent.clientWidth * devicePixelRatio;
+        canvas.height = parent.clientHeight * devicePixelRatio;
         render();
-    };
-
-    const observer = new ResizeObserver(resizeCanvas);
-    observer.observe(canvas);
-    resizeCanvas();
+    });
+    observer.observe(canvas.parentElement);
 
     canvas.addEventListener('mousemove', (e) => {
         if (mobileViewportQuery.matches) return;
@@ -554,14 +541,12 @@ function render() {
     if (!_canvas || !_ctx) return;
     const ctx = _ctx;
     const COLORS = getColors();
-    const PADDING = getPadding();
-    const pixelRatio = window.devicePixelRatio || 1;
-    const w = _canvas.width / pixelRatio;
-    const h = _canvas.height / pixelRatio;
+    const w = _canvas.width / devicePixelRatio;
+    const h = _canvas.height / devicePixelRatio;
     const activeIndex = getActiveFocusedIndex();
     _tooltipHitArea = null;
 
-    ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+    ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
     ctx.clearRect(0, 0, w, h);
 
     if (_solves.length === 0) {
@@ -652,15 +637,13 @@ function render() {
     const firstXTick = Math.ceil((startIdx + 1) / xTickInterval) * xTickInterval;
     ctx.font = '9px Inter, sans-serif';
     ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
     ctx.fillStyle = COLORS.text;
     for (let solveNum = firstXTick; solveNum <= endIdx + 1; solveNum += xTickInterval) {
         const i = solveNum - 1; // 0-indexed
         if (i < startIdx || i > endIdx) continue;
         const x = toX(i);
-        ctx.fillText(solveNum.toString(), x, drawY + drawH + 8);
+        ctx.fillText(solveNum.toString(), x, drawY + drawH + 14);
     }
-    ctx.textBaseline = 'alphabetic';
 
     // Draw line helper
     function drawLine(getData, color, lineWidth = 2, breakOnEmpty = true) {
