@@ -229,6 +229,7 @@ const quickActionsState = {
     restoreVisibleAfterManual: false,
     restorePinnedAfterManual: false,
     swipePointerId: null,
+    swipeStartTimerState: null,
     swipeStartX: 0,
     swipeStartY: 0,
     swipeHandled: false,
@@ -254,6 +255,10 @@ function getEl(id) {
 
 function isMobileTimerPanelActive() {
     return mobileViewportQuery.matches && document.body.dataset.mobilePanel === 'timer';
+}
+
+function isQuickActionsSwipeOpenState(state) {
+    return state === 'idle' || state === 'stopped';
 }
 
 function isDesktopTypingEntryModeEnabled() {
@@ -1064,11 +1069,15 @@ function initTimerQuickActions() {
         if (event.pointerType !== 'touch' && event.pointerType !== 'pen') return;
         if (event.target instanceof Element && event.target.closest('button, input, textarea, select, a, [data-no-timer-start]')) return;
 
+        const swipeStartTimerState = timer.getState();
+        if (!quickActionsState.visible && !isQuickActionsSwipeOpenState(swipeStartTimerState)) return;
+
         quickActionsState.swipePointerId = event.pointerId;
+        quickActionsState.swipeStartTimerState = swipeStartTimerState;
         quickActionsState.swipeStartX = event.clientX;
         quickActionsState.swipeStartY = event.clientY;
         quickActionsState.swipeHandled = false;
-    });
+    }, { capture: true });
 
     centerPanel.addEventListener('pointermove', (event) => {
         if (!isMobileTimerPanelActive()) return;
@@ -1077,10 +1086,12 @@ function initTimerQuickActions() {
 
         const deltaX = event.clientX - quickActionsState.swipeStartX;
         const deltaY = event.clientY - quickActionsState.swipeStartY;
+        const canOpenQuickActions = isQuickActionsSwipeOpenState(quickActionsState.swipeStartTimerState);
 
         if (Math.abs(deltaY) < 18 || Math.abs(deltaY) < Math.abs(deltaX) + 6) return;
 
         if (deltaY > 0) {
+            if (!canOpenQuickActions) return;
             quickActionsState.swipeHandled = true;
             timer.cancelPendingStart();
             setQuickActionsVisible(true, { pinned: true });
@@ -1097,6 +1108,7 @@ function initTimerQuickActions() {
     const resetSwipeState = (event) => {
         if (event && quickActionsState.swipePointerId !== event.pointerId) return;
         quickActionsState.swipePointerId = null;
+        quickActionsState.swipeStartTimerState = null;
         quickActionsState.swipeHandled = false;
     };
 
