@@ -859,8 +859,22 @@ function initMobilePanels() {
         });
     });
 
-    document.getElementById('mobile-summary-card')?.addEventListener('click', () => {
-        if (mobileViewportQuery.matches) setActiveMobilePanel('stats');
+    document.querySelectorAll('#mobile-summary-card [data-mobile-summary-action]').forEach((cell) => {
+        cell.addEventListener('click', () => {
+            if (!mobileViewportQuery.matches) return;
+
+            const action = cell.dataset.mobileSummaryAction;
+            if (action === 'stats') {
+                setActiveMobilePanel('stats');
+                return;
+            }
+
+            const solves = sessionManager.getFilteredSolves();
+            if (solves.length === 0) return;
+
+            const stats = computeAll(solves);
+            openStatDetailAtIndex(action, solves, stats, solves.length - 1);
+        });
     });
 
     const handleViewportChange = () => syncMobilePanelState();
@@ -1645,6 +1659,23 @@ function renderKeyboardShortcuts() {
 function initKeyboardShortcuts() {
     document.addEventListener('keydown', (e) => {
         if (e.defaultPrevented) return;
+        if (e.key !== 'Escape') return;
+        if (!isDesktopTypingEntryModeEnabled() || isManualTimeInputFocused()) return;
+        if (hasBlockingOverlayOpen() || settingsOverlayEl?.classList.contains('active')) return;
+        if (timer.getState() !== 'idle' && timer.getState() !== 'stopped') return;
+        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return;
+
+        e.preventDefault();
+        if (!isManualTimeEntryActive()) {
+            openManualTimeEntry({ focusStrategy: 'immediate' });
+            return;
+        }
+
+        focusManualTimeInput();
+    }, true);
+
+    document.addEventListener('keydown', (e) => {
+        if (e.defaultPrevented) return;
 
         const slashShortcutPressed = isSlashShortcut(e);
         const isShortcutHelpKey = slashShortcutPressed && (e.ctrlKey || e.metaKey);
@@ -2121,6 +2152,11 @@ function updateTimerInfo(stats, solves) {
     document.getElementById('mobile-summary-ao12').textContent = stats.current.ao12 != null ? formatTime(stats.current.ao12) : '-';
     document.getElementById('mobile-summary-ao100').textContent = stats.current.ao100 != null ? formatTime(stats.current.ao100) : '-';
     document.getElementById('mobile-summary-mean').textContent = mean;
+
+    document.querySelectorAll('#mobile-summary-card [data-mobile-summary-action]').forEach((cell) => {
+        const action = cell.dataset.mobileSummaryAction;
+        cell.disabled = action !== 'stats' && stats.current[action] == null;
+    });
 }
 
 function updateDelta(solves) {
