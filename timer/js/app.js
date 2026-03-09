@@ -6,7 +6,7 @@ import { computeAll, perSolveStats, mo3At, ao5At, ao12At, ao100At } from './stat
 import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate } from './utils.js';
 import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator } from './modal.js?v=5';
 import { initCubeDisplay, updateCubeDisplay } from './cube-display.js';
-import { initGraph, updateGraph, setLineVisibility, getLineVisibility, applyAction, graphEvents } from './graph.js?v=2';
+import { initGraph, updateGraph, setLineVisibility, getLineVisibility, applyAction, graphEvents } from './graph.js?v=3';
 import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer } from './storage.js';
 
 let currentScramble = '';
@@ -352,8 +352,18 @@ function toggleLastSolvePenaltyFromMainTimerShortcut(penalty) {
 
 function ensurePanelExpanded(panelId) {
     const panel = getEl(panelId);
+    const body = panel?.querySelector('.collapsible-body');
     const header = panel?.querySelector('.panel-header');
-    if (panel?.classList.contains('collapsed') && header) {
+    if (!panel?.classList.contains('collapsed')) return;
+
+    if (panel.id === 'graph-panel' && mobileViewportQuery.matches && body) {
+        panel.classList.remove('collapsed');
+        body.style.maxHeight = 'none';
+        settings.set('graphCollapsed', false);
+        return;
+    }
+
+    if (header) {
         header.click();
     }
 }
@@ -1117,6 +1127,10 @@ function initCollapsiblePanels() {
             isCollapsed = panel.classList.contains('collapsed');
         }
 
+        if (panel.id === 'graph-panel' && mobileViewportQuery.matches) {
+            isCollapsed = false;
+        }
+
         if (isCollapsed) panel.classList.add('collapsed');
         else panel.classList.remove('collapsed');
 
@@ -1135,6 +1149,8 @@ function initCollapsiblePanels() {
         });
 
         header.addEventListener('click', () => {
+            if (panel.id === 'graph-panel' && mobileViewportQuery.matches) return;
+
             if (panel.classList.contains('collapsed')) {
                 // EXPAND: 0 → scrollHeight → (transitionend) → none
                 panel.classList.remove('collapsed');

@@ -6,6 +6,7 @@ import { settings } from './settings.js';
  */
 
 const PADDING = { top: 12, right: 15, bottom: 22, left: 45 };
+const mobileViewportQuery = window.matchMedia('(max-width: 900px)');
 function getColors() {
     const styles = getComputedStyle(document.documentElement);
     const readVar = (name, fallback) => styles.getPropertyValue(name).trim() || fallback;
@@ -20,6 +21,7 @@ function getColors() {
         text: readVar('--text-tertiary', '#6e7681'),
         textPrimary: readVar('--text-primary', '#e6edf3'),
         accent: readVar('--accent', '#58a6ff'),
+        bg: readVar('--bg-primary', '#0d1117'),
     };
 }
 
@@ -29,6 +31,10 @@ let _solves = [];
 let _perSolve = [];
 let _newBestSingles = [];
 let _hoveredIndex = -1;
+let _touchFocusedIndex = -1;
+let _activeTouchPointerId = null;
+let _tooltipHitArea = null;
+let _tooltipTapPending = false;
 export const graphEvents = new EventEmitter();
 
 // Line visibility state
@@ -202,6 +208,66 @@ function stopHold() {
     if (_holdInterval) { clearInterval(_holdInterval); _holdInterval = null; }
 }
 
+function getActiveFocusedIndex() {
+    return _hoveredIndex >= 0 ? _hoveredIndex : _touchFocusedIndex;
+}
+
+function getCanvasPointerPosition(canvas, event) {
+    const rect = canvas.getBoundingClientRect();
+    return {
+        rect,
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top,
+    };
+}
+
+function getSolveIndexAtCanvasX(rect, x) {
+    const drawW = rect.width - PADDING.left - PADDING.right;
+    if (_solves.length < 1 || drawW <= 0) return -1;
+
+    const totalCount = _solves.length;
+    const tot = Math.max(2, totalCount);
+    const visibleCount = _view.visibleCount === 0 ? tot : Math.max(2, Math.min(tot, Math.ceil(_view.visibleCount)));
+    const maxStart = Math.max(0, totalCount - visibleCount);
+    const startIdx = Math.round(_view.xPan * maxStart);
+    const clampedX = Math.max(PADDING.left, Math.min(rect.width - PADDING.right, x));
+    const step = visibleCount > 1 ? drawW / (visibleCount - 1) : drawW;
+    const idx = startIdx + Math.round((clampedX - PADDING.left) / step);
+
+    return idx >= 0 && idx < _solves.length ? idx : -1;
+}
+
+function isPointInsideTooltip(x, y) {
+    if (!_tooltipHitArea) return false;
+
+    return x >= _tooltipHitArea.x &&
+        x <= _tooltipHitArea.x + _tooltipHitArea.width &&
+        y >= _tooltipHitArea.y &&
+        y <= _tooltipHitArea.y + _tooltipHitArea.height;
+}
+
+function clearTouchInteraction() {
+    _activeTouchPointerId = null;
+    _tooltipTapPending = false;
+}
+
+function clearTouchFocus() {
+    clearTouchInteraction();
+    if (_touchFocusedIndex === -1) return;
+    _touchFocusedIndex = -1;
+    render();
+}
+
+const handleViewportChange = (event) => {
+    if (!event.matches) clearTouchFocus();
+};
+
+if (typeof mobileViewportQuery.addEventListener === 'function') {
+    mobileViewportQuery.addEventListener('change', handleViewportChange);
+} else {
+    mobileViewportQuery.addListener(handleViewportChange);
+}
+
 export function initGraph(canvas) {
     _canvas = canvas;
     _ctx = canvas.getContext('2d');
@@ -215,37 +281,65 @@ export function initGraph(canvas) {
     observer.observe(canvas.parentElement);
 
     canvas.addEventListener('mousemove', (e) => {
-        const rect = canvas.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const drawW = rect.width - PADDING.left - PADDING.right;
-        if (_solves.length < 2) return;
-
-        const tot = Math.max(2, _solves.length);
-        const visibleCount = _view.visibleCount === 0 ? tot : Math.max(2, Math.min(tot, Math.ceil(_view.visibleCount)));
-        const maxStart = Math.max(0, _solves.length - visibleCount);
-        const startIdx = Math.round(_view.xPan * maxStart);
-        const step = drawW / (visibleCount - 1);
-        const idx = startIdx + Math.round((x - PADDING.left) / step);
-        if (idx >= 0 && idx < _solves.length && idx !== _hoveredIndex) {
+        if (mobileViewportQuery.matches) return;
+        const { rect, x } = getCanvasPointerPosition(canvas, e);
+        const idx = getSolveIndexAtCanvasX(rect, x);
+        if (idx !== _hoveredIndex) {
             _hoveredIndex = idx;
             render();
         }
     });
 
+    canvas.addEventListener('pointerdown', (e) => {
+        if (!mobileViewportQuery.matches) return;
+        if (e.pointerType !== 'touch' && e.pointerType !== 'pen') return;
+        if (e.button !== undefined && e.button !== 0) return;
+
+        const { rect, x, y } = getCanvasPointerPosition(canvas, e);
+        if (isPointInsideTooltip(x, y) && _touchFocusedIndex >= 0) {
+            _activeTouchPointerId = e.pointerId;
+            _tooltipTapPending = true;
+            canvas.setPointerCapture?.(e.pointerId);
+            e.preventDefault();
+            return;
+        }
+
+        const idx = getSolveIndexAtCanvasX(rect, x);
+        if (idx < 0) return;
+
+        _activeTouchPointerId = e.pointerId;
+        _tooltipTapPending = false;
+        _hoveredIndex = -1;
+        _touchFocusedIndex = idx;
+        canvas.setPointerCapture?.(e.pointerId);
+        render();
+        e.preventDefault();
+    });
+
+    canvas.addEventListener('pointermove', (e) => {
+        if (_activeTouchPointerId !== e.pointerId) return;
+
+        const { rect, x, y } = getCanvasPointerPosition(canvas, e);
+        if (_tooltipTapPending) {
+            _tooltipTapPending = isPointInsideTooltip(x, y);
+            e.preventDefault();
+            return;
+        }
+
+        const idx = getSolveIndexAtCanvasX(rect, x);
+        if (idx >= 0 && idx !== _touchFocusedIndex) {
+            _touchFocusedIndex = idx;
+            render();
+        }
+
+        e.preventDefault();
+    });
+
     canvas.addEventListener('click', (e) => {
-        const rect = canvas.getBoundingClientRect();
-        const drawW = rect.width - PADDING.left - PADDING.right;
-        if (_solves.length < 2) return;
-
-        const x = e.clientX - rect.left;
-        const tot = Math.max(2, _solves.length);
-        const visibleCount = _view.visibleCount === 0 ? tot : Math.max(2, Math.min(tot, Math.ceil(_view.visibleCount)));
-        const maxStart = Math.max(0, _solves.length - visibleCount);
-        const startIdx = Math.round(_view.xPan * maxStart);
-        const step = drawW / (visibleCount - 1);
-        const idx = startIdx + Math.round((x - PADDING.left) / step);
-
-        if (idx >= 0 && idx < _solves.length) {
+        if (mobileViewportQuery.matches) return;
+        const { rect, x } = getCanvasPointerPosition(canvas, e);
+        const idx = getSolveIndexAtCanvasX(rect, x);
+        if (idx >= 0) {
             graphEvents.emit('nodeClick', idx);
         }
     });
@@ -253,6 +347,25 @@ export function initGraph(canvas) {
     canvas.addEventListener('mouseleave', () => {
         _hoveredIndex = -1;
         render();
+    });
+
+    const finishTouchInteraction = (e) => {
+        if (_activeTouchPointerId !== e.pointerId) return;
+
+        const { x, y } = getCanvasPointerPosition(canvas, e);
+        if (_tooltipTapPending && isPointInsideTooltip(x, y) && _touchFocusedIndex >= 0) {
+            graphEvents.emit('nodeClick', _touchFocusedIndex);
+        }
+
+        canvas.releasePointerCapture?.(e.pointerId);
+        clearTouchInteraction();
+    };
+
+    canvas.addEventListener('pointerup', finishTouchInteraction);
+    canvas.addEventListener('pointercancel', (e) => {
+        if (_activeTouchPointerId !== e.pointerId) return;
+        canvas.releasePointerCapture?.(e.pointerId);
+        clearTouchInteraction();
     });
 
     // Wire controls with holdable buttons
@@ -320,6 +433,11 @@ export function updateGraph(solves, perSolveStats) {
     _solves = solves;
     _perSolve = perSolveStats;
     _newBestSingles = getNewBestSingleFlags(solves);
+    _tooltipHitArea = null;
+
+    if (_hoveredIndex >= _solves.length) _hoveredIndex = -1;
+    if (_touchFocusedIndex >= _solves.length) _touchFocusedIndex = _solves.length - 1;
+    if (_solves.length === 0) clearTouchInteraction();
 
     // Conditionally show/hide the "25" button
     const last25Btn = document.querySelector('#graph-controls button[data-action="last25"]');
@@ -387,6 +505,8 @@ function render() {
     const COLORS = getColors();
     const w = _canvas.width / devicePixelRatio;
     const h = _canvas.height / devicePixelRatio;
+    const activeIndex = getActiveFocusedIndex();
+    _tooltipHitArea = null;
 
     ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
     ctx.clearRect(0, 0, w, h);
@@ -513,36 +633,57 @@ function render() {
     if (_lineVisibility.ao12) drawLine(i => _perSolve[i]?.ao12, COLORS.ao12);
     if (_lineVisibility.ao100) drawLine(i => _perSolve[i]?.ao100, COLORS.ao100);
 
-    // Hover dot only
-    if (_hoveredIndex >= startIdx && _hoveredIndex <= endIdx && allTimes[_hoveredIndex] !== Infinity) {
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(toX(_hoveredIndex), toY(allTimes[_hoveredIndex]), 3.5, 0, Math.PI * 2);
-        ctx.fill();
+    const activeMarkers = [];
+    if (activeIndex >= startIdx && activeIndex <= endIdx) {
+        const ps = _perSolve[activeIndex];
+        if (_lineVisibility.time && allTimes[activeIndex] !== Infinity) {
+            activeMarkers.push({ value: allTimes[activeIndex], color: COLORS.time, radius: 4.25 });
+        }
+        if (_lineVisibility.ao5 && ps?.ao5 != null && ps.ao5 !== Infinity) {
+            activeMarkers.push({ value: ps.ao5, color: COLORS.ao5, radius: 3.5 });
+        }
+        if (_lineVisibility.ao12 && ps?.ao12 != null && ps.ao12 !== Infinity) {
+            activeMarkers.push({ value: ps.ao12, color: COLORS.ao12, radius: 3.5 });
+        }
+        if (_lineVisibility.ao100 && ps?.ao100 != null && ps.ao100 !== Infinity) {
+            activeMarkers.push({ value: ps.ao100, color: COLORS.ao100, radius: 3.5 });
+        }
     }
 
+    activeMarkers.forEach((marker) => {
+        ctx.fillStyle = COLORS.bg;
+        ctx.strokeStyle = marker.color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(toX(activeIndex), toY(marker.value), marker.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+    });
+
     // Hover tooltip
-    if (_hoveredIndex >= startIdx && _hoveredIndex <= endIdx &&
-        allTimes[_hoveredIndex] !== undefined && allTimes[_hoveredIndex] !== Infinity) {
-        const x = toX(_hoveredIndex);
-        const y = toY(allTimes[_hoveredIndex]);
-        const text = formatTime(allTimes[_hoveredIndex]);
-        const ps = _perSolve[_hoveredIndex];
-        const solve = _solves[_hoveredIndex];
+    if (activeIndex >= startIdx && activeIndex <= endIdx &&
+        allTimes[activeIndex] !== undefined && allTimes[activeIndex] !== Infinity) {
+        const anchor = activeMarkers[0];
+        const x = toX(activeIndex);
+        const y = toY(anchor?.value ?? allTimes[activeIndex]);
+        const text = formatTime(allTimes[activeIndex]);
+        const ps = _perSolve[activeIndex];
+        const solve = _solves[activeIndex];
         const hasComment = !!solve?.comment?.trim();
-        const isNewBestSingle = !!_newBestSingles[_hoveredIndex];
+        const isNewBestSingle = !!_newBestSingles[activeIndex];
         const highlightColor = isNewBestSingle ? '#e3b341' : hasComment ? COLORS.accent : null;
+        const showTapHint = mobileViewportQuery.matches;
 
         ctx.font = '11px JetBrains Mono, monospace';
         const solveLabelPrefix = hasComment ? '*' : '#';
-        let lines = [`${solveLabelPrefix}${_hoveredIndex + 1}: ${text}`];
+        const lines = [`${solveLabelPrefix}${activeIndex + 1}: ${text}`];
         if (ps && ps.ao5 != null) lines.push(`ao5: ${formatTime(ps.ao5)}`);
         if (ps && ps.ao12 != null) lines.push(`ao12: ${formatTime(ps.ao12)}`);
         if (ps && ps.ao100 != null) lines.push(`ao100: ${formatTime(ps.ao100)}`);
 
         const lineHeight = 15;
         const maxWidth = Math.max(...lines.map(l => ctx.measureText(l).width));
-        const boxW = maxWidth + 12;
+        const boxW = maxWidth + 12 + (showTapHint ? 16 : 0);
         const boxH = lines.length * lineHeight + 8;
 
         // Position to the right of the dot; flip left if near right edge
@@ -566,5 +707,14 @@ function render() {
             ctx.fillStyle = idx === 0 && highlightColor ? highlightColor : COLORS.textPrimary;
             ctx.fillText(line, boxX + 6, boxY + 14 + idx * lineHeight);
         });
+
+        if (showTapHint) {
+            ctx.font = '600 12px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = COLORS.text;
+            ctx.fillText('▸', boxX + boxW - 8, boxY + (boxH / 2) + 4);
+        }
+
+        _tooltipHitArea = { x: boxX, y: boxY, width: boxW, height: boxH };
     }
 }
