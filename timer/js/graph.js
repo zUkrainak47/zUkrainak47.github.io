@@ -271,6 +271,7 @@ if (typeof mobileViewportQuery.addEventListener === 'function') {
 export function initGraph(canvas) {
     _canvas = canvas;
     _ctx = canvas.getContext('2d');
+    const panel = document.getElementById('graph-panel');
 
     const observer = new ResizeObserver(() => {
         const parent = canvas.parentElement;
@@ -296,10 +297,16 @@ export function initGraph(canvas) {
         if (e.button !== undefined && e.button !== 0) return;
 
         const { rect, x, y } = getCanvasPointerPosition(canvas, e);
-        if (isPointInsideTooltip(x, y) && _touchFocusedIndex >= 0) {
-            _activeTouchPointerId = e.pointerId;
-            _tooltipTapPending = true;
-            canvas.setPointerCapture?.(e.pointerId);
+        if (_touchFocusedIndex >= 0) {
+            if (isPointInsideTooltip(x, y)) {
+                _activeTouchPointerId = e.pointerId;
+                _tooltipTapPending = true;
+                canvas.setPointerCapture?.(e.pointerId);
+                e.preventDefault();
+                return;
+            }
+
+            clearTouchFocus();
             e.preventDefault();
             return;
         }
@@ -366,6 +373,23 @@ export function initGraph(canvas) {
         if (_activeTouchPointerId !== e.pointerId) return;
         canvas.releasePointerCapture?.(e.pointerId);
         clearTouchInteraction();
+    });
+
+    panel?.addEventListener('pointerdown', (e) => {
+        if (!mobileViewportQuery.matches || _touchFocusedIndex < 0) return;
+        if (e.pointerType !== 'touch' && e.pointerType !== 'pen') return;
+        if (e.button !== undefined && e.button !== 0) return;
+        if (e.target === canvas) return;
+        clearTouchFocus();
+    });
+
+    document.addEventListener('pointerdown', (e) => {
+        if (!mobileViewportQuery.matches || _touchFocusedIndex < 0) return;
+        if (e.pointerType !== 'touch' && e.pointerType !== 'pen') return;
+        if (e.button !== undefined && e.button !== 0) return;
+        if (!(e.target instanceof Node)) return;
+        if (panel?.contains(e.target)) return;
+        clearTouchFocus();
     });
 
     // Wire controls with holdable buttons
