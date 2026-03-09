@@ -195,7 +195,7 @@
         min-height: 248px;
         max-height: min(42vh, 340px);
         aspect-ratio: 4 / 3;
-        padding: var(--space-sm);
+        padding: var(--space-sm) var(--space-sm) calc(var(--space-sm) + 12px);
     }
 
     .graph-controls-primary {
@@ -313,6 +313,7 @@
     #graph-canvas-container {
         min-height: 232px;
         max-height: min(40vh, 320px);
+        padding-bottom: calc(var(--space-sm) + 14px);
     }
 
     .graph-controls-sep {

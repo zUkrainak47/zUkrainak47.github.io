@@ -5,8 +5,14 @@ import { settings } from './settings.js';
  * Time trend graph with pan/zoom controls.
  */
 
-const PADDING = { top: 12, right: 15, bottom: 22, left: 45 };
+const BASE_PADDING = { top: 12, right: 15, bottom: 22, left: 45 };
 const mobileViewportQuery = window.matchMedia('(max-width: 900px)');
+
+function getPadding() {
+    return mobileViewportQuery.matches
+        ? { ...BASE_PADDING, bottom: 32 }
+        : BASE_PADDING;
+}
 function getColors() {
     const styles = getComputedStyle(document.documentElement);
     const readVar = (name, fallback) => styles.getPropertyValue(name).trim() || fallback;
@@ -548,6 +554,7 @@ function render() {
     if (!_canvas || !_ctx) return;
     const ctx = _ctx;
     const COLORS = getColors();
+    const PADDING = getPadding();
     const pixelRatio = window.devicePixelRatio || 1;
     const w = _canvas.width / pixelRatio;
     const h = _canvas.height / pixelRatio;
@@ -645,13 +652,15 @@ function render() {
     const firstXTick = Math.ceil((startIdx + 1) / xTickInterval) * xTickInterval;
     ctx.font = '9px Inter, sans-serif';
     ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
     ctx.fillStyle = COLORS.text;
     for (let solveNum = firstXTick; solveNum <= endIdx + 1; solveNum += xTickInterval) {
         const i = solveNum - 1; // 0-indexed
         if (i < startIdx || i > endIdx) continue;
         const x = toX(i);
-        ctx.fillText(solveNum.toString(), x, drawY + drawH + 14);
+        ctx.fillText(solveNum.toString(), x, drawY + drawH + 8);
     }
+    ctx.textBaseline = 'alphabetic';
 
     // Draw line helper
     function drawLine(getData, color, lineWidth = 2, breakOnEmpty = true) {
