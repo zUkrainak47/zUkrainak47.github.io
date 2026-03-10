@@ -231,16 +231,6 @@
     box-shadow: var(--shadow-card);
 }
 
-.modal-mobile-list-heading {
-    padding: var(--space-lg) var(--space-lg) var(--space-md);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    color: var(--text-secondary);
-    font-size: var(--text-sm);
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-}
-
 .modal-mobile-list {
     max-height: 100%;
 }
@@ -469,8 +459,7 @@
     }
 
     .modal-mobile-card,
-    .modal-mobile-entry,
-    .modal-mobile-list-heading {
+    .modal-mobile-entry {
         padding-left: var(--space-md);
         padding-right: var(--space-md);
     }

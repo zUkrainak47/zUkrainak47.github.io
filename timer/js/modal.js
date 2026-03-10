@@ -430,7 +430,6 @@ function renderMobileDetail(detailPayload) {
     _mobileCopyButton.dataset.originalLabel = detailPayload.copyLabel;
     _mobileShareButton.textContent = detailPayload.shareLabel;
     _mobileShareButton.dataset.originalLabel = detailPayload.shareLabel;
-    _mobileListPanel.querySelector('.modal-mobile-list-heading').textContent = detailPayload.listTitle;
 
     clearMobileList();
     _mobileList.append(...detailPayload.entries.map(createMobileEntry));
@@ -444,7 +443,6 @@ function buildSolveDetailPayload(title, timeStr, solve, index, singleLabel, shar
         meta: `${getActiveSessionName()} | ${singleLabel.toLowerCase()}`,
         copyLabel: 'Copy Solve',
         shareLabel: 'Share Solve',
-        listTitle: 'Solve',
         shareText,
         entries: [{
             position: index + 1,
@@ -463,7 +461,6 @@ function buildAverageDetailPayload(title, valueStr, label, entries, shareText) {
         meta: `${getActiveSessionName()} | ${label.toLowerCase()}`,
         copyLabel: 'Copy Average',
         shareLabel: 'Share Average',
-        listTitle: 'Times',
         shareText,
         entries,
     };
