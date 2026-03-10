@@ -377,6 +377,7 @@ body.typing-entry-mode:not(.mobile-viewport) #manual-time-entry-display {
 }
 
 @keyframes manual-time-caret-blink {
+
     0%,
     49% {
         opacity: 1;
@@ -436,6 +437,17 @@ body.typing-entry-mode:not(.mobile-viewport) #manual-time-entry-display {
 }
 
 /* Pill sizes */
+body.pill-size-small #timer-info>span {
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    padding: 8px 24px;
+    border-radius: 40px;
+}
+
+body.pill-size-small #timer-info .stat-label {
+    font-size: var(--text-base);
+    color: var(--text-secondary);
+}
+
 body.pill-size-hidden #timer-info {
     display: none !important;
 }
@@ -455,7 +467,7 @@ body.pill-size-medium #timer-info>span {
 }
 
 body.pill-size-medium #timer-info .stat-label {
-    font-size: var(--text-base);
+    font-size: 0.61em;
     color: var(--text-secondary);
 }
 
