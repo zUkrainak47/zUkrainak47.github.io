@@ -1,4 +1,4 @@
-import { timer } from './timer.js?v=4';
+import { timer } from './timer.js?v=5';
 import { getScramble, getCurrentScramble, getPrevScramble, getNextScramble, setCurrentScramble, isCurrentScrambleManual, hasPrevScramble } from './scramble.js';
 import { sessionManager } from './session.js';
 import { settings, DEFAULTS } from './settings.js';
@@ -803,7 +803,11 @@ async function init() {
     initShortcutTooltips();
     timer.init(
         document.getElementById('timer-display'),
-        [document.getElementById('timer-display'), document.getElementById('center-panel')],
+        [
+            document.getElementById('timer-display'),
+            document.getElementById('center-panel'),
+            document.getElementById('scramble-bar'),
+        ],
     );
     initCubeDisplay(document.getElementById('cube-canvas'));
     initGraph(document.getElementById('graph-canvas'));

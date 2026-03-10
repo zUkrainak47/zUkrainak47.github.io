@@ -48,12 +48,12 @@
       </div>
 
       <div id="scramble-container">
-        <div id="scramble-text-wrapper">
+        <div id="scramble-text-wrapper" data-no-timer-start>
           <span id="scramble-text" class="loading" title="Click to copy">Loading scrambler...</span>
           <input type="text" id="scramble-input" style="display: none;" spellcheck="false" autocomplete="off"
             maxlength="1000" />
         </div>
-        <div id="scramble-actions">
+        <div id="scramble-actions" data-no-timer-start>
           <button id="btn-copy-scramble" class="btn-icon" title="Copy scramble">⧉</button>
           <button id="btn-edit-scramble" class="btn-icon" title="Edit scramble">✎</button>
           <button id="btn-prev-scramble" class="btn-icon" title="Previous scramble">‹</button>
@@ -597,7 +597,7 @@
   </div>
 
   <!-- App Script -->
-  <script type="module" src="js/app.js?v=21"></script>
+  <script type="module" src="js/app.js?v=22"></script>
 </body>
 
 </html>

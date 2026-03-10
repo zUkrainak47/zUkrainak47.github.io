@@ -13,6 +13,9 @@ const State = {
     STOPPED: 'stopped',
 };
 
+const GHOST_CLICK_GUARD_MS = 450;
+const GHOST_CLICK_GUARD_RADIUS_PX = 42;
+
 class Timer extends EventEmitter {
     constructor() {
         super();
@@ -34,12 +37,17 @@ class Timer extends EventEmitter {
         this._leftAltDown = false;
         this._rightAltDown = false;
         this._activePointerId = null;
+        this._ghostClickGuardExpiresAt = 0;
+        this._ghostClickGuardOrigin = null;
+        this._ghostClickGuardTimeout = null;
 
         this._onKeyDown = this._onKeyDown.bind(this);
         this._onKeyUp = this._onKeyUp.bind(this);
         this._onPointerDown = this._onPointerDown.bind(this);
         this._onPointerUp = this._onPointerUp.bind(this);
         this._onPointerCancel = this._onPointerCancel.bind(this);
+        this._onDocumentPointerDown = this._onDocumentPointerDown.bind(this);
+        this._onCapturedClick = this._onCapturedClick.bind(this);
         this._tick = this._tick.bind(this);
     }
 
@@ -48,6 +56,8 @@ class Timer extends EventEmitter {
         this._interactionEls = Array.from(new Set(interactionEls.filter(Boolean)));
         document.addEventListener('keydown', this._onKeyDown);
         document.addEventListener('keyup', this._onKeyUp);
+        document.addEventListener('pointerdown', this._onDocumentPointerDown);
+        document.addEventListener('click', this._onCapturedClick, true);
         this._interactionEls.forEach((el) => {
             el.addEventListener('pointerdown', this._onPointerDown);
             el.addEventListener('pointerup', this._onPointerUp);
@@ -60,12 +70,15 @@ class Timer extends EventEmitter {
     destroy() {
         document.removeEventListener('keydown', this._onKeyDown);
         document.removeEventListener('keyup', this._onKeyUp);
+        document.removeEventListener('pointerdown', this._onDocumentPointerDown);
+        document.removeEventListener('click', this._onCapturedClick, true);
         this._interactionEls.forEach((el) => {
             el.removeEventListener('pointerdown', this._onPointerDown);
             el.removeEventListener('pointerup', this._onPointerUp);
             el.removeEventListener('pointercancel', this._onPointerCancel);
         });
         this._interactionEls = [];
+        this._clearGhostClickGuard();
         this._cancelHold();
         this._cancelRaf();
     }
@@ -175,6 +188,7 @@ class Timer extends EventEmitter {
         if (this._hasBlockingOverlayOpen()) return;
         if (this._isManualTimeEntryActive()) return;
         if (this._isInteractivePointerTarget(e.target)) return;
+        if (this._isScrambleBarTarget(e.target) && !this._isMobileTimerViewActive()) return;
         if (this._activePointerId != null) return;
 
         e.preventDefault();
@@ -189,11 +203,48 @@ class Timer extends EventEmitter {
         }
 
         if (this.state === State.RUNNING) {
+            this._armGhostClickGuard(e);
             this._stopTimer();
             return;
         }
 
         this._handleStartPress();
+    }
+
+    _onDocumentPointerDown(e) {
+        if (!this._isTouchPointer(e)) return;
+        if (this.state !== State.RUNNING) return;
+        if (!this._isMobileTimerViewActive()) return;
+        if (this._hasBlockingOverlayOpen()) return;
+        if (this._isManualTimeEntryActive()) return;
+        if (this._isInteractivePointerTarget(e.target)) return;
+        if (this._isWithinInteractionArea(e.target)) return;
+
+        e.preventDefault();
+        this._armGhostClickGuard(e);
+        this._stopTimer();
+    }
+
+    _onCapturedClick(e) {
+        if (!e.isTrusted) return;
+        if (this._ghostClickGuardExpiresAt === 0) return;
+
+        if (performance.now() > this._ghostClickGuardExpiresAt) {
+            this._clearGhostClickGuard();
+            return;
+        }
+
+        const origin = this._ghostClickGuardOrigin;
+        if (origin) {
+            const dx = e.clientX - origin.x;
+            const dy = e.clientY - origin.y;
+            if ((dx * dx) + (dy * dy) > GHOST_CLICK_GUARD_RADIUS_PX ** 2) return;
+        }
+
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        this._clearGhostClickGuard();
     }
 
     _onPointerUp(e) {
@@ -510,6 +561,43 @@ class Timer extends EventEmitter {
     _isInteractivePointerTarget(target) {
         return target instanceof Element
             && Boolean(target.closest('button, input, textarea, select, a, [data-no-timer-start]'));
+    }
+
+    _isWithinInteractionArea(target) {
+        return target instanceof Node
+            && this._interactionEls.some((el) => el instanceof Element && el.contains(target));
+    }
+
+    _isScrambleBarTarget(target) {
+        if (target instanceof Element) return Boolean(target.closest('#scramble-bar'));
+        return target instanceof Node && target.parentElement instanceof Element
+            ? Boolean(target.parentElement.closest('#scramble-bar'))
+            : false;
+    }
+
+    _isMobileTimerViewActive() {
+        return document.body.classList.contains('mobile-viewport')
+            && document.body.dataset.mobilePanel === 'timer';
+    }
+
+    _armGhostClickGuard(e) {
+        this._clearGhostClickGuard();
+        this._ghostClickGuardExpiresAt = performance.now() + GHOST_CLICK_GUARD_MS;
+        this._ghostClickGuardOrigin = Number.isFinite(e.clientX) && Number.isFinite(e.clientY)
+            ? { x: e.clientX, y: e.clientY }
+            : null;
+        this._ghostClickGuardTimeout = window.setTimeout(() => {
+            this._clearGhostClickGuard();
+        }, GHOST_CLICK_GUARD_MS);
+    }
+
+    _clearGhostClickGuard() {
+        this._ghostClickGuardExpiresAt = 0;
+        this._ghostClickGuardOrigin = null;
+        if (this._ghostClickGuardTimeout !== null) {
+            clearTimeout(this._ghostClickGuardTimeout);
+            this._ghostClickGuardTimeout = null;
+        }
     }
 
     _releaseActivePointer(pointerId) {
