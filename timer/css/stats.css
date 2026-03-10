@@ -9,10 +9,10 @@
 
 /* Summary stats table */
 #stats-summary {
-    margin: var(--space-sm);
+    margin: var(--space-xs) var(--space-sm) var(--space-sm) var(--space-sm);
     padding: var(--space-md);
     background: var(--surface);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-md);
     border: 1px solid var(--text-muted);
 }
 
@@ -243,8 +243,8 @@ tr:hover .solve-actions {
     display: flex;
     align-items: center;
     gap: var(--space-xs);
-    padding: var(--space-xs) var(--space-sm);
-    border-bottom: 1px solid var(--surface-border);
+    padding: var(--space-xs) var(--space-sm) 0 var(--space-sm);
+    border-bottom: none;
 }
 
 .stats-filter-select-wrapper {
@@ -265,9 +265,10 @@ tr:hover .solve-actions {
 
 #stats-filter-bar select {
     width: 100%;
+    height: 30px;
     font-size: var(--text-sm);
     font-weight: 500;
-    padding: 6px 24px 6px 10px;
+    padding: 0 24px 0 10px;
     border-radius: var(--radius-md);
     background-color: var(--surface);
     background-image: none;
@@ -301,14 +302,15 @@ tr:hover .solve-actions {
 
 /* Session selector */
 #session-header {
-    padding: var(--space-xs) var(--space-sm);
+    padding: var(--space-sm) var(--space-sm) 0 var(--space-sm);
+    border-bottom: none;
 }
 
 #session-bar {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 4px;
+    gap: var(--space-xs);
     width: 100%;
 }
 
@@ -330,11 +332,12 @@ tr:hover .solve-actions {
 
 #session-bar select {
     width: 100%;
+    height: 30px;
     appearance: none;
     -webkit-appearance: none;
     font-size: var(--text-sm);
     font-weight: 500;
-    padding: 6px 24px 6px 10px;
+    padding: 0 24px 0 10px;
     border-radius: var(--radius-md);
     background: var(--surface);
     color: var(--text-primary);
@@ -363,8 +366,8 @@ tr:hover .solve-actions {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
+    width: 30px;
+    height: 30px;
     border-radius: var(--radius-md);
     background: var(--surface);
     color: var(--text-secondary);
@@ -412,8 +415,13 @@ tr:hover .solve-actions {
     }
 
     #stats-filter-bar {
-        gap: 8px;
-        padding: 10px var(--space-md);
+        gap: 4px;
+        padding: var(--space-xs) var(--space-sm) 0;
+    }
+
+    #stats-filter-bar select {
+        height: 36px;
+        border-radius: 12px;
     }
 
     #solves-container {
@@ -423,16 +431,21 @@ tr:hover .solve-actions {
     }
 
     #session-bar {
-        gap: 8px;
+        gap: var(--space-xs);
     }
 
     .session-actions {
-        gap: 6px;
+        gap: var(--space-xs);
     }
 
     .btn-icon-small {
-        width: 34px;
-        height: 34px;
+        width: 36px;
+        height: 36px;
+        border-radius: 12px;
+    }
+
+    #session-bar select {
+        height: 36px;
         border-radius: 12px;
     }
 
@@ -451,14 +464,13 @@ tr:hover .solve-actions {
 
     body[data-mobile-panel="stats"] #session-header {
         display: flex;
-        padding: var(--space-sm);
-        padding-bottom: var(--space-xs);
+        padding: var(--space-sm) var(--space-sm) 0 var(--space-sm);
         border-bottom: none;
     }
 
     body[data-mobile-panel="stats"] #stats-filter-bar {
         display: flex;
-        padding: 0 var(--space-sm) var(--space-sm);
+        padding: var(--space-xs) var(--space-sm) 0;
         border-bottom: none;
     }
 
@@ -468,9 +480,9 @@ tr:hover .solve-actions {
     }
 
     body[data-mobile-panel="stats"] #stats-summary {
-        margin: 0 var(--space-sm) var(--space-sm);
+        margin: var(--space-xs) var(--space-sm) var(--space-sm);
         padding: 12px;
-        border-radius: var(--radius-xl);
+        border-radius: 12px;
     }
 
     body[data-mobile-panel="stats"] #stats-summary table {
@@ -552,6 +564,6 @@ tr:hover .solve-actions {
     }
 
     #session-bar select {
-        min-height: 36px;
+        height: 36px;
     }
 }
