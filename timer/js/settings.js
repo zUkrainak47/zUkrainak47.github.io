@@ -9,7 +9,7 @@ const DEFAULTS = {
     holdDuration: 300,       // ms
     animationsEnabled: true,
     displayFont: 'jetbrains-mono',
-    pillSize: 'small',       // 'small', 'medium', 'large', 'hidden'
+    pillSize: 'medium',       // 'small', 'medium', 'large', 'hidden'
     statsFilter: 'all',     // 'all', 'today', 'week', 'month', 'custom'
     customFilterDuration: '', // e.g. '3d', '2h'
     zenMode: false,

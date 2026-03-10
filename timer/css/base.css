@@ -112,7 +112,7 @@ select {
         linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0)),
         var(--surface-elevated);
     border: 1px solid var(--surface-border);
-    border-radius: var(--radius-xl);
+    border-radius: var(--radius-lg);
     overflow: hidden;
     transition: border-radius 0.2s ease;
     backdrop-filter: blur(18px);
@@ -126,6 +126,12 @@ select {
 .panel.drawer-open {
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
+}
+
+@media (max-width: 900px) {
+    .panel {
+        border-radius: var(--radius-xl);
+    }
 }
 
 .panel-header {

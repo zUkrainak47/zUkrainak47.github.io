@@ -500,6 +500,7 @@ tr:hover .solve-actions {
 }
 
 @media (max-width: 640px) {
+
     #stats-summary table,
     #solves-table {
         font-size: 0.78rem;
