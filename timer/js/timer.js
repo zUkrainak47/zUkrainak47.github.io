@@ -57,6 +57,8 @@ class Timer extends EventEmitter {
         document.addEventListener('keydown', this._onKeyDown);
         document.addEventListener('keyup', this._onKeyUp);
         document.addEventListener('pointerdown', this._onDocumentPointerDown);
+        document.addEventListener('pointerup', this._onPointerUp);
+        document.addEventListener('pointercancel', this._onPointerCancel);
         document.addEventListener('click', this._onCapturedClick, true);
         this._interactionEls.forEach((el) => {
             el.addEventListener('pointerdown', this._onPointerDown);
@@ -71,6 +73,8 @@ class Timer extends EventEmitter {
         document.removeEventListener('keydown', this._onKeyDown);
         document.removeEventListener('keyup', this._onKeyUp);
         document.removeEventListener('pointerdown', this._onDocumentPointerDown);
+        document.removeEventListener('pointerup', this._onPointerUp);
+        document.removeEventListener('pointercancel', this._onPointerCancel);
         document.removeEventListener('click', this._onCapturedClick, true);
         this._interactionEls.forEach((el) => {
             el.removeEventListener('pointerdown', this._onPointerDown);
@@ -189,6 +193,15 @@ class Timer extends EventEmitter {
         if (this._isManualTimeEntryActive()) return;
         if (this._isInteractivePointerTarget(e.target)) return;
         if (this._isScrambleBarTarget(e.target) && !this._isMobileTimerViewActive()) return;
+
+        if (this.state === State.RUNNING) {
+            e.preventDefault();
+            this._releaseActivePointer(this._activePointerId);
+            this._armGhostClickGuard(e);
+            this._stopTimer();
+            return;
+        }
+
         if (this._activePointerId != null) return;
 
         e.preventDefault();
@@ -200,12 +213,6 @@ class Timer extends EventEmitter {
             } catch {
                 // Ignore pointer capture failures on browsers that reject it for synthetic events.
             }
-        }
-
-        if (this.state === State.RUNNING) {
-            this._armGhostClickGuard(e);
-            this._stopTimer();
-            return;
         }
 
         this._handleStartPress();
@@ -221,6 +228,7 @@ class Timer extends EventEmitter {
         if (this._isWithinInteractionArea(e.target)) return;
 
         e.preventDefault();
+        this._releaseActivePointer(this._activePointerId);
         this._armGhostClickGuard(e);
         this._stopTimer();
     }
