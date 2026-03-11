@@ -308,6 +308,11 @@
 }
 
 /* Confirm Modal Specifics */
+#confirm-overlay,
+#prompt-overlay {
+    z-index: 1100;
+}
+
 .confirm-box {
     max-width: 400px;
     width: 90vw;

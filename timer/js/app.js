@@ -2775,11 +2775,11 @@ function initSettingsPanel() {
 
     const updateCenterTimerState = () => {
         if (!centerTimerToggle) return;
-        
+
         const isMobile = mobileViewportQuery.matches;
         const hideUIEnabled = settings.get('hideUIWhileSolving');
         const shouldDisable = !isMobile && !hideUIEnabled;
-        
+
         centerTimerToggle.disabled = shouldDisable;
         const row = centerTimerToggle.closest('.setting-row');
         if (row) {
@@ -2790,7 +2790,7 @@ function initSettingsPanel() {
 
     if (hideUIToggle) {
         hideUIToggle.checked = settings.get('hideUIWhileSolving');
-        
+
         hideUIToggle.onchange = () => {
             settings.set('hideUIWhileSolving', hideUIToggle.checked);
             updateCenterTimerState();
@@ -2873,7 +2873,7 @@ function initSettingsPanel() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `cubetimer-backup-${formatDate(Date.now())}.json`;
+        a.download = `ukratimer-backup-${formatDate(Date.now())}.json`;
         a.click();
         URL.revokeObjectURL(url);
     };
@@ -2935,7 +2935,10 @@ function initSettingsPanel() {
             }
 
             const data = JSON.parse(text);
-            closeSettingsPanel();
+            // Close UI without popping history to avoid back-navigation race condition
+            // and ensure confirmation is visible (history state is reused by customConfirm)
+            closeSettingsPanel({ isPopState: true });
+            
             if (await customConfirm('This will replace all your current data. Continue?')) {
                 if (isCsTimerFormat(data)) {
                     importCsTimer(data);
