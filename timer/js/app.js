@@ -238,6 +238,77 @@ const mobilePanelIds = new Set(['timer', 'stats', 'trend']);
 const mobileViewportQuery = window.matchMedia('(max-width: 1100px), (pointer: coarse)');
 const touchPrimaryQuery = window.matchMedia('(hover: none) and (pointer: coarse)');
 
+// ──── History & Back Button ────
+
+function pushHistoryState() {
+    // Only push if we're not already in a pushed state to avoid nested pushes for simple overlays
+    if (window.history.state?.isBackIntercepted) return;
+    window.history.pushState({ isBackIntercepted: true }, '');
+}
+
+function backToDismiss() {
+    if (window.history.state?.isBackIntercepted) {
+        window.history.back();
+    }
+}
+
+function handlePopState(event) {
+    if (event.state?.isBackIntercepted) return;
+
+    // Check overlays in order of priority (most specific/blocking first)
+    if (document.getElementById('confirm-overlay').classList.contains('active')) {
+        // Custom confirm usually needs explicit action, but we can treat back as cancel
+        const cancelBtn = document.getElementById('confirm-btn-cancel');
+        cancelBtn?.click();
+        return;
+    }
+
+    if (document.getElementById('prompt-overlay').classList.contains('active')) {
+        const cancelBtn = document.getElementById('prompt-btn-cancel');
+        cancelBtn?.click();
+        return;
+    }
+
+    if (isShortcutsOverlayOpen()) {
+        closeKeyboardShortcutsOverlay({ isPopState: true });
+        return;
+    }
+
+    if (settingsOverlayEl?.classList.contains('active')) {
+        closeSettingsPanel({ isPopState: true });
+        return;
+    }
+
+    if (document.getElementById('modal-overlay').classList.contains('active')) {
+        closeModal({ isPopState: true });
+        return;
+    }
+
+    if (isManualTimeEntryActive() && !isDesktopTypingEntryModeEnabled()) {
+        closeManualTimeEntry({
+            restoreQuickActions: isMobileTimerPanelActive(),
+            pinned: quickActionsState.restorePinnedAfterManual,
+            isPopState: true,
+        });
+        return;
+    }
+
+    // Special case: Timer running
+    if (timer.getState() === 'running') {
+        // Stop timer without penalty (no DNF)
+        timer.stop();
+        return;
+    }
+
+    // Special case: Timer primed/holding/ready
+    const state = timer.getState();
+    if (state === 'holding' || state === 'ready' || isInspectionState(state)) {
+        timer.cancelPendingStart();
+    }
+}
+
+window.addEventListener('popstate', handlePopState);
+
 function isTouchPrimaryInput() {
     return touchPrimaryQuery.matches;
 }
@@ -517,6 +588,10 @@ function openManualTimeEntry({ initialDigits = '', focusStrategy = 'deferred' } 
     const manualEntryEl = getEl('manual-time-entry');
     if (!manualEntryEl) return;
 
+    if (!isDesktopTypingEntryModeEnabled()) {
+        pushHistoryState();
+    }
+
     if (!quickActionsState.manualEntryActive) {
         quickActionsState.restoreVisibleAfterManual = quickActionsState.visible;
         quickActionsState.restorePinnedAfterManual = quickActionsState.pinned;
@@ -541,7 +616,11 @@ function openManualTimeEntry({ initialDigits = '', focusStrategy = 'deferred' } 
     });
 }
 
-function closeManualTimeEntry({ restoreQuickActions = quickActionsState.restoreVisibleAfterManual, pinned = quickActionsState.restorePinnedAfterManual, resetDigits = true } = {}) {
+function closeManualTimeEntry({ restoreQuickActions = quickActionsState.restoreVisibleAfterManual, pinned = quickActionsState.restorePinnedAfterManual, resetDigits = true, isPopState = false } = {}) {
+    if (!isPopState && !isDesktopTypingEntryModeEnabled()) {
+        backToDismiss();
+    }
+
     const manualEntryEl = getEl('manual-time-entry');
     const hiddenInput = getEl('manual-time-hidden-input');
 
@@ -1642,13 +1721,16 @@ function openSettingsPanel() {
     if (!settingsOverlayEl) return false;
     if (!settingsOverlayEl.classList.contains('active') && !canOpenSettingsPanel()) return false;
 
+    pushHistoryState();
     settingsOverlayEl.classList.add('active');
     blurManualTimeInput();
     return true;
 }
 
-function closeSettingsPanel() {
+function closeSettingsPanel({ isPopState = false } = {}) {
     if (!settingsOverlayEl) return;
+    if (!isPopState) backToDismiss();
+
     settingsOverlayEl.classList.remove('active');
     if (document.activeElement) document.activeElement.blur();
 }
@@ -1658,13 +1740,16 @@ function openKeyboardShortcutsOverlay({ closeSettings = false } = {}) {
     if (!shortcutsOverlayEl.classList.contains('active') && !canOpenSettingsPanel()) return false;
 
     if (closeSettings) closeSettingsPanel();
+    pushHistoryState();
     shortcutsOverlayEl.classList.add('active');
     blurManualTimeInput();
     return true;
 }
 
-function closeKeyboardShortcutsOverlay() {
+function closeKeyboardShortcutsOverlay({ isPopState = false } = {}) {
     if (!shortcutsOverlayEl) return;
+    if (!isPopState) backToDismiss();
+
     shortcutsOverlayEl.classList.remove('active');
     if (document.activeElement) document.activeElement.blur();
 }
@@ -1947,10 +2032,12 @@ function initKeyboardShortcuts() {
 
 // ──── Timer Events ────
 async function onSolveComplete(elapsed, penalty = null) {
+    backToDismiss();
     await commitSolve(elapsed, penalty, { isManual: isCurrentScrambleManual() });
 }
 
 function onTimerStarted() {
+    pushHistoryState();
     // Info hidden via onTimerStateChange
 }
 

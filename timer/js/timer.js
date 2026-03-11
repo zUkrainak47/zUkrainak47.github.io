@@ -696,6 +696,12 @@ class Timer extends EventEmitter {
         this._setState(State.IDLE);
     }
 
+    stop(penalty = null) {
+        if (this.state === State.RUNNING) {
+            this._stopTimer(penalty);
+        }
+    }
+
     getState() {
         return this.state;
     }

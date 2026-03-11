@@ -6,7 +6,7 @@ import { settings } from './settings.js';
  */
 
 const PADDING = { top: 12, right: 15, bottom: 22, left: 45 };
-const mobileViewportQuery = window.matchMedia('(max-width: 1100px)');
+const mobileViewportQuery = window.matchMedia('(max-width: 1100px), (pointer: coarse)');
 function getColors() {
     const styles = getComputedStyle(document.documentElement);
     const readVar = (name, fallback) => styles.getPropertyValue(name).trim() || fallback;

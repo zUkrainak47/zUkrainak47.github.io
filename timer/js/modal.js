@@ -20,7 +20,7 @@ let _onStatNavigate = null;
 let _currentDetailPayload = null;
 let _ghostClickGuardCleanup = null;
 let _ghostClickGuardTimeout = null;
-const mobileDetailQuery = window.matchMedia('(max-width: 1100px)');
+const mobileDetailQuery = window.matchMedia('(max-width: 1100px), (pointer: coarse)');
 const MODAL_GHOST_CLICK_GUARD_MS = 450;
 const MODAL_GHOST_CLICK_RADIUS_PX = 42;
 
@@ -195,6 +195,10 @@ export function customConfirm(message) {
         // Set message
         msgEl.textContent = message;
 
+        if (!window.history.state?.isBackIntercepted) {
+            window.history.pushState({ isBackIntercepted: true }, '');
+        }
+
         // Cleanup function
         const cleanup = () => {
             overlay.classList.remove('active');
@@ -254,9 +258,12 @@ export function customPrompt(message, defaultValue = '', maxLength = 100, title 
         titleEl.textContent = title;
         msgEl.textContent = message;
         msgEl.style.display = message ? 'block' : 'none';
-        inputEl.value = defaultValue;
         inputEl.maxLength = maxLength;
         inputEl.placeholder = placeholder;
+
+        if (!window.history.state?.isBackIntercepted) {
+            window.history.pushState({ isBackIntercepted: true }, '');
+        }
 
         const cleanup = () => {
             overlay.classList.remove('active');
@@ -466,7 +473,10 @@ function buildAverageDetailPayload(title, valueStr, label, entries, shareText) {
     };
 }
 
-export function closeModal() {
+export function closeModal({ isPopState = false } = {}) {
+    if (!isPopState && window.history.state?.isBackIntercepted) {
+        window.history.back();
+    }
     clearModalGhostClickGuard();
     _overlay.classList.remove('active');
     _currentSolveIndex = null;
@@ -665,6 +675,10 @@ function _showModal(title, text, solveContext = null, detailPayload = null) {
 
     updateStatNavigation();
     renderMobileDetail(detailPayload);
+
+    if (!window.history.state?.isBackIntercepted) {
+        window.history.pushState({ isBackIntercepted: true }, '');
+    }
 
     _overlay.classList.add('active');
 
