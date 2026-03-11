@@ -74,7 +74,7 @@
     align-items: center;
     justify-content: flex-start;
     gap: 4px;
-    padding: 6px 6px 6px 6px;
+    padding: 6px;
     position: relative;
 }
 
@@ -86,7 +86,7 @@
     align-items: center;
     justify-content: flex-start;
     gap: 4px;
-    padding: 6px 6px 6px 6px;
+    padding: 6px;
     background: var(--bg-tertiary);
 
     /* Make absolute so it flies out without pushing parents */
@@ -97,8 +97,8 @@
     z-index: 10;
 
     border: 1px solid var(--surface-border);
-    border-bottom-left-radius: var(--radius-lg);
-    border-bottom-right-radius: var(--radius-lg);
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
 
     overflow: hidden;
     max-height: 42px;
@@ -170,7 +170,7 @@
     opacity: 1;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
     body.mobile-viewport #graph-panel.panel.collapsible>.panel-header {
         cursor: default;
     }

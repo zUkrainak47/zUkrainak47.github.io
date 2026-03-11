@@ -19,7 +19,7 @@
     display: block;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
     body[data-mobile-panel="timer"] #cube-canvas-container {
         height: clamp(126px, 22vh, 164px);
         aspect-ratio: auto;

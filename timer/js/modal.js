@@ -20,7 +20,7 @@ let _onStatNavigate = null;
 let _currentDetailPayload = null;
 let _ghostClickGuardCleanup = null;
 let _ghostClickGuardTimeout = null;
-const mobileDetailQuery = window.matchMedia('(max-width: 900px)');
+const mobileDetailQuery = window.matchMedia('(max-width: 1100px)');
 const MODAL_GHOST_CLICK_GUARD_MS = 450;
 const MODAL_GHOST_CLICK_RADIUS_PX = 42;
 

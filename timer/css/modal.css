@@ -239,7 +239,7 @@
     padding: var(--space-lg);
 }
 
-.modal-mobile-entry + .modal-mobile-entry {
+.modal-mobile-entry+.modal-mobile-entry {
     border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
@@ -362,7 +362,7 @@
     background: rgba(63, 185, 80, 0.2);
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
     .modal-overlay {
         align-items: flex-end;
     }

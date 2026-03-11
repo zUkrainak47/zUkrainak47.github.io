@@ -76,7 +76,7 @@ body.solving #btn-settings {
     display: none;
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 1100px) {
     #app-layout {
         grid-template-columns: 1fr 1fr;
         grid-template-rows: auto 1fr auto;
@@ -92,7 +92,8 @@ body.solving #btn-settings {
     }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
+
     html,
     body {
         min-height: 100%;
@@ -110,9 +111,7 @@ body.solving #btn-settings {
         height: 100dvh;
         gap: var(--space-md);
         padding:
-            calc(var(--safe-area-top) + var(--space-sm))
-            var(--space-sm)
-            calc(var(--mobile-tab-height) + var(--safe-area-bottom) + var(--space-2xl));
+            calc(var(--safe-area-top) + var(--space-sm)) var(--space-sm) calc(var(--mobile-tab-height) + var(--safe-area-bottom) + var(--space-2xl));
         overflow: hidden;
     }
 
@@ -144,9 +143,7 @@ body.solving #btn-settings {
         min-height: 100dvh;
         height: 100dvh;
         padding:
-            calc(var(--safe-area-top) + var(--space-xs))
-            var(--space-sm)
-            calc(var(--mobile-tab-height) + var(--safe-area-bottom) + var(--space-xl));
+            calc(var(--safe-area-top) + var(--space-xs)) var(--space-sm) calc(var(--mobile-tab-height) + var(--safe-area-bottom) + var(--space-xl));
     }
 
     body[data-mobile-panel="trend"] #app-layout {

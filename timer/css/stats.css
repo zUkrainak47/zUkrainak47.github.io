@@ -89,6 +89,13 @@
     padding: 0 var(--space-xs);
 }
 
+/* Desktop override: 14px border-radius for stats panel */
+@media (min-width: 1101px) {
+    #stats-panel.panel {
+        border-radius: 14px !important;
+    }
+}
+
 #solves-table {
     width: 100%;
     table-layout: fixed;
@@ -391,9 +398,10 @@ tr:hover .solve-actions {
 .btn-icon-small.btn-danger:hover {
     background: rgba(248, 81, 73, 0.1);
     color: var(--stat-worst);
+    border-color: rgba(248, 81, 73, 0.5);
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
     #stats-summary {
         margin: var(--space-md);
         padding: 14px;
