@@ -235,7 +235,7 @@ const quickActionsState = {
     swipeHandled: false,
 };
 const mobilePanelIds = new Set(['timer', 'stats', 'trend']);
-const mobileViewportQuery = window.matchMedia('(max-width: 1100px)');
+const mobileViewportQuery = window.matchMedia('(max-width: 1100px), (pointer: coarse)');
 const touchPrimaryQuery = window.matchMedia('(hover: none) and (pointer: coarse)');
 
 function isTouchPrimaryInput() {

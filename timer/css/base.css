@@ -128,7 +128,7 @@ select {
     border-bottom-right-radius: 0;
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 1100px), (pointer: coarse) {
     .panel {
         border-radius: 20px;
     }
