@@ -734,9 +734,11 @@ function syncViewportLayout() {
     const isSolving = document.body.classList.contains('solving');
     const isMobileTimerView = mobileViewportQuery.matches && document.body.dataset.mobilePanel === 'timer';
     const centerTimerEnabled = settings.get('centerTimer');
+    const hideUIWhileSolving = settings.get('hideUIWhileSolving');
+    const effectiveCenterTimer = mobileViewportQuery.matches ? centerTimerEnabled : (centerTimerEnabled && hideUIWhileSolving);
     const shouldApplyMobileTimerPositioning = isMobileTimerView && (centerTimerEnabled || isZen);
     const shouldFocusTimer = state === 'running' || state === 'ready' || isInspectionState(state);
-    const shouldViewportCenterTimer = shouldFocusTimer && (centerTimerEnabled || (isMobileTimerView && isZen));
+    const shouldViewportCenterTimer = shouldFocusTimer && (effectiveCenterTimer || (isMobileTimerView && isZen));
     const shouldPositionIdleMobileTimer = shouldApplyMobileTimerPositioning && !shouldFocusTimer;
     const shouldPositionMobileScramble = isMobileTimerView
         && !isSolving
@@ -2184,7 +2186,9 @@ function onTimerStateChange(state) {
     }
 
     // Toggle solving class for focus mode
-    document.body.classList.toggle('solving', shouldFocusTimer);
+    const hideUIWhileSolving = settings.get('hideUIWhileSolving');
+    const actualShouldHideUI = mobileViewportQuery.matches ? shouldFocusTimer : (shouldFocusTimer && hideUIWhileSolving);
+    document.body.classList.toggle('solving', actualShouldHideUI);
 
     if (timerDisplayWrapper) scheduleViewportLayoutSync();
 
@@ -2765,8 +2769,44 @@ function initSettingsPanel() {
     animToggle.checked = settings.get('animationsEnabled');
     animToggle.onchange = () => settings.set('animationsEnabled', animToggle.checked);
 
-    // Center Timer toggle
+    // Hide UI toggle
+    const hideUIToggle = document.getElementById('setting-hide-ui');
     const centerTimerToggle = document.getElementById('setting-center-timer');
+
+    const updateCenterTimerState = () => {
+        if (!centerTimerToggle) return;
+        
+        const isMobile = mobileViewportQuery.matches;
+        const hideUIEnabled = settings.get('hideUIWhileSolving');
+        const shouldDisable = !isMobile && !hideUIEnabled;
+        
+        centerTimerToggle.disabled = shouldDisable;
+        const row = centerTimerToggle.closest('.setting-row');
+        if (row) {
+            row.style.opacity = shouldDisable ? '0.5' : '';
+            row.style.pointerEvents = shouldDisable ? 'none' : '';
+        }
+    };
+
+    if (hideUIToggle) {
+        hideUIToggle.checked = settings.get('hideUIWhileSolving');
+        
+        hideUIToggle.onchange = () => {
+            settings.set('hideUIWhileSolving', hideUIToggle.checked);
+            updateCenterTimerState();
+            hideUIToggle.blur();
+        };
+    }
+
+    // Initial state sync and responsive listener
+    updateCenterTimerState();
+    if (typeof mobileViewportQuery.addEventListener === 'function') {
+        mobileViewportQuery.addEventListener('change', updateCenterTimerState);
+    } else {
+        mobileViewportQuery.addListener(updateCenterTimerState);
+    }
+
+    // Center Timer toggle
     if (centerTimerToggle) {
         centerTimerToggle.checked = settings.get('centerTimer');
         centerTimerToggle.onchange = () => settings.set('centerTimer', centerTimerToggle.checked);

@@ -24,6 +24,7 @@ const DEFAULTS = {
     graphColorAo12: '#2b91ff',
     graphColorAo100: '#a371f7',
     centerTimer: true,
+    hideUIWhileSolving: true,
     shortcutTooltipsEnabled: true,
 };
 

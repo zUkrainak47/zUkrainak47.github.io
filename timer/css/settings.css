@@ -80,7 +80,8 @@
     border-bottom: none;
 }
 
-body.mobile-viewport #setting-shortcut-tooltips-row {
+body.mobile-viewport #setting-shortcut-tooltips-row,
+body.mobile-viewport #setting-hide-ui-row {
     display: none;
 }
 
