@@ -1,3 +1,5 @@
+import * as db from './db.js';
+
 const STORAGE_PREFIX = 'cubetimer_';
 const STORAGE_VERSION = 1;
 
@@ -42,17 +44,34 @@ export function remove(key) {
 
 /**
  * Export all timer data as a single JSON object.
- * @returns {object}
+ * Reads sessions + solves from IndexedDB, settings from localStorage.
+ * @returns {Promise<object>}
  */
-export function exportAll() {
-    const data = { version: STORAGE_VERSION };
+export async function exportAll() {
+    const { sessions, solves } = await db.getAllData();
+
+    // Reconstruct the old embedded format for export compatibility
+    const sessionsWithSolves = sessions.map(session => ({
+        ...session,
+        solves: solves
+            .filter(s => s.sessionId === session.id)
+            .sort((a, b) => a.timestamp - b.timestamp)
+            .map(({ sessionId, ...rest }) => rest), // strip sessionId from export
+    }));
+
+    const data = { version: STORAGE_VERSION, sessions: sessionsWithSolves };
+
+    // Include localStorage settings
     for (let i = 0; i < localStorage.length; i++) {
         const fullKey = localStorage.key(i);
         if (fullKey.startsWith(STORAGE_PREFIX)) {
             const key = fullKey.slice(STORAGE_PREFIX.length);
-            data[key] = load(key);
+            if (key !== 'sessions') { // sessions are in IndexedDB now
+                data[key] = load(key);
+            }
         }
     }
+
     return data;
 }
 
@@ -60,18 +79,45 @@ export function exportAll() {
  * Import data from a JSON object, overwriting existing data.
  * @param {object} data
  */
-export function importAll(data) {
+export async function importAll(data) {
     if (!data || typeof data !== 'object') return;
-    // Clear existing timer data
+
+    // Clear existing localStorage timer data
     const keysToRemove = [];
     for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);
         if (k.startsWith(STORAGE_PREFIX)) keysToRemove.push(k);
     }
     keysToRemove.forEach(k => localStorage.removeItem(k));
-    // Write imported data
+
+    // Separate sessions from other data
+    const sessions = data.sessions || [];
+    const dbSessions = [];
+    const dbSolves = [];
+
+    for (const session of sessions) {
+        dbSessions.push({
+            id: session.id,
+            name: session.name,
+            createdAt: session.createdAt,
+        });
+
+        if (Array.isArray(session.solves)) {
+            for (const solve of session.solves) {
+                dbSolves.push({
+                    ...solve,
+                    sessionId: session.id,
+                });
+            }
+        }
+    }
+
+    // Write to IndexedDB
+    await db.replaceAllData(dbSessions, dbSolves);
+
+    // Write remaining keys to localStorage (settings, activeSessionId, etc.)
     for (const [key, value] of Object.entries(data)) {
-        if (key === 'version') continue;
+        if (key === 'version' || key === 'sessions') continue;
         save(key, value);
     }
 }
@@ -94,7 +140,7 @@ export function isCsTimerFormat(data) {
 /**
  * Convert csTimer JSON → internal format and import it.
  */
-export function importCsTimer(csData) {
+export async function importCsTimer(csData) {
     if (!csData || typeof csData !== 'object') return;
 
     // Parse session metadata (names) from properties.sessionData
@@ -105,7 +151,9 @@ export function importCsTimer(csData) {
         }
     } catch (_) { /* ignore */ }
 
-    const sessions = [];
+    const dbSessions = [];
+    const dbSolves = [];
+
     // Iterate session1..sessionN
     for (const [key, solves] of Object.entries(csData)) {
         const match = key.match(/^session(\d+)$/);
@@ -119,12 +167,9 @@ export function importCsTimer(csData) {
             ? meta.name
             : `Session ${num}`;
 
-        const session = {
-            id: _genId() + num,
-            name,
-            createdAt: Date.now(),
-            solves: [],
-        };
+        const sessionId = _genId() + num;
+        let sessionCreatedAt = Date.now();
+        let hasSolves = false;
 
         for (const entry of solves) {
             if (!Array.isArray(entry) || entry.length < 4) continue;
@@ -144,29 +189,30 @@ export function importCsTimer(csData) {
             let time = rawTime;
             if (penalty === '+2') time = Math.max(0, rawTime - 2000);
 
-            session.solves.push({
+            const timestamp = timestampSec * 1000;
+
+            dbSolves.push({
                 id: _genId(),
+                sessionId,
                 time,
                 scramble: scramble || '',
                 isManual: false,
                 penalty,
-                timestamp: timestampSec * 1000, // seconds → ms
+                timestamp,
             });
+
+            if (!hasSolves) {
+                sessionCreatedAt = timestamp;
+                hasSolves = true;
+            }
         }
 
-        if (session.solves.length > 0) {
-            // Use the first solve's timestamp as createdAt
-            session.createdAt = session.solves[0].timestamp;
+        if (hasSolves) {
+            dbSessions.push({ id: sessionId, name, createdAt: sessionCreatedAt });
         }
-
-        sessions.push(session);
     }
 
-    // Filter out empty sessions but keep at least one
-    const nonEmpty = sessions.filter(s => s.solves.length > 0);
-    const toSave = nonEmpty.length > 0 ? nonEmpty : sessions.slice(0, 1);
-
-    if (toSave.length === 0) return;
+    if (dbSessions.length === 0) return;
 
     // Map timer update frequency from csTimer
     const timeU = csData.properties ? csData.properties.timeU : null;
@@ -176,7 +222,7 @@ export function importCsTimer(csData) {
     else if (timeU === 'u') timerUpdate = '0.01s';
     else if (timeU === 'i') timerUpdate = 'inspection';
 
-    // Clear existing data and write
+    // Clear existing localStorage data
     const keysToRemove = [];
     for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);
@@ -189,16 +235,19 @@ export function importCsTimer(csData) {
 
     keysToRemove.forEach(k => localStorage.removeItem(k));
 
-    save('sessions', toSave);
-    save('activeSessionId', toSave[0].id);
+    // Write to IndexedDB
+    await db.replaceAllData(dbSessions, dbSolves);
+
+    // Write settings to localStorage
+    save('activeSessionId', dbSessions[0].id);
     save('settings', newSettings);
 }
 
 /**
  * Export internal data → csTimer JSON format.
  */
-export function exportCsTimer() {
-    const sessions = load('sessions', []);
+export async function exportCsTimer() {
+    const { sessions, solves } = await db.getAllData();
     const csData = {};
     const sessionMeta = {};
 
@@ -206,7 +255,11 @@ export function exportCsTimer() {
         const num = i + 1;
         const key = `session${num}`;
 
-        csData[key] = session.solves.map(solve => {
+        const sessionSolves = solves
+            .filter(s => s.sessionId === session.id)
+            .sort((a, b) => a.timestamp - b.timestamp);
+
+        csData[key] = sessionSolves.map(solve => {
             // Map penalty: null → 0, '+2' → 2000, 'DNF' → -1
             let penaltyFlag = 0;
             let time = solve.time;
@@ -243,8 +296,8 @@ export function exportCsTimer() {
     }
 
     // Map timer update frequency to csTimer
-    const settings = load('settings', {});
-    const timerUpdate = settings.timerUpdate || '0.01s';
+    const settingsData = load('settings', {});
+    const timerUpdate = settingsData.timerUpdate || '0.01s';
     let timeU = 'u';
     if (timerUpdate === 'none') timeU = 'n';
     else if (timerUpdate === '1s') timeU = 's';

@@ -213,3 +213,237 @@ export function perSolveStats(solves) {
         ao100: ao100At(times, i),
     }));
 }
+
+// ──── Incremental Stats Cache ────
+
+/**
+ * A fixed-size sorted window for sliding-window average computation.
+ * Uses binary insertion + splice to maintain a sorted array of at most `size` elements.
+ * This avoids the slice+sort allocation pattern in the hot rebuild path.
+ */
+class SortedWindow {
+    constructor(size, trim) {
+        this._size = size;
+        this._trim = trim;
+        this._buf = [];     // circular chronological buffer (unsorted)
+        this._sorted = [];  // sorted copy of _buf
+        this._pos = 0;
+        this._dnfs = 0;
+        this._sumTrimmed = 0; // not maintained (we compute on query — window is small)
+    }
+
+    /**
+     * Push a new value, evicting the oldest if full.
+     * @param {number} val
+     */
+    push(val) {
+        if (this._buf.length === this._size) {
+            // Evict oldest
+            const old = this._buf[this._pos];
+            this._buf[this._pos] = val;
+            // Remove old from sorted
+            const oi = this._sorted.indexOf(old);
+            if (oi >= 0) this._sorted.splice(oi, 1);
+            if (old === Infinity) this._dnfs--;
+        } else {
+            this._buf.push(val);
+        }
+        this._pos = (this._pos + 1) % this._size;
+
+        // Insert val into sorted
+        if (val === Infinity) {
+            this._sorted.push(val);
+            this._dnfs++;
+        } else {
+            let lo = 0, hi = this._sorted.length;
+            while (lo < hi) {
+                const mid = (lo + hi) >> 1;
+                if (this._sorted[mid] < val) lo = mid + 1; else hi = mid;
+            }
+            this._sorted.splice(lo, 0, val);
+        }
+    }
+
+    isReady() { return this._buf.length === this._size; }
+
+    /**
+     * Compute trimmed mean of the current window.
+     * Returns null if not full, Infinity if too many DNFs.
+     */
+    average() {
+        if (this._buf.length < this._size) return null;
+        const sorted = this._sorted;
+        const n = this._size;
+        const tr = this._trim;
+        if (this._dnfs > tr) return Infinity;
+        // Trim from each end (sorted ascending; Infinities are at end)
+        let sum = 0;
+        const count = n - 2 * tr;
+        for (let i = tr; i < n - tr; i++) sum += sorted[i];
+        return sum / count;
+    }
+}
+
+/**
+ * A cache that maintains rolling statistics incrementally.
+ */
+export class StatsCache {
+    constructor() {
+        /** @type {number[]} effective times */
+        this._times = [];
+        /** @type {{ ao5: number|null, ao12: number|null, ao100: number|null }[]} */
+        this._perSolve = [];
+
+        this._bestTime = null;
+        this._bestMo3 = null;
+        this._bestAo5 = null;
+        this._bestAo12 = null;
+        this._bestAo100 = null;
+
+        this._validSum = 0;
+        this._validCount = 0;
+
+        this._newBestFlags = [];
+        this._rollingBestTime = Infinity;
+
+        // Sliding windows (reused across appends)
+        this._win5 = new SortedWindow(5, 1);
+        this._win12 = new SortedWindow(12, 1);
+        this._win100 = new SortedWindow(100, 5);
+    }
+
+    get length() { return this._times.length; }
+
+    _reset() {
+        this._times = [];
+        this._perSolve = [];
+        this._bestTime = null;
+        this._bestMo3 = null;
+        this._bestAo5 = null;
+        this._bestAo12 = null;
+        this._bestAo100 = null;
+        this._validSum = 0;
+        this._validCount = 0;
+        this._newBestFlags = [];
+        this._rollingBestTime = Infinity;
+        this._win5 = new SortedWindow(5, 1);
+        this._win12 = new SortedWindow(12, 1);
+        this._win100 = new SortedWindow(100, 5);
+    }
+
+    /**
+     * Full rebuild from a solve array.
+     * @param {object[]} solves
+     */
+    rebuild(solves) {
+        this._reset();
+        for (const solve of solves) {
+            this._appendTime(getEffectiveTime(solve));
+        }
+    }
+
+    /**
+     * Append a single solve (used after addSolve).
+     * @param {object} solve
+     */
+    append(solve) {
+        this._appendTime(getEffectiveTime(solve));
+    }
+
+    /** Internal: append a time value and update all caches */
+    _appendTime(t) {
+        this._times.push(t);
+        const i = this._times.length - 1;
+
+        // Session mean
+        if (t !== Infinity) {
+            this._validSum += t;
+            this._validCount++;
+        }
+
+        // Sliding window averages — O(log k) per window, no allocation
+        this._win5.push(t);
+        this._win12.push(t);
+        this._win100.push(t);
+
+        const a5 = this._win5.isReady() ? this._win5.average() : null;
+        const a12 = this._win12.isReady() ? this._win12.average() : null;
+        const a100 = this._win100.isReady() ? this._win100.average() : null;
+        this._perSolve.push({ ao5: a5, ao12: a12, ao100: a100 });
+
+        // Update running bests
+        if (t !== Infinity) {
+            if (this._bestTime === null || t < this._bestTime) this._bestTime = t;
+        }
+        const m3 = i >= 2 ? mo3At(this._times, i) : null;
+        if (m3 != null && m3 !== Infinity) {
+            if (this._bestMo3 === null || m3 < this._bestMo3) this._bestMo3 = m3;
+        }
+        if (a5 != null && a5 !== Infinity) {
+            if (this._bestAo5 === null || a5 < this._bestAo5) this._bestAo5 = a5;
+        }
+        if (a12 != null && a12 !== Infinity) {
+            if (this._bestAo12 === null || a12 < this._bestAo12) this._bestAo12 = a12;
+        }
+        if (a100 != null && a100 !== Infinity) {
+            if (this._bestAo100 === null || a100 < this._bestAo100) this._bestAo100 = a100;
+        }
+
+        // New best single flag
+        if (t !== Infinity && t < this._rollingBestTime) {
+            this._rollingBestTime = t;
+            this._newBestFlags.push(true);
+        } else {
+            this._newBestFlags.push(false);
+        }
+    }
+
+    /**
+     * Get the same shape as computeAll() returns, but from the cache.
+     */
+    getStats() {
+        const n = this._times.length;
+        const lastTime = n > 0 ? this._times[n - 1] : null;
+        const lastMo3 = n >= 3 ? mo3At(this._times, n - 1) : null;
+        const lastPs = n > 0 ? this._perSolve[n - 1] : { ao5: null, ao12: null, ao100: null };
+
+        return {
+            count: n,
+            sessionMean: this._validCount > 0 ? this._validSum / this._validCount : null,
+            current: {
+                time: lastTime,
+                mo3: lastMo3,
+                ao5: lastPs.ao5,
+                ao12: lastPs.ao12,
+                ao100: lastPs.ao100,
+            },
+            best: {
+                time: this._bestTime,
+                mo3: this._bestMo3,
+                ao5: this._bestAo5,
+                ao12: this._bestAo12,
+                ao100: this._bestAo100,
+            },
+        };
+    }
+
+    /** Get per-solve stats at index i. */
+    getPerSolveAt(i) {
+        return this._perSolve[i] || null;
+    }
+
+    /** Get new-best-single flag at index i. */
+    isNewBestAt(i) {
+        return !!this._newBestFlags[i];
+    }
+
+    /** Get effective time at index i. */
+    getTimeAt(i) {
+        return this._times[i];
+    }
+
+    /** Get the full times array. */
+    getTimes() {
+        return this._times;
+    }
+}

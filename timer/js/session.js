@@ -1,3 +1,4 @@
+import * as db from './db.js';
 import { load, save } from './storage.js';
 import { generateId, EventEmitter, getStartOfToday, getStartOfWeek, getStartOfMonth, parseDuration } from './utils.js';
 import { settings } from './settings.js';
@@ -5,19 +6,52 @@ import { settings } from './settings.js';
 class SessionManager extends EventEmitter {
     constructor() {
         super();
-        this._sessions = load('sessions', []);
+        /** @type {{ id: string, name: string, createdAt: number, solves: object[] }[]} */
+        this._sessions = [];
+        this._activeId = null;
+        this._ready = false;
+    }
+
+    /**
+     * Initialize the session manager by loading data from IndexedDB.
+     * Must be called (and awaited) before any other methods.
+     */
+    async init() {
+        await db.openDB();
+
+        // Load session metadata from IndexedDB
+        const dbSessions = await db.getAllSessions();
+
+        // Build in-memory session objects (metadata + empty solves array)
+        this._sessions = dbSessions.map(s => ({
+            id: s.id,
+            name: s.name,
+            createdAt: s.createdAt,
+            solves: [],
+        }));
+
         this._activeId = load('activeSessionId', null);
 
         if (this._sessions.length === 0) {
-            this._createDefault();
+            await this._createDefault();
         }
         if (!this._activeId || !this._sessions.find(s => s.id === this._activeId)) {
             this._activeId = this._sessions[0].id;
             save('activeSessionId', this._activeId);
         }
+
+        // Load solves for the active session
+        await this._loadSolvesFor(this._activeId);
+        this._ready = true;
     }
 
-    _createDefault() {
+    async _loadSolvesFor(sessionId) {
+        const session = this._sessions.find(s => s.id === sessionId);
+        if (!session) return;
+        session.solves = await db.getSolvesBySession(sessionId);
+    }
+
+    async _createDefault() {
         const session = {
             id: generateId(),
             name: 'Session 1',
@@ -25,11 +59,7 @@ class SessionManager extends EventEmitter {
             solves: [],
         };
         this._sessions.push(session);
-        this._save();
-    }
-
-    _save() {
-        save('sessions', this._sessions);
+        await db.addSession({ id: session.id, name: session.name, createdAt: session.createdAt });
     }
 
     // --- Session CRUD ---
@@ -46,14 +76,15 @@ class SessionManager extends EventEmitter {
         return this._activeId;
     }
 
-    setActiveSession(id) {
+    async setActiveSession(id) {
         if (!this._sessions.find(s => s.id === id)) return;
         this._activeId = id;
         save('activeSessionId', id);
+        await this._loadSolvesFor(id);
         this.emit('sessionChanged', id);
     }
 
-    createSession(name) {
+    async createSession(name) {
         const num = this._sessions.length + 1;
         const session = {
             id: generateId(),
@@ -62,37 +93,36 @@ class SessionManager extends EventEmitter {
             solves: [],
         };
         this._sessions.push(session);
-        this._save();
-        this.setActiveSession(session.id);
+        await db.addSession({ id: session.id, name: session.name, createdAt: session.createdAt });
+        await this.setActiveSession(session.id);
         return session;
     }
 
-    renameSession(id, name) {
+    async renameSession(id, name) {
         const session = this._sessions.find(s => s.id === id);
         if (session) {
             session.name = name;
-            this._save();
+            await db.updateSession({ id: session.id, name: session.name, createdAt: session.createdAt });
             this.emit('sessionUpdated', id);
         }
     }
 
-    deleteSession(id) {
+    async deleteSession(id) {
         const deletedIndex = this._sessions.findIndex(s => s.id === id);
         if (deletedIndex === -1) return;
 
         this._sessions = this._sessions.filter(s => s.id !== id);
+        await db.deleteSession(id);
 
         if (this._sessions.length === 0) {
-            this._createDefault();
+            await this._createDefault();
             this._activeId = this._sessions[0].id;
             save('activeSessionId', this._activeId);
-            this._save();
             this.emit('sessionDeleted', id);
             this.emit('sessionChanged', this._activeId);
         } else {
-            this._save();
             if (this._activeId === id) {
-                this.setActiveSession(this._sessions[0].id);
+                await this.setActiveSession(this._sessions[0].id);
             }
             this.emit('sessionDeleted', id);
         }
@@ -104,6 +134,7 @@ class SessionManager extends EventEmitter {
         const session = this.getActiveSession();
         const solve = {
             id: generateId(),
+            sessionId: this._activeId,
             time: Math.round(time),
             scramble,
             isManual,
@@ -111,7 +142,8 @@ class SessionManager extends EventEmitter {
             timestamp: Date.now(),
         };
         session.solves.push(solve);
-        this._save();
+        // Fire-and-forget write — in-memory state is already updated
+        db.addSolve(solve);
         this.emit('solveAdded', solve);
         return solve;
     }
@@ -121,7 +153,7 @@ class SessionManager extends EventEmitter {
         const solve = session.solves.find(s => s.id === solveId);
         if (!solve) return null;
         solve.penalty = solve.penalty === penalty ? null : penalty;
-        this._save();
+        db.updateSolve(solve);
         this.emit('solveUpdated', solve);
         return solve;
     }
@@ -131,14 +163,14 @@ class SessionManager extends EventEmitter {
         const solve = session.solves.find(s => s.id === solveId);
         if (!solve) return;
         solve.comment = comment;
-        this._save();
+        db.updateSolve(solve);
         this.emit('solveUpdated', solve);
     }
 
     deleteSolve(solveId) {
         const session = this.getActiveSession();
         session.solves = session.solves.filter(s => s.id !== solveId);
-        this._save();
+        db.deleteSolve(solveId);
         this.emit('solveDeleted', solveId);
     }
 

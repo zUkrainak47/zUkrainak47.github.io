@@ -29,6 +29,7 @@ let _canvas = null;
 let _ctx = null;
 let _solves = [];
 let _perSolve = [];
+let _statsCache = null;
 let _newBestSingles = [];
 let _hoveredIndex = -1;
 let _touchFocusedIndex = -1;
@@ -467,6 +468,7 @@ export function initGraph(canvas) {
 export function updateGraph(solves, perSolveStats) {
     _solves = solves;
     _perSolve = perSolveStats;
+    _statsCache = null;
     _newBestSingles = getNewBestSingleFlags(solves);
     _tooltipHitArea = null;
 
@@ -475,6 +477,33 @@ export function updateGraph(solves, perSolveStats) {
     if (_solves.length === 0) clearTouchInteraction();
 
     // Conditionally show/hide the "25" button
+    const last25Btn = document.querySelector('#graph-controls button[data-action="last25"]');
+    const primaryControls = document.querySelector('.graph-controls-primary');
+    if (last25Btn) {
+        const showLast25Button = _solves.length > 25;
+        last25Btn.style.display = showLast25Button ? '' : 'none';
+        primaryControls?.classList.toggle('graph-controls-primary-single-action', !showLast25Button);
+    }
+
+    render();
+}
+
+/**
+ * Update graph with a StatsCache for efficient per-solve lookups.
+ * @param {object[]} solves
+ * @param {import('./stats.js').StatsCache} cache
+ */
+export function updateGraphData(solves, cache) {
+    _solves = solves;
+    _perSolve = [];
+    _statsCache = cache;
+    _newBestSingles = null; // computed lazily from cache
+    _tooltipHitArea = null;
+
+    if (_hoveredIndex >= _solves.length) _hoveredIndex = -1;
+    if (_touchFocusedIndex >= _solves.length) _touchFocusedIndex = _solves.length - 1;
+    if (_solves.length === 0) clearTouchInteraction();
+
     const last25Btn = document.querySelector('#graph-controls button[data-action="last25"]');
     const primaryControls = document.querySelector('.graph-controls-primary');
     if (last25Btn) {
@@ -537,6 +566,19 @@ function getNewBestSingleFlags(solves) {
     return flags;
 }
 
+/** Get per-solve stats at index, from cache or array */
+function _getPerSolve(i) {
+    if (_statsCache) return _statsCache.getPerSolveAt(i);
+    return _perSolve[i] || null;
+}
+
+/** Get new-best-single flag at index, from cache or array */
+function _isNewBest(i) {
+    if (_statsCache) return _statsCache.isNewBestAt(i);
+    if (!_newBestSingles) return false;
+    return !!_newBestSingles[i];
+}
+
 function render() {
     if (!_canvas || !_ctx) return;
     const ctx = _ctx;
@@ -574,7 +616,7 @@ function render() {
     for (let i = startIdx; i <= endIdx; i++) {
         const t = allTimes[i];
         if (t !== Infinity) visibleValues.push(t);
-        const ps = _perSolve[i];
+        const ps = _getPerSolve(i);
         if (ps) {
             if (_lineVisibility.ao5 && ps.ao5 != null && ps.ao5 !== Infinity) visibleValues.push(ps.ao5);
             if (_lineVisibility.ao12 && ps.ao12 != null && ps.ao12 !== Infinity) visibleValues.push(ps.ao12);
@@ -583,8 +625,13 @@ function render() {
     }
     if (visibleValues.length === 0) return;
 
-    let dataMin = Math.min(...visibleValues);
-    let dataMax = Math.max(...visibleValues);
+    let dataMin = visibleValues[0];
+    let dataMax = visibleValues[0];
+    for (let i = 1; i < visibleValues.length; i++) {
+        const v = visibleValues[i];
+        if (v < dataMin) dataMin = v;
+        if (v > dataMax) dataMax = v;
+    }
     const dataRange = dataMax - dataMin || 1000;
 
     // Apply Y zoom/pan
@@ -667,13 +714,13 @@ function render() {
 
     // Lines
     if (_lineVisibility.time) drawLine(i => allTimes[i], COLORS.time, 2, false);
-    if (_lineVisibility.ao5) drawLine(i => _perSolve[i]?.ao5, COLORS.ao5);
-    if (_lineVisibility.ao12) drawLine(i => _perSolve[i]?.ao12, COLORS.ao12);
-    if (_lineVisibility.ao100) drawLine(i => _perSolve[i]?.ao100, COLORS.ao100);
+    if (_lineVisibility.ao5) drawLine(i => _getPerSolve(i)?.ao5, COLORS.ao5);
+    if (_lineVisibility.ao12) drawLine(i => _getPerSolve(i)?.ao12, COLORS.ao12);
+    if (_lineVisibility.ao100) drawLine(i => _getPerSolve(i)?.ao100, COLORS.ao100);
 
     const activeMarkers = [];
     if (activeIndex >= startIdx && activeIndex <= endIdx) {
-        const ps = _perSolve[activeIndex];
+        const ps = _getPerSolve(activeIndex);
         if (_lineVisibility.time && allTimes[activeIndex] !== Infinity) {
             activeMarkers.push({ value: allTimes[activeIndex], color: COLORS.time, radius: 4.25 });
         }
@@ -705,16 +752,16 @@ function render() {
         const x = toX(activeIndex);
         const y = toY(anchor?.value ?? allTimes[activeIndex]);
         const text = formatTime(allTimes[activeIndex]);
-        const ps = _perSolve[activeIndex];
         const solve = _solves[activeIndex];
         const hasComment = !!solve?.comment?.trim();
-        const isNewBestSingle = !!_newBestSingles[activeIndex];
+        const isNewBestSingle = _isNewBest(activeIndex);
         const highlightColor = isNewBestSingle ? '#e3b341' : hasComment ? COLORS.accent : null;
         const showTapHint = mobileViewportQuery.matches;
 
         ctx.font = '11px JetBrains Mono, monospace';
         const solveLabelPrefix = hasComment ? '*' : '#';
         const lines = [`${solveLabelPrefix}${activeIndex + 1}: ${text}`];
+        const ps = _getPerSolve(activeIndex);
         if (ps && ps.ao5 != null) lines.push(`ao5: ${formatTime(ps.ao5)}`);
         if (ps && ps.ao12 != null) lines.push(`ao12: ${formatTime(ps.ao12)}`);
         if (ps && ps.ao100 != null) lines.push(`ao100: ${formatTime(ps.ao100)}`);

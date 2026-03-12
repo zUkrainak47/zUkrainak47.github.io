@@ -2,16 +2,24 @@ import { timer } from './timer.js?v=5';
 import { getScramble, getCurrentScramble, getPrevScramble, getNextScramble, setCurrentScramble, isCurrentScrambleManual, hasPrevScramble } from './scramble.js';
 import { sessionManager } from './session.js';
 import { settings, DEFAULTS } from './settings.js';
-import { computeAll, perSolveStats, mo3At, ao5At, ao12At, ao100At } from './stats.js';
+import { computeAll, perSolveStats, mo3At, ao5At, ao12At, ao100At, StatsCache } from './stats.js';
 import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate } from './utils.js';
 import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, armModalGhostClickGuard } from './modal.js?v=7';
 import { initCubeDisplay, updateCubeDisplay } from './cube-display.js';
-import { initGraph, updateGraph, setLineVisibility, getLineVisibility, applyAction, graphEvents } from './graph.js?v=5';
+import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents } from './graph.js?v=7';
 import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer } from './storage.js';
 
 let currentScramble = '';
 let currentSortCol = null;
 let currentSortDir = null; // 'asc' or 'desc'
+const statsCache = new StatsCache();
+let _skipSolveAddedRefresh = false; // set true when commitSolve manages the refresh itself
+
+// ──── Solves table virtualization state ────
+const TABLE_ROW_HEIGHT = 27; // px per row, matches CSS
+let _tableScrollHandler = null;
+let _tableSortedIndices = null; // cached sorted index order
+let _tableSolves = null; // reference to current solves array
 const popupState = {
     inspection: { elementId: 'inspection-alert', hideTimeout: null, clearTimeout: null },
     newBest: { elementId: 'new-best-alert', hideTimeout: null, clearTimeout: null },
@@ -656,9 +664,14 @@ function syncPersistentManualEntryMode() {
 }
 
 async function commitSolve(elapsed, penalty = null, { isManual = false } = {}) {
-    const previousStats = computeAll(sessionManager.getFilteredSolves());
-    sessionManager.addSolve(elapsed, currentScramble, isManual, penalty);
-    maybeShowNewBestAlert(previousStats, computeAll(sessionManager.getFilteredSolves()));
+    const previousStats = statsCache.getStats();
+    _skipSolveAddedRefresh = true;
+    const solve = sessionManager.addSolve(elapsed, currentScramble, isManual, penalty);
+    _skipSolveAddedRefresh = false;
+    statsCache.append(solve);
+    const currentStats = statsCache.getStats();
+    maybeShowNewBestAlert(previousStats, currentStats);
+    refreshUI();
     await loadNewScramble();
 }
 
@@ -879,6 +892,7 @@ function syncMobilePanelState() {
 
 // ──── Bootstrap ────
 async function init() {
+    await sessionManager.init();
     initModal();
     setModalStatNavigator(openShortcutStatDetail);
     initShortcutTooltips();
@@ -902,9 +916,9 @@ async function init() {
     timer.on('stateChange', onTimerStateChange);
     timer.on('inspectionAlert', onInspectionAlert);
 
-    sessionManager.on('solveAdded', refreshUI);
-    sessionManager.on('solveUpdated', refreshUI);
-    sessionManager.on('solveDeleted', refreshUI);
+    sessionManager.on('solveAdded', () => { if (!_skipSolveAddedRefresh) refreshUI(); });
+    sessionManager.on('solveUpdated', () => { rebuildStatsCache(); refreshUI(); });
+    sessionManager.on('solveDeleted', () => { rebuildStatsCache(); refreshUI(); });
     sessionManager.on('sessionChanged', onSessionChanged);
     sessionManager.on('sessionDeleted', refreshSessionList);
 
@@ -912,7 +926,10 @@ async function init() {
         if (key === 'inspectionAlerts') clearInspectionAlert();
         if (key === 'newBestPopupEnabled' && !settings.get('newBestPopupEnabled')) clearNewBestAlert();
         if (key === 'shortcutTooltipsEnabled' && !settings.get('shortcutTooltipsEnabled')) hideShortcutTooltip();
-        if (key === 'statsFilter' || key === 'customFilterDuration' || key === 'showDelta' || key.startsWith('graphColor') || key === 'newBestColor') refreshUI();
+        if (key === 'statsFilter' || key === 'customFilterDuration' || key === 'showDelta' || key.startsWith('graphColor') || key === 'newBestColor') {
+            if (key === 'statsFilter' || key === 'customFilterDuration') rebuildStatsCache();
+            refreshUI();
+        }
         if (key === 'timeEntryMode') {
             clearPenaltyShortcutAlert();
             syncPersistentManualEntryMode();
@@ -922,6 +939,7 @@ async function init() {
 
     // Init UI
     refreshSessionList();
+    rebuildStatsCache();
     refreshUI();
     initSettingsPanel();
     initShortcutsOverlay();
@@ -946,7 +964,7 @@ async function init() {
         const interaction = typeof payload === 'number' ? { idx: payload } : payload;
         const idx = interaction?.idx;
         const solves = sessionManager.getFilteredSolves();
-        const stats = computeAll(solves);
+        const stats = statsCache.getStats();
         if (idx >= 0 && idx < solves.length) {
             if (interaction?.source === 'touch') {
                 armModalGhostClickGuard({
@@ -980,7 +998,7 @@ function initMobilePanels() {
             const solves = sessionManager.getFilteredSolves();
             if (solves.length === 0) return;
 
-            const stats = computeAll(solves);
+            const stats = statsCache.getStats();
             openStatDetailAtIndex(action, solves, stats, solves.length - 1);
         });
     });
@@ -1018,14 +1036,14 @@ function initTimerInfoControls() {
     ao5Box.addEventListener('click', () => {
         const solves = sessionManager.getFilteredSolves();
         if (solves.length === 0) return;
-        const stats = computeAll(solves);
+        const stats = statsCache.getStats();
         openStatDetailAtIndex('ao5', solves, stats, solves.length - 1);
     });
 
     ao12Box.addEventListener('click', () => {
         const solves = sessionManager.getFilteredSolves();
         if (solves.length === 0) return;
-        const stats = computeAll(solves);
+        const stats = statsCache.getStats();
         openStatDetailAtIndex('ao12', solves, stats, solves.length - 1);
     });
 }
@@ -1044,7 +1062,7 @@ function initTimerClick() {
             if (solves.length > 0) {
                 // Open the most recent solve (at the end of the array)
                 const idx = solves.length - 1;
-                const stats = computeAll(solves);
+                const stats = statsCache.getStats();
                 const isBest = getEffectiveTime(solves[idx]) === stats.best.time;
                 showSolveDetail(solves[idx], idx, isBest);
             }
@@ -2235,14 +2253,22 @@ function maybeShowNewBestAlert(previousStats, currentStats) {
 }
 
 // ──── UI Refresh ────
+/**
+ * Rebuild the stats cache from scratch for the current filtered solves.
+ * Called on session switch, filter change, import, delete, penalty toggle.
+ */
+function rebuildStatsCache() {
+    const solves = sessionManager.getFilteredSolves();
+    statsCache.rebuild(solves);
+}
+
 function refreshUI() {
     const solves = sessionManager.getFilteredSolves();
-    const stats = computeAll(solves);
-    const pss = perSolveStats(solves);
+    const stats = statsCache.getStats();
 
     renderSummaryStats(stats, solves);
-    renderSolvesTable(solves, pss, stats);
-    updateGraph(solves, pss);
+    renderSolvesTable(solves, stats);
+    updateGraphData(solves, statsCache);
     updateTimerInfo(stats, solves);
     refreshSessionList();
 
@@ -2381,7 +2407,7 @@ function openStatDetailAtIndex(type, solves, stats, index, options = {}) {
     const config = getRollingStatConfig(type);
     if (!config || index < config.windowSize - 1) return false;
 
-    const times = solves.map(solve => getEffectiveTime(solve));
+    const times = statsCache.getTimes();
     const value = config.getValue(times, index);
     if (value == null) return false;
 
@@ -2398,7 +2424,7 @@ function openShortcutStatDetail(type) {
     const solves = sessionManager.getFilteredSolves();
     if (solves.length === 0) return false;
 
-    const stats = computeAll(solves);
+    const stats = statsCache.getStats();
     const index = getSelectedStatSolveIndex(solves);
     return openStatDetailAtIndex(type, solves, stats, index);
 }
@@ -2426,12 +2452,11 @@ function renderSummaryStats(stats, solves) {
     }).join('');
 
     // Session info
-    const validTimes = solves.map(s => getEffectiveTime(s)).filter(t => t !== Infinity);
-    const mean = validTimes.length > 0
-        ? formatTime(validTimes.reduce((a, b) => a + b, 0) / validTimes.length)
-        : '-';
-    document.getElementById('solve-count').textContent = `solve: ${validTimes.length}/${solves.length}`;
-    document.getElementById('session-mean').textContent = `mean: ${mean}`;
+    const solveCount = stats.count;
+    const validCount = solves.filter(s => s.penalty !== 'DNF').length;
+    const meanStr = stats.sessionMean != null ? formatTime(stats.sessionMean) : '-';
+    document.getElementById('solve-count').textContent = `solve: ${validCount}/${solveCount}`;
+    document.getElementById('session-mean').textContent = `mean: ${meanStr}`;
 
     // Click handlers for summary stats
     tbody.querySelectorAll('td[data-stat-type]').forEach(td => {
@@ -2465,24 +2490,27 @@ function handleStatClick(type, which, solves, stats) {
     if (which === 'current' && solves.length >= n) {
         openStatDetailAtIndex(type, solves, stats, solves.length - 1);
     } else if (which === 'best') {
-        // Find the best window position
-        const times = solves.map(s => getEffectiveTime(s));
+        // Find the best window position using cached per-solve stats
+        const statKey = type; // 'mo3', 'ao5', 'ao12', 'ao100'
+        const psKey = type === 'mo3' ? null : type; // perSolve only has ao5, ao12, ao100
+
         let bestVal = Infinity;
         let bestIdx = -1;
 
-        for (let i = n - 1; i < times.length; i++) {
-            const w = times.slice(i - n + 1, i + 1);
-            const dnfs = w.filter(t => t === Infinity).length;
-            let avg;
-            if (type === 'mo3') {
-                avg = w.some(t => t === Infinity) ? Infinity : w.reduce((a, b) => a + b, 0) / w.length;
-            } else {
-                if (dnfs > trim) { avg = Infinity; continue; }
-                const sorted = [...w].sort((a, b) => a - b);
-                const trimmed = sorted.slice(trim, sorted.length - trim);
-                avg = trimmed.reduce((a, b) => a + b, 0) / trimmed.length;
+        if (psKey) {
+            // For ao5/ao12/ao100, scan the cached values
+            for (let i = n - 1; i < solves.length; i++) {
+                const ps = statsCache.getPerSolveAt(i);
+                const v = ps ? ps[psKey] : null;
+                if (v != null && v < bestVal) { bestVal = v; bestIdx = i; }
             }
-            if (avg < bestVal) { bestVal = avg; bestIdx = i; }
+        } else {
+            // For mo3, compute on-the-fly (fast: just 3-element mean)
+            const times = statsCache.getTimes();
+            for (let i = 2; i < times.length; i++) {
+                const v = mo3At(times, i);
+                if (v != null && v < bestVal) { bestVal = v; bestIdx = i; }
+            }
         }
 
         if (bestIdx >= 0) {
@@ -2492,29 +2520,23 @@ function handleStatClick(type, which, solves, stats) {
 }
 
 // ──── Solves Table ────
-function renderSolvesTable(solves, pss, stats) {
+function renderSolvesTable(solves, stats) {
+    const container = document.getElementById('solves-container');
     const tbody = document.getElementById('solves-tbody');
 
-    // Compute "New Best" highlights (chronologically)
-    let rollingBestTime = Infinity;
-    let rollingBestAo5 = Infinity;
-    let rollingBestAo12 = Infinity;
-    const isNewBestTimeArray = new Array(solves.length).fill(false);
+    // Compute new-best flags for ao5/ao12 (rolling)
+    // These are lightweight O(n) scans over the cached per-solve data
     const isNewBestAo5Array = new Array(solves.length).fill(false);
     const isNewBestAo12Array = new Array(solves.length).fill(false);
-
+    let rollingBestAo5 = Infinity;
+    let rollingBestAo12 = Infinity;
     for (let i = 0; i < solves.length; i++) {
-        const t = getEffectiveTime(solves[i]);
-        if (t !== Infinity && t < rollingBestTime) {
-            rollingBestTime = t;
-            isNewBestTimeArray[i] = true;
-        }
-        const ps = pss[i];
-        if (ps.ao5 != null && ps.ao5 < rollingBestAo5) {
+        const ps = statsCache.getPerSolveAt(i);
+        if (ps && ps.ao5 != null && ps.ao5 < rollingBestAo5) {
             rollingBestAo5 = ps.ao5;
             isNewBestAo5Array[i] = true;
         }
-        if (ps.ao12 != null && ps.ao12 < rollingBestAo12) {
+        if (ps && ps.ao12 != null && ps.ao12 < rollingBestAo12) {
             rollingBestAo12 = ps.ao12;
             isNewBestAo12Array[i] = true;
         }
@@ -2534,10 +2556,7 @@ function renderSolvesTable(solves, pss, stats) {
         th.textContent = text;
     });
 
-    // Build rows according to sort order
-    let html = '';
-
-    // First, filter indices based on comment toggle if active
+    // Build sorted index order
     let indices = [];
     if (currentSortCol === 'comments') {
         indices = solves.map((_, i) => i).filter(i => solves[i].comment && solves[i].comment.trim() !== '');
@@ -2552,22 +2571,22 @@ function renderSolvesTable(solves, pss, stats) {
                 valA = getEffectiveTime(solves[a]);
                 valB = getEffectiveTime(solves[b]);
             } else if (currentSortCol === 'ao5') {
-                valA = pss[a].ao5 != null ? pss[a].ao5 : Infinity;
-                valB = pss[b].ao5 != null ? pss[b].ao5 : Infinity;
+                const psA = statsCache.getPerSolveAt(a);
+                const psB = statsCache.getPerSolveAt(b);
+                valA = psA && psA.ao5 != null ? psA.ao5 : Infinity;
+                valB = psB && psB.ao5 != null ? psB.ao5 : Infinity;
             } else if (currentSortCol === 'ao12') {
-                valA = pss[a].ao12 != null ? pss[a].ao12 : Infinity;
-                valB = pss[b].ao12 != null ? pss[b].ao12 : Infinity;
+                const psA = statsCache.getPerSolveAt(a);
+                const psB = statsCache.getPerSolveAt(b);
+                valA = psA && psA.ao12 != null ? psA.ao12 : Infinity;
+                valB = psB && psB.ao12 != null ? psB.ao12 : Infinity;
             }
 
             if (valA === valB) {
-                // Secondary sort: chronological (newest first fallback)
                 return currentSortDir === 'asc' ? b - a : a - b;
             }
-
-            // Always sink Infinity (DNF/empty) to the bottom
             if (valA === Infinity && valB !== Infinity) return 1;
             if (valB === Infinity && valA !== Infinity) return -1;
-
             if (currentSortDir === 'asc') return valA - valB;
             return valB - valA;
         });
@@ -2575,24 +2594,53 @@ function renderSolvesTable(solves, pss, stats) {
         indices.reverse(); // Default: newest first
     }
 
-    for (let idx of indices) {
-        let i = idx;
-        const solve = solves[i];
-        const ps = pss[i];
-        const t = getEffectiveTime(solve);
-        const timeStr = formatSolveTime(solve);
+    // Cache for virtualized rendering
+    _tableSortedIndices = indices;
+    _tableSolves = solves;
 
-        const isBestTime = isNewBestTimeArray[i];
-        const isBestAo5 = isNewBestAo5Array[i];
-        const isBestAo12 = isNewBestAo12Array[i];
+    // ── Virtual scroll: only render visible rows ──
+    const totalRows = indices.length;
+    const totalHeight = totalRows * TABLE_ROW_HEIGHT;
 
-        const ao5Str = ps.ao5 != null ? formatTime(ps.ao5) : '';
-        const ao12Str = ps.ao12 != null ? formatTime(ps.ao12) : '';
+    // Remove old scroll listener
+    if (_tableScrollHandler) {
+        container.removeEventListener('scroll', _tableScrollHandler);
+    }
 
-        let indicator = '';
-        if (solve.comment) indicator += '*';
+    function renderVisibleRows() {
+        const scrollTop = container.scrollTop;
+        const viewportHeight = container.clientHeight;
+        const headerHeight = 28; // approximate sticky header height
 
-        html += `<tr data-solve-id="${solve.id}" data-solve-index="${i}">
+        const startRow = Math.max(0, Math.floor((scrollTop - headerHeight) / TABLE_ROW_HEIGHT) - 5);
+        const visibleRows = Math.ceil(viewportHeight / TABLE_ROW_HEIGHT) + 15;
+        const endRow = Math.min(totalRows, startRow + visibleRows);
+
+        const topPad = startRow * TABLE_ROW_HEIGHT;
+        const bottomPad = Math.max(0, (totalRows - endRow) * TABLE_ROW_HEIGHT);
+
+        let html = '';
+        if (topPad > 0) {
+            html += `<tr style="height:${topPad}px"><td colspan="4"></td></tr>`;
+        }
+
+        for (let row = startRow; row < endRow; row++) {
+            const i = _tableSortedIndices[row];
+            const solve = solves[i];
+            const ps = statsCache.getPerSolveAt(i);
+            const timeStr = formatSolveTime(solve);
+
+            const isBestTime = statsCache.isNewBestAt(i);
+            const isBestAo5 = isNewBestAo5Array[i];
+            const isBestAo12 = isNewBestAo12Array[i];
+
+            const ao5Str = ps && ps.ao5 != null ? formatTime(ps.ao5) : '';
+            const ao12Str = ps && ps.ao12 != null ? formatTime(ps.ao12) : '';
+
+            let indicator = '';
+            if (solve.comment) indicator += '*';
+
+            html += `<tr data-solve-id="${solve.id}" data-solve-index="${i}">
       <td>${i + 1}${indicator ? `<span class="solve-index-indicator">${indicator}</span>` : ''}</td>
       <td class="solve-time-cell ${solve.penalty === 'DNF' ? 'dnf-time' : ''} ${isBestTime ? 'new-best-cell' : ''}">
         ${timeStr}
@@ -2600,49 +2648,60 @@ function renderSolvesTable(solves, pss, stats) {
       <td class="ao5-cell ${isBestAo5 ? 'new-best-cell' : ''}">${ao5Str}</td>
       <td class="ao12-cell ${isBestAo12 ? 'new-best-cell' : ''}">${ao12Str}</td>
     </tr>`;
+        }
+
+        if (bottomPad > 0) {
+            html += `<tr style="height:${bottomPad}px"><td colspan="4"></td></tr>`;
+        }
+
+        tbody.innerHTML = html;
     }
 
-    tbody.innerHTML = html;
+    renderVisibleRows();
 
-    // Click on time cell → show detail
-    tbody.querySelectorAll('.solve-time-cell').forEach(cell => {
-        cell.addEventListener('click', () => {
-            const tr = cell.closest('tr');
-            const idx = parseInt(tr.dataset.solveIndex);
+    // Scroll handler with rAF debounce
+    let rafPending = false;
+    _tableScrollHandler = () => {
+        if (!rafPending) {
+            rafPending = true;
+            requestAnimationFrame(() => {
+                renderVisibleRows();
+                rafPending = false;
+            });
+        }
+    };
+    container.addEventListener('scroll', _tableScrollHandler, { passive: true });
+
+    // Click delegation on tbody for all cell types
+    tbody.onclick = (e) => {
+        const td = e.target.closest('td');
+        if (!td) return;
+        const tr = td.closest('tr');
+        if (!tr || !tr.dataset.solveIndex) return;
+        const idx = parseInt(tr.dataset.solveIndex);
+
+        if (td.classList.contains('solve-time-cell')) {
             openStatDetailAtIndex('time', solves, stats, idx);
-        });
-    });
-
-    // Click on ao5/ao12 cell → show average detail
-    tbody.querySelectorAll('.ao5-cell').forEach(cell => {
-        cell.addEventListener('click', () => {
-            const tr = cell.closest('tr');
-            const idx = parseInt(tr.dataset.solveIndex);
+        } else if (td.classList.contains('ao5-cell')) {
             openStatDetailAtIndex('ao5', solves, stats, idx);
-        });
-    });
-
-    tbody.querySelectorAll('.ao12-cell').forEach(cell => {
-        cell.addEventListener('click', () => {
-            const tr = cell.closest('tr');
-            const idx = parseInt(tr.dataset.solveIndex);
+        } else if (td.classList.contains('ao12-cell')) {
             openStatDetailAtIndex('ao12', solves, stats, idx);
-        });
-    });
+        }
+    };
 }
 
 // ──── Session Controls ────
 function initSessionControls() {
     getSessionSelects().forEach((select) => {
         initTransientSelectBehavior(select);
-        select.onchange = (e) => {
-            sessionManager.setActiveSession(e.target.value);
+        select.onchange = async (e) => {
+            await sessionManager.setActiveSession(e.target.value);
             e.target.blur();
         };
     });
 
-    document.getElementById('btn-new-session').onclick = () => {
-        sessionManager.createSession();
+    document.getElementById('btn-new-session').onclick = async () => {
+        await sessionManager.createSession();
         refreshSessionList();
     };
 
@@ -2650,14 +2709,14 @@ function initSessionControls() {
         const session = sessionManager.getActiveSession();
         const name = await customPrompt('', session.name, 50, 'Session name', 'Enter session name...');
         if (name && name.trim()) {
-            sessionManager.renameSession(session.id, name.trim());
+            await sessionManager.renameSession(session.id, name.trim());
             refreshSessionList();
         }
     };
 
     document.getElementById('btn-delete-session').onclick = async () => {
         if (await customConfirm('Delete this session and all its solves?')) {
-            sessionManager.deleteSession(sessionManager.getActiveSessionId());
+            await sessionManager.deleteSession(sessionManager.getActiveSessionId());
             refreshSessionList();
         }
     };
@@ -2678,6 +2737,7 @@ function refreshSessionList() {
 
 function onSessionChanged() {
     refreshSessionList();
+    rebuildStatsCache();
     refreshUI();
     // Reload scramble display
     const scramble = getCurrentScramble();
@@ -2867,8 +2927,8 @@ function initSettingsPanel() {
     setupColorSetting('setting-graph-ao100-color', 'btn-reset-ao100-color', 'graphColorAo100');
 
     // Export
-    document.getElementById('btn-export').onclick = () => {
-        const data = exportAll();
+    document.getElementById('btn-export').onclick = async () => {
+        const data = await exportAll();
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -2879,8 +2939,8 @@ function initSettingsPanel() {
     };
 
     // Export as csTimer
-    document.getElementById('btn-export-cstimer').onclick = () => {
-        const data = exportCsTimer();
+    document.getElementById('btn-export-cstimer').onclick = async () => {
+        const data = await exportCsTimer();
         const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -2938,12 +2998,12 @@ function initSettingsPanel() {
             // Close UI without popping history to avoid back-navigation race condition
             // and ensure confirmation is visible (history state is reused by customConfirm)
             closeSettingsPanel({ isPopState: true });
-            
+
             if (await customConfirm('This will replace all your current data. Continue?')) {
                 if (isCsTimerFormat(data)) {
-                    importCsTimer(data);
+                    await importCsTimer(data);
                 } else {
-                    importAll(data);
+                    await importAll(data);
                 }
                 location.reload();
             }
