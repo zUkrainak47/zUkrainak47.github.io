@@ -5,7 +5,7 @@ import { settings } from './settings.js';
  * Time trend graph with pan/zoom controls.
  */
 
-const PADDING = { top: 12, right: 15, bottom: 22, left: 45 };
+const PADDING = { top: 12, right: 15, bottom: 22, left: 22 };
 const mobileViewportQuery = window.matchMedia('(max-width: 1100px), (pointer: coarse)');
 function getColors() {
     const styles = getComputedStyle(document.documentElement);
@@ -275,9 +275,8 @@ export function initGraph(canvas) {
     const panel = document.getElementById('graph-panel');
 
     const observer = new ResizeObserver(() => {
-        const parent = canvas.parentElement;
-        canvas.width = parent.clientWidth * devicePixelRatio;
-        canvas.height = parent.clientHeight * devicePixelRatio;
+        canvas.width = canvas.clientWidth * devicePixelRatio;
+        canvas.height = canvas.clientHeight * devicePixelRatio;
         render();
     });
     observer.observe(canvas.parentElement);
