@@ -127,7 +127,9 @@ function animateStep() {
         }
 
         const diff = tVal - vVal;
-        if (Math.abs(diff) > 0.001) {
+        // Use a much tighter threshold for large solve counts (e.g. 50k+)
+        // where a 0.001 difference in xPan (0 to 1) can equal 50+ solves.
+        if (Math.abs(diff) > 1e-8) {
             _view[key] += diff * speed;
             done = false;
         } else {
@@ -606,13 +608,17 @@ function render() {
     const validTimes = allTimes.filter(t => t !== Infinity);
     if (validTimes.length === 0) return;
 
-    // Determine visible X range based on zoom/pan
+    // Determine visible X range based on zoom/pan using fractional offsets
     const totalCount = _solves.length;
     const tot = Math.max(2, totalCount);
-    const visibleCount = _view.visibleCount === 0 ? tot : Math.max(2, Math.min(tot, Math.ceil(_view.visibleCount)));
+    // Use fractional visibleCount and xPan-derived offset for perfectly smooth movement
+    const visibleCount = _view.visibleCount === 0 ? tot : Math.max(2, Math.min(tot, _view.visibleCount));
     const maxStart = Math.max(0, totalCount - visibleCount);
-    const startIdx = Math.round(_view.xPan * maxStart);
-    const endIdx = Math.min(totalCount - 1, startIdx + visibleCount - 1);
+    const viewOffset = _view.xPan * maxStart;
+    
+    // Bounds for looping (ensure we cover the fractional range)
+    const startIdx = Math.max(0, Math.floor(viewOffset));
+    const endIdx = Math.min(totalCount - 1, Math.ceil(viewOffset + visibleCount));
 
     // Collect visible values for Y range
     const visibleValues = [];
@@ -650,9 +656,8 @@ function render() {
 
     const toY = (val) => drawY + drawH - ((val - yMin) / (yMax - yMin)) * drawH;
     const toX = (i) => {
-        const visCnt = endIdx - startIdx;
-        if (visCnt === 0) return drawX + drawW / 2;
-        return drawX + ((i - startIdx) / visCnt) * drawW;
+        // Linear mapping from solve index to pixel X, using fractional offset and count
+        return drawX + ((i - viewOffset) / (visibleCount - 1)) * drawW;
     };
 
     // Y-axis grid with nice ticks
