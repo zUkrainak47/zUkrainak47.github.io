@@ -5,7 +5,11 @@ import { settings } from './settings.js';
  * Time trend graph with pan/zoom controls.
  */
 
-const PADDING = { top: 12, right: 15, bottom: 22, left: 22 };
+const _isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+const PADDING = {
+    top: 12, right: 15, left: 22,
+    get bottom() { return _isSafari && window.innerWidth < 500 ? 35 : 22; },
+};
 const mobileViewportQuery = window.matchMedia('(max-width: 1100px), (pointer: coarse)');
 function getColors() {
     const styles = getComputedStyle(document.documentElement);
