@@ -45,7 +45,7 @@
   --graph-color-ao5: #ff2020;
   --graph-color-ao12: #2b91ff;
   --graph-color-ao100: #a371f7;
-  --graph-grid: #21262d;
+  --graph-grid: #3c4552;
 
   /* Cube face colors */
   --cube-white: #FFF;
@@ -112,4 +112,17 @@ body.no-animations,
 body.no-animations * {
   transition: none !important;
   animation: none !important;
+}
+
+/* ── Compact panels at low window heights ── */
+@media (max-height: 700px) and (min-width: 1101px) {
+  :root {
+    --right-panel-width: 240px;
+  }
+}
+
+@media (max-height: 650px) and (min-width: 1101px) {
+  :root {
+    --right-panel-width: 200px;
+  }
 }
