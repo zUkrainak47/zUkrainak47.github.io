@@ -123,8 +123,8 @@ export function drawCube(canvas, cube) {
 
     // Face gap = visual separation between faces
     // Sticker gap = small gap between stickers within a face
-    const faceGap = Math.max(2, Math.min(w, h) * 0.012);
-    const stickerGap = 1;
+    const faceGap = Math.max(2, Math.min(w, h) * 0.02);
+    const stickerGap = 0.6;
 
     // Total grid: 4 faces wide + 3 face gaps, 3 faces tall + 2 face gaps
     const availW = w - faceGap * 3;
