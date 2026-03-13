@@ -187,7 +187,7 @@ export async function importCsTimer(csData) {
             // but our internal format stores the raw time and applies +2 in display.
             // So subtract 2000ms for +2 penalties.
             let time = rawTime;
-            if (penalty === '+2') time = Math.max(0, rawTime - 2000);
+            // if (penalty === '+2') time = Math.max(0, rawTime - 2000);
 
             const timestamp = timestampSec * 1000;
 
@@ -265,7 +265,7 @@ export async function exportCsTimer() {
             let time = solve.time;
             if (solve.penalty === '+2') {
                 penaltyFlag = 2000;
-                time = solve.time + 2000; // csTimer stores +2 inclusive
+                // time = solve.time + 2000; // csTimer stores +2 inclusive
             } else if (solve.penalty === 'DNF') {
                 penaltyFlag = -1;
             }
