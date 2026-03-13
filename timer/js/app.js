@@ -238,6 +238,7 @@ const quickActionsState = {
     restorePinnedAfterManual: false,
     swipePointerId: null,
     swipeStartTimerState: null,
+    swipeStartTime: 0,
     swipeStartX: 0,
     swipeStartY: 0,
     swipeHandled: false,
@@ -337,7 +338,7 @@ function isMobileTimerPanelActive() {
 }
 
 function isQuickActionsSwipeOpenState(state) {
-    return state === 'idle' || state === 'stopped';
+    return state === 'idle' || state === 'stopped' || state === 'holding' || state === 'inspection-primed';
 }
 
 function isDesktopTypingEntryModeEnabled() {
@@ -1177,6 +1178,7 @@ function initTimerQuickActions() {
 
         quickActionsState.swipePointerId = event.pointerId;
         quickActionsState.swipeStartTimerState = swipeStartTimerState;
+        quickActionsState.swipeStartTime = performance.now();
         quickActionsState.swipeStartX = event.clientX;
         quickActionsState.swipeStartY = event.clientY;
         quickActionsState.swipeHandled = false;
@@ -1189,6 +1191,9 @@ function initTimerQuickActions() {
 
         const deltaX = event.clientX - quickActionsState.swipeStartX;
         const deltaY = event.clientY - quickActionsState.swipeStartY;
+
+        if (performance.now() - quickActionsState.swipeStartTime > 300) return;
+
         const canOpenQuickActions = isQuickActionsSwipeOpenState(quickActionsState.swipeStartTimerState);
 
         if (Math.abs(deltaY) < 18 || Math.abs(deltaY) < Math.abs(deltaX) + 6) return;
