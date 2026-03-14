@@ -173,7 +173,7 @@ export async function importCsTimer(csData) {
 
         for (const entry of solves) {
             if (!Array.isArray(entry) || entry.length < 4) continue;
-            const [penaltyAndTime, scramble, _comment, timestampSec] = entry;
+            const [penaltyAndTime, scramble, comment, timestampSec] = entry;
             if (!Array.isArray(penaltyAndTime) || penaltyAndTime.length < 2) continue;
 
             const [penaltyFlag, rawTime] = penaltyAndTime;
@@ -183,11 +183,7 @@ export async function importCsTimer(csData) {
             if (penaltyFlag === 2000) penalty = '+2';
             else if (penaltyFlag === -1) penalty = 'DNF';
 
-            // For +2 solves, csTimer stores the time WITH the +2 already added,
-            // but our internal format stores the raw time and applies +2 in display.
-            // So subtract 2000ms for +2 penalties.
             let time = rawTime;
-            // if (penalty === '+2') time = Math.max(0, rawTime - 2000);
 
             const timestamp = timestampSec * 1000;
 
@@ -199,6 +195,7 @@ export async function importCsTimer(csData) {
                 isManual: false,
                 penalty,
                 timestamp,
+                comment: (comment && typeof comment === 'string') ? comment : '',
             });
 
             if (!hasSolves) {
@@ -265,7 +262,6 @@ export async function exportCsTimer() {
             let time = solve.time;
             if (solve.penalty === '+2') {
                 penaltyFlag = 2000;
-                // time = solve.time + 2000; // csTimer stores +2 inclusive
             } else if (solve.penalty === 'DNF') {
                 penaltyFlag = -1;
             }
@@ -273,7 +269,7 @@ export async function exportCsTimer() {
             return [
                 [penaltyFlag, time],
                 solve.scramble || '',
-                '',  // comment (unused)
+                solve.comment || '',
                 Math.floor(solve.timestamp / 1000), // ms → seconds
             ];
         });
