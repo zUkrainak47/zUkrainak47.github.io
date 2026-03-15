@@ -676,7 +676,7 @@ async function commitSolve(elapsed, penalty = null, { isManual = false } = {}) {
     await loadNewScramble();
 }
 
-async function submitManualTimeEntry() {
+async function submitManualTimeEntry({ closeEntry = false } = {}) {
     const digits = quickActionsState.manualDigits;
     if (Number(digits || 0) <= 0) return;
 
@@ -688,14 +688,20 @@ async function submitManualTimeEntry() {
         return;
     }
 
-    closeManualTimeEntry({
-        restoreQuickActions: isMobileTimerPanelActive(),
-        pinned: true,
-    });
+    if (closeEntry) {
+        closeManualTimeEntry({
+            restoreQuickActions: isMobileTimerPanelActive(),
+            pinned: true,
+        });
+    } else {
+        // Keep open and clear digits for rapid entry
+        quickActionsState.manualDigits = '';
+        updateManualTimeEntryUI();
+    }
 
     await commitSolve(Number(digits) * 10, null, { isManual: true });
 
-    if (isMobileTimerPanelActive()) {
+    if (isMobileTimerPanelActive() && closeEntry) {
         setQuickActionsVisible(true, { pinned: true });
     }
 }
@@ -1138,7 +1144,7 @@ function initTimerQuickActions() {
 
         if (event.key === 'Enter') {
             event.preventDefault();
-            submitManualTimeEntry();
+            submitManualTimeEntry({ closeEntry: false });
             return;
         }
 
@@ -1156,7 +1162,7 @@ function initTimerQuickActions() {
     });
 
     submitBtn?.addEventListener('click', () => {
-        submitManualTimeEntry();
+        submitManualTimeEntry({ closeEntry: true });
     });
 
     document.addEventListener('pointerdown', (event) => {
