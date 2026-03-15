@@ -1535,7 +1535,7 @@ function hasBlockingOverlayOpen() {
 }
 
 function isSlashShortcut(event) {
-    return event.code === 'Slash' || event.key === '/';
+    return event.code === 'Slash' || event.key === '/' || event.key === '?';
 }
 
 function isTransientShortcutSelect(element) {
@@ -1742,38 +1742,38 @@ function isShortcutsOverlayOpen() {
     return shortcutsOverlayEl?.classList.contains('active');
 }
 
-function openSettingsPanel() {
+function openSettingsPanel({ isSwitching = false } = {}) {
     if (!settingsOverlayEl) return false;
     if (!settingsOverlayEl.classList.contains('active') && !canOpenSettingsPanel()) return false;
 
-    pushHistoryState();
+    if (!isSwitching) pushHistoryState();
     settingsOverlayEl.classList.add('active');
     blurManualTimeInput();
     return true;
 }
 
-function closeSettingsPanel({ isPopState = false } = {}) {
+function closeSettingsPanel({ isPopState = false, isSwitching = false } = {}) {
     if (!settingsOverlayEl) return;
-    if (!isPopState) backToDismiss();
+    if (!isPopState && !isSwitching) backToDismiss();
 
     settingsOverlayEl.classList.remove('active');
     if (document.activeElement) document.activeElement.blur();
 }
 
-function openKeyboardShortcutsOverlay({ closeSettings = false } = {}) {
+function openKeyboardShortcutsOverlay({ closeSettings = false, isSwitching = false } = {}) {
     if (!shortcutsOverlayEl) return false;
     if (!shortcutsOverlayEl.classList.contains('active') && !canOpenSettingsPanel()) return false;
 
-    if (closeSettings) closeSettingsPanel();
-    pushHistoryState();
+    if (closeSettings) closeSettingsPanel({ isSwitching: true });
+    if (!isSwitching) pushHistoryState();
     shortcutsOverlayEl.classList.add('active');
     blurManualTimeInput();
     return true;
 }
 
-function closeKeyboardShortcutsOverlay({ isPopState = false } = {}) {
+function closeKeyboardShortcutsOverlay({ isPopState = false, isSwitching = false } = {}) {
     if (!shortcutsOverlayEl) return;
-    if (!isPopState) backToDismiss();
+    if (!isPopState && !isSwitching) backToDismiss();
 
     shortcutsOverlayEl.classList.remove('active');
     if (document.activeElement) document.activeElement.blur();
@@ -1841,7 +1841,7 @@ function initKeyboardShortcuts() {
                 document.getElementById('confirm-overlay').classList.contains('active') ||
                 document.getElementById('prompt-overlay').classList.contains('active')) return;
 
-            if (!openKeyboardShortcutsOverlay({ closeSettings: settingsOverlayEl?.classList.contains('active') })) return;
+            openKeyboardShortcutsOverlay({ closeSettings: settingsOverlayEl?.classList.contains('active'), isSwitching: settingsOverlayEl?.classList.contains('active') });
 
             e.stopPropagation();
             return;
@@ -1882,8 +1882,8 @@ function initKeyboardShortcuts() {
         if (slashShortcutPressed) {
             if (isShortcutsOverlayOpen()) {
                 e.preventDefault();
-                closeKeyboardShortcutsOverlay();
-                openSettingsPanel();
+                closeKeyboardShortcutsOverlay({ isSwitching: true });
+                openSettingsPanel({ isSwitching: true });
                 return;
             }
 
@@ -2782,7 +2782,7 @@ function initSettingsPanel() {
         btn.blur();
     };
     document.getElementById('btn-show-shortcuts').onclick = () => {
-        openKeyboardShortcutsOverlay({ closeSettings: true });
+        openKeyboardShortcutsOverlay({ closeSettings: true, isSwitching: true });
     };
     document.getElementById('settings-close').onclick = closeSettingsPanel;
     settingsOverlayEl.addEventListener('click', (e) => {
