@@ -317,6 +317,43 @@ body.typing-entry-mode:not(.mobile-viewport) #manual-time-entry-display {
     pointer-events: auto;
 }
 
+#inspection-cancel-wrap {
+    position: absolute;
+    left: 50%;
+    top: calc(100% - 20px);
+    transform: translateX(-50%);
+    z-index: 4;
+}
+
+#inspection-cancel-wrap[hidden] {
+    display: none !important;
+}
+
+#inspection-cancel-btn {
+    min-width: 78px;
+    min-height: 40px;
+    padding: 0 16px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: rgba(230, 237, 243, 0.86);
+    font-size: var(--text-sm);
+    font-weight: 700;
+}
+
+#inspection-cancel-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+#inspection-cancel-btn:active {
+    transform: scale(0.97);
+}
+
+body:not(.mobile-viewport) #inspection-cancel-wrap {
+    display: none !important;
+}
+
 .timer-action-btn {
     min-width: 54px;
     min-height: 48px;

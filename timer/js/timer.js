@@ -708,6 +708,12 @@ class Timer extends EventEmitter {
         }
     }
 
+    cancelInspection() {
+        if (this._isInspectionPreSolveState(this.state)) {
+            this._cancelInspection();
+        }
+    }
+
     resetDisplay() {
         this._updateDisplay('0.00');
         this._setColor(State.IDLE);

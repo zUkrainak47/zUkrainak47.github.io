@@ -362,6 +362,29 @@ function syncInspectionSpeechUnlockPromptVisibility() {
     promptWrap.hidden = !shouldShowInspectionSpeechUnlockPrompt();
 }
 
+function syncInspectionCancelControl(state = timer.getState()) {
+    const cancelWrap = getEl('inspection-cancel-wrap');
+    if (!cancelWrap) return;
+
+    const shouldShow = mobileViewportQuery.matches
+        && document.body.dataset.mobilePanel === 'timer'
+        && isInspectionState(state);
+
+    cancelWrap.hidden = !shouldShow;
+}
+
+function initInspectionCancelControl() {
+    const cancelBtn = getEl('inspection-cancel-btn');
+    if (!cancelBtn) return;
+
+    cancelBtn.addEventListener('click', (event) => {
+        event.preventDefault();
+        timer.cancelInspection();
+    });
+
+    syncInspectionCancelControl();
+}
+
 function initInspectionSpeechUnlockPrompt() {
     const promptBtn = getEl('inspection-voice-unlock-btn');
     if (!promptBtn) return;
@@ -972,6 +995,7 @@ function setActiveMobilePanel(panel) {
     });
     hideMobileScrambleActions();
     syncQuickActionsUI();
+    syncInspectionCancelControl();
 
     if (mobileViewportQuery.matches) {
         if (panel === 'timer') ensurePanelExpanded('cube-panel');
@@ -1000,6 +1024,7 @@ function syncMobilePanelState() {
         document.querySelectorAll('.mobile-panel-tab').forEach((btn) => btn.classList.remove('active'));
         hideMobileScrambleActions();
         syncQuickActionsUI();
+        syncInspectionCancelControl();
         syncPersistentManualEntryMode();
         return;
     }
@@ -1008,6 +1033,7 @@ function syncMobilePanelState() {
         ? document.body.dataset.mobilePanel
         : 'timer';
     setActiveMobilePanel(activePanel);
+    syncInspectionCancelControl();
 
     if (isMobileViewport && settings.get('timeEntryMode') === 'typing' && quickActionsState.manualEntryActive) {
         closeManualTimeEntry({ restoreQuickActions: false });
@@ -1079,6 +1105,7 @@ async function init() {
     refreshUI();
     initSettingsPanel();
     initInspectionSpeechUnlockPrompt();
+    initInspectionCancelControl();
     initShortcutsOverlay();
     initSessionControls();
     initFilterControls();
@@ -2514,6 +2541,7 @@ function onInspectionAlert(seconds) {
 
 function onTimerStateChange(state) {
     syncInspectionSpeechUnlockPromptVisibility();
+    syncInspectionCancelControl(state);
 
     const infoEl = document.getElementById('timer-info');
     const deltaEl = document.getElementById('timer-delta');
