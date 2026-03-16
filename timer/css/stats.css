@@ -24,6 +24,10 @@
     font-family: var(--font-mono);
 }
 
+#stats-summary.compact-summary-rows table {
+    border-spacing: 0 2px;
+}
+
 #stats-summary th {
     color: var(--text-tertiary);
     font-weight: 600;
@@ -44,6 +48,11 @@
     cursor: pointer;
     border-radius: var(--radius-sm);
     transition: all var(--transition-fast);
+}
+
+#stats-summary.compact-summary-rows td {
+    padding-top: 4px;
+    padding-bottom: 4px;
 }
 
 #stats-summary td:first-child {

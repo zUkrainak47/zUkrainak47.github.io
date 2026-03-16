@@ -102,6 +102,38 @@ body.mobile-viewport #setting-hide-ui-row {
     margin-top: 2px;
 }
 
+#setting-summary-stats-custom {
+    width: 220px;
+    max-width: 40%;
+    padding: 8px 10px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--surface-border);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    resize: none;
+    overflow-y: hidden;
+    line-height: 1.35;
+    min-height: 36px;
+}
+
+#setting-summary-stats-preset {
+    width: 220px;
+    max-width: 52%;
+    min-width: 0;
+    flex: 0 1 220px;
+}
+
+#setting-summary-stats-custom:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+#setting-summary-stats-feedback.is-error {
+    color: var(--danger);
+}
+
 .setting-row-button {
     width: 100%;
     display: flex;
@@ -354,5 +386,10 @@ body.mobile-viewport #setting-hide-ui-row {
 
     .settings-actions {
         flex-direction: column;
+    }
+
+    #setting-summary-stats-preset {
+        max-width: 100%;
+        flex: 1 1 180px;
     }
 }

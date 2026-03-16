@@ -29,7 +29,7 @@
   <link rel="stylesheet" href="css/cube.css?v=3">
   <link rel="stylesheet" href="css/graph.css?v=5">
   <link rel="stylesheet" href="css/modal.css?v=7">
-  <link rel="stylesheet" href="css/settings.css?v=8">
+  <link rel="stylesheet" href="css/settings.css?v=9">
 </head>
 
 <body>
@@ -548,6 +548,30 @@
         </div>
 
         <div class="setting-group">
+          <h3>Stats</h3>
+          <div class="setting-row">
+            <div class="setting-label">
+              Summary rows
+              <small>Choose which means/averages appear above the solves table</small>
+            </div>
+            <select id="setting-summary-stats-preset">
+              <option value="basic">mo3 ao5 ao12 ao100</option>
+              <option value="extended">mo3 ao5 ao12 ao25 ao50 ao100</option>
+              <option value="full">mo3 ao5 ao12 ao25 ao50 ao100 ao200 ao500 ao1000 ao2000 ao5000 ao10000</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+          <div class="setting-row" id="setting-summary-stats-custom-row" style="display:none;">
+            <div class="setting-label">
+              Custom summary rows
+              <small id="setting-summary-stats-feedback">Format: moN/aoN, comma or space separated, max 12</small>
+            </div>
+            <textarea id="setting-summary-stats-custom" autocomplete="off" spellcheck="false" maxlength="200"
+              placeholder="mo3 ao5 ao12 ao50" rows="1"></textarea>
+          </div>
+        </div>
+
+        <div class="setting-group">
           <h3>Colors</h3>
           <div class="setting-row">
             <div class="setting-label" style="flex:1">New best color</div>
@@ -611,7 +635,7 @@
   </div>
 
   <!-- App Script -->
-  <script type="module" src="js/app.js?v=24"></script>
+  <script type="module" src="js/app.js?v=25"></script>
 </body>
 
 </html>

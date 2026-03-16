@@ -180,6 +180,25 @@ export function setModalStatNavigator(callback) {
     _onStatNavigate = callback;
 }
 
+export function setModalStatButtons(buttons) {
+    if (!_statNav) return;
+
+    const normalized = Array.isArray(buttons) ? buttons : [];
+    _statNav.innerHTML = normalized.map((button) => {
+        const statType = String(button.statType ?? '');
+        const minIndex = Number.isInteger(button.minIndex) ? button.minIndex : 0;
+        const label = String(button.label ?? statType);
+        const title = String(button.title ?? label);
+        return `<button class="btn-action" data-stat-type="${statType}" data-min-index="${minIndex}" title="${title}">${label}</button>`;
+    }).join('');
+}
+
+function expandReadableStatLabel(rawLabel) {
+    return String(rawLabel ?? '').replace(/\b(mo|ao)([1-9]\d*)\b/gi, (_, kind, n) => (
+        kind.toLowerCase() === 'mo' ? `Mean of ${n}` : `Average of ${n}`
+    ));
+}
+
 /**
  * Custom async confirm modal matching the application aesthetics.
  * Returns a Promise that resolves to true (OK) or false (Cancel).
@@ -542,11 +561,7 @@ export function showAverageDetail(label, value, solves, trim = 1, selectionConte
     const valueStr = formatTime(value);
 
     // Expand label for title: "Best ao5" -> "Best Average of 5"
-    let title = label
-        .replace(/\bao5\b/g, 'Average of 5')
-        .replace(/\bao12\b/g, 'Average of 12')
-        .replace(/\bao100\b/g, 'Average of 100')
-        .replace(/\bmo3\b/g, 'Mean of 3');
+    const title = expandReadableStatLabel(label);
 
     const times = solves.map(s => getEffectiveTime(s));
     const sorted = [...times].map((t, i) => ({ time: t, index: i }))
@@ -614,18 +629,18 @@ function _showModal(title, text, solveContext = null, detailPayload = null) {
     _currentDetailPayload = detailPayload;
 
     const lineCount = text.split('\n').length;
-    if (lineCount <= 4) {
-        _textarea.rows = 4;
+    if (lineCount <= 16) {
+        _textarea.rows = lineCount;
         _textarea.style.height = 'auto';
         _textarea.style.minHeight = 'auto';
-    } else if (lineCount <= 7) {
-        _textarea.rows = 7;
-        _textarea.style.height = 'auto';
-        _textarea.style.minHeight = 'auto';
-    } else if (lineCount <= 9) {
-        _textarea.rows = 9;
-        _textarea.style.height = 'auto';
-        _textarea.style.minHeight = 'auto';
+    // } else if (lineCount <= 7) {
+    //     _textarea.rows = 7;
+    //     _textarea.style.height = 'auto';
+    //     _textarea.style.minHeight = 'auto';
+    // } else if (lineCount <= 9) {
+    //     _textarea.rows = 9;
+    //     _textarea.style.height = 'auto';
+    //     _textarea.style.minHeight = 'auto';
     } else {
         _textarea.rows = 16;
         _textarea.style.height = '359px';

@@ -2,9 +2,9 @@ import { timer } from './timer.js?v=5';
 import { getScramble, getCurrentScramble, getPrevScramble, getNextScramble, setCurrentScramble, isCurrentScrambleManual, hasPrevScramble } from './scramble.js';
 import { sessionManager } from './session.js';
 import { settings, DEFAULTS } from './settings.js';
-import { computeAll, perSolveStats, mo3At, ao5At, ao12At, ao100At, StatsCache } from './stats.js';
+import { parseRollingStatType, rollingStatAt, StatsCache } from './stats.js';
 import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate } from './utils.js';
-import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, armModalGhostClickGuard } from './modal.js?v=7';
+import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=8';
 import { initCubeDisplay, updateCubeDisplay } from './cube-display.js';
 import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents } from './graph.js?v=7';
 import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer } from './storage.js';
@@ -25,19 +25,27 @@ const popupState = {
     newBest: { elementId: 'new-best-alert', hideTimeout: null, clearTimeout: null },
     penaltyShortcut: { elementId: 'penalty-shortcut-alert', hideTimeout: null, clearTimeout: null },
 };
-const bestPopupTypes = [
-    { key: 'time', label: 'single' },
-    { key: 'mo3', label: 'mo3' },
-    { key: 'ao5', label: 'ao5' },
-    { key: 'ao12', label: 'ao12' },
-    { key: 'ao100', label: 'ao100' },
-];
-const statShortcutMap = {
-    Digit1: 'time',
-    Digit2: 'mo3',
-    Digit3: 'ao5',
-    Digit4: 'ao12',
-    Digit5: 'ao100',
+const SUMMARY_STAT_PRESETS = {
+    basic: ['mo3', 'ao5', 'ao12', 'ao100'],
+    extended: ['mo3', 'ao5', 'ao12', 'ao25', 'ao50', 'ao100'],
+    full: ['mo3', 'ao5', 'ao12', 'ao25', 'ao50', 'ao100', 'ao200', 'ao500', 'ao1000', 'ao2000', 'ao5000', 'ao10000'],
+};
+const MAX_CUSTOM_SUMMARY_STATS = 12;
+const SHIFT_STAT_SHORTCUT_CODES = ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0', 'Minus', 'Equal'];
+const SHIFT_STAT_SHORTCUT_DISPLAY = {
+    Digit1: '1',
+    Digit2: '2',
+    Digit3: '3',
+    Digit4: '4',
+    Digit5: '5',
+    Digit6: '6',
+    Digit7: '7',
+    Digit8: '8',
+    Digit9: '9',
+    Digit0: '0',
+    Minus: '-',
+    Equal: '=',
+    Backquote: '`',
 };
 const buttonShortcutTooltipBindings = [
     { selector: '#btn-settings', binding: ['/'], placement: 'right' },
@@ -59,11 +67,6 @@ const buttonShortcutTooltipBindings = [
     { selector: '#modal-btn-dnf', binding: ['-'] },
     { selector: '#modal-btn-plus2', binding: ['+'] },
     { selector: '#modal-btn-delete', binding: ['Backspace'] },
-    { selector: '#modal-stat-nav [data-stat-type="time"]', binding: ['Shift', '1'] },
-    { selector: '#modal-stat-nav [data-stat-type="mo3"]', binding: ['Shift', '2'] },
-    { selector: '#modal-stat-nav [data-stat-type="ao5"]', binding: ['Shift', '3'] },
-    { selector: '#modal-stat-nav [data-stat-type="ao12"]', binding: ['Shift', '4'] },
-    { selector: '#modal-stat-nav [data-stat-type="ao100"]', binding: ['Shift', '5'] },
 ];
 const keyboardShortcutGroups = [
     {
@@ -127,23 +130,12 @@ const keyboardShortcutGroups = [
             },
             {
                 action: 'Open single details',
-                bindings: [['Shift', '1']],
+                bindings: [['Shift', '`']],
             },
             {
-                action: 'Open mo3 details',
-                bindings: [['Shift', '2']],
-            },
-            {
-                action: 'Open ao5 details',
-                bindings: [['Shift', '3']],
-            },
-            {
-                action: 'Open ao12 details',
-                bindings: [['Shift', '4']],
-            },
-            {
-                action: 'Open ao100 details',
-                bindings: [['Shift', '5']],
+                action: 'Open configured summary stats',
+                detail: 'Shift + 1..0, -, = (based on Summary rows setting)',
+                bindings: [['Shift', '1'], ['Shift', '2'], ['Shift', '3'], ['Shift', '4'], ['Shift', '5'], ['Shift', '6'], ['Shift', '7'], ['Shift', '8'], ['Shift', '9'], ['Shift', '0'], ['Shift', '-'], ['Shift', '=']],
             },
         ],
     },
@@ -224,6 +216,8 @@ let transientSelectOutsideBlurBound = false;
 let shortcutTooltipEl = null;
 let viewportLayoutFrame = null;
 let instantTimerTabLayoutCleanupFrame = null;
+let summaryRowsCache = { signature: '', rows: [] };
+const rollingStatSummaryCache = new Map();
 const domCache = new Map();
 const viewportLayoutState = {
     timerTransform: null,
@@ -903,6 +897,7 @@ async function init() {
     initModal();
     setModalStatNavigator(openShortcutStatDetail);
     initShortcutTooltips();
+    syncModalStatNavigation();
     timer.init(
         document.getElementById('timer-display'),
         [
@@ -933,8 +928,12 @@ async function init() {
         if (key === 'inspectionAlerts') clearInspectionAlert();
         if (key === 'newBestPopupEnabled' && !settings.get('newBestPopupEnabled')) clearNewBestAlert();
         if (key === 'shortcutTooltipsEnabled' && !settings.get('shortcutTooltipsEnabled')) hideShortcutTooltip();
-        if (key === 'statsFilter' || key === 'customFilterDuration' || key === 'showDelta' || key.startsWith('graphColor') || key === 'newBestColor') {
+        if (key === 'statsFilter' || key === 'customFilterDuration' || key === 'showDelta' || key.startsWith('graphColor') || key === 'newBestColor' || key === 'summaryStatsList') {
             if (key === 'statsFilter' || key === 'customFilterDuration') rebuildStatsCache();
+            if (key === 'summaryStatsList') {
+                syncModalStatNavigation();
+                renderKeyboardShortcuts();
+            }
             refreshUI();
         }
         if (key === 'timeEntryMode') {
@@ -1677,9 +1676,142 @@ function initShortcutTooltips() {
     document.addEventListener('pointerdown', hideShortcutTooltip, true);
 }
 
+function normalizeSummaryStatToken(token) {
+    return String(token ?? '').trim().toLowerCase();
+}
+
+function parseSummaryStatInput(rawInput, { truncate = true } = {}) {
+    const source = String(rawInput ?? '');
+    const parts = source.split(/[\s,]+/).map(normalizeSummaryStatToken).filter(Boolean);
+    const tokens = [];
+    const seen = new Set();
+
+    for (const part of parts) {
+        const config = parseRollingStatType(part);
+        if (!config) {
+            return {
+                ok: false,
+                message: `Invalid token: ${part}`,
+                tokens,
+                truncated: false,
+            };
+        }
+
+        if (seen.has(config.type)) continue;
+        seen.add(config.type);
+        tokens.push(config.type);
+    }
+
+    if (tokens.length === 0) {
+        return {
+            ok: false,
+            message: 'Enter at least one stat token (e.g. mo3 ao12)',
+            tokens: [],
+            truncated: false,
+        };
+    }
+
+    if (tokens.length > MAX_CUSTOM_SUMMARY_STATS && !truncate) {
+        return {
+            ok: false,
+            message: `Maximum ${MAX_CUSTOM_SUMMARY_STATS} summary rows.`,
+            tokens: tokens.slice(0, MAX_CUSTOM_SUMMARY_STATS),
+            truncated: true,
+        };
+    }
+
+    return {
+        ok: true,
+        message: '',
+        tokens: truncate ? tokens.slice(0, MAX_CUSTOM_SUMMARY_STATS) : tokens,
+        truncated: tokens.length > MAX_CUSTOM_SUMMARY_STATS,
+    };
+}
+
+function getPresetSummaryTokens(preset) {
+    const key = String(preset ?? '').toLowerCase();
+    const list = SUMMARY_STAT_PRESETS[key] || SUMMARY_STAT_PRESETS.basic;
+    return list.slice(0, MAX_CUSTOM_SUMMARY_STATS);
+}
+
+function getConfiguredSummaryStatTokens() {
+    const stored = settings.get('summaryStatsList');
+    if (Array.isArray(stored) && stored.length) {
+        const parsed = parseSummaryStatInput(stored.join(' '));
+        if (parsed.ok) return parsed.tokens;
+    }
+
+    const preset = settings.get('summaryStatsPreset');
+    if (preset && preset !== 'custom') {
+        return getPresetSummaryTokens(preset);
+    }
+
+    const custom = parseSummaryStatInput(settings.get('summaryStatsCustom'));
+    if (custom.ok) return custom.tokens;
+
+    return [...SUMMARY_STAT_PRESETS.basic];
+}
+
+function getShiftStatShortcutSlots() {
+    return getConfiguredSummaryStatTokens()
+        .slice(0, SHIFT_STAT_SHORTCUT_CODES.length)
+        .map((statType, index) => {
+            const code = SHIFT_STAT_SHORTCUT_CODES[index];
+            return {
+                statType,
+                code,
+                shortcutDisplay: SHIFT_STAT_SHORTCUT_DISPLAY[code] || '?',
+            };
+        });
+}
+
+function getStatWindowLabel(statType) {
+    const parsed = parseRollingStatType(statType);
+    return parsed ? String(parsed.windowSize) : statType;
+}
+
+function syncModalStatNavigation() {
+    const slots = getShiftStatShortcutSlots();
+    const timeButton = {
+        statType: 'time',
+        minIndex: 0,
+        label: '1',
+        title: 'Single (Shift+`)'
+    };
+
+    const statButtons = slots.map(({ statType, shortcutDisplay }) => {
+        const parsed = parseRollingStatType(statType);
+        return {
+            statType,
+            minIndex: parsed ? parsed.windowSize - 1 : 0,
+            label: getStatWindowLabel(statType),
+            title: `${statType} (Shift+${shortcutDisplay})`,
+        };
+    });
+
+    setModalStatButtons([timeButton, ...statButtons]);
+
+    document.querySelectorAll('#modal-stat-nav button[data-stat-type]').forEach((button) => {
+        const type = button.dataset.statType;
+        if (type === 'time') {
+            registerShortcutTooltip(button, ['Shift', '`']);
+            return;
+        }
+
+        const slot = slots.find((entry) => entry.statType === type);
+        if (!slot) return;
+        registerShortcutTooltip(button, ['Shift', slot.shortcutDisplay]);
+    });
+}
+
 function getShiftStatShortcutType(event) {
     if (!event.shiftKey) return null;
-    return statShortcutMap[event.code] || null;
+    if (event.code === 'Backquote') return 'time';
+
+    const slotIndex = SHIFT_STAT_SHORTCUT_CODES.indexOf(event.code);
+    if (slotIndex < 0) return null;
+    const slots = getShiftStatShortcutSlots();
+    return slots[slotIndex]?.statType || null;
 }
 
 function shouldPassthroughTransientSelectShortcut(event) {
@@ -1789,11 +1921,30 @@ function renderShortcutBinding(binding) {
     return `<span class="shortcut-binding">${binding.map(key => `<kbd>${key}</kbd>`).join('<span class="shortcut-plus">+</span>')}</span>`;
 }
 
+function getKeyboardShortcutGroups() {
+    const dynamicStatItems = getShiftStatShortcutSlots().map(({ statType, shortcutDisplay }) => ({
+        action: `Open ${statType} details`,
+        bindings: [['Shift', shortcutDisplay]],
+    }));
+
+    return keyboardShortcutGroups.map((group) => {
+        if (group.title !== 'Solves') return group;
+
+        const preservedItems = group.items.filter((item) => item.action !== 'Open configured summary stats');
+        return {
+            ...group,
+            items: [...preservedItems, ...dynamicStatItems],
+        };
+    });
+}
+
 function renderKeyboardShortcuts() {
     const container = document.getElementById('shortcut-groups');
     if (!container) return;
 
-    container.innerHTML = keyboardShortcutGroups.map(group => `
+    const groups = getKeyboardShortcutGroups();
+
+    container.innerHTML = groups.map(group => `
         <section class="shortcut-group">
             <div class="shortcut-group-title">${group.title}</div>
             ${group.items.map(item => `
@@ -2253,10 +2404,28 @@ function didSetNewBest(previousBest, currentBest) {
 }
 
 function maybeShowNewBestAlert(previousStats, currentStats) {
-    const labels = bestPopupTypes
-        .filter(({ key }) => currentStats.current[key] === currentStats.best[key]
-            && didSetNewBest(previousStats.best[key], currentStats.best[key]))
-        .map(({ label }) => label);
+    const labels = [];
+
+    if (didSetNewBest(previousStats.best.time, currentStats.best.time)) {
+        labels.push('single');
+    }
+
+    const times = statsCache.getTimes();
+    const lastIndex = times.length - 1;
+    const configuredRows = getConfiguredSummaryStatTokens();
+
+    configuredRows.forEach((statType) => {
+        const config = getRollingStatConfig(statType);
+        if (!config || lastIndex < config.windowSize - 1) return;
+
+        const summary = getRollingStatSummary(times, statType);
+        if (summary.value == null || summary.value === Infinity) return;
+        if (summary.current == null || summary.current === Infinity) return;
+
+        if (summary.index === lastIndex && summary.current === summary.value) {
+            labels.push(statType);
+        }
+    });
 
     if (labels.length === 0) return;
     showNewBestAlert(`Best ${labels.join(', ')}`);
@@ -2270,6 +2439,8 @@ function maybeShowNewBestAlert(previousStats, currentStats) {
 function rebuildStatsCache() {
     const solves = sessionManager.getFilteredSolves();
     statsCache.rebuild(solves);
+    summaryRowsCache = { signature: '', rows: [] };
+    rollingStatSummaryCache.clear();
 }
 
 function refreshUI() {
@@ -2382,11 +2553,15 @@ function updateDelta(solves) {
 }
 
 function getRollingStatConfig(type) {
-    if (type === 'mo3') return { windowSize: 3, trim: 0, getValue: mo3At };
-    if (type === 'ao5') return { windowSize: 5, trim: 1, getValue: ao5At };
-    if (type === 'ao12') return { windowSize: 12, trim: 1, getValue: ao12At };
-    if (type === 'ao100') return { windowSize: 100, trim: 5, getValue: ao100At };
-    return null;
+    const parsed = parseRollingStatType(type);
+    if (!parsed) return null;
+    return {
+        type: parsed.type,
+        kind: parsed.kind,
+        windowSize: parsed.windowSize,
+        trim: parsed.trim,
+        getValue: (times, index) => rollingStatAt(times, index, parsed.type),
+    };
 }
 
 function getSelectedStatSolveIndex(solves) {
@@ -2446,15 +2621,232 @@ function getMostRecentSummarySolve() {
 }
 
 // ──── Summary Stats ────
+class FenwickTree {
+    constructor(size) {
+        this.size = size;
+        this.tree = new Float64Array(size + 1);
+    }
+
+    add(index, delta) {
+        for (let i = index; i <= this.size; i += i & -i) {
+            this.tree[i] += delta;
+        }
+    }
+}
+
+function sumOfSmallestK(countTree, sumTree, indexToValue, k, totalCount, totalSum) {
+    if (k <= 0) return 0;
+    if (k >= totalCount) return totalSum;
+
+    let idx = 0;
+    let bit = 1;
+    while ((bit << 1) <= countTree.size) bit <<= 1;
+
+    let countSoFar = 0;
+    let sumSoFar = 0;
+
+    while (bit > 0) {
+        const next = idx + bit;
+        if (next <= countTree.size && (countSoFar + countTree.tree[next]) < k) {
+            idx = next;
+            countSoFar += countTree.tree[next];
+            sumSoFar += sumTree.tree[next];
+        }
+        bit >>= 1;
+    }
+
+    const targetIndex = idx + 1;
+    const remaining = k - countSoFar;
+    const pivotValue = indexToValue[targetIndex - 1] ?? 0;
+    return sumSoFar + (remaining * pivotValue);
+}
+
+function computeBestMeanWindow(times, windowSize) {
+    if (times.length < windowSize) return { value: null, index: -1 };
+
+    let sum = 0;
+    let dnfCount = 0;
+    let bestVal = Infinity;
+    let bestIdx = -1;
+
+    for (let i = 0; i < times.length; i++) {
+        const t = times[i];
+        if (t === Infinity) dnfCount++; else sum += t;
+
+        if (i >= windowSize) {
+            const old = times[i - windowSize];
+            if (old === Infinity) dnfCount--; else sum -= old;
+        }
+
+        if (i < windowSize - 1) continue;
+        if (dnfCount > 0) continue;
+
+        const value = sum / windowSize;
+        if (value < bestVal) {
+            bestVal = value;
+            bestIdx = i;
+        }
+    }
+
+    return bestIdx >= 0 ? { value: bestVal, index: bestIdx } : { value: null, index: -1 };
+}
+
+function computeBestAverageWindow(times, windowSize, trim) {
+    if (times.length < windowSize) return { value: null, index: -1 };
+
+    const finiteValues = times.filter(t => t !== Infinity);
+    if (finiteValues.length === 0) return { value: null, index: -1 };
+
+    const indexToValue = Array.from(new Set(finiteValues)).sort((a, b) => a - b);
+    const valueToIndex = new Map(indexToValue.map((value, idx) => [value, idx + 1]));
+
+    const countTree = new FenwickTree(indexToValue.length);
+    const sumTree = new FenwickTree(indexToValue.length);
+
+    let dnfCount = 0;
+    let finiteCount = 0;
+    let finiteSum = 0;
+    let bestVal = Infinity;
+    let bestIdx = -1;
+
+    const addTime = (t) => {
+        if (t === Infinity) {
+            dnfCount++;
+            return;
+        }
+        const index = valueToIndex.get(t);
+        if (!index) return;
+        countTree.add(index, 1);
+        sumTree.add(index, t);
+        finiteCount++;
+        finiteSum += t;
+    };
+
+    const removeTime = (t) => {
+        if (t === Infinity) {
+            dnfCount--;
+            return;
+        }
+        const index = valueToIndex.get(t);
+        if (!index) return;
+        countTree.add(index, -1);
+        sumTree.add(index, -t);
+        finiteCount--;
+        finiteSum -= t;
+    };
+
+    for (let i = 0; i < times.length; i++) {
+        addTime(times[i]);
+
+        if (i >= windowSize) {
+            removeTime(times[i - windowSize]);
+        }
+
+        if (i < windowSize - 1) continue;
+        if (dnfCount > trim) continue;
+
+        const lowTrim = trim;
+        const highTrim = trim - dnfCount;
+        const rightRank = finiteCount - highTrim;
+        const leftRankMinusOne = lowTrim;
+        if (rightRank <= leftRankMinusOne) continue;
+
+        const rightSum = sumOfSmallestK(countTree, sumTree, indexToValue, rightRank, finiteCount, finiteSum);
+        const leftSum = sumOfSmallestK(countTree, sumTree, indexToValue, leftRankMinusOne, finiteCount, finiteSum);
+        const value = (rightSum - leftSum) / (windowSize - (trim * 2));
+
+        if (value < bestVal) {
+            bestVal = value;
+            bestIdx = i;
+        }
+    }
+
+    return bestIdx >= 0 ? { value: bestVal, index: bestIdx } : { value: null, index: -1 };
+}
+
+function getRollingStatSummary(times, statType) {
+    const config = getRollingStatConfig(statType);
+    if (!config) return { current: null, value: null, index: -1 };
+    if (times.length < config.windowSize) return { current: null, value: null, index: -1 };
+
+    const current = config.getValue(times, times.length - 1);
+    const cached = rollingStatSummaryCache.get(statType);
+
+    if (cached && cached.timesRef === times && cached.lengthComputed === times.length) {
+        return { current, value: cached.best, index: cached.bestIndex };
+    }
+
+    if (cached && cached.timesRef === times && cached.lengthComputed === (times.length - 1)) {
+        const nextBest = (current != null && current !== Infinity && (cached.best == null || current < cached.best))
+            ? current
+            : cached.best;
+        const nextBestIndex = (current != null && current !== Infinity && (cached.best == null || current < cached.best))
+            ? (times.length - 1)
+            : cached.bestIndex;
+
+        rollingStatSummaryCache.set(statType, {
+            timesRef: times,
+            lengthComputed: times.length,
+            best: nextBest,
+            bestIndex: nextBestIndex,
+        });
+        return { current, value: nextBest, index: nextBestIndex };
+    }
+
+    const full = config.kind === 'mo'
+        ? computeBestMeanWindow(times, config.windowSize)
+        : computeBestAverageWindow(times, config.windowSize, config.trim);
+
+    rollingStatSummaryCache.set(statType, {
+        timesRef: times,
+        lengthComputed: times.length,
+        best: full.value,
+        bestIndex: full.index,
+    });
+
+    return { current, value: full.value, index: full.index };
+}
+
+function findBestRollingStat(times, statType) {
+    const summary = getRollingStatSummary(times, statType);
+    return { value: summary.value, index: summary.index };
+}
+
 function renderSummaryStats(stats, solves) {
+    const summaryEl = document.getElementById('stats-summary');
     const tbody = document.getElementById('stats-summary-body');
-    const rows = [
-        { label: 'time', current: stats.current.time, best: stats.best.time, type: 'time' },
-        { label: 'mo3', current: stats.current.mo3, best: stats.best.mo3, type: 'mo3' },
-        { label: 'ao5', current: stats.current.ao5, best: stats.best.ao5, type: 'ao5' },
-        { label: 'ao12', current: stats.current.ao12, best: stats.best.ao12, type: 'ao12' },
-        { label: 'ao100', current: stats.current.ao100, best: stats.best.ao100, type: 'ao100' },
-    ];
+    const times = statsCache.getTimes();
+    const configuredRows = getConfiguredSummaryStatTokens();
+    const cacheSignature = [
+        solves.length,
+        solves[solves.length - 1]?.id || '',
+        stats.current.time ?? 'none',
+        configuredRows.join(','),
+    ].join('|');
+
+    let rows;
+    if (summaryRowsCache.signature === cacheSignature) {
+        rows = summaryRowsCache.rows;
+    } else {
+        rows = [
+            { label: 'time', current: stats.current.time, best: stats.best.time, type: 'time' },
+        ];
+
+        configuredRows.forEach((statType) => {
+            const config = getRollingStatConfig(statType);
+            if (!config) return;
+            if (times.length < config.windowSize) return;
+
+            const summary = getRollingStatSummary(times, statType);
+            const current = summary.current;
+            const best = summary.value;
+            rows.push({ label: statType, current, best, type: statType });
+        });
+
+        summaryRowsCache = { signature: cacheSignature, rows };
+    }
+
+    summaryEl?.classList.toggle('compact-summary-rows', rows.length > 5);
 
     tbody.innerHTML = rows.map(r => {
         const currentStr = r.current != null ? formatTime(r.current) : '-';
@@ -2498,39 +2890,15 @@ function handleStatClick(type, which, solves, stats) {
         return;
     }
 
-    const windowMap = { mo3: 3, ao5: 5, ao12: 12, ao100: 100 };
-    const trimMap = { mo3: 0, ao5: 1, ao12: 1, ao100: 5 };
-    const n = windowMap[type];
-    const trim = trimMap[type];
+    const config = getRollingStatConfig(type);
+    if (!config) return;
 
-    if (which === 'current' && solves.length >= n) {
+    if (which === 'current' && solves.length >= config.windowSize) {
         openStatDetailAtIndex(type, solves, stats, solves.length - 1);
     } else if (which === 'best') {
-        // Find the best window position using cached per-solve stats
-        const statKey = type; // 'mo3', 'ao5', 'ao12', 'ao100'
-        const psKey = type === 'mo3' ? null : type; // perSolve only has ao5, ao12, ao100
-
-        let bestVal = Infinity;
-        let bestIdx = -1;
-
-        if (psKey) {
-            // For ao5/ao12/ao100, scan the cached values
-            for (let i = n - 1; i < solves.length; i++) {
-                const ps = statsCache.getPerSolveAt(i);
-                const v = ps ? ps[psKey] : null;
-                if (v != null && v < bestVal) { bestVal = v; bestIdx = i; }
-            }
-        } else {
-            // For mo3, compute on-the-fly (fast: just 3-element mean)
-            const times = statsCache.getTimes();
-            for (let i = 2; i < times.length; i++) {
-                const v = mo3At(times, i);
-                if (v != null && v < bestVal) { bestVal = v; bestIdx = i; }
-            }
-        }
-
-        if (bestIdx >= 0) {
-            openStatDetailAtIndex(type, solves, stats, bestIdx, { label: `Best ${type}` });
+        const bestMatch = findBestRollingStat(statsCache.getTimes(), type);
+        if (bestMatch.index >= 0) {
+            openStatDetailAtIndex(type, solves, stats, bestMatch.index, { label: `Best ${type}` });
         }
     }
 }
@@ -2904,6 +3272,85 @@ function initSettingsPanel() {
     if (shortcutTooltipsToggle) {
         shortcutTooltipsToggle.checked = settings.get('shortcutTooltipsEnabled');
         shortcutTooltipsToggle.onchange = () => settings.set('shortcutTooltipsEnabled', shortcutTooltipsToggle.checked);
+    }
+
+    const summaryPresetSelect = document.getElementById('setting-summary-stats-preset');
+    const summaryCustomRow = document.getElementById('setting-summary-stats-custom-row');
+    const summaryCustomInput = document.getElementById('setting-summary-stats-custom');
+    const summaryFeedback = document.getElementById('setting-summary-stats-feedback');
+
+    const autoGrowSummaryCustomInput = () => {
+        if (!summaryCustomInput) return;
+        if (!summaryCustomInput.offsetParent) return;
+        summaryCustomInput.style.height = '0px';
+        summaryCustomInput.style.height = `${Math.max(summaryCustomInput.scrollHeight, 32)}px`;
+    };
+
+    const updateSummarySettingsUI = () => {
+        if (!summaryPresetSelect || !summaryCustomRow || !summaryCustomInput || !summaryFeedback) return;
+
+        const isCustom = summaryPresetSelect.value === 'custom';
+        summaryCustomRow.style.display = isCustom ? 'flex' : 'none';
+
+        if (isCustom) autoGrowSummaryCustomInput();
+
+        if (!isCustom) {
+            const presetTokens = getPresetSummaryTokens(summaryPresetSelect.value);
+            summaryFeedback.classList.remove('is-error');
+            summaryFeedback.textContent = `Will show: ${presetTokens.join(', ')}`;
+            return;
+        }
+
+        const parsed = parseSummaryStatInput(summaryCustomInput.value, { truncate: true });
+        if (!parsed.ok) {
+            summaryFeedback.classList.add('is-error');
+            summaryFeedback.textContent = parsed.message;
+            return;
+        }
+
+        summaryFeedback.classList.remove('is-error');
+        summaryFeedback.textContent = parsed.truncated
+            ? `Will show first ${MAX_CUSTOM_SUMMARY_STATS}: ${parsed.tokens.join(', ')}`
+            : `Will show: ${parsed.tokens.join(', ')}`;
+    };
+
+    if (summaryPresetSelect && summaryCustomRow && summaryCustomInput && summaryFeedback) {
+        const savedPreset = String(settings.get('summaryStatsPreset') || 'basic').toLowerCase();
+        summaryPresetSelect.value = (savedPreset in SUMMARY_STAT_PRESETS || savedPreset === 'custom') ? savedPreset : 'basic';
+
+        const fallbackCustom = getConfiguredSummaryStatTokens().join(' ');
+        summaryCustomInput.value = settings.get('summaryStatsCustom') || fallbackCustom;
+        autoGrowSummaryCustomInput();
+        updateSummarySettingsUI();
+
+        summaryPresetSelect.onchange = () => {
+            const preset = summaryPresetSelect.value;
+            settings.set('summaryStatsPreset', preset);
+
+            if (preset !== 'custom') {
+                const tokens = getPresetSummaryTokens(preset);
+                settings.set('summaryStatsList', tokens);
+            } else {
+                const parsed = parseSummaryStatInput(summaryCustomInput.value, { truncate: true });
+                if (parsed.ok) settings.set('summaryStatsList', parsed.tokens);
+            }
+
+            updateSummarySettingsUI();
+            summaryPresetSelect.blur();
+        };
+
+        summaryCustomInput.addEventListener('input', () => {
+            autoGrowSummaryCustomInput();
+            settings.set('summaryStatsCustom', summaryCustomInput.value);
+            if (summaryPresetSelect.value !== 'custom') return;
+
+            const parsed = parseSummaryStatInput(summaryCustomInput.value, { truncate: true });
+            if (parsed.ok) {
+                settings.set('summaryStatsList', parsed.tokens);
+            }
+
+            updateSummarySettingsUI();
+        });
     }
 
     // Pill size select

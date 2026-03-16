@@ -12,6 +12,9 @@ const DEFAULTS = {
     pillSize: 'medium',       // 'small', 'medium', 'large', 'hidden'
     statsFilter: 'all',     // 'all', 'today', 'week', 'month', 'custom'
     customFilterDuration: '', // e.g. '3d', '2h'
+    summaryStatsPreset: 'basic', // 'basic', 'extended', 'full', 'custom'
+    summaryStatsCustom: 'mo3 ao5 ao12 ao100',
+    summaryStatsList: ['mo3', 'ao5', 'ao12', 'ao100'],
     zenMode: false,
     cubeCollapsed: false,
     graphCollapsed: false,

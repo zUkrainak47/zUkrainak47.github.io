@@ -1,5 +1,31 @@
 import { getEffectiveTime } from './utils.js';
 
+export function getAverageTrimCount(n) {
+    return Math.max(1, Math.floor(n * 0.05));
+}
+
+export function parseRollingStatType(type) {
+    const match = String(type ?? '').trim().toLowerCase().match(/^(mo|ao)([1-9]\d*)$/);
+    if (!match) return null;
+
+    const kind = match[1];
+    const windowSize = Number(match[2]);
+    if (!Number.isInteger(windowSize) || windowSize < 1) return null;
+
+    if (kind === 'mo' && windowSize < 2) return null;
+    if (kind === 'ao' && windowSize < 3) return null;
+
+    const trim = kind === 'ao' ? getAverageTrimCount(windowSize) : 0;
+    if (kind === 'ao' && (windowSize - (trim * 2)) <= 0) return null;
+
+    return {
+        type: `${kind}${windowSize}`,
+        kind,
+        windowSize,
+        trim,
+    };
+}
+
 /**
  * Trim best and worst values from an array.
  * @param {number[]} times - Array of effective times
@@ -22,6 +48,30 @@ function mean(times) {
     if (times.length === 0) return null;
     if (times.some(t => t === Infinity)) return Infinity;
     return times.reduce((s, t) => s + t, 0) / times.length;
+}
+
+function rollingStatFromWindow(window, config) {
+    if (config.kind === 'mo') return mean(window);
+
+    const dnfCount = window.filter(t => t === Infinity).length;
+    if (dnfCount > config.trim) return Infinity;
+
+    const trimmed = trimmedArray(window, config.trim);
+    return mean(trimmed);
+}
+
+export function rollingStatAt(times, index, type) {
+    const config = parseRollingStatType(type);
+    if (!config) return null;
+    if (index < config.windowSize - 1) return null;
+
+    const window = times.slice(index - config.windowSize + 1, index + 1);
+    return rollingStatFromWindow(window, config);
+}
+
+export function rollingStatCurrent(times, type) {
+    if (!times.length) return null;
+    return rollingStatAt(times, times.length - 1, type);
 }
 
 /**
@@ -52,12 +102,13 @@ export function mo3At(times, index) {
  */
 function aoN(times, n, trim) {
     if (times.length < n) return null;
+    const effectiveTrim = Number.isInteger(trim) ? trim : getAverageTrimCount(n);
     const window = times.slice(-n);
     // Count DNFs
     const dnfCount = window.filter(t => t === Infinity).length;
     // If more DNFs than trim allows, result is DNF
-    if (dnfCount > trim) return Infinity;
-    const trimmed = trimmedArray(window, trim);
+    if (dnfCount > effectiveTrim) return Infinity;
+    const trimmed = trimmedArray(window, effectiveTrim);
     return mean(trimmed);
 }
 
@@ -65,57 +116,52 @@ function aoN(times, n, trim) {
  * Average of 5 (trim 1 best, 1 worst).
  */
 export function ao5(times) {
-    return aoN(times, 5, 1);
+    return aoN(times, 5);
 }
 
 /**
  * Average of 12 (trim 1 best, 1 worst).
  */
 export function ao12(times) {
-    return aoN(times, 12, 1);
+    return aoN(times, 12);
 }
 
 /**
  * Average of 100 (trim 5 best, 5 worst).
  */
 export function ao100(times) {
-    return aoN(times, 100, 5);
+    return aoN(times, 100);
+}
+
+function aoNAt(times, index, n, trim) {
+    if (index < n - 1) return null;
+    const effectiveTrim = Number.isInteger(trim) ? trim : getAverageTrimCount(n);
+    const window = times.slice(index - n + 1, index + 1);
+    const dnfs = window.filter(t => t === Infinity).length;
+    if (dnfs > effectiveTrim) return Infinity;
+    const trimmed = trimmedArray(window, effectiveTrim);
+    return mean(trimmed);
 }
 
 /**
  * Compute ao5 at a specific index (using solves up to and including index).
  */
 export function ao5At(times, index) {
-    if (index < 4) return null;
-    const window = times.slice(index - 4, index + 1);
-    const dnfs = window.filter(t => t === Infinity).length;
-    if (dnfs > 1) return Infinity;
-    const trimmed = trimmedArray(window, 1);
-    return mean(trimmed);
+    return aoNAt(times, index, 5);
 }
 
 /**
  * Compute ao12 at a specific index.
  */
 export function ao12At(times, index) {
-    if (index < 11) return null;
-    const window = times.slice(index - 11, index + 1);
-    const dnfs = window.filter(t => t === Infinity).length;
-    if (dnfs > 1) return Infinity;
-    const trimmed = trimmedArray(window, 1);
-    return mean(trimmed);
+    return aoNAt(times, index, 12);
 }
 
 /**
  * Compute ao100 at a specific index.
  */
 export function ao100At(times, index) {
-    if (index < 99) return null;
-    const window = times.slice(index - 99, index + 1);
-    const dnfs = window.filter(t => t === Infinity).length;
-    if (dnfs > 5) return Infinity;
-    const trimmed = trimmedArray(window, 5);
-    return mean(trimmed);
+    return aoNAt(times, index, 100);
 }
 
 /**
@@ -157,14 +203,7 @@ export function computeAll(solves) {
     const allAo100 = [];
     if (times.length >= 100) {
         for (let i = 99; i < times.length; i++) {
-            const window = times.slice(i - 99, i + 1);
-            const dnfs = window.filter(t => t === Infinity).length;
-            if (dnfs > 5) {
-                allAo100.push(Infinity);
-            } else {
-                const trimmed = trimmedArray(window, 5);
-                allAo100.push(mean(trimmed));
-            }
+            allAo100.push(ao100At(times, i));
         }
     }
 
