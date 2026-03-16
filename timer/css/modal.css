@@ -175,6 +175,13 @@
     min-width: 36px;
 }
 
+@media (max-height: 614px) {
+    .modal-overlay.stats-detail-active #modal-textarea {
+        height: min(359px, calc(80vh - 133px)) !important;
+        min-height: min(359px, calc(80vh - 133px)) !important;
+    }
+}
+
 #modal-mobile-summary,
 #modal-mobile-share-actions,
 #modal-mobile-list-panel {

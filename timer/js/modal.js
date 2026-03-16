@@ -499,6 +499,7 @@ export function closeModal({ isPopState = false } = {}) {
     }
     clearModalGhostClickGuard();
     _overlay.classList.remove('active');
+    _overlay.classList.remove('stats-detail-active');
     _currentSolveIndex = null;
     _selectedStatContext = null;
     _currentDetailPayload = null;
@@ -605,6 +606,7 @@ function updateStatNavigation() {
 
     if (!_selectedStatContext) {
         _statNav.style.display = 'none';
+        _overlay?.classList.remove('stats-detail-active');
         return;
     }
 
@@ -612,6 +614,7 @@ function updateStatNavigation() {
     const endIndex = Number.isInteger(_selectedStatContext.endIndex) ? _selectedStatContext.endIndex : -1;
 
     _statNav.style.display = 'flex';
+    _overlay?.classList.add('stats-detail-active');
     _statNav.querySelectorAll('button[data-stat-type]').forEach(button => {
         const statType = button.dataset.statType;
         const minIndex = parseInt(button.dataset.minIndex, 10) || 0;
