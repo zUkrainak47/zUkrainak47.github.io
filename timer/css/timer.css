@@ -443,7 +443,9 @@ body.typing-entry-mode:not(.mobile-viewport) #manual-time-entry-display {
 #inspection-voice-unlock-wrap {
     display: flex;
     justify-content: center;
-    margin-top: var(--space-sm);
+    margin-bottom: var(--space-xs);
+    width: 100%;
+    align-self: center;
 }
 
 #inspection-voice-unlock-wrap[hidden] {
@@ -453,6 +455,11 @@ body.typing-entry-mode:not(.mobile-viewport) #manual-time-entry-display {
 #inspection-voice-unlock-btn {
     font-size: var(--text-sm);
     padding: 8px 14px;
+}
+
+body[data-mobile-panel="timer"] #right-panel > #inspection-voice-unlock-wrap {
+    grid-column: 1 / -1;
+    margin-bottom: 0;
 }
 
 /* Pill sizes */

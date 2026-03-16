@@ -328,6 +328,13 @@ function isLikelyIOSDevice() {
         || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 }
 
+function isSafariBrowser() {
+    const ua = navigator.userAgent || '';
+    const isSafari = /Safari\//.test(ua) && /Version\//.test(ua);
+    const isOtherBrowserOnWebKit = /CriOS|FxiOS|EdgiOS|OPiOS|Chrome|Chromium|Firefox|Edg|OPR/.test(ua);
+    return isSafari && !isOtherBrowserOnWebKit;
+}
+
 function initInspectionSpeechUnlockState() {
     const speechSupported = 'speechSynthesis' in window;
     const requiresUnlock = speechSupported && isLikelyIOSDevice();
@@ -2491,7 +2498,7 @@ function speakInspectionAlert(seconds) {
 
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(`${seconds} seconds`);
-    utterance.rate = 1.5;
+    utterance.rate = isSafariBrowser() ? 1.2 : 1.5;
     window.speechSynthesis.speak(utterance);
 }
 
