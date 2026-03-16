@@ -241,6 +241,7 @@ const inspectionSpeechState = {
     unlocked: false,
     unlockInFlight: false,
     unlockTimer: null,
+    listenersArmed: false,
 };
 const mobilePanelIds = new Set(['timer', 'stats', 'trend']);
 const mobileViewportQuery = window.matchMedia('(max-width: 1100px), (pointer: coarse)');
@@ -936,6 +937,7 @@ async function init() {
     );
     initCubeDisplay(document.getElementById('cube-canvas'));
     initGraph(document.getElementById('graph-canvas'));
+    initInspectionSpeechUnlock();
 
     // Load first scramble
     await loadNewScramble();
@@ -2406,37 +2408,66 @@ function primeInspectionSpeech() {
     if (inspectionSpeechState.unlocked || inspectionSpeechState.unlockInFlight) return;
 
     const synth = window.speechSynthesis;
-    const utterance = new SpeechSynthesisUtterance(' ');
+    const utterance = new SpeechSynthesisUtterance('.');
     utterance.volume = 0;
     utterance.rate = 1;
     inspectionSpeechState.unlockInFlight = true;
+    let started = false;
 
-    const finalize = () => {
-        inspectionSpeechState.unlocked = true;
-        inspectionSpeechState.unlockInFlight = false;
-        if (inspectionSpeechState.unlockTimer) {
-            clearTimeout(inspectionSpeechState.unlockTimer);
-            inspectionSpeechState.unlockTimer = null;
-        }
-        synth.cancel();
-    };
-
-    utterance.onend = finalize;
-    utterance.onerror = () => {
+    const finalize = (didUnlock = false) => {
+        if (didUnlock) inspectionSpeechState.unlocked = true;
         inspectionSpeechState.unlockInFlight = false;
         if (inspectionSpeechState.unlockTimer) {
             clearTimeout(inspectionSpeechState.unlockTimer);
             inspectionSpeechState.unlockTimer = null;
         }
     };
+
+    utterance.onstart = () => {
+        started = true;
+    };
+    utterance.onend = () => finalize(started);
+    utterance.onerror = () => finalize(false);
 
     try {
         synth.cancel();
+        synth.getVoices();
         synth.speak(utterance);
-        inspectionSpeechState.unlockTimer = setTimeout(finalize, 150);
+        inspectionSpeechState.unlockTimer = setTimeout(() => {
+            const didUnlock = started || synth.speaking;
+            if (didUnlock) synth.cancel();
+            finalize(didUnlock);
+        }, 1200);
     } catch {
         inspectionSpeechState.unlockInFlight = false;
     }
+}
+
+function initInspectionSpeechUnlock() {
+    if (!('speechSynthesis' in window) || inspectionSpeechState.listenersArmed) return;
+
+    const removeUnlockListeners = () => {
+        if (!inspectionSpeechState.listenersArmed) return;
+        document.removeEventListener('touchstart', tryUnlockFromGesture, true);
+        document.removeEventListener('pointerdown', tryUnlockFromGesture, true);
+        document.removeEventListener('keydown', tryUnlockFromGesture, true);
+        inspectionSpeechState.listenersArmed = false;
+    };
+
+    const tryUnlockFromGesture = () => {
+        const alertMode = settings.get('inspectionAlerts');
+        if (alertMode !== 'voice' && alertMode !== 'both') return;
+
+        primeInspectionSpeech();
+        if (inspectionSpeechState.unlocked) {
+            removeUnlockListeners();
+        }
+    };
+
+    document.addEventListener('touchstart', tryUnlockFromGesture, { capture: true, passive: true });
+    document.addEventListener('pointerdown', tryUnlockFromGesture, { capture: true, passive: true });
+    document.addEventListener('keydown', tryUnlockFromGesture, true);
+    inspectionSpeechState.listenersArmed = true;
 }
 
 function onInspectionAlert(seconds) {
