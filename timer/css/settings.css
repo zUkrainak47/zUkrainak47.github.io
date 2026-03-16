@@ -59,12 +59,17 @@
     margin-bottom: var(--space-lg);
 }
 
+.setting-group + .setting-group {
+    margin-top: var(--space-xl);
+}
+
 .setting-group h3 {
-    font-size: var(--text-sm);
-    font-weight: 600;
+    font-size: var(--text-lg);
+    font-weight: 700;
     color: var(--text-secondary);
+    text-align: center;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.06em;
     margin-bottom: var(--space-sm);
 }
 

@@ -388,30 +388,9 @@
         <button id="settings-close" class="modal-close">✕</button>
       </div>
       <div class="settings-body">
+        
         <div class="setting-group">
           <h3>Timer</h3>
-          <div class="setting-row">
-            <div class="setting-label">
-              WCA inspection
-              <small>Use a 15 second inspection period before the solve</small>
-            </div>
-            <label class="toggle">
-              <input type="checkbox" id="setting-inspection-time">
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-          <div class="setting-row">
-            <div class="setting-label">
-              Inspection alerts
-              <small>8s and 12s alerts during inspection</small>
-            </div>
-            <select id="setting-inspection-alerts">
-              <option value="off">Off</option>
-              <option value="voice">Voice</option>
-              <option value="screen">Screen</option>
-              <option value="both">Both</option>
-            </select>
-          </div>
           <div class="setting-row">
             <div class="setting-label">
               Timer update
@@ -428,7 +407,7 @@
           <div class="setting-row" id="setting-time-entry-row">
             <div class="setting-label">
               Enter times with
-              <!-- <small>Desktop keyboard input method</small> -->
+              <small>Timer or keyboard</small>
             </div>
             <select id="setting-time-entry-mode">
               <option value="timer">Timer</option>
@@ -454,6 +433,32 @@
               <input type="checkbox" id="setting-new-best-popup">
               <span class="toggle-slider"></span>
             </label>
+          </div>
+        </div>
+
+        <div class="setting-group">
+          <h3>Inspection</h3>
+          <div class="setting-row">
+            <div class="setting-label">
+              WCA inspection
+              <small>Use a 15 second inspection period before the solve</small>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="setting-inspection-time">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="setting-row">
+            <div class="setting-label">
+              Inspection alerts
+              <small>8s and 12s alerts during inspection</small>
+            </div>
+            <select id="setting-inspection-alerts">
+              <option value="off">Off</option>
+              <option value="voice">Voice</option>
+              <option value="screen">Screen</option>
+              <option value="both">Both</option>
+            </select>
           </div>
         </div>
 
