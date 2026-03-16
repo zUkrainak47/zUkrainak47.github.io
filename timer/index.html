@@ -28,7 +28,7 @@
   <link rel="stylesheet" href="css/stats.css?v=8">
   <link rel="stylesheet" href="css/cube.css?v=3">
   <link rel="stylesheet" href="css/graph.css?v=5">
-  <link rel="stylesheet" href="css/modal.css?v=7">
+  <link rel="stylesheet" href="css/modal.css?v=11">
   <link rel="stylesheet" href="css/settings.css?v=9">
 </head>
 
@@ -313,6 +313,19 @@
           <button id="modal-btn-delete" class="btn-action btn-danger" title="Delete">✕</button>
         </div>
         <span id="modal-date-info"></span>
+        <div id="modal-export-options" class="modal-export-options" aria-label="Copy text options">
+          <button id="modal-option-include-comments" class="btn-action modal-option-btn" type="button"
+            title="Include comments" aria-label="Include comments">
+            <span class="modal-option-icon modal-option-icon-off modal-option-icon-comment-off" aria-hidden="true"></span>
+            <span class="modal-option-icon modal-option-icon-on modal-option-icon-comment" aria-hidden="true"></span>
+          </button>
+          <button id="modal-option-include-date" class="btn-action modal-option-btn" type="button"
+            title="Include solve date" aria-label="Include solve date">
+            <span class="modal-option-icon modal-option-icon-off modal-option-icon-calendar-off" aria-hidden="true"></span>
+            <span class="modal-option-icon modal-option-icon-on modal-option-icon-calendar" aria-hidden="true"></span>
+          </button>
+          <div id="modal-mobile-export-toast" class="modal-mobile-export-toast" role="status" aria-live="polite"></div>
+        </div>
         <button class="modal-close">✕</button>
       </div>
       <div class="modal-body">

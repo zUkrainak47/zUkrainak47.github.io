@@ -39,7 +39,7 @@
 .modal-header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
     padding: var(--space-md) var(--space-lg);
     border-bottom: 1px solid var(--surface-border);
 }
@@ -54,7 +54,6 @@
     color: var(--text-secondary);
     font-weight: 500;
     margin-right: 8px;
-    margin-left: auto;
     white-space: nowrap;
 }
 
@@ -171,6 +170,81 @@
     margin-top: 12px;
 }
 
+.modal-export-options {
+    display: flex;
+    gap: 6px;
+    margin: 0 8px 0 auto;
+    position: relative;
+}
+
+.modal-option-btn {
+    position: relative;
+    width: 32px;
+    height: 28px;
+    padding: 0;
+    font-size: 14px;
+}
+
+.modal-option-icon {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    inset: 0;
+    margin: auto;
+    pointer-events: none;
+    background-color: var(--text-secondary);
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    -webkit-mask-size: contain;
+    mask-repeat: no-repeat;
+    mask-position: center;
+    mask-size: contain;
+}
+
+.modal-option-icon-comment-off {
+    -webkit-mask-image: url('../resources/comment-off.svg');
+    mask-image: url('../resources/comment-off.svg');
+}
+
+.modal-option-icon-comment {
+    -webkit-mask-image: url('../resources/comment.svg');
+    mask-image: url('../resources/comment.svg');
+}
+
+.modal-option-icon-calendar-off {
+    -webkit-mask-image: url('../resources/calendar-date-off.svg');
+    mask-image: url('../resources/calendar-date-off.svg');
+}
+
+.modal-option-icon-calendar {
+    -webkit-mask-image: url('../resources/calendar-date.svg');
+    mask-image: url('../resources/calendar-date.svg');
+}
+
+.modal-option-icon-on {
+    display: none;
+}
+
+.modal-option-btn.active-toggle .modal-option-icon-off {
+    display: none;
+}
+
+.modal-option-btn.active-toggle .modal-option-icon-on {
+    display: block;
+}
+
+.modal-option-btn.active-toggle {
+    background: var(--surface-hover);
+    color: var(--text-secondary);
+    border-color: var(--text-tertiary);
+}
+
+.modal-option-btn.active-toggle:hover {
+    background: var(--surface-hover);
+    border-color: var(--text-secondary);
+    color: var(--text-primary);
+}
+
 .modal-stat-nav .btn-action {
     min-width: 36px;
 }
@@ -279,7 +353,7 @@
     color: var(--text-tertiary);
     font-size: var(--text-sm);
     font-weight: 500;
-    max-width: 46%;
+    max-width: 60%;
     line-height: 1.35;
     text-align: right;
     white-space: normal;
@@ -295,6 +369,34 @@
     line-height: 1.55;
     color: var(--text-primary);
     word-break: break-word;
+}
+
+.modal-mobile-export-toast {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%) translateY(-6px);
+    width: max-content;
+    min-width: 120px;
+    max-width: min(40vw, 190px);
+    padding: 9px 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--surface-border);
+    background: var(--surface-elevated);
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    text-align: center;
+    box-shadow: var(--shadow-card);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition-fast), transform var(--transition-fast);
+    z-index: 2;
+}
+
+.modal-mobile-export-toast.visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
 }
 
 #prompt-input {

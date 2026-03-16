@@ -104,7 +104,7 @@ body.mobile-viewport #setting-hide-ui-row {
 
 #setting-summary-stats-custom {
     width: 220px;
-    max-width: 40%;
+    max-width: 42%;
     padding: 8px 10px;
     border-radius: var(--radius-md);
     border: 1px solid var(--surface-border);

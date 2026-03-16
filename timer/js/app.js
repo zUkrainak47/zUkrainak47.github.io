@@ -4,7 +4,7 @@ import { sessionManager } from './session.js';
 import { settings, DEFAULTS } from './settings.js';
 import { parseRollingStatType, rollingStatAt, StatsCache } from './stats.js';
 import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate } from './utils.js';
-import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=8';
+import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=10';
 import { initCubeDisplay, updateCubeDisplay } from './cube-display.js';
 import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents } from './graph.js?v=7';
 import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer } from './storage.js';
