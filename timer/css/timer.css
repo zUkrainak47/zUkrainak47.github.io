@@ -109,12 +109,17 @@
     cursor: default;
 }
 
-#timer-display[data-timer-state="idle"] {
+#timer-display[data-timer-state="idle"],
+#timer-display[data-timer-state="stopped"] {
     cursor: pointer;
+}
+
+#timer-display[data-timer-state="idle"] {
     color: var(--timer-idle);
 }
 
-#timer-display[data-timer-state="idle"]:hover {
+#timer-display[data-timer-state="idle"]:hover,
+#timer-display[data-timer-state="stopped"]:hover {
     transform: translateY(-3px);
 }
 
