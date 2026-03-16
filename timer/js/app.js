@@ -237,11 +237,6 @@ const quickActionsState = {
     swipeStartY: 0,
     swipeHandled: false,
 };
-const inspectionSpeechState = {
-    unlocked: false,
-    unlockInFlight: false,
-    unlockTimer: null,
-};
 const mobilePanelIds = new Set(['timer', 'stats', 'trend']);
 const mobileViewportQuery = window.matchMedia('(max-width: 1100px), (pointer: coarse)');
 const touchPrimaryQuery = window.matchMedia('(hover: none) and (pointer: coarse)');
@@ -2401,44 +2396,6 @@ function speakInspectionAlert(seconds) {
     window.speechSynthesis.speak(utterance);
 }
 
-function primeInspectionSpeech() {
-    if (!('speechSynthesis' in window)) return;
-    if (inspectionSpeechState.unlocked || inspectionSpeechState.unlockInFlight) return;
-
-    const synth = window.speechSynthesis;
-    const utterance = new SpeechSynthesisUtterance(' ');
-    utterance.volume = 0;
-    utterance.rate = 1;
-    inspectionSpeechState.unlockInFlight = true;
-
-    const finalize = () => {
-        inspectionSpeechState.unlocked = true;
-        inspectionSpeechState.unlockInFlight = false;
-        if (inspectionSpeechState.unlockTimer) {
-            clearTimeout(inspectionSpeechState.unlockTimer);
-            inspectionSpeechState.unlockTimer = null;
-        }
-        synth.cancel();
-    };
-
-    utterance.onend = finalize;
-    utterance.onerror = () => {
-        inspectionSpeechState.unlockInFlight = false;
-        if (inspectionSpeechState.unlockTimer) {
-            clearTimeout(inspectionSpeechState.unlockTimer);
-            inspectionSpeechState.unlockTimer = null;
-        }
-    };
-
-    try {
-        synth.cancel();
-        synth.speak(utterance);
-        inspectionSpeechState.unlockTimer = setTimeout(finalize, 150);
-    } catch {
-        inspectionSpeechState.unlockInFlight = false;
-    }
-}
-
 function onInspectionAlert(seconds) {
     const alertMode = settings.get('inspectionAlerts');
     if (alertMode === 'screen' || alertMode === 'both') {
@@ -2482,13 +2439,6 @@ function onTimerStateChange(state) {
 
     if (state === 'inspection-primed' || !isInspectionState(state)) {
         clearInspectionAlert();
-    }
-
-    if (state === 'inspection-primed') {
-        const alertMode = settings.get('inspectionAlerts');
-        if (alertMode === 'voice' || alertMode === 'both') {
-            primeInspectionSpeech();
-        }
     }
 
     if (state !== 'idle' && state !== 'stopped') {
