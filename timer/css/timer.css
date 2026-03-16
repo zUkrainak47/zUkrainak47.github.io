@@ -567,6 +567,16 @@ body.pill-size-large #timer-info .stat-label {
 
 @media (max-width: 1100px),
 (pointer: coarse) {
+    #timer-display[data-timer-state="idle"],
+    #timer-display[data-timer-state="stopped"] {
+        cursor: default;
+    }
+
+    #timer-display[data-timer-state="idle"]:hover,
+    #timer-display[data-timer-state="stopped"]:hover {
+        transform: none;
+    }
+
     #mobile-summary-card {
         min-height: clamp(118px, 20vh, 152px);
     }

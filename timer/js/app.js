@@ -1101,7 +1101,7 @@ function initTimerClick() {
     if (!timerDisplay) return;
 
     timerDisplay.addEventListener('click', () => {
-        if (isTouchPrimaryInput()) return;
+        if (mobileViewportQuery.matches) return;
         const state = timer.getState();
         // Open modal when timer is not actively solving.
         if (state === 'idle' || state === 'stopped') {
