@@ -440,6 +440,21 @@ body.typing-entry-mode:not(.mobile-viewport) #manual-time-entry-display {
     font-weight: 600;
 }
 
+#inspection-voice-unlock-wrap {
+    display: flex;
+    justify-content: center;
+    margin-top: var(--space-sm);
+}
+
+#inspection-voice-unlock-wrap[hidden] {
+    display: none !important;
+}
+
+#inspection-voice-unlock-btn {
+    font-size: var(--text-sm);
+    padding: 8px 14px;
+}
+
 /* Pill sizes */
 body.pill-size-small #timer-info>span {
     font-size: clamp(1.5rem, 3vw, 2rem);

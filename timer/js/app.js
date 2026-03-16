@@ -244,6 +244,7 @@ const inspectionSpeechUnlockState = {
     required: false,
     unlocked: false,
     inFlight: false,
+    dismissed: false,
 };
 
 // ──── History & Back Button ────
@@ -333,21 +334,38 @@ function initInspectionSpeechUnlockState() {
     inspectionSpeechUnlockState.required = requiresUnlock;
     inspectionSpeechUnlockState.unlocked = !requiresUnlock;
     inspectionSpeechUnlockState.inFlight = false;
+    inspectionSpeechUnlockState.dismissed = false;
 }
 
-function syncInspectionSpeechUnlockButton(buttonEl) {
-    if (!buttonEl) return;
+function shouldShowInspectionSpeechUnlockPrompt() {
+    if (!inspectionSpeechUnlockState.required) return false;
+    if (inspectionSpeechUnlockState.unlocked) return false;
+    if (inspectionSpeechUnlockState.dismissed) return false;
+    const timerState = timer.getState();
+    if (timerState !== 'idle' && timerState !== 'stopped') return false;
+    if (settings.get('inspectionTime') !== '15s') return false;
 
-    if (inspectionSpeechUnlockState.unlocked) {
-        buttonEl.textContent = 'Voice enabled';
-        buttonEl.disabled = true;
-        return;
-    }
+    const alertMode = settings.get('inspectionAlerts');
+    return alertMode === 'voice' || alertMode === 'both';
+}
 
-    buttonEl.disabled = inspectionSpeechUnlockState.inFlight;
-    buttonEl.textContent = inspectionSpeechUnlockState.inFlight
-        ? 'Enabling...'
-        : 'Enable voice alerts';
+function syncInspectionSpeechUnlockPromptVisibility() {
+    const promptWrap = getEl('inspection-voice-unlock-wrap');
+    if (!promptWrap) return;
+    promptWrap.hidden = !shouldShowInspectionSpeechUnlockPrompt();
+}
+
+function initInspectionSpeechUnlockPrompt() {
+    const promptBtn = getEl('inspection-voice-unlock-btn');
+    if (!promptBtn) return;
+
+    syncInspectionSpeechUnlockPromptVisibility();
+
+    promptBtn.onclick = async () => {
+        inspectionSpeechUnlockState.dismissed = true;
+        syncInspectionSpeechUnlockPromptVisibility();
+        await unlockInspectionSpeechFromGesture();
+    };
 }
 
 function unlockInspectionSpeechFromGesture() {
@@ -1025,6 +1043,9 @@ async function init() {
 
     settings.on('change', (key) => {
         if (key === 'inspectionAlerts') clearInspectionAlert();
+        if (key === 'inspectionAlerts' || key === 'inspectionTime') {
+            syncInspectionSpeechUnlockPromptVisibility();
+        }
         if (key === 'newBestPopupEnabled' && !settings.get('newBestPopupEnabled')) clearNewBestAlert();
         if (key === 'shortcutTooltipsEnabled' && !settings.get('shortcutTooltipsEnabled')) hideShortcutTooltip();
         if (key === 'statsFilter' || key === 'customFilterDuration' || key === 'showDelta' || key.startsWith('graphColor') || key.startsWith('graphLine') || key === 'graphTooltipDateEnabled' || key === 'newBestColor' || key === 'summaryStatsList') {
@@ -1050,6 +1071,7 @@ async function init() {
     rebuildStatsCache();
     refreshUI();
     initSettingsPanel();
+    initInspectionSpeechUnlockPrompt();
     initShortcutsOverlay();
     initSessionControls();
     initFilterControls();
@@ -2484,6 +2506,7 @@ function onInspectionAlert(seconds) {
 }
 
 function onTimerStateChange(state) {
+    syncInspectionSpeechUnlockPromptVisibility();
 
     const infoEl = document.getElementById('timer-info');
     const deltaEl = document.getElementById('timer-delta');
@@ -3329,22 +3352,6 @@ function initSettingsPanel() {
         settings.set('inspectionAlerts', inspectionAlertsSelect.value);
         inspectionAlertsSelect.blur();
     };
-
-    const inspectionVoiceUnlockRow = document.getElementById('setting-inspection-voice-unlock-row');
-    const inspectionVoiceUnlockBtn = document.getElementById('setting-inspection-voice-unlock-btn');
-    if (inspectionVoiceUnlockRow && inspectionVoiceUnlockBtn) {
-        if (!('speechSynthesis' in window) || !inspectionSpeechUnlockState.required) {
-            inspectionVoiceUnlockRow.style.display = 'none';
-        } else {
-            syncInspectionSpeechUnlockButton(inspectionVoiceUnlockBtn);
-            inspectionVoiceUnlockBtn.onclick = async () => {
-                const ok = await unlockInspectionSpeechFromGesture();
-                syncInspectionSpeechUnlockButton(inspectionVoiceUnlockBtn);
-                showInspectionAlert(ok ? 'Inspection voice enabled' : 'Voice not enabled yet');
-                inspectionVoiceUnlockBtn.blur();
-            };
-        }
-    }
 
     const timerUpdateSelect = document.getElementById('setting-timer-update');
     timerUpdateSelect.value = settings.get('timerUpdate');
