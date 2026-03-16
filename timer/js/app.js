@@ -1958,15 +1958,14 @@ function initKeyboardShortcuts() {
                 e.preventDefault();
                 if (isSolveModalActive || document.getElementById('settings-overlay').classList.contains('active')) return;
 
-                const activeSession = sessionManager.getActiveSession();
-                if (activeSession && activeSession.solves.length > 0) {
-                    const lastSolve = activeSession.solves[activeSession.solves.length - 1];
-                    customPrompt('', lastSolve.comment || '', 1000, 'Comment on last solve', 'Type a comment and press Enter...').then(comment => {
-                        if (comment !== null && comment !== (lastSolve.comment || '')) {
-                            sessionManager.setSolveComment(lastSolve.id, comment);
-                        }
-                    });
-                }
+                const lastSolve = getMostRecentSummarySolve();
+                if (!lastSolve) break;
+
+                customPrompt('', lastSolve.comment || '', 1000, 'Comment on last solve', 'Type a comment and press Enter...').then(comment => {
+                    if (comment !== null && comment !== (lastSolve.comment || '')) {
+                        sessionManager.setSolveComment(lastSolve.id, comment);
+                    }
+                });
                 break;
             case 'KeyC':
                 document.getElementById('scramble-text').click();
@@ -2438,6 +2437,12 @@ function openShortcutStatDetail(type) {
     const stats = statsCache.getStats();
     const index = getSelectedStatSolveIndex(solves);
     return openStatDetailAtIndex(type, solves, stats, index);
+}
+
+function getMostRecentSummarySolve() {
+    const solves = sessionManager.getFilteredSolves();
+    if (solves.length === 0) return null;
+    return solves[solves.length - 1];
 }
 
 // ──── Summary Stats ────

@@ -258,6 +258,7 @@ export function customPrompt(message, defaultValue = '', maxLength = 100, title 
         titleEl.textContent = title;
         msgEl.textContent = message;
         msgEl.style.display = message ? 'block' : 'none';
+        inputEl.value = String(defaultValue ?? '');
         inputEl.maxLength = maxLength;
         inputEl.placeholder = placeholder;
 
