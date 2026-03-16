@@ -101,6 +101,7 @@
   /* Layout */
   --sidebar-width: 280px;
   --right-panel-width: 300px;
+  --desktop-panel-scale: 1;
   --header-height: 48px;
   --scramble-bar-height: 56px;
   --mobile-tab-height: 62px;
@@ -115,7 +116,7 @@ body.no-animations * {
 }
 
 /* ── Compact panels at low window heights ── */
-@media (max-height: 700px) and (min-width: 1101px) {
+/* @media (max-height: 700px) and (min-width: 1101px) {
   :root {
     --right-panel-width: 240px;
   }
@@ -125,4 +126,4 @@ body.no-animations * {
   :root {
     --right-panel-width: 200px;
   }
-}
+} */

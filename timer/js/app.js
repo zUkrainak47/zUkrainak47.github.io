@@ -731,7 +731,30 @@ function syncTimerTabLayoutWithoutAnimation() {
     });
 }
 
+function syncDesktopPanelScale() {
+    const root = document.documentElement;
+    if (!root) return;
+
+    if (mobileViewportQuery.matches) {
+        root.style.setProperty('--desktop-panel-scale', '1');
+        return;
+    }
+
+    const minViewportHeight = 250;
+    const maxViewportHeight = 850;
+    const minScale = 0.25;
+    const maxScale = 1;
+    const viewportHeight = window.innerHeight;
+    const ratio = (viewportHeight - minViewportHeight) / (maxViewportHeight - minViewportHeight);
+    const clampedRatio = Math.min(1, Math.max(0, ratio));
+    const scale = minScale + ((maxScale - minScale) * clampedRatio);
+
+    root.style.setProperty('--desktop-panel-scale', scale.toFixed(4));
+}
+
 function syncViewportLayout() {
+    syncDesktopPanelScale();
+
     const timerDisplayWrapper = getEl('timer-display-wrapper');
     const timerDisplay = getEl('timer-display');
     const scrambleContainer = getEl('scramble-container');
