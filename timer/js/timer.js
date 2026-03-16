@@ -105,7 +105,7 @@ class Timer extends EventEmitter {
         if ((e.ctrlKey || e.metaKey) && !isStackmatKey && !isEscape) return;
 
         if (isDnfKey && this.state === State.RUNNING) {
-            this._stopTimer('DNF');
+            this._stopTimer('DNF', this._getEventTimestamp(e));
             e.preventDefault();
             e.stopImmediatePropagation();
             return;
@@ -130,7 +130,7 @@ class Timer extends EventEmitter {
         if (this.state === State.RUNNING) {
             e.preventDefault();
             e.stopImmediatePropagation();
-            this._stopTimer();
+            this._stopTimer(null, this._getEventTimestamp(e));
             return;
         }
 
@@ -198,7 +198,7 @@ class Timer extends EventEmitter {
             e.preventDefault();
             this._releaseActivePointer(this._activePointerId);
             this._armGhostClickGuard(e);
-            this._stopTimer();
+            this._stopTimer(null, this._getEventTimestamp(e));
             return;
         }
 
@@ -230,7 +230,7 @@ class Timer extends EventEmitter {
         e.preventDefault();
         this._releaseActivePointer(this._activePointerId);
         this._armGhostClickGuard(e);
-        this._stopTimer();
+        this._stopTimer(null, this._getEventTimestamp(e));
     }
 
     _onCapturedClick(e) {
@@ -489,9 +489,13 @@ class Timer extends EventEmitter {
         this.emit('inspectionAlert', seconds);
     }
 
-    _stopTimer(penaltyOverride = null) {
+    _stopTimer(penaltyOverride = null, stopTimestamp = null) {
         this._cancelRaf();
-        this.elapsed = performance.now() - this.startTime;
+        const now = performance.now();
+        const resolvedStopTime = Number.isFinite(stopTimestamp)
+            ? Math.min(Math.max(stopTimestamp, this.startTime), now)
+            : now;
+        this.elapsed = resolvedStopTime - this.startTime;
 
         const finalPenalty = penaltyOverride ?? this._pendingPenalty ?? null;
 
@@ -502,6 +506,20 @@ class Timer extends EventEmitter {
         this._pendingPenalty = null;
         this._inspectionSnapshot = null;
         this.emit('stopped', this.elapsed, finalPenalty);
+    }
+
+    _getEventTimestamp(event) {
+        if (!event || !Number.isFinite(event.timeStamp)) return null;
+
+        const timestamp = event.timeStamp;
+        if (timestamp > 1e12) {
+            const perfOrigin = Number.isFinite(performance.timeOrigin)
+                ? performance.timeOrigin
+                : Date.now() - performance.now();
+            return timestamp - perfOrigin;
+        }
+
+        return timestamp;
     }
 
     _cancelRaf() {
