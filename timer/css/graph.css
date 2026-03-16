@@ -107,6 +107,12 @@
     opacity: 1;
 }
 
+.graph-controls-secondary-group {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
 .graph-controls-secondary.collapsed {
     max-height: 0;
     padding: 0 8px;
@@ -228,14 +234,17 @@
     .graph-controls-secondary {
         position: static;
         display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        justify-items: center;
+        align-items: flex-start;
         width: 100%;
         left: auto;
         border-left: none;
         border-right: none;
         border-bottom: none;
         border-radius: 0;
-        gap: 8px;
+        column-gap: 0;
+        row-gap: 0;
         padding: 0 8px 10px;
         background: transparent;
         max-height: none;
@@ -250,6 +259,44 @@
         border-color: transparent;
     }
 
+    .graph-controls-secondary-group {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-rows: repeat(3, 42px);
+        column-gap: 8px;
+        row-gap: 8px;
+        width: 100%;
+        max-width: 190px;
+        padding-inline: 6px;
+        box-sizing: border-box;
+    }
+
+    .graph-controls-secondary-group>button[data-action="zoom-y-in"],
+    .graph-controls-secondary-group>button[data-action="pan-up"] {
+        grid-column: 1 / -1;
+        grid-row: 1;
+        justify-self: center;
+    }
+
+    .graph-controls-secondary-group>button[data-action="zoom-x-out"],
+    .graph-controls-secondary-group>button[data-action="pan-left"] {
+        grid-column: 1;
+        grid-row: 2;
+    }
+
+    .graph-controls-secondary-group>button[data-action="zoom-x-in"],
+    .graph-controls-secondary-group>button[data-action="pan-right"] {
+        grid-column: 2;
+        grid-row: 2;
+    }
+
+    .graph-controls-secondary-group>button[data-action="zoom-y-out"],
+    .graph-controls-secondary-group>button[data-action="pan-down"] {
+        grid-column: 1 / -1;
+        grid-row: 3;
+        justify-self: center;
+    }
+
     #graph-controls button {
         width: 100%;
         min-width: 0;
@@ -262,6 +309,21 @@
         letter-spacing: 0.02em;
         background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+
+    #graph-controls .graph-controls-secondary .graph-controls-secondary-group>button {
+        width: 100%;
+        min-width: 0;
+        height: 42px;
+        min-height: 42px;
+        padding: 0;
+    }
+
+    #graph-controls .graph-controls-secondary .graph-controls-secondary-group>button[data-action="zoom-y-in"],
+    #graph-controls .graph-controls-secondary .graph-controls-secondary-group>button[data-action="zoom-y-out"],
+    #graph-controls .graph-controls-secondary .graph-controls-secondary-group>button[data-action="pan-up"],
+    #graph-controls .graph-controls-secondary .graph-controls-secondary-group>button[data-action="pan-down"] {
+        width: calc((100% - 8px) / 2);
     }
 
     .graph-controls-primary>button[data-action] {

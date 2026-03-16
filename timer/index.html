@@ -289,15 +289,19 @@
                 style="font-size:16px">⚙</button>
             </div>
             <div class="graph-controls-secondary collapsed" id="graph-tools-drawer">
-              <button data-action="zoom-x-in" title="Zoom in horizontally">X+</button>
-              <button data-action="zoom-x-out" title="Zoom out horizontally">X−</button>
-              <button data-action="pan-left" title="Pan left">←</button>
-              <button data-action="pan-right" title="Pan right">→</button>
+              <div class="graph-controls-secondary-group graph-controls-secondary-group-scale">
+                <button data-action="zoom-y-in" title="Zoom in vertically">Y+</button>
+                <button data-action="zoom-x-out" title="Zoom out horizontally">X−</button>
+                <button data-action="zoom-x-in" title="Zoom in horizontally">X+</button>
+                <button data-action="zoom-y-out" title="Zoom out vertically">Y−</button>
+              </div>
               <span class="graph-controls-sep"></span>
-              <button data-action="zoom-y-in" title="Zoom in vertically">Y+</button>
-              <button data-action="zoom-y-out" title="Zoom out vertically">Y−</button>
-              <button data-action="pan-up" title="Pan up">↑</button>
-              <button data-action="pan-down" title="Pan down">↓</button>
+              <div class="graph-controls-secondary-group graph-controls-secondary-group-pan">
+                <button data-action="pan-up" title="Pan up">↑</button>
+                <button data-action="pan-left" title="Pan left">←</button>
+                <button data-action="pan-right" title="Pan right">→</button>
+                <button data-action="pan-down" title="Pan down">↓</button>
+              </div>
             </div>
           </div>
         </div>
