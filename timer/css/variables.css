@@ -42,6 +42,9 @@
 
   /* Graph */
   --graph-color-time: #8b949e;
+  --graph-color-line1: #ff2020;
+  --graph-color-line2: #2b91ff;
+  --graph-color-line3: #a371f7;
   --graph-color-ao5: #ff2020;
   --graph-color-ao12: #2b91ff;
   --graph-color-ao100: #a371f7;

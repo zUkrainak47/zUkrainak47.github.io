@@ -722,8 +722,13 @@ export function showSolveDetail(solve, index, isBest = null) {
 
     if (isBest === null) {
         const solves = sessionManager.getFilteredSolves();
-        const effectiveTimes = solves.map(s => getEffectiveTime(s)).filter(t => t !== Infinity);
-        const bestTime = effectiveTimes.length > 0 ? Math.min(...effectiveTimes) : Infinity;
+        let bestTime = Infinity;
+        for (const currentSolve of solves) {
+            const currentTime = getEffectiveTime(currentSolve);
+            if (currentTime !== Infinity && currentTime < bestTime) {
+                bestTime = currentTime;
+            }
+        }
         isBest = getEffectiveTime(solve) === bestTime && bestTime !== Infinity;
     }
 

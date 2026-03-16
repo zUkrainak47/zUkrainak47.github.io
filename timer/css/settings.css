@@ -134,6 +134,32 @@ body.mobile-viewport #setting-hide-ui-row {
     color: var(--danger);
 }
 
+.setting-graph-line-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+}
+
+.setting-graph-line-stat {
+    width: 72px;
+    padding: 6px 8px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--surface-border);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+}
+
+.setting-graph-line-stat:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.setting-graph-line-feedback.is-error {
+    color: var(--danger);
+}
+
 .setting-row-button {
     width: 100%;
     display: flex;
@@ -386,6 +412,11 @@ body.mobile-viewport #setting-hide-ui-row {
 
     .settings-actions {
         flex-direction: column;
+    }
+
+    .setting-graph-line-controls {
+        flex-wrap: wrap;
+        justify-content: flex-end;
     }
 
     #setting-summary-stats-preset {

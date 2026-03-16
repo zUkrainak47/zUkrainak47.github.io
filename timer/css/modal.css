@@ -63,6 +63,7 @@
     cursor: pointer;
     width: 28px;
     height: 28px;
+    margin-left: auto;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -243,6 +244,10 @@
     background: var(--surface-hover);
     border-color: var(--text-secondary);
     color: var(--text-primary);
+}
+
+.modal-header .modal-export-options + .modal-close {
+    margin-left: 0;
 }
 
 .modal-stat-nav .btn-action {

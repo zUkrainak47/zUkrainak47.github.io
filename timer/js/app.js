@@ -6,7 +6,7 @@ import { parseRollingStatType, rollingStatAt, StatsCache } from './stats.js';
 import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate } from './utils.js';
 import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=10';
 import { initCubeDisplay, updateCubeDisplay } from './cube-display.js';
-import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents } from './graph.js?v=7';
+import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=7';
 import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer } from './storage.js';
 
 let currentScramble = '';
@@ -951,11 +951,14 @@ async function init() {
         if (key === 'inspectionAlerts') clearInspectionAlert();
         if (key === 'newBestPopupEnabled' && !settings.get('newBestPopupEnabled')) clearNewBestAlert();
         if (key === 'shortcutTooltipsEnabled' && !settings.get('shortcutTooltipsEnabled')) hideShortcutTooltip();
-        if (key === 'statsFilter' || key === 'customFilterDuration' || key === 'showDelta' || key.startsWith('graphColor') || key === 'graphTooltipDateEnabled' || key === 'newBestColor' || key === 'summaryStatsList') {
+        if (key === 'statsFilter' || key === 'customFilterDuration' || key === 'showDelta' || key.startsWith('graphColor') || key.startsWith('graphLine') || key === 'graphTooltipDateEnabled' || key === 'newBestColor' || key === 'summaryStatsList') {
             if (key === 'statsFilter' || key === 'customFilterDuration') rebuildStatsCache();
             if (key === 'summaryStatsList') {
                 syncModalStatNavigation();
                 renderKeyboardShortcuts();
+            }
+            if (key.startsWith('graphLine')) {
+                syncGraphLineLabels();
             }
             refreshUI();
         }
@@ -1043,6 +1046,19 @@ function initMobilePanels() {
 }
 
 // ──── Graph Line Toggles ────
+function syncGraphLineLabels() {
+    const lineDefs = getGraphLineDefinitions();
+    lineDefs.forEach(({ id, statType }) => {
+        const legendLabelEl = document.getElementById(`graph-legend-${id}-label`);
+        if (legendLabelEl) legendLabelEl.textContent = statType;
+
+        const toggleBtn = document.getElementById(`graph-line-toggle-${id}`);
+        if (!toggleBtn) return;
+        toggleBtn.dataset.mobileLabel = statType.toUpperCase();
+        toggleBtn.title = `Toggle ${statType} line`;
+    });
+}
+
 function initGraphLineToggles() {
     const vis = getLineVisibility();
     document.querySelectorAll('.graph-line-toggle').forEach(btn => {
@@ -1055,6 +1071,8 @@ function initGraphLineToggles() {
             setLineVisibility(line, isActive);
         });
     });
+
+    syncGraphLineLabels();
 }
 
 // ──── Timer Info Click ────
@@ -1701,6 +1719,26 @@ function initShortcutTooltips() {
 
 function normalizeSummaryStatToken(token) {
     return String(token ?? '').trim().toLowerCase();
+}
+
+function parseGraphLineStatInput(rawInput) {
+    const token = normalizeSummaryStatToken(rawInput);
+    const parsed = parseRollingStatType(token);
+    if (!parsed) {
+        return {
+            ok: false,
+            token,
+            message: token
+                ? `Invalid stat: ${token}`
+                : 'Enter a stat like mo3 or ao12',
+        };
+    }
+
+    return {
+        ok: true,
+        token: parsed.type,
+        message: '',
+    };
 }
 
 function parseSummaryStatInput(rawInput, { truncate = true } = {}) {
@@ -3401,10 +3439,46 @@ function initSettingsPanel() {
         graphTooltipDateToggle.onchange = () => settings.set('graphTooltipDateEnabled', graphTooltipDateToggle.checked);
     }
 
+    const graphLineSettingRows = [
+        { inputId: 'setting-graph-line1-stat', feedbackId: 'setting-graph-line1-feedback', settingKey: 'graphLine1Stat' },
+        { inputId: 'setting-graph-line2-stat', feedbackId: 'setting-graph-line2-feedback', settingKey: 'graphLine2Stat' },
+        { inputId: 'setting-graph-line3-stat', feedbackId: 'setting-graph-line3-feedback', settingKey: 'graphLine3Stat' },
+    ];
+
+    graphLineSettingRows.forEach(({ inputId, feedbackId, settingKey }) => {
+        const input = document.getElementById(inputId);
+        const feedback = document.getElementById(feedbackId);
+        if (!input || !feedback) return;
+
+        input.value = settings.get(settingKey) || DEFAULTS[settingKey];
+
+        const updateFeedback = () => {
+            const parsed = parseGraphLineStatInput(input.value);
+            if (!parsed.ok) {
+                feedback.classList.add('is-error');
+                feedback.textContent = parsed.message;
+                return false;
+            }
+
+            feedback.classList.remove('is-error');
+            feedback.textContent = `Using ${parsed.token}`;
+            return parsed.token;
+        };
+
+        updateFeedback();
+
+        input.addEventListener('input', () => {
+            const parsedToken = updateFeedback();
+            if (!parsedToken) return;
+            settings.set(settingKey, parsedToken);
+        });
+    });
+
     // Colors
     const setupColorSetting = (inputId, resetId, settingKey) => {
         const input = document.getElementById(inputId);
         const resetBtn = document.getElementById(resetId);
+        if (!input || !resetBtn) return;
         input.value = settings.get(settingKey);
         input.onchange = () => settings.set(settingKey, input.value);
         input.oninput = () => settings.set(settingKey, input.value);
@@ -3416,9 +3490,9 @@ function initSettingsPanel() {
 
     setupColorSetting('setting-new-best-color', 'btn-reset-best-color', 'newBestColor');
     setupColorSetting('setting-graph-time-color', 'btn-reset-time-color', 'graphColorTime');
-    setupColorSetting('setting-graph-ao5-color', 'btn-reset-ao5-color', 'graphColorAo5');
-    setupColorSetting('setting-graph-ao12-color', 'btn-reset-ao12-color', 'graphColorAo12');
-    setupColorSetting('setting-graph-ao100-color', 'btn-reset-ao100-color', 'graphColorAo100');
+    setupColorSetting('setting-graph-line1-color', 'btn-reset-line1-color', 'graphColorLine1');
+    setupColorSetting('setting-graph-line2-color', 'btn-reset-line2-color', 'graphColorLine2');
+    setupColorSetting('setting-graph-line3-color', 'btn-reset-line3-color', 'graphColorLine3');
 
     // // Export
     // document.getElementById('btn-export').onclick = async () => {

@@ -23,6 +23,13 @@ const DEFAULTS = {
     newBestPopupEnabled: true,
     newBestColor: '#FE2B2B',
     graphColorTime: '#8b949e',
+    graphLine1Stat: 'ao5',
+    graphLine2Stat: 'ao12',
+    graphLine3Stat: 'ao100',
+    graphColorLine1: '#ff2020',
+    graphColorLine2: '#2b91ff',
+    graphColorLine3: '#a371f7',
+    // Legacy keys kept for backwards compatibility with older exports/imports.
     graphColorAo5: '#ff2020',
     graphColorAo12: '#2b91ff',
     graphColorAo100: '#a371f7',
@@ -44,7 +51,27 @@ const DISPLAY_FONT_STACKS = {
 class Settings extends EventEmitter {
     constructor() {
         super();
-        this._settings = { ...DEFAULTS, ...load('settings', {}) };
+        const loaded = load('settings', {});
+        this._settings = { ...DEFAULTS, ...loaded };
+
+        if (!('graphColorLine1' in loaded) && typeof loaded.graphColorAo5 === 'string') {
+            this._settings.graphColorLine1 = loaded.graphColorAo5;
+        }
+        if (!('graphColorLine2' in loaded) && typeof loaded.graphColorAo12 === 'string') {
+            this._settings.graphColorLine2 = loaded.graphColorAo12;
+        }
+        if (!('graphColorLine3' in loaded) && typeof loaded.graphColorAo100 === 'string') {
+            this._settings.graphColorLine3 = loaded.graphColorAo100;
+        }
+
+        if (loaded.graphLines && typeof loaded.graphLines === 'object') {
+            const nextGraphLines = { ...loaded.graphLines };
+            if (!('line1' in nextGraphLines) && 'ao5' in nextGraphLines) nextGraphLines.line1 = !!nextGraphLines.ao5;
+            if (!('line2' in nextGraphLines) && 'ao12' in nextGraphLines) nextGraphLines.line2 = !!nextGraphLines.ao12;
+            if (!('line3' in nextGraphLines) && 'ao100' in nextGraphLines) nextGraphLines.line3 = !!nextGraphLines.ao100;
+            this._settings.graphLines = nextGraphLines;
+        }
+
         this._apply();
     }
 
@@ -95,9 +122,16 @@ class Settings extends EventEmitter {
         document.documentElement.style.setProperty('--font-timer', displayFont);
         document.documentElement.style.setProperty('--stat-new-best', this._settings.newBestColor);
         document.documentElement.style.setProperty('--graph-color-time', this._settings.graphColorTime);
-        document.documentElement.style.setProperty('--graph-color-ao5', this._settings.graphColorAo5);
-        document.documentElement.style.setProperty('--graph-color-ao12', this._settings.graphColorAo12);
-        document.documentElement.style.setProperty('--graph-color-ao100', this._settings.graphColorAo100);
+        const line1Color = this._settings.graphColorLine1 || this._settings.graphColorAo5 || DEFAULTS.graphColorLine1;
+        const line2Color = this._settings.graphColorLine2 || this._settings.graphColorAo12 || DEFAULTS.graphColorLine2;
+        const line3Color = this._settings.graphColorLine3 || this._settings.graphColorAo100 || DEFAULTS.graphColorLine3;
+
+        document.documentElement.style.setProperty('--graph-color-line1', line1Color);
+        document.documentElement.style.setProperty('--graph-color-line2', line2Color);
+        document.documentElement.style.setProperty('--graph-color-line3', line3Color);
+        document.documentElement.style.setProperty('--graph-color-ao5', line1Color);
+        document.documentElement.style.setProperty('--graph-color-ao12', line2Color);
+        document.documentElement.style.setProperty('--graph-color-ao100', line3Color);
     }
 }
 

@@ -1,11 +1,22 @@
 import { formatTime, getEffectiveTime, EventEmitter } from './utils.js';
 import { settings } from './settings.js';
+import { parseRollingStatType } from './stats.js';
 
 /**
  * Time trend graph with pan/zoom controls.
  */
 
 const _isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+const GRAPH_LINE_DEFAULTS = Object.freeze({
+    line1: 'ao5',
+    line2: 'ao12',
+    line3: 'ao100',
+});
+const GRAPH_LINE_SETTINGS = Object.freeze({
+    line1: 'graphLine1Stat',
+    line2: 'graphLine2Stat',
+    line3: 'graphLine3Stat',
+});
 const PADDING = {
     top: 12, right: 15, left: 22,
     get bottom() { return _isSafari && window.innerWidth < 500 ? 35 : 22; },
@@ -17,9 +28,9 @@ function getColors() {
 
     return {
         time: settings.get('graphColorTime') || '#8b949e',
-        ao5: settings.get('graphColorAo5') || 'rgba(255, 32, 32, 1)',
-        ao12: settings.get('graphColorAo12') || '#2b91ffff',
-        ao100: settings.get('graphColorAo100') || '#a371f7',
+        line1: settings.get('graphColorLine1') || settings.get('graphColorAo5') || readVar('--graph-color-line1', '#ff2020'),
+        line2: settings.get('graphColorLine2') || settings.get('graphColorAo12') || readVar('--graph-color-line2', '#2b91ff'),
+        line3: settings.get('graphColorLine3') || settings.get('graphColorAo100') || readVar('--graph-color-line3', '#a371f7'),
         grid: readVar('--graph-grid', '#21262d'),
         axis: readVar('--surface-border', '#30363d'),
         text: readVar('--text-tertiary', '#6e7681'),
@@ -40,14 +51,38 @@ let _touchFocusedIndex = -1;
 let _activeTouchPointerId = null;
 let _tooltipHitArea = null;
 let _tooltipTapPending = false;
+const MAX_ROLLING_SERIES_CACHE = 10;
+let _allTimesCache = { solvesRef: null, length: -1, times: [] };
+let _rollingSeriesCache = new Map();
 export const graphEvents = new EventEmitter();
 
+function getConfiguredGraphLineStat(lineId) {
+    const settingKey = GRAPH_LINE_SETTINGS[lineId];
+    const fallback = GRAPH_LINE_DEFAULTS[lineId];
+    const parsed = parseRollingStatType(settings.get(settingKey));
+    return parsed?.type || fallback;
+}
+
+export function getGraphLineDefinitions() {
+    return Object.keys(GRAPH_LINE_DEFAULTS).map((lineId) => ({
+        id: lineId,
+        statType: getConfiguredGraphLineStat(lineId),
+    }));
+}
+
 // Line visibility state
-let _lineVisibility = settings.get('graphLines') || { time: true, ao5: true, ao12: true, ao100: true };
+const persistedLineVisibility = settings.get('graphLines') || {};
+let _lineVisibility = {
+    time: persistedLineVisibility.time !== false,
+    line1: persistedLineVisibility.line1 ?? persistedLineVisibility.ao5 ?? true,
+    line2: persistedLineVisibility.line2 ?? persistedLineVisibility.ao12 ?? true,
+    line3: persistedLineVisibility.line3 ?? persistedLineVisibility.ao100 ?? true,
+};
 
 export function setLineVisibility(line, visible) {
+    if (!(line in _lineVisibility)) return;
     _lineVisibility[line] = visible;
-    settings.set('graphLines', _lineVisibility);
+    settings.set('graphLines', { ..._lineVisibility });
     render();
 }
 
@@ -484,6 +519,8 @@ export function updateGraph(solves, perSolveStats) {
     _solves = solves;
     _perSolve = perSolveStats;
     _statsCache = null;
+    _allTimesCache = { solvesRef: null, length: -1, times: [] };
+    _rollingSeriesCache.clear();
     _newBestSingles = getNewBestSingleFlags(solves);
     _tooltipHitArea = null;
 
@@ -512,6 +549,8 @@ export function updateGraphData(solves, cache) {
     _solves = solves;
     _perSolve = [];
     _statsCache = cache;
+    _allTimesCache = { solvesRef: null, length: -1, times: [] };
+    _rollingSeriesCache.clear();
     _newBestSingles = null; // computed lazily from cache
     _tooltipHitArea = null;
 
@@ -594,6 +633,206 @@ function _isNewBest(i) {
     return !!_newBestSingles[i];
 }
 
+function getAllTimes() {
+    if (_allTimesCache.solvesRef === _solves && _allTimesCache.length === _solves.length) {
+        return _allTimesCache.times;
+    }
+
+    const times = _solves.map(s => getEffectiveTime(s));
+    _allTimesCache = {
+        solvesRef: _solves,
+        length: _solves.length,
+        times,
+    };
+    return times;
+}
+
+class FenwickTree {
+    constructor(size) {
+        this.size = Math.max(1, size);
+        this.tree = new Float64Array(this.size + 1);
+    }
+
+    add(index, delta) {
+        for (let i = index; i <= this.size; i += i & -i) {
+            this.tree[i] += delta;
+        }
+    }
+}
+
+function sumOfSmallestK(countTree, sumTree, indexToValue, k, totalCount, totalSum) {
+    if (k <= 0) return 0;
+    if (k >= totalCount) return totalSum;
+
+    let idx = 0;
+    let bit = 1;
+    while ((bit << 1) <= countTree.size) bit <<= 1;
+
+    let countSoFar = 0;
+    let sumSoFar = 0;
+
+    while (bit > 0) {
+        const next = idx + bit;
+        if (next <= countTree.size && (countSoFar + countTree.tree[next]) < k) {
+            idx = next;
+            countSoFar += countTree.tree[next];
+            sumSoFar += sumTree.tree[next];
+        }
+        bit >>= 1;
+    }
+
+    const targetIndex = idx + 1;
+    const remaining = k - countSoFar;
+    const pivotValue = indexToValue[targetIndex - 1] ?? 0;
+    return sumSoFar + (remaining * pivotValue);
+}
+
+function buildMeanRollingSeries(allTimes, windowSize) {
+    const values = new Array(allTimes.length).fill(null);
+    let sum = 0;
+    let dnfCount = 0;
+
+    for (let i = 0; i < allTimes.length; i++) {
+        const current = allTimes[i];
+        if (current === Infinity) dnfCount++; else sum += current;
+
+        if (i >= windowSize) {
+            const old = allTimes[i - windowSize];
+            if (old === Infinity) dnfCount--; else sum -= old;
+        }
+
+        if (i < windowSize - 1) continue;
+        values[i] = dnfCount > 0 ? Infinity : (sum / windowSize);
+    }
+
+    return values;
+}
+
+function buildAverageRollingSeries(allTimes, windowSize, trim) {
+    const values = new Array(allTimes.length).fill(null);
+    if (allTimes.length < windowSize) return values;
+
+    const finiteValues = allTimes.filter(t => t !== Infinity);
+    if (finiteValues.length === 0) {
+        let dnfCount = 0;
+        for (let i = 0; i < allTimes.length; i++) {
+            if (allTimes[i] === Infinity) dnfCount++;
+            if (i >= windowSize && allTimes[i - windowSize] === Infinity) dnfCount--;
+            if (i >= windowSize - 1) values[i] = dnfCount > trim ? Infinity : null;
+        }
+        return values;
+    }
+
+    const indexToValue = Array.from(new Set(finiteValues)).sort((a, b) => a - b);
+    const valueToIndex = new Map(indexToValue.map((value, idx) => [value, idx + 1]));
+
+    const countTree = new FenwickTree(indexToValue.length);
+    const sumTree = new FenwickTree(indexToValue.length);
+
+    let dnfCount = 0;
+    let finiteCount = 0;
+    let finiteSum = 0;
+
+    const addTime = (t) => {
+        if (t === Infinity) {
+            dnfCount++;
+            return;
+        }
+
+        const index = valueToIndex.get(t);
+        if (!index) return;
+        countTree.add(index, 1);
+        sumTree.add(index, t);
+        finiteCount++;
+        finiteSum += t;
+    };
+
+    const removeTime = (t) => {
+        if (t === Infinity) {
+            dnfCount--;
+            return;
+        }
+
+        const index = valueToIndex.get(t);
+        if (!index) return;
+        countTree.add(index, -1);
+        sumTree.add(index, -t);
+        finiteCount--;
+        finiteSum -= t;
+    };
+
+    for (let i = 0; i < allTimes.length; i++) {
+        addTime(allTimes[i]);
+
+        if (i >= windowSize) {
+            removeTime(allTimes[i - windowSize]);
+        }
+
+        if (i < windowSize - 1) continue;
+        if (dnfCount > trim) {
+            values[i] = Infinity;
+            continue;
+        }
+
+        const highTrim = trim - dnfCount;
+        const rightRank = finiteCount - highTrim;
+        const leftRankMinusOne = trim;
+        if (rightRank <= leftRankMinusOne) {
+            values[i] = null;
+            continue;
+        }
+
+        const rightSum = sumOfSmallestK(countTree, sumTree, indexToValue, rightRank, finiteCount, finiteSum);
+        const leftSum = sumOfSmallestK(countTree, sumTree, indexToValue, leftRankMinusOne, finiteCount, finiteSum);
+        values[i] = (rightSum - leftSum) / (windowSize - (trim * 2));
+    }
+
+    return values;
+}
+
+function buildRollingSeries(allTimes, statType) {
+    const config = parseRollingStatType(statType);
+    if (!config) return new Array(allTimes.length).fill(null);
+
+    if (config.kind === 'mo') {
+        return buildMeanRollingSeries(allTimes, config.windowSize);
+    }
+
+    return buildAverageRollingSeries(allTimes, config.windowSize, config.trim);
+}
+
+function getCachedRollingSeries(statType, allTimes) {
+    const cached = _rollingSeriesCache.get(statType);
+    if (cached && cached.timesRef === allTimes && cached.length === allTimes.length) {
+        return cached.values;
+    }
+
+    const values = buildRollingSeries(allTimes, statType);
+
+    _rollingSeriesCache.set(statType, {
+        timesRef: allTimes,
+        length: allTimes.length,
+        values,
+    });
+
+    if (_rollingSeriesCache.size > MAX_ROLLING_SERIES_CACHE) {
+        const firstKey = _rollingSeriesCache.keys().next().value;
+        _rollingSeriesCache.delete(firstKey);
+    }
+
+    return values;
+}
+
+function getLineStatValue(statType, index, allTimes) {
+    const perSolve = _getPerSolve(index);
+
+    if (statType === 'ao5' && perSolve) return perSolve.ao5;
+    if (statType === 'ao12' && perSolve) return perSolve.ao12;
+    if (statType === 'ao100' && perSolve) return perSolve.ao100;
+
+    return getCachedRollingSeries(statType, allTimes)[index];
+}
+
 function render() {
     if (!_canvas || !_ctx) return;
     const ctx = _ctx;
@@ -614,9 +853,8 @@ function render() {
         return;
     }
 
-    const allTimes = _solves.map(s => getEffectiveTime(s));
-    const validTimes = allTimes.filter(t => t !== Infinity);
-    if (validTimes.length === 0) return;
+    const allTimes = getAllTimes();
+    const lineDefinitions = getGraphLineDefinitions();
 
     // Determine visible X range based on zoom/pan using fractional offsets
     const totalCount = _solves.length;
@@ -630,18 +868,45 @@ function render() {
     const startIdx = Math.max(0, Math.floor(viewOffset));
     const endIdx = Math.min(totalCount - 1, Math.ceil(viewOffset + visibleCount));
 
+    const drawX = PADDING.left;
+    const drawY = PADDING.top;
+    const drawW = w - PADDING.left - PADDING.right;
+    const drawH = h - PADDING.top - PADDING.bottom;
+
+    const visiblePointCount = Math.max(1, endIdx - startIdx + 1);
+    const maxRenderSamples = Math.max(2000, Math.floor(drawW * 1.6));
+    const drawSampleStep = Math.max(1, Math.floor(visiblePointCount / maxRenderSamples));
+    const ySampleStep = Math.max(1, Math.floor(drawSampleStep / 2));
+    const drawSampleStart = drawSampleStep > 1
+        ? Math.floor(startIdx / drawSampleStep) * drawSampleStep
+        : startIdx;
+    const ySampleStart = ySampleStep > 1
+        ? Math.floor(startIdx / ySampleStep) * ySampleStep
+        : startIdx;
+
     // Collect visible values for Y range
     const visibleValues = [];
-    for (let i = startIdx; i <= endIdx; i++) {
+    for (let i = ySampleStart; i <= endIdx; i += ySampleStep) {
+        if (i < startIdx) continue;
         const t = allTimes[i];
         if (t !== Infinity) visibleValues.push(t);
-        const ps = _getPerSolve(i);
-        if (ps) {
-            if (_lineVisibility.ao5 && ps.ao5 != null && ps.ao5 !== Infinity) visibleValues.push(ps.ao5);
-            if (_lineVisibility.ao12 && ps.ao12 != null && ps.ao12 !== Infinity) visibleValues.push(ps.ao12);
-            if (_lineVisibility.ao100 && ps.ao100 != null && ps.ao100 !== Infinity) visibleValues.push(ps.ao100);
+        for (const line of lineDefinitions) {
+            if (!_lineVisibility[line.id]) continue;
+            const value = getLineStatValue(line.statType, i, allTimes);
+            if (value != null && value !== Infinity) visibleValues.push(value);
         }
     }
+
+    if (ySampleStep > 1 && endIdx !== startIdx) {
+        const t = allTimes[endIdx];
+        if (t !== Infinity) visibleValues.push(t);
+        for (const line of lineDefinitions) {
+            if (!_lineVisibility[line.id]) continue;
+            const value = getLineStatValue(line.statType, endIdx, allTimes);
+            if (value != null && value !== Infinity) visibleValues.push(value);
+        }
+    }
+
     if (visibleValues.length === 0) return;
 
     let dataMin = visibleValues[0];
@@ -658,11 +923,6 @@ function render() {
     const yHalf = (dataRange * 1.15) / (2 * _view.yZoom);
     const yMin = yCenter - yHalf;
     const yMax = yCenter + yHalf;
-
-    const drawX = PADDING.left;
-    const drawY = PADDING.top;
-    const drawW = w - PADDING.left - PADDING.right;
-    const drawH = h - PADDING.top - PADDING.bottom;
 
     const toY = (val) => drawY + drawH - ((val - yMin) / (yMax - yMin)) * drawH;
     const toX = (i) => {
@@ -716,7 +976,8 @@ function render() {
         ctx.lineWidth = lineWidth;
         ctx.beginPath();
         let started = false;
-        for (let i = startIdx; i <= endIdx; i++) {
+        for (let i = drawSampleStart; i <= endIdx; i += drawSampleStep) {
+            if (i < startIdx) continue;
             const val = getData(i);
             if (val == null || val === Infinity) {
                 if (breakOnEmpty) started = false;
@@ -727,30 +988,39 @@ function render() {
             if (!started) { ctx.moveTo(x, y); started = true; }
             else ctx.lineTo(x, y);
         }
+
+        if (drawSampleStep > 1 && endIdx !== startIdx) {
+            const val = getData(endIdx);
+            if (val != null && val !== Infinity) {
+                const x = toX(endIdx);
+                const y = toY(val);
+                if (!started) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+        }
+
         ctx.stroke();
     }
 
     // Lines
     if (_lineVisibility.time) drawLine(i => allTimes[i], COLORS.time, 2, false);
-    if (_lineVisibility.ao5) drawLine(i => _getPerSolve(i)?.ao5, COLORS.ao5);
-    if (_lineVisibility.ao12) drawLine(i => _getPerSolve(i)?.ao12, COLORS.ao12);
-    if (_lineVisibility.ao100) drawLine(i => _getPerSolve(i)?.ao100, COLORS.ao100);
+    lineDefinitions.forEach((line) => {
+        if (!_lineVisibility[line.id]) return;
+        drawLine((i) => getLineStatValue(line.statType, i, allTimes), COLORS[line.id]);
+    });
 
     const activeMarkers = [];
     if (activeIndex >= startIdx && activeIndex <= endIdx) {
-        const ps = _getPerSolve(activeIndex);
         if (_lineVisibility.time && allTimes[activeIndex] !== Infinity) {
             activeMarkers.push({ value: allTimes[activeIndex], color: COLORS.time, radius: 4.25 });
         }
-        if (_lineVisibility.ao5 && ps?.ao5 != null && ps.ao5 !== Infinity) {
-            activeMarkers.push({ value: ps.ao5, color: COLORS.ao5, radius: 3.5 });
-        }
-        if (_lineVisibility.ao12 && ps?.ao12 != null && ps.ao12 !== Infinity) {
-            activeMarkers.push({ value: ps.ao12, color: COLORS.ao12, radius: 3.5 });
-        }
-        if (_lineVisibility.ao100 && ps?.ao100 != null && ps.ao100 !== Infinity) {
-            activeMarkers.push({ value: ps.ao100, color: COLORS.ao100, radius: 3.5 });
-        }
+        lineDefinitions.forEach((line) => {
+            if (!_lineVisibility[line.id]) return;
+            const value = getLineStatValue(line.statType, activeIndex, allTimes);
+            if (value != null && value !== Infinity) {
+                activeMarkers.push({ value, color: COLORS[line.id], radius: 3.5 });
+            }
+        });
     }
 
     activeMarkers.forEach((marker) => {
@@ -765,11 +1035,12 @@ function render() {
 
     // Hover tooltip
     if (activeIndex >= startIdx && activeIndex <= endIdx &&
-        allTimes[activeIndex] !== undefined && allTimes[activeIndex] !== Infinity) {
+        allTimes[activeIndex] !== undefined) {
         const anchor = activeMarkers[0];
         const x = toX(activeIndex);
-        const y = toY(anchor?.value ?? allTimes[activeIndex]);
-        const text = formatTime(allTimes[activeIndex]);
+        const anchorValue = anchor?.value;
+        const y = Number.isFinite(anchorValue) ? toY(anchorValue) : (drawY + (drawH / 2));
+        const text = allTimes[activeIndex] === Infinity ? 'DNF' : formatTime(allTimes[activeIndex]);
         const solve = _solves[activeIndex];
         const hasComment = !!solve?.comment?.trim();
         const isNewBestSingle = _isNewBest(activeIndex);
@@ -779,10 +1050,10 @@ function render() {
         ctx.font = '11px JetBrains Mono, monospace';
         const solveLabelPrefix = hasComment ? '*' : '#';
         const lines = [`${solveLabelPrefix}${activeIndex + 1}: ${text}`];
-        const ps = _getPerSolve(activeIndex);
-        if (ps && ps.ao5 != null) lines.push(`ao5: ${formatTime(ps.ao5)}`);
-        if (ps && ps.ao12 != null) lines.push(`ao12: ${formatTime(ps.ao12)}`);
-        if (ps && ps.ao100 != null) lines.push(`ao100: ${formatTime(ps.ao100)}`);
+        lineDefinitions.forEach((line) => {
+            const value = getLineStatValue(line.statType, activeIndex, allTimes);
+            if (value != null) lines.push(`${line.statType}: ${formatTime(value)}`);
+        });
         const solveDate = formatSolveDate(Number(solve?.timestamp));
         if (settings.get('graphTooltipDateEnabled') && solveDate) {
             lines.push('');
