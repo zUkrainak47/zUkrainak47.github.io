@@ -2942,17 +2942,17 @@ function initSettingsPanel() {
     setupColorSetting('setting-graph-ao12-color', 'btn-reset-ao12-color', 'graphColorAo12');
     setupColorSetting('setting-graph-ao100-color', 'btn-reset-ao100-color', 'graphColorAo100');
 
-    // Export
-    document.getElementById('btn-export').onclick = async () => {
-        const data = await exportAll();
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `ukratimer-backup-${formatDate(Date.now())}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-    };
+    // // Export
+    // document.getElementById('btn-export').onclick = async () => {
+    //     const data = await exportAll();
+    //     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    //     const url = URL.createObjectURL(blob);
+    //     const a = document.createElement('a');
+    //     a.href = url;
+    //     a.download = `ukratimer-backup-${formatDate(Date.now())}.json`;
+    //     a.click();
+    //     URL.revokeObjectURL(url);
+    // };
 
     // Export as csTimer
     document.getElementById('btn-export-cstimer').onclick = async () => {
