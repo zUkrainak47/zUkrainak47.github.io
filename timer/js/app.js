@@ -951,7 +951,7 @@ async function init() {
         if (key === 'inspectionAlerts') clearInspectionAlert();
         if (key === 'newBestPopupEnabled' && !settings.get('newBestPopupEnabled')) clearNewBestAlert();
         if (key === 'shortcutTooltipsEnabled' && !settings.get('shortcutTooltipsEnabled')) hideShortcutTooltip();
-        if (key === 'statsFilter' || key === 'customFilterDuration' || key === 'showDelta' || key.startsWith('graphColor') || key === 'newBestColor' || key === 'summaryStatsList') {
+        if (key === 'statsFilter' || key === 'customFilterDuration' || key === 'showDelta' || key.startsWith('graphColor') || key === 'graphTooltipDateEnabled' || key === 'newBestColor' || key === 'summaryStatsList') {
             if (key === 'statsFilter' || key === 'customFilterDuration') rebuildStatsCache();
             if (key === 'summaryStatsList') {
                 syncModalStatNavigation();
@@ -1725,14 +1725,14 @@ function parseSummaryStatInput(rawInput, { truncate = true } = {}) {
         tokens.push(config.type);
     }
 
-    if (tokens.length === 0) {
-        return {
-            ok: false,
-            message: 'Enter at least one stat token (e.g. mo3 ao12)',
-            tokens: [],
-            truncated: false,
-        };
-    }
+    // if (tokens.length === 0) {
+    //     return {
+    //         ok: false,
+    //         message: 'Enter at least one stat token (e.g. mo3 ao12)',
+    //         tokens: [],
+    //         truncated: false,
+    //     };
+    // }
 
     if (tokens.length > MAX_CUSTOM_SUMMARY_STATS && !truncate) {
         return {
@@ -3334,6 +3334,8 @@ function initSettingsPanel() {
         summaryFeedback.classList.remove('is-error');
         summaryFeedback.textContent = parsed.truncated
             ? `Will show first ${MAX_CUSTOM_SUMMARY_STATS}: ${parsed.tokens.join(', ')}`
+            : parsed.tokens.length === 0
+            ? 'Will show: none'
             : `Will show: ${parsed.tokens.join(', ')}`;
     };
 
@@ -3392,6 +3394,12 @@ function initSettingsPanel() {
     const newBestPopupToggle = document.getElementById('setting-new-best-popup');
     newBestPopupToggle.checked = settings.get('newBestPopupEnabled');
     newBestPopupToggle.onchange = () => settings.set('newBestPopupEnabled', newBestPopupToggle.checked);
+
+    const graphTooltipDateToggle = document.getElementById('setting-graph-tooltip-date');
+    if (graphTooltipDateToggle) {
+        graphTooltipDateToggle.checked = settings.get('graphTooltipDateEnabled');
+        graphTooltipDateToggle.onchange = () => settings.set('graphTooltipDateEnabled', graphTooltipDateToggle.checked);
+    }
 
     // Colors
     const setupColorSetting = (inputId, resetId, settingKey) => {

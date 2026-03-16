@@ -26,6 +26,7 @@ const DEFAULTS = {
     graphColorAo5: '#ff2020',
     graphColorAo12: '#2b91ff',
     graphColorAo100: '#a371f7',
+    graphTooltipDateEnabled: true,
     centerTimer: true,
     hideUIWhileSolving: true,
     shortcutTooltipsEnabled: true,

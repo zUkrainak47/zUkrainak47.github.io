@@ -147,6 +147,16 @@ function animateStep() {
 // Holdable button support
 let _holdInterval = null;
 let _holdTimeout = null;
+const solveDateFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
+
+function formatSolveDate(timestamp) {
+    if (!Number.isFinite(timestamp)) return null;
+
+    const date = new Date(timestamp);
+    if (Number.isNaN(date.getTime())) return null;
+
+    return solveDateFormatter.format(date);
+}
 
 function getTargetVisibleCount() {
     const tot = Math.max(2, _solves.length);
@@ -773,6 +783,11 @@ function render() {
         if (ps && ps.ao5 != null) lines.push(`ao5: ${formatTime(ps.ao5)}`);
         if (ps && ps.ao12 != null) lines.push(`ao12: ${formatTime(ps.ao12)}`);
         if (ps && ps.ao100 != null) lines.push(`ao100: ${formatTime(ps.ao100)}`);
+        const solveDate = formatSolveDate(Number(solve?.timestamp));
+        if (settings.get('graphTooltipDateEnabled') && solveDate) {
+            lines.push('');
+            lines.push(solveDate);
+        }
 
         const lineHeight = 15;
         const maxWidth = Math.max(...lines.map(l => ctx.measureText(l).width));

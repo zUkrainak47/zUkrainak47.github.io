@@ -519,6 +519,13 @@
           </div>
 
           <div class="setting-row">
+            <div class="setting-label" style="flex:1">New best color</div>
+            <input type="color" id="setting-new-best-color">
+            <button id="btn-reset-best-color" class="btn-icon-small" title="Reset color"
+              style="margin-left:8px">⟲</button>
+          </div>
+
+          <div class="setting-row">
             <button id="btn-show-shortcuts" class="setting-row-button" type="button">
               <div class="setting-label">
                 Show Keyboard Shortcuts
@@ -552,7 +559,7 @@
           <div class="setting-row">
             <div class="setting-label">
               Summary rows
-              <small>Choose which means/averages appear above the solves table</small>
+              <small>Choose which averages appear above the solves table</small>
             </div>
             <select id="setting-summary-stats-preset">
               <option value="basic">mo3 ao5 ao12 ao100</option>
@@ -572,12 +579,16 @@
         </div>
 
         <div class="setting-group">
-          <h3>Colors</h3>
+          <h3>Graph</h3>
           <div class="setting-row">
-            <div class="setting-label" style="flex:1">New best color</div>
-            <input type="color" id="setting-new-best-color">
-            <button id="btn-reset-best-color" class="btn-icon-small" title="Reset color"
-              style="margin-left:8px">⟲</button>
+            <div class="setting-label">
+              Tooltip solve date
+              <small>Show solve date at the bottom of graph node tooltip</small>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="setting-graph-tooltip-date">
+              <span class="toggle-slider"></span>
+            </label>
           </div>
           <div class="setting-row">
             <div class="setting-label" style="flex:1">Time line</div>
