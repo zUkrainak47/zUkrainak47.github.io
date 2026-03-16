@@ -240,6 +240,11 @@ const quickActionsState = {
 const mobilePanelIds = new Set(['timer', 'stats', 'trend']);
 const mobileViewportQuery = window.matchMedia('(max-width: 1100px), (pointer: coarse)');
 const touchPrimaryQuery = window.matchMedia('(hover: none) and (pointer: coarse)');
+const inspectionSpeechUnlockState = {
+    required: false,
+    unlocked: false,
+    inFlight: false,
+};
 
 // ──── History & Back Button ────
 
@@ -314,6 +319,76 @@ window.addEventListener('popstate', handlePopState);
 
 function isTouchPrimaryInput() {
     return touchPrimaryQuery.matches;
+}
+
+function isLikelyIOSDevice() {
+    const ua = navigator.userAgent || '';
+    return /iPad|iPhone|iPod/.test(ua)
+        || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
+function initInspectionSpeechUnlockState() {
+    const speechSupported = 'speechSynthesis' in window;
+    const requiresUnlock = speechSupported && isLikelyIOSDevice();
+    inspectionSpeechUnlockState.required = requiresUnlock;
+    inspectionSpeechUnlockState.unlocked = !requiresUnlock;
+    inspectionSpeechUnlockState.inFlight = false;
+}
+
+function syncInspectionSpeechUnlockButton(buttonEl) {
+    if (!buttonEl) return;
+
+    if (inspectionSpeechUnlockState.unlocked) {
+        buttonEl.textContent = 'Voice enabled';
+        buttonEl.disabled = true;
+        return;
+    }
+
+    buttonEl.disabled = inspectionSpeechUnlockState.inFlight;
+    buttonEl.textContent = inspectionSpeechUnlockState.inFlight
+        ? 'Enabling...'
+        : 'Enable voice alerts';
+}
+
+function unlockInspectionSpeechFromGesture() {
+    if (!('speechSynthesis' in window)) return Promise.resolve(false);
+    if (!inspectionSpeechUnlockState.required) {
+        inspectionSpeechUnlockState.unlocked = true;
+        return Promise.resolve(true);
+    }
+    if (inspectionSpeechUnlockState.unlocked) return Promise.resolve(true);
+    if (inspectionSpeechUnlockState.inFlight) return Promise.resolve(false);
+
+    inspectionSpeechUnlockState.inFlight = true;
+
+    return new Promise((resolve) => {
+        let settled = false;
+
+        const finish = (ok) => {
+            if (settled) return;
+            settled = true;
+            inspectionSpeechUnlockState.inFlight = false;
+            if (ok) inspectionSpeechUnlockState.unlocked = true;
+            resolve(ok);
+        };
+
+        try {
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance('Voice alerts enabled');
+            utterance.volume = 0;
+            utterance.rate = 1;
+            utterance.onstart = () => finish(true);
+            utterance.onend = () => finish(true);
+            utterance.onerror = () => finish(false);
+            window.speechSynthesis.speak(utterance);
+
+            setTimeout(() => {
+                finish(inspectionSpeechUnlockState.unlocked);
+            }, 900);
+        } catch (error) {
+            finish(false);
+        }
+    });
 }
 
 function areShortcutTooltipsAvailable() {
@@ -916,6 +991,7 @@ function syncMobilePanelState() {
 
 // ──── Bootstrap ────
 async function init() {
+    initInspectionSpeechUnlockState();
     await sessionManager.init();
     initModal();
     setModalStatNavigator(openShortcutStatDetail);
@@ -2389,6 +2465,7 @@ function showPopup(kind, text, duration = 1500) {
 
 function speakInspectionAlert(seconds) {
     if (!('speechSynthesis' in window)) return;
+    if (inspectionSpeechUnlockState.required && !inspectionSpeechUnlockState.unlocked) return;
 
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(`${seconds} seconds`);
@@ -3252,6 +3329,22 @@ function initSettingsPanel() {
         settings.set('inspectionAlerts', inspectionAlertsSelect.value);
         inspectionAlertsSelect.blur();
     };
+
+    const inspectionVoiceUnlockRow = document.getElementById('setting-inspection-voice-unlock-row');
+    const inspectionVoiceUnlockBtn = document.getElementById('setting-inspection-voice-unlock-btn');
+    if (inspectionVoiceUnlockRow && inspectionVoiceUnlockBtn) {
+        if (!('speechSynthesis' in window) || !inspectionSpeechUnlockState.required) {
+            inspectionVoiceUnlockRow.style.display = 'none';
+        } else {
+            syncInspectionSpeechUnlockButton(inspectionVoiceUnlockBtn);
+            inspectionVoiceUnlockBtn.onclick = async () => {
+                const ok = await unlockInspectionSpeechFromGesture();
+                syncInspectionSpeechUnlockButton(inspectionVoiceUnlockBtn);
+                showInspectionAlert(ok ? 'Inspection voice enabled' : 'Voice not enabled yet');
+                inspectionVoiceUnlockBtn.blur();
+            };
+        }
+    }
 
     const timerUpdateSelect = document.getElementById('setting-timer-update');
     timerUpdateSelect.value = settings.get('timerUpdate');
