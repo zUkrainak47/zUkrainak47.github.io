@@ -281,8 +281,8 @@
 
 @media (max-height: 614px) {
     .modal-overlay.stats-detail-active #modal-textarea {
-        height: min(359px, calc(80vh - 133px)) !important;
-        min-height: min(359px, calc(80vh - 133px)) !important;
+        height: min(var(--modal-textarea-regular-height, 359px), calc(80vh - 133px)) !important;
+        min-height: min(var(--modal-textarea-regular-height, 359px), calc(80vh - 133px)) !important;
     }
 }
 

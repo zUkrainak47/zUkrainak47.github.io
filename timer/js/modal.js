@@ -806,14 +806,43 @@ function updateStatNavigation() {
     });
 }
 
+function parsePx(value) {
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function getTextareaHeightForRows(rowCount) {
+    if (!_textarea) return;
+
+    const computed = window.getComputedStyle(_textarea);
+    const lineHeight = parsePx(computed.lineHeight) || (parsePx(computed.fontSize) * 1.6);
+    const paddingY = parsePx(computed.paddingTop) + parsePx(computed.paddingBottom);
+    const borderY = parsePx(computed.borderTopWidth) + parsePx(computed.borderBottomWidth);
+    const safeRowCount = Math.max(1, Number.isFinite(rowCount) ? rowCount : 1);
+    return Math.ceil((lineHeight * safeRowCount) + paddingY + borderY);
+}
+
+function syncTextareaRegularHeight(rowCount) {
+    if (!_textarea) return;
+
+    const measuredHeight = getTextareaHeightForRows(rowCount);
+
+    if (measuredHeight > 0) {
+        _textarea.style.setProperty('--modal-textarea-regular-height', `${measuredHeight}px`);
+    }
+}
+
 function _showModal(title, text, solveContext = null, detailPayload = null) {
     document.getElementById('modal-title').textContent = title;
     _textarea.value = text;
     _currentDetailPayload = detailPayload;
 
     const lineCount = text.split('\n').length;
-    if (lineCount <= 16) {
-        _textarea.rows = lineCount;
+    const targetRowCount = Math.min(Math.max(1, lineCount), 16);
+    const isLineCountCapped = lineCount > 16;
+    _textarea.rows = targetRowCount;
+
+    if (!isLineCountCapped) {
         _textarea.style.height = 'auto';
         _textarea.style.minHeight = 'auto';
     // } else if (lineCount <= 7) {
@@ -825,10 +854,15 @@ function _showModal(title, text, solveContext = null, detailPayload = null) {
     //     _textarea.style.height = 'auto';
     //     _textarea.style.minHeight = 'auto';
     } else {
-        _textarea.rows = 16;
-        _textarea.style.height = '359px';
-        _textarea.style.minHeight = '359px';
+        const cappedHeight = getTextareaHeightForRows(targetRowCount);
+        if (cappedHeight > 0) {
+            const cappedHeightPx = `${cappedHeight}px`;
+            _textarea.style.height = cappedHeightPx;
+            _textarea.style.minHeight = cappedHeightPx;
+        }
     }
+
+    syncTextareaRegularHeight(targetRowCount);
 
     const dateInfo = document.getElementById('modal-date-info');
 
