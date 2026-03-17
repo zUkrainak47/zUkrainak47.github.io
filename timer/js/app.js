@@ -244,6 +244,7 @@ const quickActionsState = {
 const mobilePanelIds = new Set(['timer', 'stats', 'trend']);
 const mobileViewportQuery = window.matchMedia('(max-width: 1100px), (pointer: coarse)');
 const shortMobileLandscapeQuery = window.matchMedia('(max-width: 1100px) and (orientation: landscape) and (max-height: 750px), (pointer: coarse) and (orientation: landscape) and (max-height: 750px)');
+const mobileLandscapeQuery = window.matchMedia('(max-width: 1100px) and (orientation: landscape), (pointer: coarse) and (orientation: landscape)');
 const touchPrimaryQuery = window.matchMedia('(hover: none) and (pointer: coarse)');
 const inspectionSpeechUnlockState = {
     required: false,
@@ -888,8 +889,59 @@ function syncDesktopPanelScale() {
     root.style.setProperty('--desktop-panel-scale', scale.toFixed(4));
 }
 
+function syncLandscapeMobileScrambleSingleLineFit() {
+    const scrambleText = getEl('scramble-text');
+    const scrambleTextWrapper = getEl('scramble-text-wrapper');
+    const appLayout = getEl('app-layout');
+    if (!scrambleText || !scrambleTextWrapper) return;
+
+    const shouldFit = mobileLandscapeQuery.matches
+        && mobileViewportQuery.matches
+        && scrambleText.style.display !== 'none';
+
+    if (!shouldFit) {
+        scrambleText.style.removeProperty('font-size');
+        scrambleText.style.removeProperty('max-width');
+        scrambleText.style.removeProperty('white-space');
+        return;
+    }
+
+    let appLayoutContentWidth = 0;
+    if (appLayout) {
+        const appLayoutStyles = getComputedStyle(appLayout);
+        const paddingLeft = parseFloat(appLayoutStyles.paddingLeft) || 0;
+        const paddingRight = parseFloat(appLayoutStyles.paddingRight) || 0;
+        appLayoutContentWidth = Math.max(0, appLayout.clientWidth - paddingLeft - paddingRight);
+    }
+
+    const widthBasis = appLayoutContentWidth > 0 ? appLayoutContentWidth : window.innerWidth;
+    const designatedWidthPx = Math.floor(widthBasis * 0.86);
+    const availableWidth = Math.max(0, Math.min(scrambleTextWrapper.clientWidth, designatedWidthPx, widthBasis));
+    if (availableWidth <= 0) return;
+
+    scrambleText.style.fontSize = '';
+    scrambleText.style.maxWidth = `${availableWidth}px`;
+    scrambleText.style.whiteSpace = 'nowrap';
+
+    if (scrambleText.scrollWidth <= scrambleText.clientWidth + 0.5) return;
+
+    const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    const minFontSizePx = rootFontSize * 0.72;
+    let currentFontSizePx = parseFloat(getComputedStyle(scrambleText).fontSize) || rootFontSize;
+
+    while (currentFontSizePx > minFontSizePx && scrambleText.scrollWidth > scrambleText.clientWidth + 0.5) {
+        currentFontSizePx -= 0.25;
+        scrambleText.style.fontSize = `${currentFontSizePx}px`;
+    }
+
+    if (scrambleText.scrollWidth > scrambleText.clientWidth + 0.5) {
+        scrambleText.style.whiteSpace = 'normal';
+    }
+}
+
 function syncViewportLayout() {
     syncDesktopPanelScale();
+    syncLandscapeMobileScrambleSingleLineFit();
 
     const timerDisplayWrapper = getEl('timer-display-wrapper');
     const timerDisplay = getEl('timer-display');
