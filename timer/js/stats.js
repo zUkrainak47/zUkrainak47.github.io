@@ -1,7 +1,7 @@
 import { getEffectiveTime } from './utils.js';
 
 export function getAverageTrimCount(n) {
-    return Math.max(1, Math.floor(n * 0.05));
+    return Math.ceil(n / 20);
 }
 
 export function parseRollingStatType(type) {

@@ -107,7 +107,7 @@ function buildAverageShareContent(label, valueStr, solves, trim = 1) {
         const display = (isBest || isWorst) ? `(${tStr})` : tStr;
         const lineTime = `${display}${getCommentSuffix(solve)}`;
         const lineScramble = `${solve.scramble}${getScrambleDateSuffix(solve)}`;
-        lines.push(`${String(i + 1).padStart(2)}. ${lineTime} ${lineScramble}`);
+        lines.push(`${String(i + 1).padStart(2)}. ${lineTime}   ${lineScramble}`);
         mobileEntries.push({
             position: i + 1,
             time: display,
