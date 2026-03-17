@@ -228,6 +228,7 @@ const viewportLayoutState = {
 const quickActionsState = {
     visible: false,
     pinned: false,
+    swipeVisibilityOverride: false,
     manualEntryActive: false,
     manualDigits: '',
     restoreVisibleAfterManual: false,
@@ -695,6 +696,7 @@ function syncQuickActionsUI() {
 function setQuickActionsVisible(visible, { pinned = quickActionsState.pinned } = {}) {
     quickActionsState.visible = Boolean(visible);
     quickActionsState.pinned = quickActionsState.visible ? Boolean(pinned) : false;
+    if (!quickActionsState.visible) quickActionsState.swipeVisibilityOverride = false;
     syncQuickActionsUI();
 }
 
@@ -1436,11 +1438,14 @@ function initTimerQuickActions() {
         hiddenInput.blur();
     });
 
-    centerPanel.addEventListener('pointerdown', (event) => {
+    const handleQuickActionsSwipeStart = (event) => {
         if (!isMobileTimerPanelActive()) return;
+        if (hasBlockingOverlayOpen() || settingsOverlayEl?.classList.contains('active')) return;
         if (quickActionsState.manualEntryActive) return;
         if (event.pointerType !== 'touch' && event.pointerType !== 'pen') return;
-        if (event.target instanceof Element && event.target.closest('button, input, textarea, select, a, [data-no-timer-start]')) return;
+        if (event.target instanceof Element && event.target.closest('input[type="text"], input[type="search"], input[type="number"], input[type="email"], input[type="url"], input[type="tel"], textarea, [contenteditable="true"]')) return;
+
+        quickActionsState.swipeVisibilityOverride = false;
 
         const swipeStartTimerState = timer.getState();
         if (!quickActionsState.visible && !isQuickActionsSwipeOpenState(swipeStartTimerState)) return;
@@ -1451,9 +1456,11 @@ function initTimerQuickActions() {
         quickActionsState.swipeStartX = event.clientX;
         quickActionsState.swipeStartY = event.clientY;
         quickActionsState.swipeHandled = false;
-    }, { capture: true });
+    };
 
-    centerPanel.addEventListener('pointermove', (event) => {
+    document.addEventListener('pointerdown', handleQuickActionsSwipeStart, { capture: true });
+
+    document.addEventListener('pointermove', (event) => {
         if (!isMobileTimerPanelActive()) return;
         if (quickActionsState.swipePointerId !== event.pointerId) return;
         if (quickActionsState.swipeHandled) return;
@@ -1470,6 +1477,7 @@ function initTimerQuickActions() {
         if (deltaY > 0) {
             if (!canOpenQuickActions) return;
             quickActionsState.swipeHandled = true;
+            quickActionsState.swipeVisibilityOverride = true;
             timer.cancelPendingStart();
             setQuickActionsVisible(true, { pinned: true });
             return;
@@ -1480,7 +1488,7 @@ function initTimerQuickActions() {
             timer.cancelPendingStart();
             setQuickActionsVisible(false);
         }
-    });
+    }, { capture: true });
 
     const resetSwipeState = (event) => {
         if (event && quickActionsState.swipePointerId !== event.pointerId) return;
@@ -1489,8 +1497,8 @@ function initTimerQuickActions() {
         quickActionsState.swipeHandled = false;
     };
 
-    centerPanel.addEventListener('pointerup', resetSwipeState);
-    centerPanel.addEventListener('pointercancel', resetSwipeState);
+    document.addEventListener('pointerup', resetSwipeState, { capture: true });
+    document.addEventListener('pointercancel', resetSwipeState, { capture: true });
 
     document.addEventListener('pointerdown', (event) => {
         if (!quickActionsState.manualEntryActive) return;
@@ -2646,12 +2654,19 @@ function onTimerStateChange(state) {
         setActiveMobilePanel('timer');
     }
 
+    const isPreSolveState = state === 'holding' || state === 'ready' || isInspectionState(state);
+
     if (state !== 'idle' && state !== 'stopped') {
         if (quickActionsState.manualEntryActive) {
             closeManualTimeEntry({ restoreQuickActions: false });
         } else if (quickActionsState.visible) {
-            setQuickActionsVisible(false);
+            const shouldKeepQuickActionsVisible = quickActionsState.swipeVisibilityOverride && isPreSolveState;
+            if (!shouldKeepQuickActionsVisible) {
+                setQuickActionsVisible(false);
+            }
         }
+    } else {
+        quickActionsState.swipeVisibilityOverride = false;
     }
 
     // Toggle solving class for focus mode

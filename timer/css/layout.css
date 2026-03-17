@@ -210,6 +210,12 @@ body.solving #btn-settings {
         touch-action: none;
     }
 
+    body[data-mobile-panel="timer"] #scramble-bar,
+    body[data-mobile-panel="timer"] #scramble-top-row,
+    body[data-mobile-panel="timer"] #scramble-container {
+        touch-action: none;
+    }
+
     body[data-mobile-panel="timer"] #graph-panel,
     body[data-mobile-panel="trend"] #cube-panel,
     body[data-mobile-panel="trend"] #mobile-summary-card {
