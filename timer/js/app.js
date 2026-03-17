@@ -243,6 +243,7 @@ const quickActionsState = {
 };
 const mobilePanelIds = new Set(['timer', 'stats', 'trend']);
 const mobileViewportQuery = window.matchMedia('(max-width: 1100px), (pointer: coarse)');
+const shortMobileLandscapeQuery = window.matchMedia('(max-width: 1100px) and (orientation: landscape) and (max-height: 750px), (pointer: coarse) and (orientation: landscape) and (max-height: 750px)');
 const touchPrimaryQuery = window.matchMedia('(hover: none) and (pointer: coarse)');
 const inspectionSpeechUnlockState = {
     required: false,
@@ -961,6 +962,9 @@ function syncViewportLayout() {
     }
 
     if (targetTimerCenterY != null) {
+        if (isMobileTimerView && shortMobileLandscapeQuery.matches && (state === 'idle' || state === 'stopped')) {
+            targetTimerCenterY += 30;
+        }
         const targetRect = targetTimerRect || getLayoutRect(timerDisplay || timerDisplayWrapper);
         const timerCenterX = targetRect.left + targetRect.width / 2;
         const timerCenterY = targetRect.top + targetRect.height / 2;

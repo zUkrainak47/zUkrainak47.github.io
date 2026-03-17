@@ -177,6 +177,10 @@
 
 @media (max-width: 1100px),
 (pointer: coarse) {
+    body[data-mobile-panel="timer"] #scramble-bar {
+        z-index: 50;
+    }
+
     #scramble-bar {
         flex-direction: column;
         align-items: stretch;
@@ -419,5 +423,11 @@
 
     body.zen.mobile-viewport #btn-scramble-preview {
         display: none;
+    }
+}
+
+@media (max-width: 762px) and (orientation: landscape) {
+    #scramble-text {
+        font-size: clamp(0.92rem, 3.6vw, 1rem);
     }
 }

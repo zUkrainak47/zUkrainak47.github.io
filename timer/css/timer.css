@@ -638,6 +638,10 @@ body.pill-size-large #timer-info .stat-label {
 
 @media (max-width: 1100px),
 (pointer: coarse) {
+    body[data-mobile-panel="timer"] #timer-display-wrapper {
+        z-index: 41;
+    }
+
     #timer-display[data-timer-state="idle"],
     #timer-display[data-timer-state="stopped"] {
         cursor: default;
@@ -684,6 +688,7 @@ body.pill-size-large #timer-info .stat-label {
     }
 
     #timer-quick-actions {
+        z-index: 42;
         max-width: min(88vw, 360px);
         top: calc(100% + var(--mobile-quick-actions-offset));
     }
@@ -753,5 +758,16 @@ body.pill-size-large #timer-info .stat-label {
 
     .mobile-summary-value {
         font-size: clamp(1rem, 4.7vw, 1.45rem);
+    }
+}
+
+@media (max-width: 1100px) and (orientation: landscape) and (max-height: 750px),
+(pointer: coarse) and (orientation: landscape) and (max-height: 750px) {
+    #timer-display {
+        font-size: clamp(3.85rem, 18.5vw, 5.3rem);
+    }
+
+    #manual-time-formatted {
+        font-size: clamp(3.85rem, 18.5vw, 5.3rem);
     }
 }
