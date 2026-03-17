@@ -465,13 +465,7 @@ function isMobileTimerPanelActive() {
 
 function isQuickActionsSwipeOpenState(state) {
     return state === 'idle'
-        || state === 'stopped'
-        || state === 'holding'
-        || state === 'ready'
-        || state === 'inspection-primed'
-        || state === 'inspecting'
-        || state === 'inspection-holding'
-        || state === 'inspection-ready';
+        || state === 'stopped';
 }
 
 function isDesktopTypingEntryModeEnabled() {
