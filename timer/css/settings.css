@@ -432,8 +432,8 @@ body.mobile-viewport #setting-hide-ui-row {
 @media (max-width: 1100px) and (orientation: landscape) and (max-height: 750px),
 (pointer: coarse) and (orientation: landscape) and (max-height: 750px) {
     .settings-box {
-        width: 80vw;
-        max-width: 80vw;
-        margin-inline: 10vw;
+        width: 86vw;
+        max-width: 86vw;
+        margin-inline: 7vw;
     }
 }

@@ -631,9 +631,9 @@
     #modal-overlay .modal-box,
     #confirm-overlay .modal-box,
     #prompt-overlay .modal-box {
-        width: 80vw;
-        max-width: 80vw;
-        margin-inline: 10vw;
+        width: 86vw;
+        max-width: 86vw;
+        margin-inline: 7vw;
     }
 
     .modal-overlay.mobile-detail-active .modal-body {

@@ -358,7 +358,7 @@
 @media (max-width: 1100px) and (orientation: landscape) and (max-height: 750px),
 (pointer: coarse) and (orientation: landscape) and (max-height: 750px) {
     #btn-settings {
-        right: 10vw;
+        right: 7vw;
     }
 }
 
