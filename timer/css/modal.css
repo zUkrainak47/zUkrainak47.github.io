@@ -628,6 +628,14 @@
 
 @media (max-width: 1100px) and (orientation: landscape),
 (pointer: coarse) and (orientation: landscape) {
+    #modal-overlay .modal-box,
+    #confirm-overlay .modal-box,
+    #prompt-overlay .modal-box {
+        width: 80vw;
+        max-width: 80vw;
+        margin-inline: 10vw;
+    }
+
     .modal-overlay.mobile-detail-active .modal-body {
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;

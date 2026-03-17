@@ -36,6 +36,7 @@ const DEFAULTS = {
     graphTooltipDateEnabled: true,
     centerTimer: true,
     hideUIWhileSolving: true,
+    swipeDownGestureEnabled: true,
     shortcutTooltipsEnabled: true,
 };
 

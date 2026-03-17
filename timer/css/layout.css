@@ -309,6 +309,26 @@ body.solving #btn-settings {
 
 @media (max-width: 1100px) and (orientation: landscape) and (max-height: 750px),
 (pointer: coarse) and (orientation: landscape) and (max-height: 750px) {
+    #mobile-panel-tabs {
+        left: 10vw;
+        right: calc(10vw + var(--mobile-tab-height) + 12px);
+    }
+
+    #btn-settings {
+        right: 10vw;
+    }
+
+    body[data-mobile-panel="timer"] #right-panel {
+        left: 10vw;
+        right: 10vw;
+    }
+
+    body[data-mobile-panel="stats"] #app-layout,
+    body[data-mobile-panel="trend"] #app-layout {
+        padding-left: 10vw;
+        padding-right: 10vw;
+    }
+
     body[data-mobile-panel="timer"] #cube-panel,
     body[data-mobile-panel="timer"] #mobile-summary-card {
         display: none;

@@ -85,6 +85,10 @@
     border-bottom: none;
 }
 
+.setting-row.setting-row-last-visible {
+    border-bottom: none;
+}
+
 body.mobile-viewport #setting-shortcut-tooltips-row,
 body.mobile-viewport #setting-hide-ui-row {
     display: none;
@@ -422,5 +426,14 @@ body.mobile-viewport #setting-hide-ui-row {
     #setting-summary-stats-preset {
         max-width: 100%;
         flex: 1 1 180px;
+    }
+}
+
+@media (max-width: 1100px) and (orientation: landscape) and (max-height: 750px),
+(pointer: coarse) and (orientation: landscape) and (max-height: 750px) {
+    .settings-box {
+        width: 80vw;
+        max-width: 80vw;
+        margin-inline: 10vw;
     }
 }

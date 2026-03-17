@@ -214,6 +214,7 @@ let settingsOverlayEl = null;
 let shortcutsOverlayEl = null;
 let scramblePreviewOverlayEl = null;
 let scramblePreviewModalCanvas = null;
+let syncSettingsRowSeparators = () => {};
 let transientSelectOutsideBlurBound = false;
 let shortcutTooltipEl = null;
 let viewportLayoutFrame = null;
@@ -1438,6 +1439,7 @@ function initTimerQuickActions() {
         if (quickActionsState.manualEntryActive) return;
         if (event.pointerType !== 'touch' && event.pointerType !== 'pen') return;
         if (event.target instanceof Element && event.target.closest('input[type="text"], input[type="search"], input[type="number"], input[type="email"], input[type="url"], input[type="tel"], textarea, [contenteditable="true"]')) return;
+        if (!quickActionsState.visible && !settings.get('swipeDownGestureEnabled')) return;
 
         quickActionsState.swipeVisibilityOverride = false;
 
@@ -2173,6 +2175,7 @@ function openSettingsPanel({ isSwitching = false } = {}) {
 
     if (!isSwitching) pushHistoryState();
     settingsOverlayEl.classList.add('active');
+    window.requestAnimationFrame(() => syncSettingsRowSeparators());
     blurManualTimeInput();
     return true;
 }
@@ -3515,6 +3518,28 @@ function initSettingsPanel() {
     // Hide UI toggle
     const hideUIToggle = document.getElementById('setting-hide-ui');
     const centerTimerToggle = document.getElementById('setting-center-timer');
+    const swipeDownGestureToggle = document.getElementById('setting-swipe-down-gesture');
+    const swipeDownGestureRow = document.getElementById('setting-swipe-down-gesture-row');
+
+    syncSettingsRowSeparators = () => {
+        const groups = settingsOverlayEl?.querySelectorAll('.setting-group');
+        if (!groups) return;
+
+        groups.forEach((group) => {
+            const rows = Array.from(group.querySelectorAll('.setting-row'));
+            rows.forEach((row) => row.classList.remove('setting-row-last-visible'));
+
+            const visibleRows = rows.filter((row) => {
+                if (row.hidden) return false;
+                return window.getComputedStyle(row).display !== 'none';
+            });
+
+            const lastVisibleRow = visibleRows[visibleRows.length - 1];
+            if (lastVisibleRow) {
+                lastVisibleRow.classList.add('setting-row-last-visible');
+            }
+        });
+    };
 
     const updateCenterTimerState = () => {
         if (!centerTimerToggle) return;
@@ -3531,6 +3556,12 @@ function initSettingsPanel() {
         }
     };
 
+    const updateSwipeDownGestureVisibility = () => {
+        if (!swipeDownGestureRow) return;
+        swipeDownGestureRow.style.display = mobileViewportQuery.matches ? '' : 'none';
+        syncSettingsRowSeparators();
+    };
+
     if (hideUIToggle) {
         hideUIToggle.checked = settings.get('hideUIWhileSolving');
 
@@ -3543,16 +3574,29 @@ function initSettingsPanel() {
 
     // Initial state sync and responsive listener
     updateCenterTimerState();
+    updateSwipeDownGestureVisibility();
+
+    const handleSettingsViewportChange = () => {
+        updateCenterTimerState();
+        updateSwipeDownGestureVisibility();
+        syncSettingsRowSeparators();
+    };
+
     if (typeof mobileViewportQuery.addEventListener === 'function') {
-        mobileViewportQuery.addEventListener('change', updateCenterTimerState);
+        mobileViewportQuery.addEventListener('change', handleSettingsViewportChange);
     } else {
-        mobileViewportQuery.addListener(updateCenterTimerState);
+        mobileViewportQuery.addListener(handleSettingsViewportChange);
     }
 
     // Center Timer toggle
     if (centerTimerToggle) {
         centerTimerToggle.checked = settings.get('centerTimer');
         centerTimerToggle.onchange = () => settings.set('centerTimer', centerTimerToggle.checked);
+    }
+
+    if (swipeDownGestureToggle) {
+        swipeDownGestureToggle.checked = settings.get('swipeDownGestureEnabled');
+        swipeDownGestureToggle.onchange = () => settings.set('swipeDownGestureEnabled', swipeDownGestureToggle.checked);
     }
 
     const displayFontSelect = document.getElementById('setting-display-font');
@@ -3597,6 +3641,7 @@ function initSettingsPanel() {
             const presetTokens = getPresetSummaryTokens(summaryPresetSelect.value);
             summaryFeedback.classList.remove('is-error');
             summaryFeedback.textContent = `Will show: ${presetTokens.join(', ')}`;
+            syncSettingsRowSeparators();
             return;
         }
 
@@ -3604,6 +3649,7 @@ function initSettingsPanel() {
         if (!parsed.ok) {
             summaryFeedback.classList.add('is-error');
             summaryFeedback.textContent = parsed.message;
+            syncSettingsRowSeparators();
             return;
         }
 
@@ -3613,6 +3659,7 @@ function initSettingsPanel() {
             : parsed.tokens.length === 0
             ? 'Will show: none'
             : `Will show: ${parsed.tokens.join(', ')}`;
+        syncSettingsRowSeparators();
     };
 
     if (summaryPresetSelect && summaryCustomRow && summaryCustomInput && summaryFeedback) {
@@ -3731,6 +3778,8 @@ function initSettingsPanel() {
     setupColorSetting('setting-graph-line1-color', 'btn-reset-line1-color', 'graphColorLine1');
     setupColorSetting('setting-graph-line2-color', 'btn-reset-line2-color', 'graphColorLine2');
     setupColorSetting('setting-graph-line3-color', 'btn-reset-line3-color', 'graphColorLine3');
+
+    syncSettingsRowSeparators();
 
     // // Export
     // document.getElementById('btn-export').onclick = async () => {

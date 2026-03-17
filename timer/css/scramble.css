@@ -357,6 +357,13 @@
 
 @media (max-width: 1100px) and (orientation: landscape) and (max-height: 750px),
 (pointer: coarse) and (orientation: landscape) and (max-height: 750px) {
+    #btn-settings {
+        right: 10vw;
+    }
+}
+
+@media (max-width: 1100px) and (orientation: landscape) and (max-height: 750px),
+(pointer: coarse) and (orientation: landscape) and (max-height: 750px) {
     #scramble-bar {
         gap: 10px;
     }
