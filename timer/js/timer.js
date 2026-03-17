@@ -28,6 +28,7 @@ class Timer extends EventEmitter {
         this._inspectionSnapshot = null;
         this._inspectionAlertsFired = new Set();
         this._holdTimer = null;
+        this._holdToken = 0;
         this._rafId = null;
         this._displayEl = null;
         this._interactionEls = [];
@@ -334,7 +335,10 @@ class Timer extends EventEmitter {
         this._setColor(State.HOLDING);
 
         const holdDuration = settings.get('holdDuration');
+        const holdToken = ++this._holdToken;
         this._holdTimer = setTimeout(() => {
+            if (holdToken !== this._holdToken) return;
+            if (this.state !== State.HOLDING) return;
             this._holdTimer = null;
             this._setState(State.READY);
             this._setColor(State.READY);
@@ -379,7 +383,10 @@ class Timer extends EventEmitter {
         this._setColor(State.INSPECTION_HOLDING);
 
         const holdDuration = settings.get('holdDuration');
+        const holdToken = ++this._holdToken;
         this._holdTimer = setTimeout(() => {
+            if (holdToken !== this._holdToken) return;
+            if (this.state !== State.INSPECTION_HOLDING) return;
             this._holdTimer = null;
             this._setState(State.INSPECTION_READY);
             this._setColor(State.INSPECTION_READY);
@@ -409,6 +416,7 @@ class Timer extends EventEmitter {
     }
 
     _cancelHold() {
+        this._holdToken += 1;
         if (this._holdTimer) {
             clearTimeout(this._holdTimer);
             this._holdTimer = null;
