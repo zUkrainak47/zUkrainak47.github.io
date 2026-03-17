@@ -25,9 +25,9 @@
   <link rel="stylesheet" href="css/layout.css?v=12">
   <link rel="stylesheet" href="css/scramble.css?v=11">
   <link rel="stylesheet" href="css/timer.css?v=25">
-  <link rel="stylesheet" href="css/stats.css?v=8">
+  <link rel="stylesheet" href="css/stats.css?v=11">
   <link rel="stylesheet" href="css/cube.css?v=3">
-  <link rel="stylesheet" href="css/graph.css?v=5">
+  <link rel="stylesheet" href="css/graph.css?v=7">
   <link rel="stylesheet" href="css/modal.css?v=11">
   <link rel="stylesheet" href="css/settings.css?v=9">
 </head>
@@ -43,6 +43,14 @@
         <div class="mobile-session-select-wrapper">
           <select id="mobile-session-select"></select>
         </div>
+        <button id="btn-scramble-preview" class="btn-icon" title="Scramble preview"
+          aria-label="Open scramble preview">
+          <span class="scramble-preview-face-icon" aria-hidden="true">
+            <span></span><span></span><span></span>
+            <span></span><span></span><span></span>
+            <span></span><span></span><span></span>
+          </span>
+        </button>
         <button id="btn-zen" class="btn-icon" title="Zen mode (hide panels)"
           aria-label="Zen mode (hide panels)">✦</button>
       </div>
@@ -65,95 +73,97 @@
     <!-- ─── Left Panel: Statistics ─── -->
     <div id="left-panel">
       <div id="stats-panel" class="panel">
-        <div class="panel-header" id="session-header">
-          <div id="session-bar">
-            <div class="session-select-wrapper">
-              <select id="session-select"></select>
-            </div>
-            <div class="session-actions">
-              <button id="btn-new-session" title="New session" class="btn-icon-small">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                  stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="12" y1="5" x2="12" y2="19"></line>
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg>
-              </button>
-              <button id="btn-rename-session" title="Rename session" class="btn-icon-small">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                  stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                </svg>
-              </button>
-              <button id="btn-delete-session" title="Delete session" class="btn-icon-small btn-danger">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                  stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="3 6 5 6 21 6"></polyline>
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                </svg>
-              </button>
+        <div id="stats-sidebar">
+          <div class="panel-header" id="session-header">
+            <div id="session-bar">
+              <div class="session-select-wrapper">
+                <select id="session-select"></select>
+              </div>
+              <div class="session-actions">
+                <button id="btn-new-session" title="New session" class="btn-icon-small">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                  </svg>
+                </button>
+                <button id="btn-rename-session" title="Rename session" class="btn-icon-small">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                  </svg>
+                </button>
+                <button id="btn-delete-session" title="Delete session" class="btn-icon-small btn-danger">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- Stats filter -->
-        <div id="stats-filter-bar">
-          <div class="stats-filter-select-wrapper">
-            <select id="stats-filter-select">
-              <option value="all">All</option>
-              <option value="today">Today</option>
-              <option value="week">This week</option>
-              <option value="month">This month</option>
-              <option value="custom">Custom</option>
-            </select>
+          <!-- Stats filter -->
+          <div id="stats-filter-bar">
+            <div class="stats-filter-select-wrapper">
+              <select id="stats-filter-select">
+                <option value="all">All</option>
+                <option value="today">Today</option>
+                <option value="week">This week</option>
+                <option value="month">This month</option>
+                <option value="custom">Custom</option>
+              </select>
+            </div>
+            <input id="custom-filter-input" type="text" placeholder="e.g. 1d 12h" style="display:none;" maxlength="20">
           </div>
-          <input id="custom-filter-input" type="text" placeholder="e.g. 1d 12h" style="display:none;" maxlength="20">
-        </div>
 
-        <!-- Summary stats -->
-        <div id="stats-summary">
-          <table>
-            <thead>
-              <tr>
-                <th></th>
-                <th>current</th>
-                <th>best</th>
-              </tr>
-            </thead>
-            <tbody id="stats-summary-body">
-              <tr>
-                <td>time</td>
-                <td>-</td>
-                <td>-</td>
-              </tr>
-              <tr>
-                <td>mo3</td>
-                <td>-</td>
-                <td>-</td>
-              </tr>
-              <tr>
-                <td>ao5</td>
-                <td>-</td>
-                <td>-</td>
-              </tr>
-              <tr>
-                <td>ao12</td>
-                <td>-</td>
-                <td>-</td>
-              </tr>
-              <tr>
-                <td>ao100</td>
-                <td>-</td>
-                <td>-</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+          <!-- Summary stats -->
+          <div id="stats-summary">
+            <table>
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>current</th>
+                  <th>best</th>
+                </tr>
+              </thead>
+              <tbody id="stats-summary-body">
+                <tr>
+                  <td>time</td>
+                  <td>-</td>
+                  <td>-</td>
+                </tr>
+                <tr>
+                  <td>mo3</td>
+                  <td>-</td>
+                  <td>-</td>
+                </tr>
+                <tr>
+                  <td>ao5</td>
+                  <td>-</td>
+                  <td>-</td>
+                </tr>
+                <tr>
+                  <td>ao12</td>
+                  <td>-</td>
+                  <td>-</td>
+                </tr>
+                <tr>
+                  <td>ao100</td>
+                  <td>-</td>
+                  <td>-</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
-        <!-- Session info -->
-        <div id="session-info">
-          <span id="solve-count">solve: 0/0</span>
-          <span id="session-mean">mean: -</span>
+          <!-- Session info -->
+          <div id="session-info">
+            <span id="solve-count">solve: 0/0</span>
+            <span id="session-mean">mean: -</span>
+          </div>
         </div>
 
         <!-- Solves list -->
@@ -360,6 +370,20 @@
         </div>
         <div id="modal-mobile-list-panel" class="modal-mobile-list-panel" hidden>
           <div id="modal-mobile-list" class="modal-mobile-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="scramble-preview-overlay" class="modal-overlay">
+    <div class="modal-box scramble-preview-modal-box">
+      <div class="modal-header">
+        <h2>Scramble Preview</h2>
+        <button id="scramble-preview-close" class="modal-close" aria-label="Close scramble preview">✕</button>
+      </div>
+      <div class="modal-body scramble-preview-modal-body">
+        <div id="scramble-preview-modal-canvas-container">
+          <canvas id="scramble-preview-modal-canvas"></canvas>
         </div>
       </div>
     </div>

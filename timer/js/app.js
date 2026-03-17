@@ -5,7 +5,7 @@ import { settings, DEFAULTS } from './settings.js';
 import { parseRollingStatType, rollingStatAt, StatsCache } from './stats.js';
 import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate } from './utils.js';
 import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=10';
-import { initCubeDisplay, updateCubeDisplay } from './cube-display.js';
+import { applyScramble, initCubeDisplay, updateCubeDisplay } from './cube-display.js';
 import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=7';
 import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer } from './storage.js';
 
@@ -190,7 +190,7 @@ const keyboardShortcutGroups = [
         ],
     },
 ];
-const blockingOverlayIds = ['modal-overlay', 'confirm-overlay', 'prompt-overlay', 'shortcuts-overlay'];
+const blockingOverlayIds = ['modal-overlay', 'scramble-preview-overlay', 'confirm-overlay', 'prompt-overlay', 'shortcuts-overlay'];
 const transientShortcutSelectIds = ['session-select', 'mobile-session-select', 'stats-filter-select'];
 const passthroughSelectShortcutCodes = new Set([
     'Space',
@@ -212,6 +212,8 @@ const passthroughSelectShortcutCodes = new Set([
 ]);
 let settingsOverlayEl = null;
 let shortcutsOverlayEl = null;
+let scramblePreviewOverlayEl = null;
+let scramblePreviewModalCanvas = null;
 let transientSelectOutsideBlurBound = false;
 let shortcutTooltipEl = null;
 let viewportLayoutFrame = null;
@@ -246,6 +248,7 @@ const inspectionSpeechUnlockState = {
     inFlight: false,
     dismissed: false,
 };
+const cubeFaceColors = ['#FFF', '#F00', '#33CD32', '#FFFF05', '#FFA503', '#00F'];
 
 // ──── History & Back Button ────
 
@@ -285,6 +288,11 @@ function handlePopState(event) {
 
     if (settingsOverlayEl?.classList.contains('active')) {
         closeSettingsPanel({ isPopState: true });
+        return;
+    }
+
+    if (scramblePreviewOverlayEl?.classList.contains('active')) {
+        closeScramblePreviewModal({ isPopState: true });
         return;
     }
 
@@ -1040,6 +1048,81 @@ function syncMobilePanelState() {
     }
 }
 
+function isScramblePreviewModalOpen() {
+    return Boolean(scramblePreviewOverlayEl?.classList.contains('active'));
+}
+
+function updateScramblePreviewButtonFace(scramble) {
+    const icon = getEl('btn-scramble-preview')?.querySelector('.scramble-preview-face-icon');
+    if (!icon) return;
+
+    const stickers = icon.querySelectorAll('span');
+    if (stickers.length !== 9) return;
+
+    const cube = applyScramble(String(scramble ?? ''));
+    const upFace = cube?.[0];
+    if (!Array.isArray(upFace) || upFace.length !== 9) return;
+
+    upFace.forEach((faceIndex, index) => {
+        const color = cubeFaceColors[faceIndex] || '#FFF';
+        stickers[index].style.backgroundColor = color;
+    });
+}
+
+function renderScramblePreviewDisplays(scramble) {
+    const normalizedScramble = String(scramble ?? '');
+    const mainCanvas = getEl('cube-canvas');
+    if (mainCanvas) updateCubeDisplay(mainCanvas, normalizedScramble);
+    if (scramblePreviewModalCanvas) updateCubeDisplay(scramblePreviewModalCanvas, normalizedScramble);
+    updateScramblePreviewButtonFace(normalizedScramble);
+}
+
+function openScramblePreviewModal() {
+    if (!scramblePreviewOverlayEl || isScramblePreviewModalOpen()) return;
+    pushHistoryState();
+    scramblePreviewOverlayEl.classList.add('active');
+    renderScramblePreviewDisplays(currentScramble);
+}
+
+function closeScramblePreviewModal({ isPopState = false } = {}) {
+    if (!scramblePreviewOverlayEl || !isScramblePreviewModalOpen()) return;
+    if (!isPopState) backToDismiss();
+    scramblePreviewOverlayEl.classList.remove('active');
+}
+
+function initScramblePreviewModal() {
+    scramblePreviewOverlayEl = getEl('scramble-preview-overlay');
+    scramblePreviewModalCanvas = getEl('scramble-preview-modal-canvas');
+
+    if (!scramblePreviewOverlayEl || !scramblePreviewModalCanvas) return;
+
+    initCubeDisplay(scramblePreviewModalCanvas);
+
+    const openBtn = getEl('btn-scramble-preview');
+    const closeBtn = getEl('scramble-preview-close');
+
+    openBtn?.addEventListener('click', () => {
+        openScramblePreviewModal();
+        openBtn.blur();
+    });
+
+    closeBtn?.addEventListener('click', () => {
+        closeScramblePreviewModal();
+    });
+
+    scramblePreviewOverlayEl.addEventListener('click', (event) => {
+        if (event.target === scramblePreviewOverlayEl) closeScramblePreviewModal();
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.code !== 'Escape') return;
+        if (!isScramblePreviewModalOpen()) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        closeScramblePreviewModal();
+    });
+}
+
 // ──── Bootstrap ────
 async function init() {
     initInspectionSpeechUnlockState();
@@ -1057,6 +1140,7 @@ async function init() {
         ],
     );
     initCubeDisplay(document.getElementById('cube-canvas'));
+    initScramblePreviewModal();
     initGraph(document.getElementById('graph-canvas'));
 
     // Load first scramble
@@ -1545,7 +1629,7 @@ function updateScrambleUI(scrambleStr) {
     currentScramble = scrambleStr;
     el.textContent = currentScramble;
     el.classList.remove('loading');
-    updateCubeDisplay(document.getElementById('cube-canvas'), currentScramble);
+    renderScramblePreviewDisplays(currentScramble);
 
     // Update nav button states
     document.getElementById('btn-prev-scramble').disabled = !hasPrevScramble();
@@ -1578,6 +1662,7 @@ function initScrambleControls() {
     textEl.addEventListener('click', () => {
         if (textEl.classList.contains('loading')) return;
         if (mobileViewportQuery.matches) {
+            clearNewBestAlert();
             containerEl.classList.toggle('scramble-actions-visible');
         } else {
             copyCurrentScramble();
@@ -1609,7 +1694,7 @@ function initScrambleControls() {
             updateScrambleUI(val);
         } else {
             // Restore visualizer if it was changed during input
-            updateCubeDisplay(document.getElementById('cube-canvas'), currentScramble);
+            renderScramblePreviewDisplays(currentScramble);
         }
     }
 
@@ -1653,7 +1738,7 @@ function initScrambleControls() {
 
         // Update the input value and the cube display
         e.target.value = val;
-        updateCubeDisplay(document.getElementById('cube-canvas'), val);
+        renderScramblePreviewDisplays(val);
     });
 
     // 3. Navigation
@@ -2188,6 +2273,7 @@ function initKeyboardShortcuts() {
             }
 
             if (document.getElementById('modal-overlay').classList.contains('active') ||
+                document.getElementById('scramble-preview-overlay').classList.contains('active') ||
                 document.getElementById('confirm-overlay').classList.contains('active') ||
                 document.getElementById('prompt-overlay').classList.contains('active')) return;
 
@@ -2257,7 +2343,8 @@ function initKeyboardShortcuts() {
         // Ignore if Ctrl or Cmd is pressed (e.g. browser zoom Ctrl+/-)
         if (e.ctrlKey || e.metaKey) return;
 
-        const isSolveModalActive = document.getElementById('modal-overlay').classList.contains('active');
+        const isSolveModalActive = document.getElementById('modal-overlay').classList.contains('active')
+            || document.getElementById('scramble-preview-overlay').classList.contains('active');
 
         if (isManualTimeInputFocused() && (e.code === 'Period' || e.code === 'Comma')) return;
 
@@ -3322,7 +3409,7 @@ function onSessionChanged() {
     // Reload scramble display
     const scramble = getCurrentScramble();
     if (scramble) {
-        updateCubeDisplay(document.getElementById('cube-canvas'), scramble);
+        renderScramblePreviewDisplays(scramble);
     }
 }
 
