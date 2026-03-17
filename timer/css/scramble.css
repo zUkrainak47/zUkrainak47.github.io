@@ -372,6 +372,10 @@
         gap: 10px;
     }
 
+    body[data-mobile-panel="timer"] #scramble-bar {
+        padding-inline: 7vw;
+    }
+
     #scramble-top-row {
         min-height: 48px;
         gap: 12px;
@@ -426,8 +430,19 @@
     }
 }
 
+@media (max-width: 950px) and (orientation: landscape) {
+    #scramble-text {
+        font-size: clamp(1.1rem, 4.5vw, 1.2rem);
+    }
+}
+
+@media (max-width: 850px) and (orientation: landscape) {
+    #scramble-text {
+        font-size: clamp(1rem, 3.8vw, 1.05rem);
+    }
+}
 @media (max-width: 762px) and (orientation: landscape) {
     #scramble-text {
-        font-size: clamp(0.92rem, 3.6vw, 1rem);
+        font-size: clamp(0.75rem, 2.7vw, 0.8rem);
     }
 }
