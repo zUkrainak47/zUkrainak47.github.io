@@ -540,18 +540,6 @@
             </label>
           </div>
 
-          <div class="setting-row" id="setting-pill-size-row">
-            <div class="setting-label">
-              ao5 / ao12 below timer
-            </div>
-            <select id="setting-pill-size">
-              <option value="hidden">Hidden</option>
-              <option value="small">Small</option>
-              <option value="medium">Medium</option>
-              <option value="large">Large</option>
-            </select>
-          </div>
-
           <div class="setting-row">
             <div class="setting-label">
               Display font
@@ -563,13 +551,6 @@
               <option value="roboto-mono">Roboto Mono</option>
               <option value="monospace">Monospace</option>
             </select>
-          </div>
-
-          <div class="setting-row">
-            <div class="setting-label" style="flex:1">New best color</div>
-            <input type="color" id="setting-new-best-color">
-            <button id="btn-reset-best-color" class="btn-icon-small" title="Reset color"
-              style="margin-left:8px">⟲</button>
           </div>
 
           <div class="setting-row">
@@ -614,6 +595,20 @@
 
         <div class="setting-group">
           <h3>Stats</h3>
+
+          <div class="setting-row" id="setting-pill-size-row">
+            <div class="setting-label">
+              Summary below timer
+              <!-- <small>ao5 / ao12 pills</small> -->
+            </div>
+            <select id="setting-pill-size">
+              <option value="hidden">Hidden</option>
+              <option value="small">Small</option>
+              <option value="medium">Medium</option>
+              <option value="large">Large</option>
+            </select>
+          </div>
+
           <div class="setting-row">
             <div class="setting-label">
               Summary rows
@@ -634,6 +629,14 @@
             <textarea id="setting-summary-stats-custom" autocomplete="off" spellcheck="false" maxlength="200"
               placeholder="mo3 ao5 ao12 ao50" rows="1"></textarea>
           </div>
+
+          <div class="setting-row">
+            <div class="setting-label" style="flex:1">New best color</div>
+            <input type="color" id="setting-new-best-color">
+            <button id="btn-reset-best-color" class="btn-icon-small" title="Reset color"
+              style="margin-left:4px">⟲</button>
+          </div>
+
         </div>
 
         <div class="setting-group">
@@ -652,7 +655,7 @@
             <div class="setting-label" style="flex:1">Time line</div>
             <input type="color" id="setting-graph-time-color">
             <button id="btn-reset-time-color" class="btn-icon-small" title="Reset color"
-              style="margin-left:8px">⟲</button>
+              style="margin-left:4px">⟲</button>
           </div>
           <div class="setting-row">
             <div class="setting-label" style="flex:1">
