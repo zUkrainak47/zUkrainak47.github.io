@@ -148,6 +148,16 @@ body.mobile-viewport #setting-hide-ui-row {
     gap: var(--space-xs);
 }
 
+.setting-color-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+}
+
+.setting-color-controls input[type="color"] {
+    margin: 0;
+}
+
 .setting-graph-line-stat {
     width: 72px;
     padding: 6px 8px;
@@ -413,9 +423,17 @@ body.mobile-viewport #setting-hide-ui-row {
         align-items: flex-start;
     }
 
+    .setting-row.setting-row-color-only {
+        align-items: center;
+    }
+
     .setting-row select,
     .setting-row input[type="color"] {
         flex-shrink: 0;
+    }
+
+    .setting-row.setting-row-color-only .setting-color-controls {
+        margin-left: auto;
     }
 
     .settings-actions {

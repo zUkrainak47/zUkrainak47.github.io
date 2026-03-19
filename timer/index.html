@@ -353,7 +353,7 @@
             <span class="modal-option-icon modal-option-icon-on modal-option-icon-calendar" aria-hidden="true"></span>
           </button>
           <button id="modal-option-include-absolute-index" class="btn-action modal-option-btn" type="button"
-            title="absolute index" aria-label="absolute index">
+            title="Include absolute index" aria-label="Include absolute index">
             <span class="modal-option-icon modal-option-icon-off modal-option-icon-hashtag" aria-hidden="true"></span>
             <span class="modal-option-icon modal-option-icon-on modal-option-icon-hashtag-full" aria-hidden="true"></span>
           </button>
@@ -585,7 +585,7 @@
           <div class="setting-row" id="setting-swipe-down-gesture-row">
             <div class="setting-label">
               Swipe down to open quick actions
-              <small>Allow opening quick actions with a downward swipe in Timer tab</small>
+              <small>Allow downward swipe in Timer tab</small>
             </div>
             <label class="toggle">
               <input type="checkbox" id="setting-swipe-down-gesture">
@@ -643,11 +643,12 @@
               placeholder="mo3 ao5 ao12 ao50" rows="1"></textarea>
           </div>
 
-          <div class="setting-row">
+          <div class="setting-row setting-row-color-only">
             <div class="setting-label" style="flex:1">New best color</div>
-            <input type="color" id="setting-new-best-color">
-            <button id="btn-reset-best-color" class="btn-icon-small" title="Reset color"
-              style="margin-left:4px">⟲</button>
+            <div class="setting-color-controls">
+              <input type="color" id="setting-new-best-color">
+              <button id="btn-reset-best-color" class="btn-icon-small" title="Reset color">⟲</button>
+            </div>
           </div>
 
         </div>
@@ -656,19 +657,20 @@
           <h3>Graph</h3>
           <div class="setting-row">
             <div class="setting-label">
-              Tooltip solve date
-              <small>Show solve date at the bottom of graph node tooltip</small>
+              Show solve date
+              <small>When hovering over graph</small>
             </div>
             <label class="toggle">
               <input type="checkbox" id="setting-graph-tooltip-date">
               <span class="toggle-slider"></span>
             </label>
           </div>
-          <div class="setting-row">
+          <div class="setting-row setting-row-color-only">
             <div class="setting-label" style="flex:1">Time line</div>
-            <input type="color" id="setting-graph-time-color">
-            <button id="btn-reset-time-color" class="btn-icon-small" title="Reset color"
-              style="margin-left:4px">⟲</button>
+            <div class="setting-color-controls">
+              <input type="color" id="setting-graph-time-color">
+              <button id="btn-reset-time-color" class="btn-icon-small" title="Reset color">⟲</button>
+            </div>
           </div>
           <div class="setting-row">
             <div class="setting-label" style="flex:1">
