@@ -24,6 +24,11 @@ body {
 
 @media (hover: none) and (pointer: coarse) {
 
+    html,
+    body {
+        touch-action: manipulation;
+    }
+
     body,
     body * {
         user-select: none !important;
@@ -39,6 +44,21 @@ body {
         user-select: text !important;
         -webkit-user-select: text !important;
         -webkit-touch-callout: default;
+    }
+
+    input:not([type]),
+    input[type="text"],
+    input[type="search"],
+    input[type="email"],
+    input[type="url"],
+    input[type="tel"],
+    input[type="password"],
+    input[type="number"],
+    textarea,
+    [contenteditable],
+    [contenteditable="true"],
+    [contenteditable="plaintext-only"] {
+        font-size: 16px !important;
     }
 }
 
