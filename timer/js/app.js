@@ -12,6 +12,7 @@ import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer } f
 let currentScramble = '';
 let currentSortCol = null;
 let currentSortDir = null; // 'asc' or 'desc'
+let commentsOnlyFilterActive = false;
 const statsCache = new StatsCache();
 let _skipSolveAddedRefresh = false; // set true when commitSolve manages the refresh itself
 
@@ -1836,12 +1837,7 @@ function initTableSorting() {
             const col = th.dataset.sort;
 
             if (col === 'comments') {
-                if (currentSortCol === 'comments') {
-                    currentSortCol = null;
-                } else {
-                    currentSortCol = 'comments';
-                }
-                currentSortDir = null;
+                commentsOnlyFilterActive = !commentsOnlyFilterActive;
             } else {
                 if (currentSortCol === col) {
                     if (currentSortDir === 'asc') {
@@ -3288,25 +3284,23 @@ function renderSolvesTable(solves, stats) {
     document.querySelectorAll('#solves-table th[data-sort]').forEach(th => {
         const col = th.dataset.sort;
         let text = col === 'comments' ? '#' : col;
-        if (col === currentSortCol) {
-            if (col === 'comments') {
-                text += '\u2009*';
-            } else {
-                text += currentSortDir === 'asc' ? ' ▴' : ' ▾';
-            }
+        if (col === 'comments' && commentsOnlyFilterActive) {
+            text += '\u2009*';
+        } else if (col === currentSortCol) {
+            text += currentSortDir === 'asc' ? ' ▴' : ' ▾';
         }
         th.textContent = text;
     });
 
     // Build sorted index order
     let indices = [];
-    if (currentSortCol === 'comments') {
+    if (commentsOnlyFilterActive) {
         indices = solves.map((_, i) => i).filter(i => solves[i].comment && solves[i].comment.trim() !== '');
     } else {
         indices = solves.map((_, i) => i);
     }
 
-    if (currentSortCol && currentSortCol !== 'comments') {
+    if (currentSortCol) {
         indices.sort((a, b) => {
             let valA, valB;
             if (currentSortCol === 'time') {
