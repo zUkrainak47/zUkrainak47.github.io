@@ -222,6 +222,16 @@
     mask-image: url('../resources/calendar-date.svg');
 }
 
+.modal-option-icon-hashtag {
+    -webkit-mask-image: url('../resources/hashtag.svg');
+    mask-image: url('../resources/hashtag.svg');
+}
+
+.modal-option-icon-hashtag-full {
+    -webkit-mask-image: url('../resources/hashtag-full.svg');
+    mask-image: url('../resources/hashtag-full.svg');
+}
+
 .modal-option-icon-on {
     display: none;
 }
