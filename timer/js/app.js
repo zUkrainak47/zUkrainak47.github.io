@@ -1,7 +1,7 @@
 import { timer } from './timer.js?v=5';
-import { getScramble, getCurrentScramble, getPrevScramble, getNextScramble, setCurrentScramble, isCurrentScrambleManual, hasPrevScramble } from './scramble.js';
+import { getScramble, getCurrentScramble, getPrevScramble, getNextScramble, setCurrentScramble, isCurrentScrambleManual, hasPrevScramble } from './scramble.js?v=2';
 import { sessionManager } from './session.js';
-import { settings, DEFAULTS } from './settings.js';
+import { settings, DEFAULTS } from './settings.js?v=2';
 import { parseRollingStatType, rollingStatAt, StatsCache } from './stats.js';
 import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate } from './utils.js';
 import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=10';
@@ -1684,12 +1684,21 @@ function initZenMode() {
 // ──── Scramble ────
 async function loadNewScramble() {
     const el = document.getElementById('scramble-text');
-    el.textContent = 'Generating...';
-    el.classList.add('loading');
+    let loadingTimer = window.setTimeout(() => {
+        el.textContent = 'Generating...';
+        el.classList.add('loading');
+    }, 120);
 
-    currentScramble = await getScramble();
-
-    updateScrambleUI(currentScramble);
+    try {
+        currentScramble = await getScramble();
+        updateScrambleUI(currentScramble);
+    } catch (error) {
+        console.error('Failed to load scramble:', error);
+        el.textContent = 'Scrambler unavailable';
+        el.classList.remove('loading');
+    } finally {
+        window.clearTimeout(loadingTimer);
+    }
 }
 
 function updateScrambleUI(scrambleStr) {
@@ -1816,10 +1825,21 @@ function initScrambleControls() {
     });
 
     nextBtn.addEventListener('click', async () => {
-        textEl.textContent = 'Generating...';
-        textEl.classList.add('loading');
-        const s = await getNextScramble();
-        updateScrambleUI(s);
+        let loadingTimer = window.setTimeout(() => {
+            textEl.textContent = 'Generating...';
+            textEl.classList.add('loading');
+        }, 120);
+
+        try {
+            const s = await getNextScramble();
+            updateScrambleUI(s);
+        } catch (error) {
+            console.error('Failed to load next scramble:', error);
+            textEl.textContent = 'Scrambler unavailable';
+            textEl.classList.remove('loading');
+        } finally {
+            window.clearTimeout(loadingTimer);
+        }
     });
 
     document.addEventListener('pointerdown', (event) => {

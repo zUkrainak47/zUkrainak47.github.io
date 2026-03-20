@@ -1,28 +1,91 @@
+import { load, save } from './storage.js';
+
 let randomScrambleForEvent;
+let _initPromise = null;
+let _queueFillPromise = null;
+
+const SCRAMBLE_QUEUE_STORAGE_KEY = 'scrambleQueue333';
+const SCRAMBLE_QUEUE_TARGET = 6;
+const SCRAMBLE_QUEUE_MAX = 12;
+
+let _scrambleQueue = sanitizeScrambleQueue(load(SCRAMBLE_QUEUE_STORAGE_KEY, []));
+
+function sanitizeScrambleQueue(value) {
+    if (!Array.isArray(value)) return [];
+    return value
+        .filter((entry) => typeof entry === 'string' && entry.trim())
+        .slice(0, SCRAMBLE_QUEUE_MAX);
+}
+
+function persistScrambleQueue() {
+    save(SCRAMBLE_QUEUE_STORAGE_KEY, _scrambleQueue.slice(0, SCRAMBLE_QUEUE_MAX));
+}
 
 /**
  * Initialize scramble module by loading cubing.js.
  */
 async function init() {
-    try {
-        const module = await import('https://cdn.cubing.net/v0/js/cubing/scramble');
-        randomScrambleForEvent = module.randomScrambleForEvent;
-        // Pre-fetch first scramble
-        prefetch();
-    } catch (e) {
-        console.error('Failed to load cubing.js scramble module:', e);
-    }
+    if (randomScrambleForEvent) return randomScrambleForEvent;
+    if (_initPromise) return _initPromise;
+
+    _initPromise = (async () => {
+        try {
+            const module = await import('https://cdn.cubing.net/v0/js/cubing/scramble');
+            randomScrambleForEvent = module.randomScrambleForEvent;
+            scheduleQueueFill();
+            return randomScrambleForEvent;
+        } catch (e) {
+            console.error('Failed to load cubing.js scramble module:', e);
+            throw e;
+        } finally {
+            if (!randomScrambleForEvent) {
+                _initPromise = null;
+            }
+        }
+    })();
+
+    return _initPromise;
 }
 
+async function createScramble() {
+    if (!randomScrambleForEvent) {
+        await init();
+    }
+    return randomScrambleForEvent('333').then((alg) => alg.toString());
+}
 
-let _nextScramble = null;
+function takeQueuedScramble() {
+    if (_scrambleQueue.length === 0) return null;
+    // Persist removal before returning so a page refresh advances to the next cached scramble.
+    const scramble = _scrambleQueue.shift();
+    persistScrambleQueue();
+    scheduleQueueFill();
+    return scramble;
+}
 
-/**
- * Pre-fetch the next scramble in background.
- */
-function prefetch() {
-    if (!randomScrambleForEvent) return;
-    _nextScramble = randomScrambleForEvent('333').then(alg => alg.toString());
+async function fillScrambleQueue() {
+    if (_queueFillPromise) return _queueFillPromise;
+
+    _queueFillPromise = (async () => {
+        try {
+            await init();
+            while (_scrambleQueue.length < SCRAMBLE_QUEUE_TARGET) {
+                _scrambleQueue.push(await createScramble());
+                persistScrambleQueue();
+            }
+        } catch (e) {
+            console.error('Failed to prefill scramble queue:', e);
+        } finally {
+            _queueFillPromise = null;
+        }
+    })();
+
+    return _queueFillPromise;
+}
+
+function scheduleQueueFill() {
+    if (_scrambleQueue.length >= SCRAMBLE_QUEUE_TARGET || _queueFillPromise) return;
+    fillScrambleQueue();
 }
 
 /**
@@ -30,17 +93,13 @@ function prefetch() {
  * @returns {Promise<string>}
  */
 async function generateNextScramble() {
-    if (!randomScrambleForEvent) {
-        await init();
+    const cachedScramble = takeQueuedScramble();
+    if (cachedScramble) {
+        return cachedScramble;
     }
-    let scramble;
-    if (_nextScramble) {
-        scramble = await _nextScramble;
-        _nextScramble = null;
-    } else {
-        scramble = await randomScrambleForEvent('333').then(alg => alg.toString());
-    }
-    prefetch();
+
+    const scramble = await createScramble();
+    scheduleQueueFill();
     return scramble;
 }
 
@@ -134,4 +193,4 @@ export function isCurrentScrambleManual() {
 }
 
 // Start init immediately
-init();
+scheduleQueueFill();

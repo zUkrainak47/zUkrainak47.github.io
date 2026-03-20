@@ -44,7 +44,7 @@ export { DEFAULTS };
 
 const DISPLAY_FONT_STACKS = {
     arial: "Arial, 'Helvetica Neue', Helvetica, sans-serif",
-    'jetbrains-mono': "'JetBrains Mono', 'Fira Code', 'Consolas', monospace",
+    'jetbrains-mono': "'JetBrains Mono', 'Consolas', monospace",
     'roboto-mono': "'Roboto Mono', 'JetBrains Mono', 'Consolas', monospace",
     monospace: "monospace",
 };
