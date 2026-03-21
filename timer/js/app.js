@@ -127,7 +127,7 @@ const keyboardShortcutGroups = [
             {
                 action: 'Add or remove DNF',
                 // detail: 'Affects the last solve or selected solve',
-                bindings: [['D'], ['-']],
+                bindings: [['-']],
             },
             {
                 action: 'Open single details',
@@ -144,6 +144,14 @@ const keyboardShortcutGroups = [
         title: 'Scramble and layout',
         items: [
             {
+                action: 'Toggle zen mode',
+                bindings: [['Z']],
+            },
+    {
+                action: 'Toggle delta display',
+                bindings: [['D']],
+            },
+            {
                 action: 'Copy current scramble',
                 bindings: [['C']],
             },
@@ -154,10 +162,6 @@ const keyboardShortcutGroups = [
             {
                 action: 'Next scramble',
                 bindings: [['.']],
-            },
-            {
-                action: 'Toggle zen mode',
-                bindings: [['Z']],
             },
             {
                 action: 'Toggle scramble preview',
@@ -2455,6 +2459,14 @@ function canOpenSettingsPanel() {
     return state === 'idle' || state === 'stopped';
 }
 
+function toggleDeltaDisplayShortcut() {
+    const nextShowDelta = !settings.get('showDelta');
+    settings.set('showDelta', nextShowDelta);
+
+    const deltaToggle = document.getElementById('setting-show-delta');
+    if (deltaToggle) deltaToggle.checked = nextShowDelta;
+}
+
 function isShortcutsOverlayOpen() {
     return shortcutsOverlayEl?.classList.contains('active');
 }
@@ -2589,7 +2601,7 @@ function initKeyboardShortcuts() {
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
             const isManualTimeInput = e.target.id === 'manual-time-hidden-input';
             const isModalTextarea = e.target.id === 'modal-textarea';
-            const isShortcutKey = ['Equal', 'NumpadAdd', 'Minus', 'NumpadSubtract', 'KeyD', 'Backspace', 'Delete'].includes(e.code);
+            const isShortcutKey = ['Equal', 'NumpadAdd', 'Minus', 'NumpadSubtract', 'Backspace', 'Delete'].includes(e.code);
             const isShiftStatShortcut = Boolean(getShiftStatShortcutType(e));
             const isSlashInSettings = slashShortcutPressed && settingsOverlayEl?.classList.contains('active');
             const isGraphShortcut = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Enter'].includes(e.code);
@@ -2718,6 +2730,11 @@ function initKeyboardShortcuts() {
                     }
                 }
                 break;
+            case 'KeyD':
+                if (isSolveModalActive) return;
+                e.preventDefault();
+                toggleDeltaDisplayShortcut();
+                break;
             case 'Equal':
             case 'NumpadAdd':
                 if (isSolveModalActive) {
@@ -2727,7 +2744,6 @@ function initKeyboardShortcuts() {
                     toggleLastSolvePenaltyFromMainTimerShortcut('+2');
                 }
                 break;
-            case 'KeyD':
             case 'Minus':
             case 'NumpadSubtract':
                 if (isSolveModalActive) {
