@@ -258,7 +258,7 @@ body.manual-time-input-focused #manual-time-entry .manual-time-caret {
     min-height: 48px;
     padding: 0 18px;
     border-radius: 18px;
-    background: rgba(56, 139, 253, 0.14);
+    background: #122238;
     border-color: rgba(56, 139, 253, 0.24);
     color: rgba(121, 192, 255, 0.72);
     font-size: var(--text-lg);
