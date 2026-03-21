@@ -367,6 +367,10 @@
 
 @media (max-width: 1100px) and (orientation: landscape) and (max-height: 750px),
 (pointer: coarse) and (orientation: landscape) and (max-height: 750px) {
+    body.mobile-viewport[data-mobile-panel="trend"] #graph-panel>.panel-header {
+        display: none;
+    }
+
     body.mobile-viewport[data-mobile-panel="trend"] #right-panel {
         height: 100%;
         min-height: 0;
@@ -422,6 +426,10 @@
     body.mobile-viewport[data-mobile-panel="trend"] .graph-controls-primary>button[data-action="last25"],
     body.mobile-viewport[data-mobile-panel="trend"] .graph-controls-primary>button[data-action="reset"] {
         grid-column: span 1;
+    }
+
+    body.mobile-viewport[data-mobile-panel="trend"] .graph-controls-primary.graph-controls-primary-single-action>button[data-action="reset"] {
+        grid-column: 1 / -1;
     }
 
     body.mobile-viewport[data-mobile-panel="trend"] .graph-controls-secondary {
