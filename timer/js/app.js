@@ -1004,15 +1004,18 @@ function syncViewportLayout() {
         const duetRect = combineLayoutRects(timerRect, quickActionsRect);
         const zenCenterY = zenRect ? zenRect.top + zenRect.height / 2 : 0;
         const freeBottom = rightRect?.top ?? window.innerHeight;
+        const preservedScrambleCenterY = scrambleRect
+            ? ((3 * zenCenterY) + (freeBottom - 12)) / 4
+            : zenCenterY;
         if (isZen) {
+            if (mobileLandscapeQuery.matches) {
+                targetScrambleCenterY = preservedScrambleCenterY;
+            }
             if (shouldPositionIdleMobileTimer) {
                 targetTimerCenterX = window.innerWidth / 2;
                 targetTimerCenterY = window.innerHeight / 2;
             }
         } else {
-            const preservedScrambleCenterY = scrambleRect
-                ? ((3 * zenCenterY) + (freeBottom - 12)) / 4
-                : zenCenterY;
             targetScrambleCenterY = preservedScrambleCenterY;
             if (shouldPositionIdleMobileTimer) {
                 const scrambleBottom = scrambleRect
