@@ -32,7 +32,7 @@
   <link rel="stylesheet" href="css/base.css?v=12">
   <link rel="stylesheet" href="css/layout.css?v=13">
   <link rel="stylesheet" href="css/scramble.css?v=21">
-  <link rel="stylesheet" href="css/timer.css?v=25">
+  <link rel="stylesheet" href="css/timer.css?v=29">
   <link rel="stylesheet" href="css/stats.css?v=18">
   <link rel="stylesheet" href="css/cube.css?v=3">
   <link rel="stylesheet" href="css/graph.css?v=7">
@@ -267,10 +267,22 @@
             <button id="timer-action-dnf" class="timer-action-btn timer-action-danger timer-action-text"
               type="button">DNF</button>
             <button id="timer-action-delete" class="timer-action-btn timer-action-danger timer-action-icon"
-              type="button" aria-label="Delete last solve">✕</button>
+              type="button" aria-label="Delete last solve">
+              <svg class="timer-action-icon-svg" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                <path d="M19.78 6.34L17.66 4.22L12 9.88L6.34 4.22L4.22 6.34L9.88 12L4.22 17.66L6.34 19.78L12 14.12L17.66 19.78L19.78 17.66L14.12 12L19.78 6.34Z"></path>
+              </svg>
+            </button>
             <span class="timer-action-divider" aria-hidden="true"></span>
+            <button id="timer-action-comment" class="timer-action-btn timer-action-comment" type="button"
+              aria-label="Comment on last solve" title="Comment on last solve">
+              <span class="timer-action-svg timer-action-svg-comment" aria-hidden="true"></span>
+            </button>
             <button id="timer-action-add" class="timer-action-btn timer-action-add timer-action-icon" type="button"
-              aria-label="Add time manually">+</button>
+              aria-label="Add time manually">
+              <svg class="timer-action-icon-svg" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                <path d="M20 13.5H13.5V20H10.5V13.5H4V10.5H10.5V4H13.5V10.5H20V13.5Z"></path>
+              </svg>
+            </button>
           </div>
         </div>
         <div id="inspection-cancel-wrap" hidden>
@@ -805,7 +817,7 @@
   </div>
 
   <!-- App Script -->
-  <script type="module" src="js/app.js?v=43"></script>
+  <script type="module" src="js/app.js?v=44"></script>
 </body>
 
 </html>

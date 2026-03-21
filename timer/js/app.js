@@ -537,6 +537,16 @@ function getLastSessionSolve() {
     return session.solves[session.solves.length - 1];
 }
 
+function promptForSolveComment(solve, title = 'Comment on last solve') {
+    if (!solve) return Promise.resolve();
+
+    return customPrompt('', solve.comment || '', 1000, title, 'Type a comment and press Enter...').then(comment => {
+        if (comment !== null && comment !== (solve.comment || '')) {
+            sessionManager.setSolveComment(solve.id, comment);
+        }
+    });
+}
+
 function toggleLastSolvePenaltyFromMainTimerShortcut(penalty) {
     const session = sessionManager.getActiveSession();
     if (!session || session.solves.length === 0) return;
@@ -650,6 +660,7 @@ function updateQuickActionButtons() {
     const plus2Btn = getEl('timer-action-plus2');
     const dnfBtn = getEl('timer-action-dnf');
     const deleteBtn = getEl('timer-action-delete');
+    const commentBtn = getEl('timer-action-comment');
     const addBtn = getEl('timer-action-add');
 
     if (plus2Btn) {
@@ -665,6 +676,11 @@ function updateQuickActionButtons() {
     if (deleteBtn) {
         deleteBtn.disabled = !lastSolve;
         deleteBtn.classList.remove('is-active');
+    }
+
+    if (commentBtn) {
+        commentBtn.disabled = !lastSolve;
+        commentBtn.classList.toggle('is-active', Boolean(lastSolve?.comment?.trim()));
     }
 
     if (addBtn) {
@@ -1440,6 +1456,7 @@ function initTimerQuickActions() {
     const plus2Btn = getEl('timer-action-plus2');
     const dnfBtn = getEl('timer-action-dnf');
     const deleteBtn = getEl('timer-action-delete');
+    const commentBtn = getEl('timer-action-comment');
     const addBtn = getEl('timer-action-add');
 
     if (!centerPanel || !manualEntryEl || !hiddenInput) return;
@@ -1465,6 +1482,10 @@ function initTimerQuickActions() {
         if (!confirmed) return;
         sessionManager.deleteSolve(lastSolve.id);
         updateQuickActionButtons();
+    });
+
+    commentBtn?.addEventListener('click', () => {
+        promptForSolveComment(getLastSessionSolve());
     });
 
     addBtn?.addEventListener('click', () => {
@@ -2706,11 +2727,7 @@ function initKeyboardShortcuts() {
                 const lastSolve = getMostRecentSummarySolve();
                 if (!lastSolve) break;
 
-                customPrompt('', lastSolve.comment || '', 1000, 'Comment on last solve', 'Type a comment and press Enter...').then(comment => {
-                    if (comment !== null && comment !== (lastSolve.comment || '')) {
-                        sessionManager.setSolveComment(lastSolve.id, comment);
-                    }
-                });
+                promptForSolveComment(lastSolve);
                 break;
             case 'KeyC':
                 document.getElementById('scramble-text').click();

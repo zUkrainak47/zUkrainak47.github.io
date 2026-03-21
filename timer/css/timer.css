@@ -272,7 +272,7 @@ body.manual-time-input-focused #manual-time-entry .manual-time-caret {
 }
 
 #manual-time-submit.btn-action:disabled {
-    background: rgba(255, 255, 255, 0.04);
+    background: #151A20;
     border-color: rgba(255, 255, 255, 0.06);
     color: rgba(230, 237, 243, 0.3);
 }
@@ -431,14 +431,50 @@ body.mobile-viewport[data-mobile-panel="timer"] #timer-display-wrapper:has(#new-
     background: rgba(56, 139, 253, 0.16);
 }
 
+.timer-action-comment {
+    color: rgba(63, 185, 80, 0.56);
+}
+
+.timer-action-comment.is-active,
+.timer-action-comment:not(:disabled):active {
+    color: #3fb950;
+    background: rgba(63, 185, 80, 0.16);
+}
+
 .timer-action-text {
     font-size: 1rem;
     letter-spacing: 0.02em;
 }
 
 .timer-action-icon {
-    font-size: 1.75rem;
-    line-height: 1;
+    padding: 0;
+}
+
+.timer-action-svg {
+    width: 22px;
+    height: 22px;
+    display: block;
+    background-color: currentColor;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    -webkit-mask-size: contain;
+    mask-repeat: no-repeat;
+    mask-position: center;
+    mask-size: contain;
+}
+
+.timer-action-svg-comment {
+    -webkit-mask-image: url('../resources/comment.svg');
+    mask-image: url('../resources/comment.svg');
+}
+
+.timer-action-icon-svg {
+    width: 22px;
+    height: 22px;
+    display: block;
+    fill: currentColor;
+    stroke: none;
+    overflow: visible;
 }
 
 .timer-action-divider {
