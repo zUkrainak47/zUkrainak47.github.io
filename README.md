@@ -8,14 +8,16 @@ I hope this is helpful to some. Good luck on your pulls! :) -->
 I like clean UI so decided to remake [csTimer](https://cstimer.net/) in a more modern way, feedback appreciated! Mobile version inspired by [CubeTime](https://cubetime.app/).
 
 
-### Desktop version
-Supports lots of nice keyboard shortcuts, `Ctrl` + `/` to view them inside the timer
-![desktop timer](<desktop-timer.png>)
+## Desktop version
+### Supports lots of nice keyboard shortcuts, `Ctrl` + `/` to view them inside the timer
+![desktop timer](resources/desktop-timer.png)
 
-### Mobile version
-Swipe down for quick actions
-![mobile landscape](mobile-landscape-timer.png)
-![mobile portrait](mobile-portrait-timer.png)
+## Mobile version
+### Swipe down for quick actions
+
+<img src="resources/mobile-portrait-timer.png" width="200">
+
+![mobile landscape](resources/mobile-landscape-timer.png)
 
 <!-- While idle:
 - `=`/`+` = toggle +2
