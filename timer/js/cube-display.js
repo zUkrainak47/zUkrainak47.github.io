@@ -21,6 +21,25 @@ function createSolvedCube() {
     return cube;
 }
 
+function rotateFace180(face) {
+    return [...face].reverse();
+}
+
+function orientCubeForDisplay(cube, orientation = 'standard') {
+    if (orientation !== 'yellow-top') {
+        return cube.map((face) => [...face]);
+    }
+
+    return [
+        rotateFace180(cube[D]),
+        rotateFace180(cube[L]),
+        rotateFace180(cube[F]),
+        rotateFace180(cube[U]),
+        rotateFace180(cube[R]),
+        rotateFace180(cube[B]),
+    ];
+}
+
 /**
  * Rotate a face 90° clockwise (in-place).
  */
@@ -89,9 +108,9 @@ function applyMove(cube, move) {
 /**
  * Parse a scramble string and apply to a solved cube.
  */
-export function applyScramble(scramble) {
+export function applyScramble(scramble, orientation = 'standard') {
     const cube = createSolvedCube();
-    if (!scramble) return cube;
+    if (!scramble) return orientCubeForDisplay(cube, orientation);
 
     const moves = scramble.trim().split(/\s+/);
     for (const token of moves) {
@@ -106,7 +125,7 @@ export function applyScramble(scramble) {
             applyMove(cube, base);
         }
     }
-    return cube;
+    return orientCubeForDisplay(cube, orientation);
 }
 
 /**
@@ -208,8 +227,8 @@ export function initCubeDisplay(canvas) {
     return observer;
 }
 
-export function updateCubeDisplay(canvas, scramble) {
-    _lastCube = applyScramble(scramble);
+export function updateCubeDisplay(canvas, scramble, orientation = 'standard') {
+    _lastCube = applyScramble(scramble, orientation);
     const ctx = canvas.getContext('2d');
     ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
     drawCube(canvas, _lastCube);

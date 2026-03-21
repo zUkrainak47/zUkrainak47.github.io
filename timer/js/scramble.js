@@ -1,137 +1,437 @@
 import { load, save } from './storage.js';
 
 let randomScrambleForEvent;
-let _initPromise = null;
-let _queueFillPromise = null;
+let _cubingInitPromise = null;
+let _scrambowCtor = null;
+let _scrambowInitPromise = null;
+const _queueFillPromises = new Map();
+const _bootstrapQueueFillScheduled = new Set();
+const _queueFillScheduled = new Set();
 
-const SCRAMBLE_QUEUE_STORAGE_KEY = 'scrambleQueue333';
+const LEGACY_SCRAMBLE_QUEUE_STORAGE_KEY = 'scrambleQueue333';
+const SCRAMBLE_QUEUES_STORAGE_KEY = 'scrambleQueues';
+const SCRAMBLE_TYPE_STORAGE_KEY = 'scrambleType';
 const SCRAMBLE_QUEUE_TARGET = 6;
 const SCRAMBLE_QUEUE_MAX = 12;
+const SUBSET_REDRAW_LIMIT = 24;
+const SCRAMBOW_SCRIPT_SRC = 'https://unpkg.com/scrambow@1.8.1/dist/scrambow.js';
+const SUBSET_BOOTSTRAP_QUEUE_FILL_DELAY_MS = 280;
 
-let _scrambleQueue = sanitizeScrambleQueue(load(SCRAMBLE_QUEUE_STORAGE_KEY, []));
+export const SCRAMBLE_TYPE_OPTIONS = Object.freeze([
+    { id: '333', menuLabel: '3x3x3', buttonLabel: '3x3x3' },
+    { id: 'll', menuLabel: 'OLL', buttonLabel: 'OLL' },
+    { id: 'pll', menuLabel: 'PLL', buttonLabel: 'PLL' },
+    { id: 'zbll', menuLabel: 'ZBLL', buttonLabel: 'ZBLL' },
+    { id: 'lsll', menuLabel: 'LSLL', buttonLabel: 'LSLL' },
+]);
+
+const SCRAMBLE_TYPE_SET = new Set(SCRAMBLE_TYPE_OPTIONS.map((option) => option.id));
+const SCRAMBOW_SCRAMBLE_TYPES = new Set(['ll', 'pll', 'zbll', 'lsll']);
+const SCRAMBLE_QUEUE_TYPES = Object.freeze(['333', ...SCRAMBOW_SCRAMBLE_TYPES]);
+const SCRAMBLE_QUEUE_TYPE_SET = new Set(SCRAMBLE_QUEUE_TYPES);
+
+const _scrambowInstances = new Map();
+const _legacy333ScrambleQueue = sanitizeScrambleQueue(load(LEGACY_SCRAMBLE_QUEUE_STORAGE_KEY, []));
+const _scrambleQueues = sanitizeScrambleQueues(load(SCRAMBLE_QUEUES_STORAGE_KEY, null), _legacy333ScrambleQueue);
+let _scrambleType = sanitizeScrambleType(load(SCRAMBLE_TYPE_STORAGE_KEY, '333'));
+
+let _currentScramble = null;
+let _prevScramble = null;
+let _isViewingPrev = false;
 
 function sanitizeScrambleQueue(value) {
     if (!Array.isArray(value)) return [];
     return value
         .filter((entry) => typeof entry === 'string' && entry.trim())
+        .map((entry) => normalizeScrambleText(entry))
         .slice(0, SCRAMBLE_QUEUE_MAX);
 }
 
-function persistScrambleQueue() {
-    save(SCRAMBLE_QUEUE_STORAGE_KEY, _scrambleQueue.slice(0, SCRAMBLE_QUEUE_MAX));
+function sanitizeScrambleQueues(value, legacy333Queue = []) {
+    const queues = Object.fromEntries(SCRAMBLE_QUEUE_TYPES.map((type) => [type, []]));
+
+    if (value && typeof value === 'object' && !Array.isArray(value)) {
+        SCRAMBLE_QUEUE_TYPES.forEach((type) => {
+            queues[type] = sanitizeScrambleQueue(value[type]);
+        });
+    }
+
+    if (queues['333'].length === 0 && legacy333Queue.length > 0) {
+        queues['333'] = [...legacy333Queue];
+    }
+
+    return queues;
 }
 
-/**
- * Initialize scramble module by loading cubing.js.
- */
-async function init() {
-    if (randomScrambleForEvent) return randomScrambleForEvent;
-    if (_initPromise) return _initPromise;
+function sanitizeScrambleType(value) {
+    const normalized = typeof value === 'string' ? value.trim().toLowerCase() : '';
+    return SCRAMBLE_TYPE_SET.has(normalized) ? normalized : '333';
+}
 
-    _initPromise = (async () => {
+function normalizeScrambleText(value) {
+    return String(value ?? '')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function isOnlyUpperFaceTurnsScramble(scramble) {
+    const tokens = normalizeScrambleText(scramble).split(' ').filter(Boolean);
+    return tokens.length > 0 && tokens.every((token) => /^U(?:2|'|)?$/.test(token));
+}
+
+function getScrambleQueue(type) {
+    const normalizedType = sanitizeScrambleType(type);
+    return SCRAMBLE_QUEUE_TYPE_SET.has(normalizedType) ? _scrambleQueues[normalizedType] : [];
+}
+
+function persistScrambleQueues() {
+    const queuesToSave = {};
+
+    SCRAMBLE_QUEUE_TYPES.forEach((type) => {
+        queuesToSave[type] = getScrambleQueue(type).slice(0, SCRAMBLE_QUEUE_MAX);
+    });
+
+    save(SCRAMBLE_QUEUES_STORAGE_KEY, queuesToSave);
+    save(LEGACY_SCRAMBLE_QUEUE_STORAGE_KEY, queuesToSave['333']);
+}
+
+function persistScrambleType() {
+    save(SCRAMBLE_TYPE_STORAGE_KEY, _scrambleType);
+}
+
+async function initCubingScrambler() {
+    if (randomScrambleForEvent) return randomScrambleForEvent;
+    if (_cubingInitPromise) return _cubingInitPromise;
+
+    _cubingInitPromise = (async () => {
         try {
             const module = await import('https://cdn.cubing.net/v0/js/cubing/scramble');
             randomScrambleForEvent = module.randomScrambleForEvent;
-            scheduleQueueFill();
             return randomScrambleForEvent;
         } catch (e) {
             console.error('Failed to load cubing.js scramble module:', e);
             throw e;
         } finally {
             if (!randomScrambleForEvent) {
-                _initPromise = null;
+                _cubingInitPromise = null;
             }
         }
     })();
 
-    return _initPromise;
+    return _cubingInitPromise;
 }
 
-async function createScramble() {
-    if (!randomScrambleForEvent) {
-        await init();
+function resolveScrambowCtor() {
+    if (_scrambowCtor) return _scrambowCtor;
+    if (typeof window === 'undefined') return null;
+
+    const maybeCtor = window.scrambow?.Scrambow;
+    if (typeof maybeCtor === 'function') {
+        _scrambowCtor = maybeCtor;
     }
-    return randomScrambleForEvent('333').then((alg) => alg.toString());
+
+    return _scrambowCtor;
 }
 
-function takeQueuedScramble() {
-    if (_scrambleQueue.length === 0) return null;
-    // Persist removal before returning so a page refresh advances to the next cached scramble.
-    const scramble = _scrambleQueue.shift();
-    persistScrambleQueue();
-    scheduleQueueFill();
+async function initScrambow() {
+    const existingCtor = resolveScrambowCtor();
+    if (existingCtor) return existingCtor;
+    if (_scrambowInitPromise) return _scrambowInitPromise;
+
+    _scrambowInitPromise = new Promise((resolve, reject) => {
+        let script = document.querySelector('script[data-scrambow-loader="true"]');
+
+        if (script?.dataset.scrambowFailed === 'true') {
+            script.remove();
+            script = null;
+        }
+
+        const cleanup = () => {
+            script?.removeEventListener('load', handleLoad);
+            script?.removeEventListener('error', handleError);
+        };
+
+        const handleLoad = () => {
+            cleanup();
+            const ctor = resolveScrambowCtor();
+            if (ctor) {
+                if (script) script.dataset.scrambowLoaded = 'true';
+                resolve(ctor);
+                return;
+            }
+            reject(new Error('Scrambow loaded without exposing Scrambow.'));
+        };
+
+        const handleError = () => {
+            cleanup();
+            if (script) {
+                script.dataset.scrambowFailed = 'true';
+                script.remove();
+            }
+            reject(new Error('Failed to load Scrambow script.'));
+        };
+
+        if (script?.dataset.scrambowLoaded === 'true') {
+            handleLoad();
+            return;
+        }
+
+        if (!script) {
+            script = document.createElement('script');
+            script.src = SCRAMBOW_SCRIPT_SRC;
+            script.async = true;
+            script.dataset.scrambowLoader = 'true';
+            document.head.append(script);
+        }
+
+        script.addEventListener('load', handleLoad, { once: true });
+        script.addEventListener('error', handleError, { once: true });
+    }).finally(() => {
+        if (!_scrambowCtor) {
+            _scrambowInitPromise = null;
+        }
+    });
+
+    return _scrambowInitPromise;
+}
+
+async function create333Scramble() {
+    if (!randomScrambleForEvent) {
+        await initCubingScrambler();
+    }
+
+    const alg = await randomScrambleForEvent('333');
+    return normalizeScrambleText(alg.toString());
+}
+
+function takeQueuedScramble(type) {
+    const queue = getScrambleQueue(type);
+    if (queue.length === 0) return null;
+
+    const scramble = queue.shift();
+    persistScrambleQueues();
+    scheduleQueueFill(type);
     return scramble;
 }
 
-async function fillScrambleQueue() {
-    if (_queueFillPromise) return _queueFillPromise;
+async function fillScrambleQueue(type) {
+    const normalizedType = sanitizeScrambleType(type);
+    if (!SCRAMBLE_QUEUE_TYPE_SET.has(normalizedType)) return null;
 
-    _queueFillPromise = (async () => {
+    const existingPromise = _queueFillPromises.get(normalizedType);
+    if (existingPromise) return existingPromise;
+
+    const fillPromise = (async () => {
         try {
-            await init();
-            while (_scrambleQueue.length < SCRAMBLE_QUEUE_TARGET) {
-                _scrambleQueue.push(await createScramble());
-                persistScrambleQueue();
+            const queue = getScrambleQueue(normalizedType);
+            while (queue.length < SCRAMBLE_QUEUE_TARGET) {
+                queue.push(await createScrambleForType(normalizedType));
+                persistScrambleQueues();
+                if (queue.length < SCRAMBLE_QUEUE_TARGET) {
+                    await yieldQueueFillTurn(normalizedType);
+                }
             }
         } catch (e) {
-            console.error('Failed to prefill scramble queue:', e);
+            console.error(`Failed to prefill ${normalizedType} scramble queue:`, e);
         } finally {
-            _queueFillPromise = null;
+            _queueFillPromises.delete(normalizedType);
         }
     })();
 
-    return _queueFillPromise;
+    _queueFillPromises.set(normalizedType, fillPromise);
+    return fillPromise;
 }
 
-function scheduleQueueFill() {
-    if (_scrambleQueue.length >= SCRAMBLE_QUEUE_TARGET || _queueFillPromise) return;
-    fillScrambleQueue();
+function scheduleQueueFill(type = _scrambleType) {
+    const normalizedType = sanitizeScrambleType(type);
+    if (!SCRAMBLE_QUEUE_TYPE_SET.has(normalizedType)) return;
+
+    if (
+        getScrambleQueue(normalizedType).length >= SCRAMBLE_QUEUE_TARGET
+        || _queueFillPromises.has(normalizedType)
+        || _queueFillScheduled.has(normalizedType)
+    ) {
+        return;
+    }
+
+    const run = () => {
+        _queueFillScheduled.delete(normalizedType);
+
+        if (getScrambleQueue(normalizedType).length >= SCRAMBLE_QUEUE_TARGET || _queueFillPromises.has(normalizedType)) {
+            return;
+        }
+
+        void fillScrambleQueue(normalizedType);
+    };
+
+    const shouldDefer = SCRAMBOW_SCRAMBLE_TYPES.has(normalizedType);
+    if (!shouldDefer) {
+        run();
+        return;
+    }
+
+    _queueFillScheduled.add(normalizedType);
+    if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
+        window.requestIdleCallback(run, { timeout: 600 });
+        return;
+    }
+
+    window.setTimeout(run, 60);
 }
 
-/**
- * Generate a new scramble and add it to history.
- * @returns {Promise<string>}
- */
-async function generateNextScramble() {
-    const cachedScramble = takeQueuedScramble();
+function yieldQueueFillTurn(type) {
+    if (!SCRAMBOW_SCRAMBLE_TYPES.has(type)) {
+        return Promise.resolve();
+    }
+
+    return new Promise((resolve) => {
+        if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
+            window.requestIdleCallback(() => resolve(), { timeout: 120 });
+            return;
+        }
+
+        window.setTimeout(resolve, 0);
+    });
+}
+
+function scheduleBootstrapQueueFill(type = _scrambleType) {
+    const normalizedType = sanitizeScrambleType(type);
+    if (!SCRAMBLE_QUEUE_TYPE_SET.has(normalizedType) || _bootstrapQueueFillScheduled.has(normalizedType)) return;
+
+    _bootstrapQueueFillScheduled.add(normalizedType);
+
+    const run = () => {
+        const flush = () => {
+            _bootstrapQueueFillScheduled.delete(normalizedType);
+            scheduleQueueFill(normalizedType);
+        };
+
+        if (SCRAMBOW_SCRAMBLE_TYPES.has(normalizedType) && typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
+            window.requestIdleCallback(flush, { timeout: 1400 });
+            return;
+        }
+
+        flush();
+    };
+
+    if (SCRAMBOW_SCRAMBLE_TYPES.has(normalizedType)) {
+        window.setTimeout(run, SUBSET_BOOTSTRAP_QUEUE_FILL_DELAY_MS);
+        return;
+    }
+
+    if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
+        window.requestIdleCallback(run, { timeout: 800 });
+        return;
+    }
+
+    window.setTimeout(run, 150);
+}
+
+async function generateNextScrambleForType(type) {
+    const normalizedType = sanitizeScrambleType(type);
+    const cachedScramble = takeQueuedScramble(normalizedType);
     if (cachedScramble) {
         return cachedScramble;
     }
 
-    const scramble = await createScramble();
-    scheduleQueueFill();
+    const scramble = await createScrambleForType(normalizedType);
+    scheduleQueueFill(normalizedType);
     return scramble;
 }
 
-/**
- * Get a new scramble, adding it to history.
- * @returns {Promise<string>}
- */
-let _currentScramble = null;
-let _prevScramble = null;
-let _isViewingPrev = false;
+function extractScrambleText(result) {
+    if (typeof result === 'string') return normalizeScrambleText(result);
 
-// Helper to set new current and push old to prev
-function _pushNew(scrambleStr, isManual = false) {
-    _prevScramble = _currentScramble;
-    _currentScramble = { text: scrambleStr, isManual };
+    if (result && typeof result === 'object') {
+        if (typeof result.scramble_string === 'string') return normalizeScrambleText(result.scramble_string);
+        if (typeof result.scramble === 'string') return normalizeScrambleText(result.scramble);
+    }
+
+    throw new Error('Scrambler returned an unsupported scramble format.');
+}
+
+function getScrambowInstance(type) {
+    if (!_scrambowCtor) {
+        throw new Error('Scrambow is not initialized.');
+    }
+
+    if (!_scrambowInstances.has(type)) {
+        _scrambowInstances.set(type, new _scrambowCtor(type));
+    }
+
+    return _scrambowInstances.get(type);
+}
+
+async function createSubsetScramble(type) {
+    await initScrambow();
+    const scrambler = getScrambowInstance(type);
+    let lastScramble = '';
+
+    for (let attempt = 0; attempt < SUBSET_REDRAW_LIMIT; attempt += 1) {
+        const result = scrambler.get(1)?.[0];
+        const scramble = extractScrambleText(result);
+        if (!isOnlyUpperFaceTurnsScramble(scramble)) {
+            return scramble;
+        }
+        lastScramble = scramble;
+    }
+
+    console.warn(`Subset scrambler kept returning only-U moves for ${type}; using the last generated scramble.`);
+    return lastScramble;
+}
+
+async function createScrambleForType(type) {
+    const normalizedType = sanitizeScrambleType(type);
+    if (normalizedType === '333') return create333Scramble();
+    if (SCRAMBOW_SCRAMBLE_TYPES.has(normalizedType)) return createSubsetScramble(normalizedType);
+    throw new Error(`Unsupported scramble type: ${type}`);
+}
+
+function getActiveScrambleEntry() {
+    return _isViewingPrev ? _prevScramble : _currentScramble;
+}
+
+function resetScrambleHistory() {
+    _currentScramble = null;
+    _prevScramble = null;
     _isViewingPrev = false;
 }
 
-/**
- * Get a new scramble, adding it to history.
- * @returns {Promise<string>}
- */
+function pushNewScramble(scrambleStr, type = _scrambleType, isManual = false) {
+    _prevScramble = _currentScramble;
+    _currentScramble = {
+        text: normalizeScrambleText(scrambleStr),
+        isManual,
+        type: sanitizeScrambleType(type),
+    };
+    _isViewingPrev = false;
+}
+
+export function getSelectedScrambleType() {
+    return _scrambleType;
+}
+
+export function getCurrentScrambleType() {
+    return getActiveScrambleEntry()?.type ?? _scrambleType;
+}
+
+export function setScrambleType(type) {
+    const nextType = sanitizeScrambleType(type);
+    if (nextType === _scrambleType) return false;
+
+    _scrambleType = nextType;
+    persistScrambleType();
+    resetScrambleHistory();
+    return true;
+}
+
 export async function getScramble() {
-    const text = await generateNextScramble();
-    _pushNew(text, false);
+    const type = _scrambleType;
+    const text = await generateNextScrambleForType(type);
+    pushNewScramble(text, type, false);
     return text;
 }
 
-/**
- * Go back to the previous scramble in history.
- * @returns {string|null} The previous scramble or null if at the beginning.
- */
 export function getPrevScramble() {
     if (_prevScramble && !_isViewingPrev) {
         _isViewingPrev = true;
@@ -140,57 +440,53 @@ export function getPrevScramble() {
     return null;
 }
 
-/**
- * Check if a previous scramble is available.
- */
 export function hasPrevScramble() {
     return _prevScramble !== null && !_isViewingPrev;
 }
 
-/**
- * Go forward to the next scramble in history. If viewing previous, returns current. 
- * Otherwise, generates a new one.
- * @returns {Promise<string>}
- */
 export async function getNextScramble() {
-    if (_isViewingPrev) {
+    if (_isViewingPrev && _currentScramble) {
         _isViewingPrev = false;
         return _currentScramble.text;
     }
-    return await getScramble();
+    return getScramble();
 }
 
-/**
- * Get the current scramble string without generating a new one.
- * @returns {string}
- */
 export function getCurrentScramble() {
-    const active = _isViewingPrev ? _prevScramble : _currentScramble;
-    return active ? active.text : '';
+    return getActiveScrambleEntry()?.text ?? '';
 }
 
-/**
- * Manually set the current scramble (e.g. from user edit).
- */
 export function setCurrentScramble(scrambleStr) {
+    const normalized = normalizeScrambleText(scrambleStr);
+    const active = getActiveScrambleEntry();
+    const entryType = active?.type ?? _scrambleType;
+
     if (_isViewingPrev) {
-        // If editing while viewing prev, it effectively branches, so it becomes the new current
-        _pushNew(scrambleStr, true);
+        pushNewScramble(normalized, entryType, true);
     } else if (_currentScramble) {
-        _currentScramble.text = scrambleStr;
+        _currentScramble.text = normalized;
         _currentScramble.isManual = true;
+        _currentScramble.type = entryType;
     } else {
-        _pushNew(scrambleStr, true);
+        pushNewScramble(normalized, entryType, true);
     }
 }
 
-/**
- * Check if the current scramble has been manually edited.
- */
 export function isCurrentScrambleManual() {
-    const active = _isViewingPrev ? _prevScramble : _currentScramble;
+    const active = getActiveScrambleEntry();
     return active ? active.isManual : false;
 }
 
-// Start init immediately
-scheduleQueueFill();
+function bootstrapInitialScrambleFromCache() {
+    const queue = getScrambleQueue(_scrambleType);
+    if (queue.length === 0) {
+        return;
+    }
+
+    const cachedScramble = queue.shift();
+    persistScrambleQueues();
+    pushNewScramble(cachedScramble, _scrambleType, false);
+    scheduleBootstrapQueueFill(_scrambleType);
+}
+
+bootstrapInitialScrambleFromCache();

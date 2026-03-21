@@ -45,6 +45,11 @@ body.solving #btn-settings {
     min-height: 0;
 }
 
+#left-panel.custom-select-open {
+    overflow: visible;
+    z-index: 40;
+}
+
 #center-panel {
     grid-area: center;
     display: flex;

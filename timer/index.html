@@ -28,12 +28,12 @@
   <link rel="preload" href="resources/hashtag-full.svg" as="image" type="image/svg+xml">
 
   <!-- Styles -->
-  <link rel="stylesheet" href="css/variables.css?v=4">
+  <link rel="stylesheet" href="css/variables.css?v=5">
   <link rel="stylesheet" href="css/base.css?v=12">
-  <link rel="stylesheet" href="css/layout.css?v=12">
-  <link rel="stylesheet" href="css/scramble.css?v=11">
+  <link rel="stylesheet" href="css/layout.css?v=13">
+  <link rel="stylesheet" href="css/scramble.css?v=21">
   <link rel="stylesheet" href="css/timer.css?v=25">
-  <link rel="stylesheet" href="css/stats.css?v=11">
+  <link rel="stylesheet" href="css/stats.css?v=18">
   <link rel="stylesheet" href="css/cube.css?v=3">
   <link rel="stylesheet" href="css/graph.css?v=7">
   <link rel="stylesheet" href="css/modal.css?v=11">
@@ -48,8 +48,15 @@
     <!-- ─── Scramble Bar ─── -->
     <div id="scramble-bar">
       <div id="scramble-top-row">
-        <div class="mobile-session-select-wrapper">
-          <select id="mobile-session-select"></select>
+        <div class="mobile-session-select-wrapper custom-select-menu" id="mobile-session-select-menu" data-no-timer-start>
+          <button id="btn-mobile-session-select" class="custom-select-btn" type="button" aria-haspopup="listbox"
+            aria-expanded="false" aria-controls="mobile-session-select-dropdown">
+            <span class="custom-select-label"></span>
+            <span class="custom-select-caret" aria-hidden="true">▾</span>
+          </button>
+          <div id="mobile-session-select-dropdown" class="custom-select-dropdown" role="listbox"
+            aria-label="Mobile sessions"></div>
+          <select id="mobile-session-select" tabindex="-1" aria-hidden="true"></select>
         </div>
         <button id="btn-scramble-preview" class="btn-icon" title="Scramble preview"
           aria-label="Open scramble preview">
@@ -59,15 +66,51 @@
             <span></span><span></span><span></span>
           </span>
         </button>
+        <div id="scramble-type-menu-mobile" class="scramble-type-menu" data-no-timer-start>
+          <button id="btn-scramble-type-mobile" class="btn-icon scramble-type-btn" type="button"
+            title="Scramble type: 3x3x3" aria-label="Scramble type: 3x3x3" aria-haspopup="menu"
+            aria-expanded="false" aria-controls="scramble-type-dropdown-mobile">3x3x3</button>
+          <div id="scramble-type-dropdown-mobile" class="scramble-type-dropdown" role="menu"
+            aria-label="Scramble type options">
+            <button type="button" class="scramble-type-option" data-scramble-type="333" role="menuitemradio"
+              aria-checked="true">3x3x3</button>
+            <button type="button" class="scramble-type-option" data-scramble-type="ll" role="menuitemradio"
+              aria-checked="false">OLL</button>
+            <button type="button" class="scramble-type-option" data-scramble-type="pll" role="menuitemradio"
+              aria-checked="false">PLL</button>
+            <button type="button" class="scramble-type-option" data-scramble-type="zbll" role="menuitemradio"
+              aria-checked="false">ZBLL</button>
+            <button type="button" class="scramble-type-option" data-scramble-type="lsll" role="menuitemradio"
+              aria-checked="false">LSLL</button>
+          </div>
+        </div>
         <button id="btn-zen" class="btn-icon" title="Zen mode (hide panels)"
           aria-label="Zen mode (hide panels)">✦</button>
       </div>
 
       <div id="scramble-container">
         <div id="scramble-text-wrapper" data-no-timer-start>
-          <span id="scramble-text" class="loading" title="Click to copy">Loading scrambler...</span>
+          <span id="scramble-text" class="loading" title="Click to copy"></span>
           <input type="text" id="scramble-input" style="display: none;" spellcheck="false" autocomplete="off"
             maxlength="1000" />
+        </div>
+        <div id="scramble-type-menu-desktop" class="scramble-type-menu" data-no-timer-start>
+          <button id="btn-scramble-type-desktop" class="btn-icon scramble-type-btn" type="button"
+            title="Scramble type: 3x3x3" aria-label="Scramble type: 3x3x3" aria-haspopup="menu"
+            aria-expanded="false" aria-controls="scramble-type-dropdown-desktop">3x3x3</button>
+          <div id="scramble-type-dropdown-desktop" class="scramble-type-dropdown" role="menu"
+            aria-label="Scramble type options">
+            <button type="button" class="scramble-type-option" data-scramble-type="333" role="menuitemradio"
+              aria-checked="true">3x3x3</button>
+            <button type="button" class="scramble-type-option" data-scramble-type="ll" role="menuitemradio"
+              aria-checked="false">OLL</button>
+            <button type="button" class="scramble-type-option" data-scramble-type="pll" role="menuitemradio"
+              aria-checked="false">PLL</button>
+            <button type="button" class="scramble-type-option" data-scramble-type="zbll" role="menuitemradio"
+              aria-checked="false">ZBLL</button>
+            <button type="button" class="scramble-type-option" data-scramble-type="lsll" role="menuitemradio"
+              aria-checked="false">LSLL</button>
+          </div>
         </div>
         <div id="scramble-actions" data-no-timer-start>
           <button id="btn-copy-scramble" class="btn-icon" title="Copy scramble">⧉</button>
@@ -84,8 +127,15 @@
         <div id="stats-sidebar">
           <div class="panel-header" id="session-header">
             <div id="session-bar">
-              <div class="session-select-wrapper">
-                <select id="session-select"></select>
+              <div class="session-select-wrapper custom-select-menu" id="session-select-menu" data-no-timer-start>
+                <button id="btn-session-select" class="custom-select-btn" type="button" aria-haspopup="listbox"
+                  aria-expanded="false" aria-controls="session-select-dropdown">
+                  <span class="custom-select-label"></span>
+                  <span class="custom-select-caret" aria-hidden="true">▾</span>
+                </button>
+                <div id="session-select-dropdown" class="custom-select-dropdown" role="listbox"
+                  aria-label="Sessions"></div>
+                <select id="session-select" tabindex="-1" aria-hidden="true"></select>
               </div>
               <div class="session-actions">
                 <button id="btn-new-session" title="New session" class="btn-icon-small">
@@ -115,8 +165,15 @@
 
           <!-- Stats filter -->
           <div id="stats-filter-bar">
-            <div class="stats-filter-select-wrapper">
-              <select id="stats-filter-select">
+            <div class="stats-filter-select-wrapper custom-select-menu" id="stats-filter-menu" data-no-timer-start>
+              <button id="btn-stats-filter-select" class="custom-select-btn" type="button" aria-haspopup="listbox"
+                aria-expanded="false" aria-controls="stats-filter-dropdown">
+                <span class="custom-select-label"></span>
+                <span class="custom-select-caret" aria-hidden="true">▾</span>
+              </button>
+              <div id="stats-filter-dropdown" class="custom-select-dropdown" role="listbox"
+                aria-label="Time filter options"></div>
+              <select id="stats-filter-select" tabindex="-1" aria-hidden="true">
                 <option value="all">All</option>
                 <option value="today">Today</option>
                 <option value="week">This week</option>
@@ -555,6 +612,17 @@
 
           <div class="setting-row">
             <div class="setting-label">
+              Show scramble type selector
+              <small>OLL, PLL, ZBLL, LSLL - Actual distribution</small>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="setting-show-scramble-type">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-label">
               Display font
               <small>Applies to the timer, scramble, tables, and stat pills</small>
             </div>
@@ -737,7 +805,7 @@
   </div>
 
   <!-- App Script -->
-  <script type="module" src="js/app.js?v=29"></script>
+  <script type="module" src="js/app.js?v=43"></script>
 </body>
 
 </html>

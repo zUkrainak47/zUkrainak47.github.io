@@ -1,7 +1,7 @@
 import { timer } from './timer.js?v=5';
-import { getScramble, getCurrentScramble, getPrevScramble, getNextScramble, setCurrentScramble, isCurrentScrambleManual, hasPrevScramble } from './scramble.js?v=2';
+import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble } from './scramble.js?v=8';
 import { sessionManager } from './session.js';
-import { settings, DEFAULTS } from './settings.js?v=2';
+import { settings, DEFAULTS } from './settings.js';
 import { parseRollingStatType, rollingStatAt, StatsCache } from './stats.js';
 import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate } from './utils.js';
 import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=10';
@@ -192,37 +192,18 @@ const keyboardShortcutGroups = [
     },
 ];
 const blockingOverlayIds = ['modal-overlay', 'scramble-preview-overlay', 'confirm-overlay', 'prompt-overlay', 'shortcuts-overlay'];
-const transientShortcutSelectIds = ['session-select', 'mobile-session-select', 'stats-filter-select'];
-const passthroughSelectShortcutCodes = new Set([
-    'Space',
-    'Slash',
-    'Tab',
-    'Backspace',
-    'Delete',
-    'Equal',
-    'NumpadAdd',
-    'Minus',
-    'NumpadSubtract',
-    'KeyC',
-    'KeyD',
-    'KeyS',
-    'KeyT',
-    'KeyZ',
-    'Period',
-    'Comma',
-]);
 let settingsOverlayEl = null;
 let shortcutsOverlayEl = null;
 let scramblePreviewOverlayEl = null;
 let scramblePreviewModalCanvas = null;
 let syncSettingsRowSeparators = () => {};
-let transientSelectOutsideBlurBound = false;
 let shortcutTooltipEl = null;
 let viewportLayoutFrame = null;
 let instantTimerTabLayoutCleanupFrame = null;
 let summaryRowsCache = { signature: '', rows: [] };
 const rollingStatSummaryCache = new Map();
 const domCache = new Map();
+const customSelectControllers = new Map();
 const viewportLayoutState = {
     timerTransform: null,
     scrambleTransform: null,
@@ -254,6 +235,15 @@ const inspectionSpeechUnlockState = {
     dismissed: false,
 };
 const cubeFaceColors = ['#FFF', '#F00', '#33CD32', '#FFFF05', '#FFA503', '#00F'];
+const INITIAL_SUBSET_STARTUP_SCRAMBLE_DELAY_MS = 220;
+const yellowTopPreviewFaceMap = Object.freeze({
+    U: 'D',
+    D: 'U',
+    R: 'L',
+    L: 'R',
+    F: 'F',
+    B: 'B',
+});
 
 // ──── History & Back Button ────
 
@@ -1113,14 +1103,33 @@ function isScramblePreviewModalOpen() {
     return Boolean(scramblePreviewOverlayEl?.classList.contains('active'));
 }
 
-function updateScramblePreviewButtonFace(scramble) {
+function getScramblePreviewOrientation(type = getCurrentScrambleType()) {
+    return type === '333' ? 'standard' : 'yellow-top';
+}
+
+function mapScrambleForPreview(scramble, type = getCurrentScrambleType()) {
+    const normalizedScramble = String(scramble ?? '').trim().replace(/\s+/g, ' ');
+    if (!normalizedScramble || type === '333') return normalizedScramble;
+
+    return normalizedScramble
+        .split(' ')
+        .map((token) => {
+            const mappedFace = yellowTopPreviewFaceMap[token[0]];
+            if (!mappedFace) return token;
+            return mappedFace + token.slice(1);
+        })
+        .join(' ');
+}
+
+function updateScramblePreviewButtonFace(scramble, type = getCurrentScrambleType()) {
     const icon = getEl('btn-scramble-preview')?.querySelector('.scramble-preview-face-icon');
     if (!icon) return;
 
     const stickers = icon.querySelectorAll('span');
     if (stickers.length !== 9) return;
 
-    const cube = applyScramble(String(scramble ?? ''));
+    const previewScramble = mapScrambleForPreview(scramble, type);
+    const cube = applyScramble(previewScramble, getScramblePreviewOrientation(type));
     const upFace = cube?.[0];
     if (!Array.isArray(upFace) || upFace.length !== 9) return;
 
@@ -1130,12 +1139,14 @@ function updateScramblePreviewButtonFace(scramble) {
     });
 }
 
-function renderScramblePreviewDisplays(scramble) {
+function renderScramblePreviewDisplays(scramble, type = getCurrentScrambleType()) {
     const normalizedScramble = String(scramble ?? '');
+    const previewScramble = mapScrambleForPreview(normalizedScramble, type);
+    const orientation = getScramblePreviewOrientation(type);
     const mainCanvas = getEl('cube-canvas');
-    if (mainCanvas) updateCubeDisplay(mainCanvas, normalizedScramble);
-    if (scramblePreviewModalCanvas) updateCubeDisplay(scramblePreviewModalCanvas, normalizedScramble);
-    updateScramblePreviewButtonFace(normalizedScramble);
+    if (mainCanvas) updateCubeDisplay(mainCanvas, previewScramble, orientation);
+    if (scramblePreviewModalCanvas) updateCubeDisplay(scramblePreviewModalCanvas, previewScramble, orientation);
+    updateScramblePreviewButtonFace(normalizedScramble, type);
 }
 
 function openScramblePreviewModal() {
@@ -1187,7 +1198,13 @@ function initScramblePreviewModal() {
 // ──── Bootstrap ────
 async function init() {
     initInspectionSpeechUnlockState();
-    await sessionManager.init();
+    const sessionInitPromise = sessionManager.init();
+    initCubeDisplay(document.getElementById('cube-canvas'));
+    initScramblePreviewModal();
+    syncHiddenScrambleTypeSetting();
+    syncScrambleTypeMenus();
+    const shouldLoadInitialScramble = !syncInitialScrambleUI();
+    await sessionInitPromise;
     initModal();
     setModalStatNavigator(openShortcutStatDetail);
     initShortcutTooltips();
@@ -1200,12 +1217,8 @@ async function init() {
             document.getElementById('scramble-bar'),
         ],
     );
-    initCubeDisplay(document.getElementById('cube-canvas'));
-    initScramblePreviewModal();
     initGraph(document.getElementById('graph-canvas'));
-
-    // Load first scramble
-    await loadNewScramble();
+    syncScrambleTypeMenus();
 
     // Wire events
     timer.on('stopped', onSolveComplete);
@@ -1226,6 +1239,10 @@ async function init() {
         }
         if (key === 'newBestPopupEnabled' && !settings.get('newBestPopupEnabled')) clearNewBestAlert();
         if (key === 'shortcutTooltipsEnabled' && !settings.get('shortcutTooltipsEnabled')) hideShortcutTooltip();
+        if (key === 'showScrambleTypeButton' && !settings.get('showScrambleTypeButton')) {
+            closeScrambleTypeMenus();
+            void applyHiddenScrambleTypeSetting();
+        }
         if (key === 'statsFilter' || key === 'customFilterDuration' || key === 'showDelta' || key.startsWith('graphColor') || key.startsWith('graphLine') || key === 'graphTooltipDateEnabled' || key === 'newBestColor' || key === 'summaryStatsList') {
             if (key === 'statsFilter' || key === 'customFilterDuration') rebuildStatsCache();
             if (key === 'summaryStatsList') {
@@ -1241,10 +1258,11 @@ async function init() {
             clearPenaltyShortcutAlert();
             syncPersistentManualEntryMode();
         }
-        if (key === 'centerTimer' || key === 'displayFont' || key === 'pillSize') scheduleViewportLayoutSync();
+        if (key === 'centerTimer' || key === 'displayFont' || key === 'pillSize' || key === 'showScrambleTypeButton') scheduleViewportLayoutSync();
     });
 
     // Init UI
+    initCustomSelectMenus();
     refreshSessionList();
     rebuildStatsCache();
     refreshUI();
@@ -1268,6 +1286,22 @@ async function init() {
     window.addEventListener('resize', scheduleViewportLayoutSync);
     window.addEventListener('orientationchange', scheduleViewportLayoutSync);
     scheduleViewportLayoutSync();
+
+    if (shouldLoadInitialScramble) {
+        const startInitialScrambleLoad = () => {
+            window.requestAnimationFrame(() => {
+                window.requestAnimationFrame(() => {
+                    void loadNewScramble();
+                });
+            });
+        };
+
+        if (getSelectedScrambleType() === '333') {
+            startInitialScrambleLoad();
+        } else {
+            window.setTimeout(startInitialScrambleLoad, INITIAL_SUBSET_STARTUP_SCRAMBLE_DELAY_MS);
+        }
+    }
 
     graphEvents.on('nodeClick', (payload) => {
         const interaction = typeof payload === 'number' ? { idx: payload } : payload;
@@ -1682,6 +1716,191 @@ function initZenMode() {
 }
 
 // ──── Scramble ────
+function getScrambleTypeMeta(type = getSelectedScrambleType()) {
+    return SCRAMBLE_TYPE_OPTIONS.find((option) => option.id === type) || SCRAMBLE_TYPE_OPTIONS[0];
+}
+
+function closeScrambleTypeMenus() {
+    document.querySelectorAll('.scramble-type-menu').forEach((menuEl) => {
+        menuEl.classList.remove('open');
+        menuEl.querySelector('.scramble-type-btn')?.setAttribute('aria-expanded', 'false');
+    });
+}
+
+function syncHiddenScrambleTypeSetting() {
+    if (settings.get('showScrambleTypeButton')) return false;
+    return setScrambleType('333');
+}
+
+async function applyHiddenScrambleTypeSetting() {
+    if (settings.get('showScrambleTypeButton')) return false;
+
+    const changed = syncHiddenScrambleTypeSetting();
+    syncScrambleTypeMenus('333');
+
+    if (!changed) {
+        scheduleViewportLayoutSync();
+        return false;
+    }
+
+    currentScramble = '';
+    const scrambleTextEl = document.getElementById('scramble-text');
+    if (scrambleTextEl) {
+        scrambleTextEl.textContent = '';
+        scrambleTextEl.classList.add('loading');
+    }
+
+    renderScramblePreviewDisplays('');
+    const prevScrambleButton = document.getElementById('btn-prev-scramble');
+    if (prevScrambleButton) prevScrambleButton.disabled = true;
+    scheduleViewportLayoutSync();
+    await loadNewScramble();
+    return true;
+}
+
+function closeCustomSelectMenus() {
+    document.querySelectorAll('.custom-select-menu').forEach((menuEl) => {
+        menuEl.classList.remove('open');
+        menuEl.querySelector('.custom-select-btn')?.setAttribute('aria-expanded', 'false');
+    });
+    syncCustomSelectOverflowState();
+}
+
+function syncCustomSelectMenu(selectId) {
+    customSelectControllers.get(selectId)?.sync();
+}
+
+function syncCustomSelectOverflowState() {
+    const hasOpenCustomSelect = Boolean(document.querySelector('.custom-select-menu.open'));
+    getEl('left-panel')?.classList.toggle('custom-select-open', hasOpenCustomSelect);
+    getEl('stats-panel')?.classList.toggle('custom-select-open', hasOpenCustomSelect);
+}
+
+function registerCustomSelectMenu({ selectId, menuId, buttonId, dropdownId, ariaLabel }) {
+    const selectEl = getEl(selectId);
+    const menuEl = getEl(menuId);
+    const buttonEl = getEl(buttonId);
+    const dropdownEl = getEl(dropdownId);
+    const labelEl = buttonEl?.querySelector('.custom-select-label');
+
+    if (!selectEl || !menuEl || !buttonEl || !dropdownEl || !labelEl) return;
+
+    const sync = () => {
+        const options = Array.from(selectEl.options);
+        const selectedOption = options.find((option) => option.value === selectEl.value) || options[0] || null;
+
+        labelEl.textContent = selectedOption?.textContent || '';
+        buttonEl.title = selectedOption?.textContent || '';
+        buttonEl.setAttribute('aria-label', selectedOption ? `${ariaLabel}: ${selectedOption.textContent}` : ariaLabel);
+        buttonEl.disabled = options.length === 0;
+
+        const fragment = document.createDocumentFragment();
+        options.forEach((option) => {
+            const optionButton = document.createElement('button');
+            optionButton.type = 'button';
+            optionButton.className = 'custom-select-option';
+            optionButton.dataset.value = option.value;
+            optionButton.setAttribute('role', 'option');
+
+            const isActive = option.value === selectEl.value;
+            optionButton.classList.toggle('active', isActive);
+            optionButton.setAttribute('aria-selected', String(isActive));
+            optionButton.textContent = option.textContent;
+            fragment.appendChild(optionButton);
+        });
+
+        dropdownEl.replaceChildren(fragment);
+    };
+
+    buttonEl.addEventListener('click', (event) => {
+        event.stopPropagation();
+        const shouldOpen = !menuEl.classList.contains('open');
+        closeScrambleTypeMenus();
+        closeCustomSelectMenus();
+        if (!shouldOpen || buttonEl.disabled) return;
+        menuEl.classList.add('open');
+        buttonEl.setAttribute('aria-expanded', 'true');
+        syncCustomSelectOverflowState();
+    });
+
+    dropdownEl.addEventListener('click', (event) => {
+        const optionButton = event.target instanceof Element
+            ? event.target.closest('.custom-select-option')
+            : null;
+        if (!(optionButton instanceof HTMLButtonElement)) return;
+
+        const nextValue = optionButton.dataset.value || '';
+        closeCustomSelectMenus();
+
+        if (selectEl.value !== nextValue) {
+            selectEl.value = nextValue;
+            selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+        } else {
+            sync();
+        }
+
+        buttonEl.blur();
+    });
+
+    selectEl.addEventListener('change', sync);
+    customSelectControllers.set(selectId, { sync });
+    sync();
+}
+
+function initCustomSelectMenus() {
+    registerCustomSelectMenu({
+        selectId: 'mobile-session-select',
+        menuId: 'mobile-session-select-menu',
+        buttonId: 'btn-mobile-session-select',
+        dropdownId: 'mobile-session-select-dropdown',
+        ariaLabel: 'Session',
+    });
+
+    registerCustomSelectMenu({
+        selectId: 'session-select',
+        menuId: 'session-select-menu',
+        buttonId: 'btn-session-select',
+        dropdownId: 'session-select-dropdown',
+        ariaLabel: 'Session',
+    });
+
+    registerCustomSelectMenu({
+        selectId: 'stats-filter-select',
+        menuId: 'stats-filter-menu',
+        buttonId: 'btn-stats-filter-select',
+        dropdownId: 'stats-filter-dropdown',
+        ariaLabel: 'Time filter',
+    });
+
+    document.addEventListener('pointerdown', (event) => {
+        if (event.target instanceof Element && event.target.closest('.custom-select-menu')) return;
+        closeCustomSelectMenus();
+    }, true);
+
+    document.addEventListener('keydown', (event) => {
+        if (event.code !== 'Escape') return;
+        closeCustomSelectMenus();
+        closeScrambleTypeMenus();
+    });
+}
+
+function syncScrambleTypeMenus(type = getSelectedScrambleType()) {
+    const activeType = getScrambleTypeMeta(type).id;
+    const activeMeta = getScrambleTypeMeta(activeType);
+
+    document.querySelectorAll('.scramble-type-btn').forEach((buttonEl) => {
+        buttonEl.textContent = activeMeta.buttonLabel;
+        buttonEl.title = `Scramble type: ${activeMeta.menuLabel}`;
+        buttonEl.setAttribute('aria-label', `Scramble type: ${activeMeta.menuLabel}`);
+    });
+
+    document.querySelectorAll('.scramble-type-option').forEach((optionEl) => {
+        const isActive = optionEl.dataset.scrambleType === activeType;
+        optionEl.classList.toggle('active', isActive);
+        optionEl.setAttribute('aria-checked', String(isActive));
+    });
+}
+
 async function loadNewScramble() {
     const el = document.getElementById('scramble-text');
     let loadingTimer = window.setTimeout(() => {
@@ -1701,12 +1920,21 @@ async function loadNewScramble() {
     }
 }
 
+function syncInitialScrambleUI() {
+    const initialScramble = getCurrentScramble();
+    if (!initialScramble) return false;
+
+    updateScrambleUI(initialScramble);
+    return true;
+}
+
 function updateScrambleUI(scrambleStr) {
     const el = document.getElementById('scramble-text');
     currentScramble = scrambleStr;
     el.textContent = currentScramble;
     el.classList.remove('loading');
     renderScramblePreviewDisplays(currentScramble);
+    syncScrambleTypeMenus(getCurrentScrambleType());
 
     // Update nav button states
     document.getElementById('btn-prev-scramble').disabled = !hasPrevScramble();
@@ -1721,6 +1949,7 @@ function initScrambleControls() {
     const prevBtn = document.getElementById('btn-prev-scramble');
     const nextBtn = document.getElementById('btn-next-scramble');
     const containerEl = document.getElementById('scramble-container');
+    const scrambleTypeMenus = Array.from(document.querySelectorAll('.scramble-type-menu'));
 
     function setScrambleActionsVisible(visible) {
         if (!mobileViewportQuery.matches) return;
@@ -1735,9 +1964,27 @@ function initScrambleControls() {
         setTimeout(() => textEl.style.color = origColor, 500);
     }
 
+    async function handleScrambleTypeSelection(nextType) {
+        if (textEl.classList.contains('loading')) return;
+        const changed = setScrambleType(nextType);
+        closeScrambleTypeMenus();
+        syncScrambleTypeMenus();
+        if (!changed) return;
+
+        setScrambleActionsVisible(false);
+        currentScramble = '';
+        textEl.textContent = '';
+        textEl.classList.add('loading');
+        renderScramblePreviewDisplays('');
+        prevBtn.disabled = true;
+        scheduleViewportLayoutSync();
+        await loadNewScramble();
+    }
+
     // 1. Copy
     textEl.addEventListener('click', () => {
         if (textEl.classList.contains('loading')) return;
+        closeScrambleTypeMenus();
         if (mobileViewportQuery.matches) {
             clearNewBestAlert();
             containerEl.classList.toggle('scramble-actions-visible');
@@ -1747,13 +1994,37 @@ function initScrambleControls() {
     });
 
     copyBtn?.addEventListener('click', () => {
+        closeScrambleTypeMenus();
         copyCurrentScramble();
         setScrambleActionsVisible(false);
     });
 
+    scrambleTypeMenus.forEach((menuEl) => {
+        const buttonEl = menuEl.querySelector('.scramble-type-btn');
+        const optionEls = menuEl.querySelectorAll('.scramble-type-option');
+
+        buttonEl?.addEventListener('click', (event) => {
+            event.stopPropagation();
+            if (textEl.classList.contains('loading')) return;
+            const shouldOpen = !menuEl.classList.contains('open');
+            closeScrambleTypeMenus();
+            if (!shouldOpen) return;
+            menuEl.classList.add('open');
+            buttonEl.setAttribute('aria-expanded', 'true');
+        });
+
+        optionEls.forEach((optionEl) => {
+            optionEl.addEventListener('click', async () => {
+                await handleScrambleTypeSelection(optionEl.dataset.scrambleType || '333');
+            });
+        });
+    });
+
     // 2. Edit
     function startEdit() {
+        if (textEl.classList.contains('loading')) return;
         setScrambleActionsVisible(false);
+        closeScrambleTypeMenus();
         textEl.style.display = 'none';
         inputEl.style.display = 'block';
         inputEl.value = currentScramble;
@@ -1820,11 +2091,15 @@ function initScrambleControls() {
 
     // 3. Navigation
     prevBtn.addEventListener('click', () => {
+        if (textEl.classList.contains('loading')) return;
+        closeScrambleTypeMenus();
         const s = getPrevScramble();
         if (s) updateScrambleUI(s);
     });
 
     nextBtn.addEventListener('click', async () => {
+        if (textEl.classList.contains('loading')) return;
+        closeScrambleTypeMenus();
         let loadingTimer = window.setTimeout(() => {
             textEl.textContent = 'Generating...';
             textEl.classList.add('loading');
@@ -1843,10 +2118,14 @@ function initScrambleControls() {
     });
 
     document.addEventListener('pointerdown', (event) => {
+        if (event.target instanceof Element && event.target.closest('.scramble-type-menu')) return;
+        closeScrambleTypeMenus();
         if (!mobileViewportQuery.matches) return;
         if (containerEl.contains(event.target)) return;
         setScrambleActionsVisible(false);
     }, true);
+
+    syncScrambleTypeMenus(getSelectedScrambleType());
 }
 
 // ──── Table Sorting ────
@@ -1882,10 +2161,6 @@ function hasBlockingOverlayOpen() {
 
 function isSlashShortcut(event) {
     return event.code === 'Slash' || event.key === '/' || event.key === '?';
-}
-
-function isTransientShortcutSelect(element) {
-    return element instanceof HTMLSelectElement && transientShortcutSelectIds.includes(element.id);
 }
 
 function formatShortcutTooltip(binding) {
@@ -2173,63 +2448,6 @@ function getShiftStatShortcutType(event) {
     if (slotIndex < 0) return null;
     const slots = getShiftStatShortcutSlots();
     return slots[slotIndex]?.statType || null;
-}
-
-function shouldPassthroughTransientSelectShortcut(event) {
-    if (passthroughSelectShortcutCodes.has(event.code)) return true;
-    if (getShiftStatShortcutType(event)) return true;
-    return false;
-}
-
-function redispatchKeyboardEvent(event) {
-    const forwardedEvent = new KeyboardEvent(event.type, {
-        key: event.key,
-        code: event.code,
-        location: event.location,
-        repeat: event.repeat,
-        shiftKey: event.shiftKey,
-        ctrlKey: event.ctrlKey,
-        altKey: event.altKey,
-        metaKey: event.metaKey,
-        bubbles: true,
-        cancelable: true,
-    });
-
-    document.dispatchEvent(forwardedEvent);
-}
-
-function handleTransientSelectClick(event) {
-    const activeSelect = document.activeElement;
-    if (!isTransientShortcutSelect(activeSelect)) return;
-    if (event.target === activeSelect) return;
-    activeSelect.blur();
-}
-
-function initTransientSelectBehavior(select) {
-    if (!select || !isTransientShortcutSelect(select)) return;
-
-    if (!transientSelectOutsideBlurBound) {
-        document.addEventListener('click', handleTransientSelectClick, true);
-        transientSelectOutsideBlurBound = true;
-    }
-
-    select.addEventListener('keydown', (event) => {
-        const isEscape = event.code === 'Escape' || event.key === 'Escape';
-        if (!isEscape && !shouldPassthroughTransientSelectShortcut(event)) return;
-
-        event.stopPropagation();
-
-        if (isEscape) {
-            window.requestAnimationFrame(() => {
-                if (document.activeElement === select) select.blur();
-            });
-            return;
-        }
-
-        event.preventDefault();
-        select.blur();
-        redispatchKeyboardEvent(event);
-    });
 }
 
 function canOpenSettingsPanel() {
@@ -3449,10 +3667,8 @@ function renderSolvesTable(solves, stats) {
 // ──── Session Controls ────
 function initSessionControls() {
     getSessionSelects().forEach((select) => {
-        initTransientSelectBehavior(select);
         select.onchange = async (e) => {
             await sessionManager.setActiveSession(e.target.value);
-            e.target.blur();
         };
     });
 
@@ -3489,6 +3705,9 @@ function refreshSessionList() {
         select.innerHTML = optionsMarkup;
         select.value = activeId;
     });
+
+    syncCustomSelectMenu('session-select');
+    syncCustomSelectMenu('mobile-session-select');
 }
 
 function onSessionChanged() {
@@ -3506,21 +3725,80 @@ function onSessionChanged() {
 function initFilterControls() {
     const filterSelect = document.getElementById('stats-filter-select');
     const customInput = document.getElementById('custom-filter-input');
-    initTransientSelectBehavior(filterSelect);
+    if (!filterSelect || !customInput) return;
 
-    filterSelect.value = settings.get('statsFilter');
-    customInput.value = settings.get('customFilterDuration');
-    customInput.style.display = settings.get('statsFilter') === 'custom' ? 'block' : 'none';
+    const syncCustomInputVisibility = ({ focus = false } = {}) => {
+        const isCustom = filterSelect.value === 'custom';
+
+        if (!isCustom && document.activeElement === customInput) {
+            customInput.blur();
+        }
+
+        customInput.style.display = isCustom ? 'block' : 'none';
+        customInput.hidden = !isCustom;
+        customInput.disabled = !isCustom;
+        customInput.setAttribute('aria-hidden', String(!isCustom));
+
+        if (!isCustom || !focus) return;
+
+        window.requestAnimationFrame(() => {
+            if (filterSelect.value !== 'custom') return;
+            customInput.focus({ preventScroll: true });
+            if (typeof customInput.setSelectionRange === 'function') {
+                const len = customInput.value.length;
+                customInput.setSelectionRange(len, len);
+            }
+        });
+    };
+
+    const syncFilterControlsFromSettings = () => {
+        const isEditingCustomInput = document.activeElement === customInput;
+        const nextCustomFilterDuration = settings.get('customFilterDuration');
+        filterSelect.value = settings.get('statsFilter');
+        if (!isEditingCustomInput || customInput.value !== nextCustomFilterDuration) {
+            customInput.value = nextCustomFilterDuration;
+        }
+        syncCustomInputVisibility();
+        syncCustomSelectMenu('stats-filter-select');
+    };
+
+    const commitCustomFilterDuration = () => {
+        const nextValue = customInput.value.trim();
+        if (filterSelect.value !== 'custom') {
+            filterSelect.value = 'custom';
+            settings.set('statsFilter', 'custom');
+        }
+        settings.set('customFilterDuration', nextValue);
+    };
+
+    syncFilterControlsFromSettings();
 
     filterSelect.onchange = () => {
         settings.set('statsFilter', filterSelect.value);
-        customInput.style.display = filterSelect.value === 'custom' ? 'block' : 'none';
-        filterSelect.blur();
+        syncCustomInputVisibility({ focus: filterSelect.value === 'custom' });
     };
 
-    customInput.onchange = () => {
-        settings.set('customFilterDuration', customInput.value);
-    };
+    customInput.addEventListener('input', commitCustomFilterDuration);
+    customInput.addEventListener('blur', commitCustomFilterDuration);
+    customInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            commitCustomFilterDuration();
+            customInput.blur();
+            return;
+        }
+
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            customInput.value = settings.get('customFilterDuration');
+            customInput.blur();
+        }
+    });
+
+    settings.on('change', (key) => {
+        if (key !== 'statsFilter' && key !== 'customFilterDuration') return;
+        syncFilterControlsFromSettings();
+    });
 }
 
 // ──── Settings Panel ────
@@ -3678,6 +3956,15 @@ function initSettingsPanel() {
         displayFontSelect.onchange = () => {
             settings.set('displayFont', displayFontSelect.value);
             displayFontSelect.blur();
+        };
+    }
+
+    const showScrambleTypeToggle = document.getElementById('setting-show-scramble-type');
+    if (showScrambleTypeToggle) {
+        showScrambleTypeToggle.checked = settings.get('showScrambleTypeButton');
+        showScrambleTypeToggle.onchange = () => {
+            settings.set('showScrambleTypeButton', showScrambleTypeToggle.checked);
+            showScrambleTypeToggle.blur();
         };
     }
 
