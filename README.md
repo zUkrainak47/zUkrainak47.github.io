@@ -7,25 +7,34 @@ I hope this is helpful to some. Good luck on your pulls! :) -->
 
 I like clean UI so decided to remake [csTimer](https://cstimer.net/) in a more modern way, feedback appreciated! Mobile version inspired by [CubeTime](https://cubetime.app/).
 
-`Ctrl` + `/` to view shortcuts inside timer
 
-While idle:
+### Desktop version
+Supports lots of nice keyboard shortcuts, `Ctrl` + `/` to view them inside the timer
+![desktop timer](<desktop-timer.png>)
+
+### Mobile version
+Swipe down for quick actions
+![mobile landscape](mobile-landscape-timer.png)
+![mobile portrait](mobile-portrait-timer.png)
+
+<!-- While idle:
 - `=`/`+` = toggle +2
-- `d`/`-` = toggle DNF
+- `-` = toggle DNF
 - `Backspace`/`Delete` = delete solve
-- `Shift` + `1`/`2`/`3`/`4`/`5` = selected or current time/mo3/ao5/ao12/ao100
+- `Shift` + `1/2/3...` = view average summary
 - `Arrow keys` = pan graph
 - `Shift` + `Arrow keys` = zoom graph
 - `Enter` = reset graph
 - `Shift` + `Enter` = show last 25 solves
 - `/` = settings
-- `Z` = zen mode
+- `Z` = toggle zen mode
+- `D` = toggle delta
 - `T` = collapse/expand time trend
 - `S` = collapse/expand scramble preview
+- `C` = copy scramble
 - `.` = next scramble
 - `,` = previous scramble
-- `C` = copy scramble
 - `Tab` = add comment
 
 While solving:
-- `Esc`/`Backspace`/`Delete` = mark solve as DNF
+- `Esc`/`Backspace`/`Delete` = mark solve as DNF -->
