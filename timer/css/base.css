@@ -263,6 +263,35 @@ select {
     transform: scale(0.96);
 }
 
+.icon-mask {
+    width: 1em;
+    height: 1em;
+    display: block;
+    flex: 0 0 auto;
+    pointer-events: none;
+    background-color: currentColor;
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    -webkit-mask-size: contain;
+    mask-repeat: no-repeat;
+    mask-position: center;
+    mask-size: contain;
+}
+
+.icon-mask-settings {
+    width: 1em;
+    height: 1em;
+    -webkit-mask-image: url('../resources/settings.svg');
+    mask-image: url('../resources/settings.svg');
+}
+
+@media (min-width: 1101px) and (pointer: fine) {
+    #btn-settings .icon-mask-settings {
+        width: 0.85em;
+        height: 0.85em;
+    }
+}
+
 .shortcut-hint {
     font-size: var(--text-xs);
     color: var(--text-tertiary);

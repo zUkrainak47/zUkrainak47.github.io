@@ -19,19 +19,20 @@
   <link rel="icon"
     href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect x='10' y='10' width='25' height='25' rx='3' fill='%23ff5800'/><rect x='38' y='10' width='25' height='25' rx='3' fill='%23fff'/><rect x='65' y='10' width='25' height='25' rx='3' fill='%23009b48'/><rect x='10' y='38' width='25' height='25' rx='3' fill='%23ffd500'/><rect x='38' y='38' width='25' height='25' rx='3' fill='%23b71234'/><rect x='65' y='38' width='25' height='25' rx='3' fill='%230046ad'/><rect x='10' y='65' width='25' height='25' rx='3' fill='%23009b48'/><rect x='38' y='65' width='25' height='25' rx='3' fill='%23ff5800'/><rect x='65' y='65' width='25' height='25' rx='3' fill='%23fff'/></svg>">
 
-  <!-- Preload modal icon assets to avoid first-open lag -->
+  <!-- Preload SVG icon assets to avoid first-open lag -->
   <link rel="preload" href="resources/comment-off.svg" as="image" type="image/svg+xml">
   <link rel="preload" href="resources/comment.svg" as="image" type="image/svg+xml">
   <link rel="preload" href="resources/calendar-date-off.svg" as="image" type="image/svg+xml">
   <link rel="preload" href="resources/calendar-date.svg" as="image" type="image/svg+xml">
   <link rel="preload" href="resources/hashtag.svg" as="image" type="image/svg+xml">
   <link rel="preload" href="resources/hashtag-full.svg" as="image" type="image/svg+xml">
+  <link rel="preload" href="resources/settings.svg" as="image" type="image/svg+xml">
 
   <!-- Styles -->
   <link rel="stylesheet" href="css/variables.css?v=5">
-  <link rel="stylesheet" href="css/base.css?v=12">
+  <link rel="stylesheet" href="css/base.css?v=15">
   <link rel="stylesheet" href="css/layout.css?v=13">
-  <link rel="stylesheet" href="css/scramble.css?v=21">
+  <link rel="stylesheet" href="css/scramble.css?v=22">
   <link rel="stylesheet" href="css/timer.css?v=29">
   <link rel="stylesheet" href="css/stats.css?v=18">
   <link rel="stylesheet" href="css/cube.css?v=3">
@@ -41,7 +42,9 @@
 </head>
 
 <body>
-  <button id="btn-settings" class="btn-icon" title="Settings">⚙</button>
+  <button id="btn-settings" class="btn-icon" title="Settings" aria-label="Settings">
+    <span class="icon-mask icon-mask-settings" aria-hidden="true"></span>
+  </button>
 
   <div id="app-layout">
 
@@ -376,7 +379,9 @@
               <button id="graph-line-toggle-line3" class="graph-line-toggle active" data-line="line3" data-mobile-label="LINE 3"
                 title="Toggle line 3" style="color:var(--graph-color-line3)">●</button>
               <button id="btn-graph-tools" class="btn-graph-toggle" title="Toggle zoom/pan controls"
-                style="font-size:16px">⚙</button>
+                aria-label="Toggle zoom and pan controls" style="font-size:16px">
+                <span class="icon-mask icon-mask-settings" aria-hidden="true"></span>
+              </button>
             </div>
             <div class="graph-controls-secondary collapsed" id="graph-tools-drawer">
               <div class="graph-controls-secondary-group graph-controls-secondary-group-scale">

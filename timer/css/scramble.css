@@ -33,7 +33,6 @@
 #btn-settings {
     position: absolute;
     left: calc(var(--space-sm) + var(--space-md));
-    top: var(--space-lg);
     font-size: 24px;
     z-index: 45;
 }
@@ -42,7 +41,6 @@
     font-family: 'Inter';
     position: absolute;
     right: var(--space-md);
-    top: calc(var(--space-lg) + 4px);
     z-index: 1;
 }
 
@@ -288,6 +286,11 @@ body.scramble-type-button-hidden #scramble-type-menu-desktop {
 }
 
 @media (min-width: 1101px) and (pointer: fine) {
+    #btn-settings,
+    #btn-zen {
+        top: calc(var(--space-lg) + ((var(--space-2xl) - 28px) / 2));
+    }
+
     #scramble-container {
         --desktop-scramble-side-width: 72px;
         --desktop-edit-button-left: calc(-1 * (32px + var(--space-sm)));
