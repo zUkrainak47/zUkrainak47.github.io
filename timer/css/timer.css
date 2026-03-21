@@ -588,7 +588,7 @@ body.pill-size-large #timer-info>span:hover {
 }
 
 body.pill-size-large #timer-info .stat-label {
-    font-size: var(--text-lg);
+    font-size: 0.61em;
     color: var(--text-secondary);
 }
 
