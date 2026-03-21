@@ -1005,7 +1005,7 @@ function syncViewportLayout() {
     }
 
     if (targetTimerCenterY != null) {
-        if (isMobileTimerView && shortMobileLandscapeQuery.matches && (state === 'idle' || state === 'stopped')) {
+        if (isMobileTimerView && shortMobileLandscapeQuery.matches && (state === 'idle' || state === 'stopped' || state === 'holding')) {
             targetTimerCenterY += 30;
         }
         const targetRect = targetTimerRect || getLayoutRect(timerDisplay || timerDisplayWrapper);
