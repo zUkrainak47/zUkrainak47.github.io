@@ -26,6 +26,18 @@ export function parseRollingStatType(type) {
     };
 }
 
+export function parseGraphStatType(type) {
+    const token = String(type ?? '').trim().toLowerCase();
+    if (token === 'mean') {
+        return {
+            type: 'mean',
+            kind: 'mean',
+        };
+    }
+
+    return parseRollingStatType(token);
+}
+
 /**
  * Trim best and worst values from an array.
  * @param {number[]} times - Array of effective times

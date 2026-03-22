@@ -2,11 +2,11 @@ import { timer } from './timer.js?v=5';
 import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble } from './scramble.js?v=8';
 import { sessionManager } from './session.js';
 import { settings, DEFAULTS } from './settings.js';
-import { parseRollingStatType, rollingStatAt, StatsCache } from './stats.js';
+import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=2';
 import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate } from './utils.js';
 import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=10';
 import { applyScramble, initCubeDisplay, updateCubeDisplay } from './cube-display.js';
-import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=7';
+import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=8';
 import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer } from './storage.js';
 
 let currentScramble = '';
@@ -2326,14 +2326,14 @@ function normalizeSummaryStatToken(token) {
 
 function parseGraphLineStatInput(rawInput) {
     const token = normalizeSummaryStatToken(rawInput);
-    const parsed = parseRollingStatType(token);
+    const parsed = parseGraphStatType(token);
     if (!parsed) {
         return {
             ok: false,
             token,
             message: token
                 ? `Invalid stat: ${token}`
-                : 'Enter a stat like mo3 or ao12',
+                : 'Enter a stat like mean, mo3, or ao12',
         };
     }
 

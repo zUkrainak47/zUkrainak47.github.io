@@ -1,6 +1,6 @@
 import { formatTime, getEffectiveTime, EventEmitter } from './utils.js';
 import { settings } from './settings.js';
-import { parseRollingStatType } from './stats.js';
+import { parseGraphStatType } from './stats.js?v=2';
 
 /**
  * Time trend graph with pan/zoom controls.
@@ -59,7 +59,7 @@ export const graphEvents = new EventEmitter();
 function getConfiguredGraphLineStat(lineId) {
     const settingKey = GRAPH_LINE_SETTINGS[lineId];
     const fallback = GRAPH_LINE_DEFAULTS[lineId];
-    const parsed = parseRollingStatType(settings.get(settingKey));
+    const parsed = parseGraphStatType(settings.get(settingKey));
     return parsed?.type || fallback;
 }
 
@@ -708,6 +708,24 @@ function buildMeanRollingSeries(allTimes, windowSize) {
     return values;
 }
 
+function buildCumulativeMeanSeries(allTimes) {
+    const values = new Array(allTimes.length).fill(null);
+    let sum = 0;
+    let count = 0;
+
+    for (let i = 0; i < allTimes.length; i++) {
+        const current = allTimes[i];
+        if (current !== Infinity) {
+            sum += current;
+            count++;
+        }
+
+        values[i] = count > 0 ? (sum / count) : null;
+    }
+
+    return values;
+}
+
 function buildAverageRollingSeries(allTimes, windowSize, trim) {
     const values = new Array(allTimes.length).fill(null);
     if (allTimes.length < windowSize) return values;
@@ -791,8 +809,12 @@ function buildAverageRollingSeries(allTimes, windowSize, trim) {
 }
 
 function buildRollingSeries(allTimes, statType) {
-    const config = parseRollingStatType(statType);
+    const config = parseGraphStatType(statType);
     if (!config) return new Array(allTimes.length).fill(null);
+
+    if (config.kind === 'mean') {
+        return buildCumulativeMeanSeries(allTimes);
+    }
 
     if (config.kind === 'mo') {
         return buildMeanRollingSeries(allTimes, config.windowSize);
