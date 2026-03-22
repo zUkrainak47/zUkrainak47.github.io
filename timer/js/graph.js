@@ -18,7 +18,7 @@ const GRAPH_LINE_SETTINGS = Object.freeze({
     line3: 'graphLine3Stat',
 });
 const PADDING = {
-    top: 12, right: 15, left: 22,
+    top: 12, right: 15, left: 24,
     get bottom() { return _isSafari && window.innerWidth < 500 ? 35 : 22; },
 };
 const mobileViewportQuery = window.matchMedia('(max-width: 1100px), (pointer: coarse)');
@@ -237,7 +237,7 @@ export function applyAction(action) {
                 nextTarget.visibleCount = nextVisCount;
             }
             break;
-        case 'zoom-y-in': nextTarget.yZoom = Math.min(10, _target.yZoom * 1.15); break;
+        case 'zoom-y-in': nextTarget.yZoom = Math.min(50, _target.yZoom * 1.15); break;
         case 'zoom-y-out': nextTarget.yZoom = Math.max(0.3, _target.yZoom / 1.15); break;
         case 'pan-left': nextTarget.xPan = Math.max(0, _target.xPan - panStep); break;
         case 'pan-right': nextTarget.xPan = Math.min(1, _target.xPan + panStep); break;
