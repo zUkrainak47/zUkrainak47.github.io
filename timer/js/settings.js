@@ -8,6 +8,7 @@ const DEFAULTS = {
     timeEntryMode: 'timer', // 'timer', 'typing'
     holdDuration: 300,       // ms
     animationsEnabled: true,
+    highContrastMode: false,
     displayFont: 'jetbrains-mono',
     pillSize: 'medium',       // 'small', 'medium', 'large', 'hidden'
     statsFilter: 'all',     // 'all', 'today', 'week', 'month', 'custom'
@@ -113,6 +114,7 @@ class Settings extends EventEmitter {
 
     _apply() {
         document.body.classList.toggle('no-animations', !this._settings.animationsEnabled);
+        document.body.classList.toggle('high-contrast-mode', Boolean(this._settings.highContrastMode));
         document.body.classList.toggle('shortcut-tooltips-disabled', !this._settings.shortcutTooltipsEnabled);
         document.body.classList.toggle('typing-entry-mode', this._settings.timeEntryMode === 'typing');
         document.body.classList.toggle('scramble-type-button-hidden', !this._settings.showScrambleTypeButton);
@@ -135,6 +137,11 @@ class Settings extends EventEmitter {
         document.documentElement.style.setProperty('--graph-color-ao5', line1Color);
         document.documentElement.style.setProperty('--graph-color-ao12', line2Color);
         document.documentElement.style.setProperty('--graph-color-ao100', line3Color);
+
+        const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+        if (themeColorMeta) {
+            themeColorMeta.setAttribute('content', this._settings.highContrastMode ? '#000000' : '#0d1117');
+        }
     }
 }
 

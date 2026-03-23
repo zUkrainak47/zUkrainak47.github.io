@@ -129,7 +129,7 @@ select {
 
 .panel {
     background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0)),
+        linear-gradient(180deg, var(--panel-sheen), var(--panel-sheen-fade)),
         var(--surface-elevated);
     border: 1px solid var(--surface-border);
     border-radius: 12px;
@@ -310,7 +310,7 @@ select {
     padding: 5px 8px;
     border-radius: var(--radius-md);
     border: 1px solid var(--surface-border);
-    background: rgba(28, 33, 40, 0.96);
+    background: var(--tooltip-surface);
     color: var(--text-secondary);
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
     font-weight: 500;
@@ -341,7 +341,7 @@ select {
     transform: translateX(-50%) rotate(45deg);
     width: 8px;
     height: 8px;
-    background: rgba(28, 33, 40, 0.96);
+    background: var(--tooltip-surface);
     border-left: 1px solid var(--surface-border);
     border-top: 1px solid var(--surface-border);
 }
@@ -398,7 +398,7 @@ body.zen #btn-zen {
 }
 
 body.zen.mobile-viewport #btn-zen {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--surface-ghost);
 }
 
 body.zen.mobile-viewport .mobile-session-select-wrapper {

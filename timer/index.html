@@ -29,14 +29,14 @@
   <link rel="preload" href="resources/settings.svg" as="image" type="image/svg+xml">
 
   <!-- Styles -->
-  <link rel="stylesheet" href="css/variables.css?v=5">
-  <link rel="stylesheet" href="css/base.css?v=15">
-  <link rel="stylesheet" href="css/layout.css?v=13">
-  <link rel="stylesheet" href="css/scramble.css?v=22">
-  <link rel="stylesheet" href="css/timer.css?v=29">
-  <link rel="stylesheet" href="css/stats.css?v=18">
+  <link rel="stylesheet" href="css/variables.css?v=6">
+  <link rel="stylesheet" href="css/base.css?v=16">
+  <link rel="stylesheet" href="css/layout.css?v=14">
+  <link rel="stylesheet" href="css/scramble.css?v=23">
+  <link rel="stylesheet" href="css/timer.css?v=30">
+  <link rel="stylesheet" href="css/stats.css?v=19">
   <link rel="stylesheet" href="css/cube.css?v=3">
-  <link rel="stylesheet" href="css/graph.css?v=7">
+  <link rel="stylesheet" href="css/graph.css?v=8">
   <link rel="stylesheet" href="css/modal.css?v=11">
   <link rel="stylesheet" href="css/settings.css?v=9">
 </head>
@@ -640,6 +640,17 @@
 
           <div class="setting-row">
             <div class="setting-label">
+              High contrast mode
+              <small>OLED theme</small>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="setting-high-contrast">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-label">
               Display font
               <small>Applies to the timer, scramble, tables, and stat pills</small>
             </div>
@@ -822,7 +833,7 @@
   </div>
 
   <!-- App Script -->
-  <script type="module" src="js/app.js?v=45"></script>
+  <script type="module" src="js/app.js?v=46"></script>
 </body>
 
 </html>

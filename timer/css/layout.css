@@ -254,8 +254,8 @@ body.solving #btn-settings {
         gap: 6px;
         padding: 6px;
         border-radius: 999px;
-        background: rgba(13, 17, 23, 0.86);
-        border: 1px solid rgba(255, 255, 255, 0.07);
+        background: var(--mobile-tabs-surface);
+        border: 1px solid var(--floating-surface-border);
         box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
         backdrop-filter: blur(18px);
         z-index: 40;

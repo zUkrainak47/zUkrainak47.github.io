@@ -38,7 +38,7 @@
     transform: translate(-50%, 8px);
     padding: 0.35em 0.9em;
     border-radius: 999px;
-    background: rgba(13, 17, 23, 0.92);
+    background: var(--mobile-tabs-surface);
     border: 1px solid transparent;
     font-family: var(--font-mono);
     font-size: 0.18em;
@@ -329,8 +329,8 @@ body.typing-entry-mode:not(.mobile-viewport) #manual-time-entry-display {
     gap: 0;
     padding: 8px 10px;
     border-radius: 22px;
-    background: rgba(5, 10, 18, 0.9);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: var(--mobile-tabs-surface);
+    border: 1px solid var(--floating-surface-border);
     box-shadow: 0 18px 36px rgba(0, 0, 0, 0.34);
     backdrop-filter: blur(18px);
     opacity: 0;
@@ -362,15 +362,15 @@ body.typing-entry-mode:not(.mobile-viewport) #manual-time-entry-display {
     min-height: 40px;
     padding: 0 16px;
     border-radius: 16px;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: var(--surface-ghost-hover);
+    border: 1px solid var(--floating-surface-border-strong);
     color: rgba(230, 237, 243, 0.86);
     font-size: var(--text-sm);
     font-weight: 700;
 }
 
 #inspection-cancel-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--surface-ghost-active);
     border-color: rgba(255, 255, 255, 0.2);
 }
 
@@ -481,7 +481,7 @@ body.mobile-viewport[data-mobile-panel="timer"] #timer-display-wrapper:has(#new-
     width: 1px;
     align-self: stretch;
     margin: 4px 8px;
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--divider-subtle);
     border-radius: 999px;
 }
 
@@ -512,7 +512,7 @@ body.mobile-viewport[data-mobile-panel="timer"] #timer-display-wrapper:has(#new-
 
 #timer-info>span {
     background: var(--surface);
-    border: 1px solid var(--surface-border);
+    border: 1px solid var(--pill-border);
     padding: 10px 24px;
     border-radius: 24px;
     display: inline-flex;
@@ -527,7 +527,7 @@ body.mobile-viewport[data-mobile-panel="timer"] #timer-display-wrapper:has(#new-
 
 #timer-info>span:hover {
     background: var(--bg-tertiary);
-    border-color: var(--text-muted);
+    border-color: var(--pill-border-hover);
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
@@ -619,7 +619,7 @@ body.pill-size-large #timer-info>span {
 
 body.pill-size-large #timer-info>span:hover {
     background: var(--surface);
-    border-color: var(--surface-border);
+    border-color: var(--pill-border-hover);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
@@ -646,7 +646,7 @@ body.pill-size-large #timer-info .stat-label {
     right: 18px;
     top: 50%;
     height: 1px;
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--divider-subtle);
     pointer-events: none;
 }
 

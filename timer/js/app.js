@@ -3899,6 +3899,12 @@ function initSettingsPanel() {
     animToggle.checked = settings.get('animationsEnabled');
     animToggle.onchange = () => settings.set('animationsEnabled', animToggle.checked);
 
+    const highContrastToggle = document.getElementById('setting-high-contrast');
+    if (highContrastToggle) {
+        highContrastToggle.checked = settings.get('highContrastMode');
+        highContrastToggle.onchange = () => settings.set('highContrastMode', highContrastToggle.checked);
+    }
+
     // Hide UI toggle
     const hideUIToggle = document.getElementById('setting-hide-ui');
     const centerTimerToggle = document.getElementById('setting-center-timer');

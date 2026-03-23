@@ -104,8 +104,8 @@ body.scramble-type-button-hidden #scramble-type-menu-desktop {
     min-width: 116px;
     padding: 6px;
     border-radius: 14px;
-    background: #181d23fc;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--floating-surface);
+    border: 1px solid var(--floating-surface-border);
     box-shadow: var(--shadow-md);
     opacity: 0;
     visibility: hidden;
@@ -139,12 +139,12 @@ body.scramble-type-button-hidden #scramble-type-menu-desktop {
 
 .scramble-type-option:hover,
 .scramble-type-option:focus-visible {
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--surface-ghost-hover);
     color: var(--text-primary);
 }
 
 .scramble-type-option.active {
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--surface-ghost-active);
     color: var(--text-primary);
 }
 
@@ -267,8 +267,8 @@ body.scramble-type-button-hidden #scramble-type-menu-desktop {
 #scramble-type-menu-desktop .scramble-type-btn {
     width: 84px;
     min-width: 84px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: var(--surface-ghost);
+    border: 1px solid var(--floating-surface-border);
     color: var(--text-primary);
 }
 
@@ -362,8 +362,8 @@ body.scramble-type-button-hidden #scramble-type-menu-desktop {
     #btn-scramble-preview,
     #scramble-type-menu-mobile .scramble-type-btn {
         opacity: 0.95;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: var(--surface-ghost);
+        border: 1px solid var(--floating-surface-border);
         border-radius: 999px;
     }
 
@@ -392,8 +392,8 @@ body.scramble-type-button-hidden #scramble-type-menu-desktop {
         min-height: 40px;
         padding: 0 14px;
         border-radius: 999px;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: var(--surface-ghost);
+        border: 1px solid var(--floating-surface-border);
         color: var(--text-primary);
         font-size: var(--text-base);
         font-weight: 600;
@@ -411,8 +411,8 @@ body.scramble-type-button-hidden #scramble-type-menu-desktop {
 
     .mobile-session-select-wrapper.custom-select-menu .custom-select-btn:hover,
     .mobile-session-select-wrapper.custom-select-menu.open .custom-select-btn {
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: var(--surface-ghost-active);
+        border: 1px solid var(--floating-surface-border-strong);
     }
 
     .mobile-session-select-wrapper.custom-select-menu.open .custom-select-caret {
@@ -550,8 +550,8 @@ body.scramble-type-button-hidden #scramble-type-menu-desktop {
         height: 40px;
         margin: 0;
         border-radius: 14px;
-        background: #181d23fc;
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: var(--floating-surface);
+        border: 1px solid var(--floating-surface-border);
         opacity: 1;
         font-size: 18px;
         order: 0;
@@ -570,8 +570,8 @@ body.scramble-type-button-hidden #scramble-type-menu-desktop {
     #btn-next-scramble:disabled {
         opacity: 0.32;
         color: var(--text-tertiary);
-        background: rgba(255, 255, 255, 0.025);
-        border-color: rgba(255, 255, 255, 0.05);
+        background: var(--surface-ghost-muted);
+        border-color: var(--floating-surface-border);
         pointer-events: none;
         cursor: not-allowed;
     }
