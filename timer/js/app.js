@@ -217,6 +217,7 @@ const quickActionsState = {
     pinned: false,
     swipeVisibilityOverride: false,
     manualEntryActive: false,
+    manualEntryHistoryManaged: false,
     manualDigits: '',
     restoreVisibleAfterManual: false,
     restorePinnedAfterManual: false,
@@ -739,7 +740,9 @@ function openManualTimeEntry({ initialDigits = '', focusStrategy = 'deferred' } 
     const manualEntryEl = getEl('manual-time-entry');
     if (!manualEntryEl) return;
 
-    if (!isDesktopTypingEntryModeEnabled()) {
+    const shouldManageHistory = !isDesktopTypingEntryModeEnabled();
+
+    if (!quickActionsState.manualEntryActive && shouldManageHistory) {
         pushHistoryState();
     }
 
@@ -749,6 +752,7 @@ function openManualTimeEntry({ initialDigits = '', focusStrategy = 'deferred' } 
     }
 
     quickActionsState.manualEntryActive = true;
+    quickActionsState.manualEntryHistoryManaged = shouldManageHistory;
     quickActionsState.manualDigits = sanitizeManualDigits(initialDigits || quickActionsState.manualDigits);
     manualEntryEl.hidden = false;
     document.body.classList.add('manual-time-entry-active');
@@ -768,7 +772,7 @@ function openManualTimeEntry({ initialDigits = '', focusStrategy = 'deferred' } 
 }
 
 function closeManualTimeEntry({ restoreQuickActions = quickActionsState.restoreVisibleAfterManual, pinned = quickActionsState.restorePinnedAfterManual, resetDigits = true, isPopState = false } = {}) {
-    if (!isPopState && !isDesktopTypingEntryModeEnabled()) {
+    if (!isPopState && quickActionsState.manualEntryHistoryManaged) {
         backToDismiss();
     }
 
@@ -776,6 +780,7 @@ function closeManualTimeEntry({ restoreQuickActions = quickActionsState.restoreV
     const hiddenInput = getEl('manual-time-hidden-input');
 
     quickActionsState.manualEntryActive = false;
+    quickActionsState.manualEntryHistoryManaged = false;
     document.body.classList.remove('manual-time-entry-active');
 
     if (manualEntryEl) manualEntryEl.hidden = true;
@@ -2775,6 +2780,7 @@ function initKeyboardShortcuts() {
                 break;
             case 'KeyZ':
                 if (isSolveModalActive) return;
+                if (mobileViewportQuery.matches && !isMobileTimerPanelActive()) return;
                 toggleZenMode();
                 break;
             case 'KeyT':
