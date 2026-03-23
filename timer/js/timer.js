@@ -44,6 +44,8 @@ class Timer extends EventEmitter {
 
         this._onKeyDown = this._onKeyDown.bind(this);
         this._onKeyUp = this._onKeyUp.bind(this);
+        this._onWindowBlur = this._onWindowBlur.bind(this);
+        this._onVisibilityChange = this._onVisibilityChange.bind(this);
         this._onPointerDown = this._onPointerDown.bind(this);
         this._onPointerUp = this._onPointerUp.bind(this);
         this._onPointerCancel = this._onPointerCancel.bind(this);
@@ -57,6 +59,8 @@ class Timer extends EventEmitter {
         this._interactionEls = Array.from(new Set(interactionEls.filter(Boolean)));
         document.addEventListener('keydown', this._onKeyDown);
         document.addEventListener('keyup', this._onKeyUp);
+        window.addEventListener('blur', this._onWindowBlur);
+        document.addEventListener('visibilitychange', this._onVisibilityChange);
         document.addEventListener('pointerdown', this._onDocumentPointerDown);
         document.addEventListener('pointerup', this._onPointerUp);
         document.addEventListener('pointercancel', this._onPointerCancel);
@@ -73,6 +77,8 @@ class Timer extends EventEmitter {
     destroy() {
         document.removeEventListener('keydown', this._onKeyDown);
         document.removeEventListener('keyup', this._onKeyUp);
+        window.removeEventListener('blur', this._onWindowBlur);
+        document.removeEventListener('visibilitychange', this._onVisibilityChange);
         document.removeEventListener('pointerdown', this._onDocumentPointerDown);
         document.removeEventListener('pointerup', this._onPointerUp);
         document.removeEventListener('pointercancel', this._onPointerCancel);
@@ -186,6 +192,15 @@ class Timer extends EventEmitter {
         if (wasStackmatReady && !this._isStackmatActive()) {
             this._handleStartRelease();
         }
+    }
+
+    _onWindowBlur() {
+        this._resetKeyboardStartState({ cancelPendingStart: true });
+    }
+
+    _onVisibilityChange() {
+        if (document.visibilityState !== 'hidden') return;
+        this._resetKeyboardStartState({ cancelPendingStart: true });
     }
 
     _onPointerDown(e) {
@@ -652,6 +667,23 @@ class Timer extends EventEmitter {
 
     _isTouchPointer(e) {
         return e.pointerType === 'touch' || e.pointerType === 'pen';
+    }
+
+    _resetKeyboardStartState({ cancelPendingStart = false } = {}) {
+        const hadKeyboardStartInput = this._spaceDown || this._hasAnyStackmatKeyDown();
+
+        this._spaceDown = false;
+        this._leftDown = false;
+        this._rightDown = false;
+        this._leftAltDown = false;
+        this._rightAltDown = false;
+
+        if (!cancelPendingStart || !hadKeyboardStartInput) return;
+        this.cancelPendingStart();
+    }
+
+    _hasAnyStackmatKeyDown() {
+        return this._leftDown || this._rightDown || this._leftAltDown || this._rightAltDown;
     }
 
     _isStackmatKey(e) {
