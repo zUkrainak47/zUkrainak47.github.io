@@ -426,6 +426,12 @@ body.zen.mobile-viewport #btn-next-scramble {
     pointer-events: auto;
 }
 
+body.zen.mobile-viewport #btn-prev-scramble:disabled,
+body.zen.mobile-viewport #btn-next-scramble:disabled {
+    opacity: 0.32;
+    pointer-events: none;
+}
+
 /* Smooth transitions back when exiting zen */
 #left-panel,
 #right-panel,
