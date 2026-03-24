@@ -30,30 +30,114 @@ const mobileDetailQuery = window.matchMedia('(max-width: 1100px), (pointer: coar
 const MODAL_GHOST_CLICK_GUARD_MS = 450;
 const MODAL_GHOST_CLICK_RADIUS_PX = 42;
 const MODAL_COPY_OPTIONS_STORAGE_KEY = 'ukratimer_modal_copy_options_v1';
+const SUMMARY_TIMESTAMP_DISPLAY_OFF = 'off';
+const SUMMARY_TIMESTAMP_DISPLAY_DATE_TIME = 'date-time';
+const SUMMARY_TIMESTAMP_DISPLAY_TIME = 'time';
 const modalCopyOptions = {
     includeComments: false,
-    includeScrambleDate: false,
+    scrambleTimestampDisplay: SUMMARY_TIMESTAMP_DISPLAY_OFF,
     includeAbsoluteIndex: false,
 };
+
+function parseSummaryTimestampDisplay(value) {
+    switch (value) {
+    case SUMMARY_TIMESTAMP_DISPLAY_OFF:
+    case SUMMARY_TIMESTAMP_DISPLAY_DATE_TIME:
+    case SUMMARY_TIMESTAMP_DISPLAY_TIME:
+        return value;
+    default:
+        return null;
+    }
+}
+
+function getNextSummaryTimestampDisplay(value) {
+    switch (value) {
+    case SUMMARY_TIMESTAMP_DISPLAY_DATE_TIME:
+        return SUMMARY_TIMESTAMP_DISPLAY_TIME;
+    case SUMMARY_TIMESTAMP_DISPLAY_TIME:
+        return SUMMARY_TIMESTAMP_DISPLAY_OFF;
+    default:
+        return SUMMARY_TIMESTAMP_DISPLAY_DATE_TIME;
+    }
+}
+
+function formatTimestampTimeOnly(timestamp) {
+    const date = new Date(timestamp);
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    return `${hours}:${minutes}:${seconds}`;
+}
+
+function formatSummaryTimestamp(timestamp) {
+    switch (modalCopyOptions.scrambleTimestampDisplay) {
+    case SUMMARY_TIMESTAMP_DISPLAY_DATE_TIME:
+        return formatDateTime(timestamp);
+    case SUMMARY_TIMESTAMP_DISPLAY_TIME:
+        return formatTimestampTimeOnly(timestamp);
+    default:
+        return '';
+    }
+}
+
+function getSummaryTimestampButtonState() {
+    switch (modalCopyOptions.scrambleTimestampDisplay) {
+    case SUMMARY_TIMESTAMP_DISPLAY_DATE_TIME:
+        return {
+            title: 'Show time only',
+            ariaLabel: 'Summary timestamp shows date and time. Click to show time only.',
+            ariaPressed: 'true',
+        };
+    case SUMMARY_TIMESTAMP_DISPLAY_TIME:
+        return {
+            title: 'Hide date and time',
+            ariaLabel: 'Summary timestamp shows time only. Click to turn it off.',
+            ariaPressed: 'mixed',
+        };
+    default:
+        return {
+            title: 'Show date and time',
+            ariaLabel: 'Summary timestamp is off. Click to show date and time.',
+            ariaPressed: 'false',
+        };
+    }
+}
+
+function getSummaryTimestampToastMessage() {
+    switch (modalCopyOptions.scrambleTimestampDisplay) {
+    case SUMMARY_TIMESTAMP_DISPLAY_DATE_TIME:
+        return 'Date and time will now be included in summary.';
+    case SUMMARY_TIMESTAMP_DISPLAY_TIME:
+        return 'Only the time will now be included in summary.';
+    default:
+        return 'Date and time will no longer be included in summary.';
+    }
+}
 
 function loadModalCopyOptions() {
     try {
         const raw = localStorage.getItem(MODAL_COPY_OPTIONS_STORAGE_KEY);
         if (!raw) return;
         const parsed = JSON.parse(raw);
+        const parsedTimestampDisplay = parseSummaryTimestampDisplay(parsed?.scrambleTimestampDisplay);
         modalCopyOptions.includeComments = Boolean(parsed?.includeComments);
-        modalCopyOptions.includeScrambleDate = Boolean(parsed?.includeScrambleDate);
+        modalCopyOptions.scrambleTimestampDisplay = parsedTimestampDisplay
+            || (parsed?.includeScrambleDate ? SUMMARY_TIMESTAMP_DISPLAY_DATE_TIME : SUMMARY_TIMESTAMP_DISPLAY_OFF);
         modalCopyOptions.includeAbsoluteIndex = Boolean(parsed?.includeAbsoluteIndex);
     } catch {
         modalCopyOptions.includeComments = false;
-        modalCopyOptions.includeScrambleDate = false;
+        modalCopyOptions.scrambleTimestampDisplay = SUMMARY_TIMESTAMP_DISPLAY_OFF;
         modalCopyOptions.includeAbsoluteIndex = false;
     }
 }
 
 function saveModalCopyOptions() {
     try {
-        localStorage.setItem(MODAL_COPY_OPTIONS_STORAGE_KEY, JSON.stringify(modalCopyOptions));
+        localStorage.setItem(MODAL_COPY_OPTIONS_STORAGE_KEY, JSON.stringify({
+            includeComments: modalCopyOptions.includeComments,
+            scrambleTimestampDisplay: modalCopyOptions.scrambleTimestampDisplay,
+            includeAbsoluteIndex: modalCopyOptions.includeAbsoluteIndex,
+        }));
     } catch {
     }
 }
@@ -64,8 +148,15 @@ function renderModalCopyOptionButtons() {
         _copyOptionIncludeCommentsBtn.setAttribute('aria-pressed', String(modalCopyOptions.includeComments));
     }
     if (_copyOptionIncludeDateBtn) {
-        _copyOptionIncludeDateBtn.classList.toggle('active-toggle', modalCopyOptions.includeScrambleDate);
-        _copyOptionIncludeDateBtn.setAttribute('aria-pressed', String(modalCopyOptions.includeScrambleDate));
+        const buttonState = getSummaryTimestampButtonState();
+        const hasTimestamp = modalCopyOptions.scrambleTimestampDisplay !== SUMMARY_TIMESTAMP_DISPLAY_OFF;
+        const isTimeOnly = modalCopyOptions.scrambleTimestampDisplay === SUMMARY_TIMESTAMP_DISPLAY_TIME;
+        _copyOptionIncludeDateBtn.classList.toggle('active-toggle', hasTimestamp);
+        _copyOptionIncludeDateBtn.classList.toggle('time-only-toggle', isTimeOnly);
+        _copyOptionIncludeDateBtn.dataset.state = modalCopyOptions.scrambleTimestampDisplay;
+        _copyOptionIncludeDateBtn.setAttribute('aria-pressed', buttonState.ariaPressed);
+        _copyOptionIncludeDateBtn.setAttribute('aria-label', buttonState.ariaLabel);
+        _copyOptionIncludeDateBtn.title = buttonState.title;
     }
     if (_copyOptionIncludeAbsoluteIndexBtn) {
         _copyOptionIncludeAbsoluteIndexBtn.classList.toggle('active-toggle', modalCopyOptions.includeAbsoluteIndex);
@@ -86,8 +177,9 @@ function getCommentSuffix(solve) {
 }
 
 function getScrambleDateSuffix(solve) {
-    if (!modalCopyOptions.includeScrambleDate) return '';
-    return ` | ${formatDateTime(solve.timestamp)}`;
+    const timestampText = formatSummaryTimestamp(solve.timestamp);
+    if (!timestampText) return '';
+    return ` | ${timestampText}`;
 }
 
 function buildSolveShareText(singleLabel, solveIndex, timeStr, solve) {
@@ -134,7 +226,7 @@ function buildAverageShareContent(label, valueStr, solves, trim = 1) {
             position: displayIndex,
             time: display,
             scramble: solve.scramble,
-            date: formatDateTime(solve.timestamp),
+            date: formatSummaryTimestamp(solve.timestamp),
             trimmed: isBest || isWorst,
         });
     });
@@ -321,15 +413,11 @@ export function initModal() {
     });
 
     _copyOptionIncludeDateBtn?.addEventListener('click', () => {
-        modalCopyOptions.includeScrambleDate = !modalCopyOptions.includeScrambleDate;
+        modalCopyOptions.scrambleTimestampDisplay = getNextSummaryTimestampDisplay(modalCopyOptions.scrambleTimestampDisplay);
         saveModalCopyOptions();
         renderModalCopyOptionButtons();
         rerenderCurrentModalSource();
-        showMobileExportToast(
-            modalCopyOptions.includeScrambleDate
-                ? 'Date/time will now be included in summary.'
-                : 'Date/time will no longer be included in summary.'
-        );
+        showMobileExportToast(getSummaryTimestampToastMessage());
     });
 
     _copyOptionIncludeAbsoluteIndexBtn?.addEventListener('click', () => {
@@ -660,7 +748,8 @@ function createMobileEntry(entry) {
     scramble.textContent = entry.scramble;
 
     timeBlock.append(index, time);
-    head.append(timeBlock, date);
+    head.append(timeBlock);
+    if (entry.date) head.append(date);
     item.append(head, scramble);
     return item;
 }
@@ -703,7 +792,7 @@ function buildSolveDetailPayload(title, timeStr, solve, index, singleLabel, shar
             position: index + 1,
             time: timeStr,
             scramble: solve.scramble,
-            date: formatDateTime(solve.timestamp),
+            date: formatSummaryTimestamp(solve.timestamp),
             trimmed: false,
         }],
     };

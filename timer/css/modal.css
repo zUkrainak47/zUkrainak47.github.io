@@ -227,6 +227,11 @@
     mask-image: url('../resources/calendar-date.svg');
 }
 
+.modal-option-icon-clock {
+    -webkit-mask-image: url('../resources/clock.svg');
+    mask-image: url('../resources/clock.svg');
+}
+
 .modal-option-icon-hashtag {
     -webkit-mask-image: url('../resources/hashtag.svg');
     mask-image: url('../resources/hashtag.svg');
@@ -241,11 +246,23 @@
     display: none;
 }
 
+.modal-option-icon-time {
+    display: none;
+}
+
 .modal-option-btn.active-toggle .modal-option-icon-off {
     display: none;
 }
 
 .modal-option-btn.active-toggle .modal-option-icon-on {
+    display: block;
+}
+
+.modal-option-btn.time-only-toggle .modal-option-icon-on {
+    display: none;
+}
+
+.modal-option-btn.time-only-toggle .modal-option-icon-time {
     display: block;
 }
 
