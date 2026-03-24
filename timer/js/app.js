@@ -1,5 +1,5 @@
 import { timer } from './timer.js?v=5';
-import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble } from './scramble.js?v=8';
+import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble } from './scramble.js?v=9';
 import { sessionManager } from './session.js';
 import { settings, DEFAULTS } from './settings.js';
 import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=2';
@@ -1966,6 +1966,7 @@ function updateScrambleUI(scrambleStr) {
     currentScramble = scrambleStr;
     el.textContent = currentScramble;
     el.classList.remove('loading');
+    el.classList.toggle('is-previous-selected', isViewingPreviousScramble());
     renderScramblePreviewDisplays(currentScramble);
     syncScrambleTypeMenus(getCurrentScrambleType());
 

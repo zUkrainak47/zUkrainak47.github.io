@@ -203,6 +203,10 @@ body.scramble-type-button-hidden #scramble-type-menu-desktop {
     pointer-events: none;
 }
 
+#scramble-text.is-previous-selected:not(.loading) {
+    color: #ffd000;
+}
+
 #scramble-container {
     display: flex;
     align-items: center;

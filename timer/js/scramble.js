@@ -444,6 +444,10 @@ export function hasPrevScramble() {
     return _prevScramble !== null && !_isViewingPrev;
 }
 
+export function isViewingPreviousScramble() {
+    return _isViewingPrev;
+}
+
 export async function getNextScramble() {
     if (_isViewingPrev && _currentScramble) {
         _isViewingPrev = false;
