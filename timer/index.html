@@ -6,6 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="description" content="Ukra's take on speedcubing timers">
   <meta name="theme-color" content="#0d1117">
+  <!-- Paste your Cloudflare Web Analytics site token below to enable usage tracking. -->
+  <meta name="cloudflare-analytics-token" content="bd70eee8cd8147ffb55ac22c52351302">
   <title>UkraTimer</title>
 
   <!-- Fonts -->
@@ -833,6 +835,23 @@
       </div>
     </div>
   </div>
+
+  <script>
+    (() => {
+      const token = document
+        .querySelector('meta[name="cloudflare-analytics-token"]')
+        ?.content
+        ?.trim();
+
+      if (!token) return;
+
+      const analyticsScript = document.createElement('script');
+      analyticsScript.defer = true;
+      analyticsScript.src = 'https://static.cloudflareinsights.com/beacon.min.js';
+      analyticsScript.setAttribute('data-cf-beacon', JSON.stringify({ token }));
+      document.head.appendChild(analyticsScript);
+    })();
+  </script>
 
   <!-- App Script -->
   <script type="module" src="js/app.js?v=49"></script>
