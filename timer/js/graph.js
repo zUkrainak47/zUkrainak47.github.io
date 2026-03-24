@@ -21,7 +21,17 @@ const PADDING = {
     top: 12, right: 15, left: 24,
     get bottom() { return _isSafari && window.innerWidth < 500 ? 35 : 22; },
 };
-const mobileViewportQuery = window.matchMedia('(max-width: 1100px), (pointer: coarse)');
+const touchPrimaryQuery = window.matchMedia('(hover: none) and (pointer: coarse)');
+
+function isTouchLikePointer(pointerType) {
+    return pointerType === 'touch' || pointerType === 'pen';
+}
+
+function shouldUseTouchGraphInteraction(pointerType = null) {
+    if (pointerType === 'mouse') return false;
+    if (isTouchLikePointer(pointerType)) return true;
+    return touchPrimaryQuery.matches;
+}
 function getColors() {
     const styles = getComputedStyle(document.documentElement);
     const readVar = (name, fallback) => styles.getPropertyValue(name).trim() || fallback;
@@ -310,14 +320,14 @@ function clearTouchFocus() {
     render();
 }
 
-const handleViewportChange = (event) => {
+const handleTouchModeChange = (event) => {
     if (!event.matches) clearTouchFocus();
 };
 
-if (typeof mobileViewportQuery.addEventListener === 'function') {
-    mobileViewportQuery.addEventListener('change', handleViewportChange);
+if (typeof touchPrimaryQuery.addEventListener === 'function') {
+    touchPrimaryQuery.addEventListener('change', handleTouchModeChange);
 } else {
-    mobileViewportQuery.addListener(handleViewportChange);
+    touchPrimaryQuery.addListener(handleTouchModeChange);
 }
 
 export function initGraph(canvas) {
@@ -333,7 +343,7 @@ export function initGraph(canvas) {
     observer.observe(canvas.parentElement);
 
     canvas.addEventListener('mousemove', (e) => {
-        if (mobileViewportQuery.matches) return;
+        if (shouldUseTouchGraphInteraction()) return;
         const { rect, x } = getCanvasPointerPosition(canvas, e);
         const idx = getSolveIndexAtCanvasX(rect, x);
         if (idx !== _hoveredIndex) {
@@ -343,8 +353,8 @@ export function initGraph(canvas) {
     });
 
     canvas.addEventListener('pointerdown', (e) => {
-        if (!mobileViewportQuery.matches) return;
-        if (e.pointerType !== 'touch' && e.pointerType !== 'pen') return;
+        if (!shouldUseTouchGraphInteraction(e.pointerType)) return;
+        if (!isTouchLikePointer(e.pointerType)) return;
         if (e.button !== undefined && e.button !== 0) return;
 
         const { rect, x, y } = getCanvasPointerPosition(canvas, e);
@@ -394,7 +404,7 @@ export function initGraph(canvas) {
     });
 
     canvas.addEventListener('click', (e) => {
-        if (mobileViewportQuery.matches) return;
+        if (shouldUseTouchGraphInteraction()) return;
         const { rect, x } = getCanvasPointerPosition(canvas, e);
         const idx = getSolveIndexAtCanvasX(rect, x);
         if (idx >= 0) {
@@ -438,16 +448,18 @@ export function initGraph(canvas) {
     });
 
     panel?.addEventListener('pointerdown', (e) => {
-        if (!mobileViewportQuery.matches || _touchFocusedIndex < 0) return;
-        if (e.pointerType !== 'touch' && e.pointerType !== 'pen') return;
+        if (_touchFocusedIndex < 0) return;
+        if (!shouldUseTouchGraphInteraction(e.pointerType)) return;
+        if (!isTouchLikePointer(e.pointerType)) return;
         if (e.button !== undefined && e.button !== 0) return;
         if (e.target === canvas) return;
         clearTouchFocus();
     });
 
     document.addEventListener('pointerdown', (e) => {
-        if (!mobileViewportQuery.matches || _touchFocusedIndex < 0) return;
-        if (e.pointerType !== 'touch' && e.pointerType !== 'pen') return;
+        if (_touchFocusedIndex < 0) return;
+        if (!shouldUseTouchGraphInteraction(e.pointerType)) return;
+        if (!isTouchLikePointer(e.pointerType)) return;
         if (e.button !== undefined && e.button !== 0) return;
         if (!(e.target instanceof Node)) return;
         if (panel?.contains(e.target)) return;
@@ -1067,7 +1079,7 @@ function render() {
         const hasComment = !!solve?.comment?.trim();
         const isNewBestSingle = _isNewBest(activeIndex);
         const highlightColor = isNewBestSingle ? '#e3b341' : hasComment ? COLORS.accent : null;
-        const showTapHint = mobileViewportQuery.matches;
+        const showTapHint = _touchFocusedIndex >= 0 && _hoveredIndex < 0;
 
         ctx.font = '11px JetBrains Mono, monospace';
         const solveLabelPrefix = hasComment ? '*' : '#';
