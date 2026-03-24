@@ -858,6 +858,39 @@ function getTextareaHeightForRows(rowCount) {
     return Math.ceil((lineHeight * safeRowCount) + paddingY + borderY);
 }
 
+function getTextareaVisualRowCount(text) {
+    if (!_textarea) return 1;
+
+    const computed = window.getComputedStyle(_textarea);
+    const lineHeight = parsePx(computed.lineHeight) || (parsePx(computed.fontSize) * 1.6);
+    const paddingY = parsePx(computed.paddingTop) + parsePx(computed.paddingBottom);
+    const previousValue = _textarea.value;
+    const previousRows = _textarea.rows;
+    const previousHeight = _textarea.style.height;
+    const previousMinHeight = _textarea.style.minHeight;
+    const previousOverflowY = _textarea.style.overflowY;
+
+    _textarea.value = text;
+    _textarea.rows = 1;
+    _textarea.style.height = '0px';
+    _textarea.style.minHeight = '0px';
+    _textarea.style.overflowY = 'hidden';
+
+    const contentHeight = Math.max(0, _textarea.scrollHeight - paddingY);
+    // scrollHeight is integer-rounded, so allow a 1px tolerance to avoid reserving
+    // a full extra row when the measured height lands just above an exact line multiple.
+    const adjustedContentHeight = Math.max(0, contentHeight - 1);
+    const visualRowCount = Math.max(1, Math.ceil(adjustedContentHeight / lineHeight));
+
+    _textarea.value = previousValue;
+    _textarea.rows = previousRows;
+    _textarea.style.height = previousHeight;
+    _textarea.style.minHeight = previousMinHeight;
+    _textarea.style.overflowY = previousOverflowY;
+
+    return visualRowCount;
+}
+
 function syncTextareaRegularHeight(rowCount) {
     if (!_textarea) return;
 
@@ -874,12 +907,12 @@ function _showModal(title, text, solveContext = null, detailPayload = null) {
     _currentDetailPayload = detailPayload;
     updateModalCopyOptionVisibility();
 
-    const lineCount = text.split('\n').length;
-    const targetRowCount = Math.min(Math.max(1, lineCount), 16);
-    const isLineCountCapped = lineCount > 16;
+    const visualRowCount = getTextareaVisualRowCount(text);
+    const targetRowCount = Math.min(Math.max(1, visualRowCount), 16);
+    const isRowCountCapped = visualRowCount > 16;
     _textarea.rows = targetRowCount;
 
-    if (!isLineCountCapped) {
+    if (!isRowCountCapped) {
         _textarea.style.height = 'auto';
         _textarea.style.minHeight = 'auto';
     // } else if (lineCount <= 7) {
