@@ -122,6 +122,13 @@ body:not(.mobile-viewport) #timer-delta::before {
     z-index: -1;
 }
 
+body.high-contrast-mode:not(.mobile-viewport) #timer-delta::before {
+    background: radial-gradient(ellipse at center,
+                rgba(0, 0, 0, 1) 0%,
+                rgba(0, 0, 0, 0.96) 50%,
+                rgba(0, 0, 0, 0) 95%);
+}
+
 /* Timer display */
 #timer-display {
     font-family: var(--font-timer);
