@@ -2014,8 +2014,25 @@ function getScrambleTypeMeta(type = getSelectedScrambleType()) {
     return SCRAMBLE_TYPE_OPTIONS.find((option) => option.id === type) || SCRAMBLE_TYPE_OPTIONS[0];
 }
 
+function ensureDropdownScrollContainer(dropdownEl, className) {
+    if (!(dropdownEl instanceof HTMLElement)) return null;
+
+    let scrollEl = Array.from(dropdownEl.children).find((child) => child.classList.contains(className));
+
+    if (!(scrollEl instanceof HTMLElement)) {
+        scrollEl = document.createElement('div');
+        scrollEl.className = className;
+        scrollEl.append(...Array.from(dropdownEl.childNodes));
+        dropdownEl.replaceChildren(scrollEl);
+    }
+
+    return scrollEl;
+}
+
 function populateScrambleTypeMenus() {
     document.querySelectorAll('.scramble-type-dropdown').forEach((dropdownEl) => {
+        const scrollEl = ensureDropdownScrollContainer(dropdownEl, 'scramble-type-dropdown-scroll');
+        if (!(scrollEl instanceof HTMLElement)) return;
         const fragment = document.createDocumentFragment();
 
         SCRAMBLE_TYPE_OPTIONS.forEach((option) => {
@@ -2029,15 +2046,51 @@ function populateScrambleTypeMenus() {
             fragment.appendChild(optionButton);
         });
 
-        dropdownEl.replaceChildren(fragment);
+        scrollEl.replaceChildren(fragment);
     });
 }
 
 function closeScrambleTypeMenus() {
     document.querySelectorAll('.scramble-type-menu').forEach((menuEl) => {
         menuEl.classList.remove('open');
+        menuEl.classList.remove('dropdown-up');
         menuEl.querySelector('.scramble-type-btn')?.setAttribute('aria-expanded', 'false');
+        menuEl.querySelector('.scramble-type-dropdown')?.style.removeProperty('--scramble-type-dropdown-max-height');
     });
+}
+
+function positionScrambleTypeMenu(menuEl, { ensureActiveVisible = false } = {}) {
+    const buttonEl = menuEl?.querySelector('.scramble-type-btn');
+    const dropdownEl = menuEl?.querySelector('.scramble-type-dropdown');
+
+    if (!(buttonEl instanceof HTMLElement) || !(dropdownEl instanceof HTMLElement)) return;
+
+    const viewport = window.visualViewport;
+    const viewportTop = viewport?.offsetTop || 0;
+    const viewportHeight = viewport?.height || window.innerHeight;
+    const viewportBottom = viewportTop + viewportHeight;
+    const buttonRect = buttonEl.getBoundingClientRect();
+    const gap = parseFloat(getComputedStyle(menuEl).getPropertyValue('--scramble-type-dropdown-gap')) || 8;
+    const viewportPadding = 12;
+    const preferredMaxHeight = 360;
+    const availableAbove = Math.max(0, Math.floor(buttonRect.top - viewportTop - gap - viewportPadding));
+    const availableBelow = Math.max(0, Math.floor(viewportBottom - buttonRect.bottom - gap - viewportPadding));
+    const shouldOpenUp = availableBelow < preferredMaxHeight && availableAbove > availableBelow;
+    const availableSpace = shouldOpenUp ? availableAbove : availableBelow;
+    const maxHeight = availableSpace > 0 ? Math.min(preferredMaxHeight, availableSpace) : null;
+
+    menuEl.classList.toggle('dropdown-up', shouldOpenUp && availableAbove > 0);
+
+    if (typeof maxHeight === 'number') {
+        dropdownEl.style.setProperty('--scramble-type-dropdown-max-height', `${maxHeight}px`);
+    } else {
+        dropdownEl.style.removeProperty('--scramble-type-dropdown-max-height');
+    }
+
+    const activeOptionEl = dropdownEl.querySelector('.scramble-type-option.active');
+    if (ensureActiveVisible && activeOptionEl instanceof HTMLElement) {
+        activeOptionEl.scrollIntoView({ block: 'nearest' });
+    }
 }
 
 function syncHiddenScrambleTypeSetting() {
@@ -2101,6 +2154,9 @@ function registerCustomSelectMenu({ selectId, menuId, buttonId, dropdownId, aria
     const sync = () => {
         const options = Array.from(selectEl.options);
         const selectedOption = options.find((option) => option.value === selectEl.value) || options[0] || null;
+        const scrollEl = ensureDropdownScrollContainer(dropdownEl, 'custom-select-dropdown-scroll');
+
+        if (!(scrollEl instanceof HTMLElement)) return;
 
         labelEl.textContent = selectedOption?.textContent || '';
         buttonEl.title = selectedOption?.textContent || '';
@@ -2122,7 +2178,7 @@ function registerCustomSelectMenu({ selectId, menuId, buttonId, dropdownId, aria
             fragment.appendChild(optionButton);
         });
 
-        dropdownEl.replaceChildren(fragment);
+        scrollEl.replaceChildren(fragment);
     };
 
     buttonEl.addEventListener('click', (event) => {
@@ -2379,6 +2435,11 @@ function initScrambleControls() {
     const nextBtn = document.getElementById('btn-next-scramble');
     const containerEl = document.getElementById('scramble-container');
     const scrambleTypeMenus = Array.from(document.querySelectorAll('.scramble-type-menu'));
+    const repositionOpenScrambleTypeMenus = () => {
+        scrambleTypeMenus
+            .filter((menuEl) => menuEl.classList.contains('open'))
+            .forEach((menuEl) => positionScrambleTypeMenu(menuEl));
+    };
 
     function setScrambleActionsVisible(visible) {
         if (!mobileViewportQuery.matches) return;
@@ -2437,10 +2498,12 @@ function initScrambleControls() {
             event.stopPropagation();
             if (textEl.classList.contains('loading')) return;
             const shouldOpen = !menuEl.classList.contains('open');
+            closeCustomSelectMenus();
             closeScrambleTypeMenus();
             if (!shouldOpen) return;
             menuEl.classList.add('open');
             buttonEl.setAttribute('aria-expanded', 'true');
+            positionScrambleTypeMenu(menuEl, { ensureActiveVisible: true });
         });
 
         optionEls.forEach((optionEl) => {
@@ -2529,6 +2592,10 @@ function initScrambleControls() {
         if (containerEl.contains(event.target)) return;
         setScrambleActionsVisible(false);
     }, true);
+
+    window.addEventListener('resize', repositionOpenScrambleTypeMenus);
+    window.visualViewport?.addEventListener('resize', repositionOpenScrambleTypeMenus);
+    window.visualViewport?.addEventListener('scroll', repositionOpenScrambleTypeMenus);
 
     syncScrambleTypeMenus(getSelectedScrambleType());
 }
