@@ -211,6 +211,7 @@ const customSelectControllers = new Map();
 const viewportLayoutState = {
     timerTransform: null,
     scrambleTransform: null,
+    modeKey: null,
 };
 const mobileScrambleFreezeState = {
     hasSnapshot: false,
@@ -1053,6 +1054,22 @@ function applyCachedTransform(el, stateKey, transform) {
     viewportLayoutState[stateKey] = normalizedTransform;
 }
 
+function getViewportLayoutModeKey() {
+    if (!mobileViewportQuery.matches) return 'desktop';
+    return mobileLandscapeQuery.matches ? 'mobile-landscape' : 'mobile-portrait';
+}
+
+function syncViewportLayoutModeState() {
+    const nextModeKey = getViewportLayoutModeKey();
+    const previousModeKey = viewportLayoutState.modeKey;
+
+    viewportLayoutState.modeKey = nextModeKey;
+
+    if (previousModeKey == null || previousModeKey === nextModeKey) return;
+
+    resetMobileScrambleLayoutFreeze({ clearSnapshot: true });
+}
+
 function scheduleViewportLayoutSync() {
     if (viewportLayoutFrame != null) return;
     viewportLayoutFrame = window.requestAnimationFrame(() => {
@@ -1214,6 +1231,7 @@ function syncLandscapeMobileScrambleSingleLineFit() {
 }
 
 function syncViewportLayout() {
+    syncViewportLayoutModeState();
     syncDesktopPanelScale();
     syncDesktopScrambleBounds();
     syncLandscapeMobileScrambleSingleLineFit();
