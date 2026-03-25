@@ -212,6 +212,13 @@ const viewportLayoutState = {
     timerTransform: null,
     scrambleTransform: null,
 };
+const mobileScrambleFreezeState = {
+    hasSnapshot: false,
+    transform: '',
+    fontSize: '',
+    maxWidth: '',
+    whiteSpace: '',
+};
 const quickActionsState = {
     visible: false,
     pinned: false,
@@ -736,6 +743,46 @@ function getMobileScrambleTextLayoutRect() {
         : scrambleTextWrapper);
 }
 
+function shouldFreezeMobileScrambleLayout(state = timer.getState()) {
+    return state === 'holding'
+        || state === 'ready'
+        || state === 'inspection-holding'
+        || state === 'inspection-ready';
+}
+
+function applyFrozenMobileScrambleTextLayout() {
+    const scrambleText = getEl('scramble-text');
+    if (!scrambleText || !mobileScrambleFreezeState.hasSnapshot) return false;
+
+    scrambleText.style.fontSize = mobileScrambleFreezeState.fontSize;
+
+    if (mobileScrambleFreezeState.maxWidth) {
+        scrambleText.style.maxWidth = mobileScrambleFreezeState.maxWidth;
+    } else {
+        scrambleText.style.removeProperty('max-width');
+    }
+
+    if (mobileScrambleFreezeState.whiteSpace) {
+        scrambleText.style.whiteSpace = mobileScrambleFreezeState.whiteSpace;
+    } else {
+        scrambleText.style.removeProperty('white-space');
+    }
+
+    return true;
+}
+
+function captureMobileScrambleLayoutSnapshot() {
+    const scrambleContainer = getEl('scramble-container');
+    const scrambleText = getEl('scramble-text');
+    if (!scrambleContainer || !scrambleText) return;
+
+    mobileScrambleFreezeState.transform = scrambleContainer.style.transform || '';
+    mobileScrambleFreezeState.fontSize = scrambleText.style.fontSize || '';
+    mobileScrambleFreezeState.maxWidth = scrambleText.style.maxWidth || '';
+    mobileScrambleFreezeState.whiteSpace = scrambleText.style.whiteSpace || '';
+    mobileScrambleFreezeState.hasSnapshot = true;
+}
+
 function getMobileScrambleVerticalBounds() {
     const scrambleText = getEl('scramble-text');
     const topRowRect = getEl('scramble-top-row')?.getBoundingClientRect();
@@ -1072,6 +1119,11 @@ function syncLandscapeMobileScrambleSingleLineFit() {
     const isStructuredMegaminx = scrambleText.dataset.scrambleLayout === 'megaminx-rows'
         && scrambleText.style.display !== 'none';
     const isMobileTimerView = mobileViewportQuery.matches && document.body.dataset.mobilePanel === 'timer';
+    const state = timer.getState();
+
+    if (isMobileTimerView && shouldFreezeMobileScrambleLayout(state) && applyFrozenMobileScrambleTextLayout()) {
+        return;
+    }
 
     scrambleText.style.fontSize = '';
     scrambleText.style.removeProperty('max-width');
@@ -1235,8 +1287,14 @@ function syncViewportLayout() {
         applyCachedTransform(timerDisplayWrapper, 'timerTransform', '');
     }
 
+    if (isMobileTimerView && shouldFreezeMobileScrambleLayout(state) && mobileScrambleFreezeState.hasSnapshot) {
+        applyCachedTransform(scrambleContainer, 'scrambleTransform', mobileScrambleFreezeState.transform);
+        return;
+    }
+
     if (!shouldPositionMobileScramble || (targetScrambleCenterY == null && targetTimerCenterY == null)) {
         if (!isSolving) applyCachedTransform(scrambleContainer, 'scrambleTransform', '');
+        if (isMobileTimerView && (state === 'idle' || state === 'stopped')) captureMobileScrambleLayoutSnapshot();
         return;
     }
 
@@ -1258,6 +1316,10 @@ function syncViewportLayout() {
         'scrambleTransform',
         `translateY(${Math.round(scrambleOffsetY * 10) / 10}px)`,
     );
+
+    if (isMobileTimerView && (state === 'idle' || state === 'stopped')) {
+        captureMobileScrambleLayoutSnapshot();
+    }
 }
 
 function setActiveMobilePanel(panel) {
