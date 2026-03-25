@@ -1,11 +1,11 @@
 import { timer } from './timer.js?v=5';
-import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble } from './scramble.js?v=9';
+import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble } from './scramble.js?v=10';
 import { sessionManager } from './session.js';
 import { settings, DEFAULTS } from './settings.js';
 import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=2';
 import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate } from './utils.js';
 import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=12';
-import { applyScramble, initCubeDisplay, updateCubeDisplay } from './cube-display.js';
+import { applyPyraminxScramble, applyScramble, clearCubeDisplay, initCubeDisplay, updateCubeDisplay, updatePyraminxDisplay } from './cube-display.js?v=7';
 import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=9';
 import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer } from './storage.js';
 
@@ -240,7 +240,29 @@ const inspectionSpeechUnlockState = {
     dismissed: false,
 };
 const cubeFaceColors = ['#FFF', '#F00', '#33CD32', '#FFFF05', '#FFA503', '#00F'];
-const INITIAL_SUBSET_STARTUP_SCRAMBLE_DELAY_MS = 220;
+const pyraminxFaceColors = ['#FFFF05', '#33CD32', '#F00', '#00F'];
+const INITIAL_NON_333_STARTUP_SCRAMBLE_DELAY_MS = 220;
+const STANDARD_CUBE_PREVIEW_SIZES = new Map([
+    ['222', 2],
+    ['333', 3],
+    ['444', 4],
+    ['555', 5],
+    ['666', 6],
+    ['777', 7],
+]);
+const YELLOW_TOP_PREVIEW_TYPES = new Set(['ll', 'pll', 'zbll', 'lsll']);
+const CUBE_PREVIEW_SCRAMBLE_TYPES = new Set([
+    ...STANDARD_CUBE_PREVIEW_SIZES.keys(),
+    ...YELLOW_TOP_PREVIEW_TYPES,
+]);
+const PYRAMINX_PREVIEW_SCRAMBLE_TYPES = new Set(['pyram']);
+const SCRAMBLE_PREVIEW_TYPES = new Set([
+    ...CUBE_PREVIEW_SCRAMBLE_TYPES,
+    ...PYRAMINX_PREVIEW_SCRAMBLE_TYPES,
+]);
+const PYRAMINX_PREVIEW_BUTTON_FACE_INDEX = 1;
+const PYRAMINX_PREVIEW_BUTTON_INDEX_MAP = Object.freeze([1, 0, 5, 4, 3, 7, 2, 6, 8]);
+const STRICT_CUBE_EDIT_SCRAMBLE_TYPES = new Set(['333', ...YELLOW_TOP_PREVIEW_TYPES]);
 const yellowTopPreviewFaceMap = Object.freeze({
     U: 'D',
     D: 'U',
@@ -1132,12 +1154,30 @@ function isScramblePreviewModalOpen() {
 }
 
 function getScramblePreviewOrientation(type = getCurrentScrambleType()) {
-    return type === '333' ? 'standard' : 'yellow-top';
+    return YELLOW_TOP_PREVIEW_TYPES.has(type) ? 'yellow-top' : 'standard';
+}
+
+function getScramblePreviewSize(type = getCurrentScrambleType()) {
+    return STANDARD_CUBE_PREVIEW_SIZES.get(type) || 3;
+}
+
+function supportsCubePreview(type = getCurrentScrambleType()) {
+    return CUBE_PREVIEW_SCRAMBLE_TYPES.has(type);
+}
+
+function supportsPyraminxPreview(type = getCurrentScrambleType()) {
+    return PYRAMINX_PREVIEW_SCRAMBLE_TYPES.has(type);
+}
+
+function supportsScramblePreview(type = getCurrentScrambleType()) {
+    return SCRAMBLE_PREVIEW_TYPES.has(type);
 }
 
 function mapScrambleForPreview(scramble, type = getCurrentScrambleType()) {
     const normalizedScramble = String(scramble ?? '').trim().replace(/\s+/g, ' ');
-    if (!normalizedScramble || type === '333') return normalizedScramble;
+    if (!normalizedScramble) return normalizedScramble;
+    if (!supportsCubePreview(type)) return normalizedScramble;
+    if (!YELLOW_TOP_PREVIEW_TYPES.has(type)) return normalizedScramble;
 
     return normalizedScramble
         .split(' ')
@@ -1149,6 +1189,12 @@ function mapScrambleForPreview(scramble, type = getCurrentScrambleType()) {
         .join(' ');
 }
 
+function samplePreviewFaceSticker(face, faceSize, sampleRow, sampleCol, sampleSize = 3) {
+    const sourceRow = Math.min(faceSize - 1, Math.floor(((sampleRow + 0.5) * faceSize) / sampleSize));
+    const sourceCol = Math.min(faceSize - 1, Math.floor(((sampleCol + 0.5) * faceSize) / sampleSize));
+    return face[(sourceRow * faceSize) + sourceCol];
+}
+
 function updateScramblePreviewButtonFace(scramble, type = getCurrentScrambleType()) {
     const icon = getEl('btn-scramble-preview')?.querySelector('.scramble-preview-face-icon');
     if (!icon) return;
@@ -1156,24 +1202,68 @@ function updateScramblePreviewButtonFace(scramble, type = getCurrentScrambleType
     const stickers = icon.querySelectorAll('span');
     if (stickers.length !== 9) return;
 
-    const previewScramble = mapScrambleForPreview(scramble, type);
-    const cube = applyScramble(previewScramble, getScramblePreviewOrientation(type));
-    const upFace = cube?.[0];
-    if (!Array.isArray(upFace) || upFace.length !== 9) return;
+    if (!supportsScramblePreview(type)) {
+        stickers.forEach((sticker) => {
+            sticker.style.backgroundColor = cubeFaceColors[0];
+        });
+        return;
+    }
 
-    upFace.forEach((faceIndex, index) => {
+    if (supportsPyraminxPreview(type)) {
+        const pyraminx = applyPyraminxScramble(scramble);
+        const previewFace = pyraminx?.[PYRAMINX_PREVIEW_BUTTON_FACE_INDEX];
+        if (!Array.isArray(previewFace) || previewFace.length !== stickers.length) return;
+
+        stickers.forEach((sticker, index) => {
+            const faceIndex = PYRAMINX_PREVIEW_BUTTON_INDEX_MAP[index] ?? index;
+            const color = pyraminxFaceColors[previewFace[faceIndex]] || pyraminxFaceColors[0];
+            sticker.style.backgroundColor = color;
+        });
+        return;
+    }
+
+    const previewScramble = mapScrambleForPreview(scramble, type);
+    const cube = applyScramble(
+        previewScramble,
+        getScramblePreviewOrientation(type),
+        getScramblePreviewSize(type),
+    );
+    const upFace = cube?.[0];
+    if (!Array.isArray(upFace) || upFace.length === 0) return;
+    const faceSize = Math.max(2, Math.round(Math.sqrt(upFace.length)));
+
+    stickers.forEach((sticker, index) => {
+        const row = Math.floor(index / 3);
+        const col = index % 3;
+        const faceIndex = samplePreviewFaceSticker(upFace, faceSize, row, col);
         const color = cubeFaceColors[faceIndex] || '#FFF';
-        stickers[index].style.backgroundColor = color;
+        sticker.style.backgroundColor = color;
     });
 }
 
 function renderScramblePreviewDisplays(scramble, type = getCurrentScrambleType()) {
     const normalizedScramble = String(scramble ?? '');
+    const mainCanvas = getEl('cube-canvas');
+
+    if (!supportsScramblePreview(type)) {
+        if (mainCanvas) clearCubeDisplay(mainCanvas);
+        if (scramblePreviewModalCanvas) clearCubeDisplay(scramblePreviewModalCanvas);
+        updateScramblePreviewButtonFace(normalizedScramble, type);
+        return;
+    }
+
+    if (supportsPyraminxPreview(type)) {
+        if (mainCanvas) updatePyraminxDisplay(mainCanvas, normalizedScramble);
+        if (scramblePreviewModalCanvas) updatePyraminxDisplay(scramblePreviewModalCanvas, normalizedScramble);
+        updateScramblePreviewButtonFace(normalizedScramble, type);
+        return;
+    }
+
     const previewScramble = mapScrambleForPreview(normalizedScramble, type);
     const orientation = getScramblePreviewOrientation(type);
-    const mainCanvas = getEl('cube-canvas');
-    if (mainCanvas) updateCubeDisplay(mainCanvas, previewScramble, orientation);
-    if (scramblePreviewModalCanvas) updateCubeDisplay(scramblePreviewModalCanvas, previewScramble, orientation);
+    const previewSize = getScramblePreviewSize(type);
+    if (mainCanvas) updateCubeDisplay(mainCanvas, previewScramble, orientation, previewSize);
+    if (scramblePreviewModalCanvas) updateCubeDisplay(scramblePreviewModalCanvas, previewScramble, orientation, previewSize);
     updateScramblePreviewButtonFace(normalizedScramble, type);
 }
 
@@ -1229,6 +1319,7 @@ async function init() {
     const sessionInitPromise = sessionManager.init();
     initCubeDisplay(document.getElementById('cube-canvas'));
     initScramblePreviewModal();
+    populateScrambleTypeMenus();
     syncHiddenScrambleTypeSetting();
     syncScrambleTypeMenus();
     const shouldLoadInitialScramble = !syncInitialScrambleUI();
@@ -1327,7 +1418,7 @@ async function init() {
         if (getSelectedScrambleType() === '333') {
             startInitialScrambleLoad();
         } else {
-            window.setTimeout(startInitialScrambleLoad, INITIAL_SUBSET_STARTUP_SCRAMBLE_DELAY_MS);
+            window.setTimeout(startInitialScrambleLoad, INITIAL_NON_333_STARTUP_SCRAMBLE_DELAY_MS);
         }
     }
 
@@ -1753,6 +1844,25 @@ function getScrambleTypeMeta(type = getSelectedScrambleType()) {
     return SCRAMBLE_TYPE_OPTIONS.find((option) => option.id === type) || SCRAMBLE_TYPE_OPTIONS[0];
 }
 
+function populateScrambleTypeMenus() {
+    document.querySelectorAll('.scramble-type-dropdown').forEach((dropdownEl) => {
+        const fragment = document.createDocumentFragment();
+
+        SCRAMBLE_TYPE_OPTIONS.forEach((option) => {
+            const optionButton = document.createElement('button');
+            optionButton.type = 'button';
+            optionButton.className = 'scramble-type-option';
+            optionButton.dataset.scrambleType = option.id;
+            optionButton.setAttribute('role', 'menuitemradio');
+            optionButton.setAttribute('aria-checked', 'false');
+            optionButton.textContent = option.menuLabel;
+            fragment.appendChild(optionButton);
+        });
+
+        dropdownEl.replaceChildren(fragment);
+    });
+}
+
 function closeScrambleTypeMenus() {
     document.querySelectorAll('.scramble-type-menu').forEach((menuEl) => {
         menuEl.classList.remove('open');
@@ -1975,6 +2085,22 @@ function updateScrambleUI(scrambleStr) {
     scheduleViewportLayoutSync();
 }
 
+function normalizeScrambleEditValue(value, type = getCurrentScrambleType()) {
+    let nextValue = String(value ?? '').replace(/[`´‘’′]/g, "'");
+
+    if (!STRICT_CUBE_EDIT_SCRAMBLE_TYPES.has(type)) {
+        return nextValue.replace(/\s+/g, ' ');
+    }
+
+    nextValue = nextValue.toUpperCase();
+    nextValue = nextValue.replace(/[^RLUDBF2' ]/g, '');
+    nextValue = nextValue.replace(/([RLUDBF2'])([RLUDBF])/g, '$1 $2');
+    nextValue = nextValue.replace(/(^| )['2]+/g, '$1');
+    nextValue = nextValue.replace(/([RLUDBF])(['2])(['2]+)/g, '$1$2');
+    nextValue = nextValue.replace(/ +/g, ' ');
+    return nextValue;
+}
+
 function initScrambleControls() {
     const textEl = document.getElementById('scramble-text');
     const inputEl = document.getElementById('scramble-input');
@@ -2091,34 +2217,7 @@ function initScrambleControls() {
         }
     });
     inputEl.addEventListener('input', (e) => {
-        let val = e.target.value;
-
-        // 1. Normalize all possible apostrophes/backticks to a single '
-        val = val.replace(/[`´‘’′]/g, "'");
-
-        // 2. Auto-capitalize available letters
-        val = val.toUpperCase();
-
-        // 3. Keep only allowed characters: R, L, U, D, B, F, 2, ', and Space
-        // We include 'x','y','z' and 'M','E','S' if you want full cube notation, 
-        // but user specifically asked for "RLUDBF, space, 2, and apostrophes".
-        val = val.replace(/[^RLUDBF2' ]/g, '');
-
-        // 4. Force a space if a letter is written before another letter or modifier
-        // e.g. "RU" -> "R U", "R2U" -> "R2 U", "R'U" -> "R' U"
-        val = val.replace(/([RLUDBF2'])([RLUDBF])/g, '$1 $2');
-
-        // 5. Stricter modifiers: only allow ' or 2 directly after a letter
-        // Remove standalone modifiers at start or after a space
-        val = val.replace(/(^| )['2]+/g, '$1');
-        // Remove repeated modifiers or invalid sequences like '2 or 2'
-        // (Keeping it simple recursively: only the first modifier after a letter stays)
-        val = val.replace(/([RLUDBF])(['2])(['2]+)/g, '$1$2');
-
-        // 6. Disallow two spaces next to each other
-        val = val.replace(/ +/g, ' ');
-
-        // Update the input value and the cube display
+        const val = normalizeScrambleEditValue(e.target.value, getCurrentScrambleType());
         e.target.value = val;
         renderScramblePreviewDisplays(val);
     });

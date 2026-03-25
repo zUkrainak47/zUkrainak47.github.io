@@ -18,17 +18,37 @@ const SCRAMBOW_SCRIPT_SRC = 'https://unpkg.com/scrambow@1.8.1/dist/scrambow.js';
 const SUBSET_BOOTSTRAP_QUEUE_FILL_DELAY_MS = 280;
 
 export const SCRAMBLE_TYPE_OPTIONS = Object.freeze([
-    { id: '333', menuLabel: '3x3x3', buttonLabel: '3x3x3' },
-    { id: 'll', menuLabel: 'OLL', buttonLabel: 'OLL' },
-    { id: 'pll', menuLabel: 'PLL', buttonLabel: 'PLL' },
-    { id: 'zbll', menuLabel: 'ZBLL', buttonLabel: 'ZBLL' },
-    { id: 'lsll', menuLabel: 'LSLL', buttonLabel: 'LSLL' },
+    { id: '333', menuLabel: '3x3x3', buttonLabel: '3x3x3', generator: 'cubing', eventId: '333' },
+    { id: '222', menuLabel: '2x2x2', buttonLabel: '2x2', generator: 'cubing', eventId: '222' },
+    { id: '444', menuLabel: '4x4x4', buttonLabel: '4x4', generator: 'cubing', eventId: '444' },
+    { id: '555', menuLabel: '5x5x5', buttonLabel: '5x5', generator: 'cubing', eventId: '555' },
+    { id: '666', menuLabel: '6x6x6', buttonLabel: '6x6', generator: 'cubing', eventId: '666' },
+    { id: '777', menuLabel: '7x7x7', buttonLabel: '7x7', generator: 'cubing', eventId: '777' },
+    { id: 'pyram', menuLabel: 'Pyraminx', buttonLabel: 'Pyra', generator: 'cubing', eventId: 'pyram' },
+    { id: 'minx', menuLabel: 'Megaminx', buttonLabel: 'Mega', generator: 'cubing', eventId: 'minx' },
+    { id: 'skewb', menuLabel: 'Skewb', buttonLabel: 'Skewb', generator: 'cubing', eventId: 'skewb' },
+    { id: 'sq1', menuLabel: 'Square-1', buttonLabel: 'Sq-1', generator: 'cubing', eventId: 'sq1' },
+    { id: 'clock', menuLabel: 'Clock', buttonLabel: 'Clock', generator: 'cubing', eventId: 'clock' },
+    { id: 'll', menuLabel: 'OLL', buttonLabel: 'OLL', generator: 'scrambow' },
+    { id: 'pll', menuLabel: 'PLL', buttonLabel: 'PLL', generator: 'scrambow' },
+    { id: 'zbll', menuLabel: 'ZBLL', buttonLabel: 'ZBLL', generator: 'scrambow' },
+    { id: 'lsll', menuLabel: 'LSLL', buttonLabel: 'LSLL', generator: 'scrambow' },
 ]);
 
 const SCRAMBLE_TYPE_SET = new Set(SCRAMBLE_TYPE_OPTIONS.map((option) => option.id));
-const SCRAMBOW_SCRAMBLE_TYPES = new Set(['ll', 'pll', 'zbll', 'lsll']);
-const SCRAMBLE_QUEUE_TYPES = Object.freeze(['333', ...SCRAMBOW_SCRAMBLE_TYPES]);
+const SCRAMBOW_SCRAMBLE_TYPES = new Set(
+    SCRAMBLE_TYPE_OPTIONS
+        .filter((option) => option.generator === 'scrambow')
+        .map((option) => option.id),
+);
+const CUBING_SCRAMBLE_EVENTS = new Map(
+    SCRAMBLE_TYPE_OPTIONS
+        .filter((option) => option.generator === 'cubing')
+        .map((option) => [option.id, option.eventId]),
+);
+const SCRAMBLE_QUEUE_TYPES = Object.freeze(SCRAMBLE_TYPE_OPTIONS.map((option) => option.id));
 const SCRAMBLE_QUEUE_TYPE_SET = new Set(SCRAMBLE_QUEUE_TYPES);
+const DEFERRED_QUEUE_FILL_TYPES = new Set(SCRAMBLE_QUEUE_TYPES.filter((type) => type !== '333'));
 
 const _scrambowInstances = new Map();
 const _legacy333ScrambleQueue = sanitizeScrambleQueue(load(LEGACY_SCRAMBLE_QUEUE_STORAGE_KEY, []));
@@ -195,12 +215,12 @@ async function initScrambow() {
     return _scrambowInitPromise;
 }
 
-async function create333Scramble() {
+async function createCubingScramble(eventId) {
     if (!randomScrambleForEvent) {
         await initCubingScrambler();
     }
 
-    const alg = await randomScrambleForEvent('333');
+    const alg = await randomScrambleForEvent(eventId);
     return normalizeScrambleText(alg.toString());
 }
 
@@ -264,7 +284,7 @@ function scheduleQueueFill(type = _scrambleType) {
         void fillScrambleQueue(normalizedType);
     };
 
-    const shouldDefer = SCRAMBOW_SCRAMBLE_TYPES.has(normalizedType);
+    const shouldDefer = DEFERRED_QUEUE_FILL_TYPES.has(normalizedType);
     if (!shouldDefer) {
         run();
         return;
@@ -280,7 +300,7 @@ function scheduleQueueFill(type = _scrambleType) {
 }
 
 function yieldQueueFillTurn(type) {
-    if (!SCRAMBOW_SCRAMBLE_TYPES.has(type)) {
+    if (!DEFERRED_QUEUE_FILL_TYPES.has(type)) {
         return Promise.resolve();
     }
 
@@ -306,7 +326,7 @@ function scheduleBootstrapQueueFill(type = _scrambleType) {
             scheduleQueueFill(normalizedType);
         };
 
-        if (SCRAMBOW_SCRAMBLE_TYPES.has(normalizedType) && typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
+        if (DEFERRED_QUEUE_FILL_TYPES.has(normalizedType) && typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
             window.requestIdleCallback(flush, { timeout: 1400 });
             return;
         }
@@ -314,7 +334,7 @@ function scheduleBootstrapQueueFill(type = _scrambleType) {
         flush();
     };
 
-    if (SCRAMBOW_SCRAMBLE_TYPES.has(normalizedType)) {
+    if (DEFERRED_QUEUE_FILL_TYPES.has(normalizedType)) {
         window.setTimeout(run, SUBSET_BOOTSTRAP_QUEUE_FILL_DELAY_MS);
         return;
     }
@@ -382,7 +402,8 @@ async function createSubsetScramble(type) {
 
 async function createScrambleForType(type) {
     const normalizedType = sanitizeScrambleType(type);
-    if (normalizedType === '333') return create333Scramble();
+    const cubingEventId = CUBING_SCRAMBLE_EVENTS.get(normalizedType);
+    if (cubingEventId) return createCubingScramble(cubingEventId);
     if (SCRAMBOW_SCRAMBLE_TYPES.has(normalizedType)) return createSubsetScramble(normalizedType);
     throw new Error(`Unsupported scramble type: ${type}`);
 }
