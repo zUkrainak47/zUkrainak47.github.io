@@ -667,6 +667,105 @@ function combineLayoutRects(...rects) {
     };
 }
 
+function getProjectedMobileTimerTop() {
+    if (!mobileViewportQuery.matches || document.body.dataset.mobilePanel !== 'timer') return null;
+
+    const timerDisplayWrapper = getEl('timer-display-wrapper');
+    const timerDisplay = getEl('timer-display');
+    const timerAnchor = timerDisplay || timerDisplayWrapper;
+    const timerRect = getLayoutRect(timerAnchor);
+    const timerVisualRect = timerDisplay?.getBoundingClientRect()
+        || timerDisplayWrapper?.getBoundingClientRect();
+
+    if (!timerRect?.height) return timerVisualRect?.top ?? null;
+
+    const state = timer.getState();
+    const isZen = document.body.classList.contains('zen');
+    const centerTimerEnabled = settings.get('centerTimer');
+    const shouldFocusTimer = state === 'running' || state === 'ready' || isInspectionState(state);
+    const shouldApplyMobileTimerPositioning = centerTimerEnabled || isZen;
+    const shouldViewportCenterTimer = shouldFocusTimer && (centerTimerEnabled || isZen);
+    const shouldPositionIdleMobileTimer = shouldApplyMobileTimerPositioning && !shouldFocusTimer;
+    let targetTimerCenterY = null;
+    let sourcePositioningRect = timerRect;
+
+    if (shouldViewportCenterTimer) {
+        targetTimerCenterY = window.innerHeight / 2;
+    } else if (!shouldPositionIdleMobileTimer) {
+        return timerVisualRect?.top ?? timerRect.top;
+    } else if (isZen) {
+        targetTimerCenterY = window.innerHeight / 2;
+    } else {
+        const rightPanelRect = getEl('right-panel')?.getBoundingClientRect();
+        const zenRect = getEl('btn-zen')?.getBoundingClientRect();
+        const scrambleRect = getMobileScrambleTextLayoutRect();
+        const quickActions = getEl('timer-quick-actions');
+        const quickActionsRect = quickActions && !quickActions.hidden
+            ? getLayoutRect(quickActions)
+            : null;
+        const duetRect = combineLayoutRects(timerRect, quickActionsRect);
+        const freeBottom = rightPanelRect?.top ?? window.innerHeight;
+        sourcePositioningRect = duetRect || timerRect;
+
+        const zenCenterY = zenRect ? zenRect.top + (zenRect.height / 2) : 0;
+        const preservedScrambleCenterY = scrambleRect
+            ? ((3 * zenCenterY) + (freeBottom - 12)) / 4
+            : zenCenterY;
+        const scrambleBottom = scrambleRect
+            ? preservedScrambleCenterY + (scrambleRect.height / 2)
+            : zenCenterY;
+        targetTimerCenterY = (scrambleBottom + freeBottom) / 2;
+    }
+
+    // Mirror the real mobile timer transform so scramble fitting uses the timer display's
+    // actual projected top edge, not the taller timer-plus-actions block.
+    if (shortMobileLandscapeQuery.matches && (state === 'idle' || state === 'stopped' || state === 'holding')) {
+        targetTimerCenterY += 30;
+    }
+
+    const sourceCenterY = sourcePositioningRect.top + (sourcePositioningRect.height / 2);
+    const offsetY = targetTimerCenterY - sourceCenterY;
+    return timerRect.top + offsetY;
+}
+
+function getMobileScrambleTextLayoutRect() {
+    const scrambleText = getEl('scramble-text');
+    const scrambleTextWrapper = getEl('scramble-text-wrapper');
+    return getLayoutRect(scrambleText && scrambleText.style.display !== 'none'
+        ? scrambleText
+        : scrambleTextWrapper);
+}
+
+function getMobileScrambleVerticalBounds() {
+    const scrambleText = getEl('scramble-text');
+    const topRowRect = getEl('scramble-top-row')?.getBoundingClientRect();
+    const rightPanelRect = getEl('right-panel')?.getBoundingClientRect();
+    const isLandscapeMegaminx = mobileLandscapeQuery.matches
+        && scrambleText?.dataset.scrambleLayout === 'megaminx-rows';
+    const topGap = isLandscapeMegaminx ? -6 : 8;
+    const timerGap = 8;
+    const panelGap = 12;
+    const projectedTimerTop = getProjectedMobileTimerTop();
+    const currentTimerTop = getEl('timer-display')?.getBoundingClientRect()?.top
+        ?? getEl('timer-display-wrapper')?.getBoundingClientRect()?.top
+        ?? null;
+    const timerTop = [projectedTimerTop, currentTimerTop]
+        .filter((value) => Number.isFinite(value))
+        .reduce((smallest, value) => Math.min(smallest, value), Number.POSITIVE_INFINITY);
+    const topLimit = (topRowRect?.bottom ?? 0) + topGap;
+    let bottomLimit = (rightPanelRect?.top ?? window.innerHeight) - panelGap;
+
+    if (Number.isFinite(timerTop)) {
+        bottomLimit = Math.min(bottomLimit, timerTop - timerGap);
+    }
+
+    return {
+        topLimit,
+        bottomLimit,
+        availableHeight: bottomLimit - topLimit,
+    };
+}
+
 function updateManualTimeEntryUI() {
     const hiddenInput = getEl('manual-time-hidden-input');
     const formattedEl = getEl('manual-time-formatted');
@@ -972,69 +1071,69 @@ function syncLandscapeMobileScrambleSingleLineFit() {
 
     const isStructuredMegaminx = scrambleText.dataset.scrambleLayout === 'megaminx-rows'
         && scrambleText.style.display !== 'none';
-
-    if (isStructuredMegaminx) {
-        scrambleText.style.fontSize = '';
-        scrambleText.style.removeProperty('max-width');
-        scrambleText.style.removeProperty('white-space');
-
-        const availableWidth = scrambleTextWrapper.clientWidth;
-        if (availableWidth <= 0) return;
-        if (scrambleText.scrollWidth <= availableWidth + 0.5) return;
-
-        const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-        const minFontSizePx = rootFontSize * (mobileViewportQuery.matches ? 0.5 : 0.58);
-        let currentFontSizePx = parseFloat(getComputedStyle(scrambleText).fontSize) || rootFontSize;
-
-        while (currentFontSizePx > minFontSizePx && scrambleText.scrollWidth > availableWidth + 0.5) {
-            currentFontSizePx -= 0.25;
-            scrambleText.style.fontSize = `${currentFontSizePx}px`;
-        }
-
-        return;
-    }
-
-    const shouldFit = mobileLandscapeQuery.matches
-        && mobileViewportQuery.matches
-        && scrambleText.style.display !== 'none';
-
-    if (!shouldFit) {
-        scrambleText.style.removeProperty('font-size');
-        scrambleText.style.removeProperty('max-width');
-        scrambleText.style.removeProperty('white-space');
-        return;
-    }
-
-    let appLayoutContentWidth = 0;
-    if (appLayout) {
-        const appLayoutStyles = getComputedStyle(appLayout);
-        const paddingLeft = parseFloat(appLayoutStyles.paddingLeft) || 0;
-        const paddingRight = parseFloat(appLayoutStyles.paddingRight) || 0;
-        appLayoutContentWidth = Math.max(0, appLayout.clientWidth - paddingLeft - paddingRight);
-    }
-
-    const widthBasis = appLayoutContentWidth > 0 ? appLayoutContentWidth : window.innerWidth;
-    const designatedWidthPx = Math.floor(widthBasis * 0.86);
-    const availableWidth = Math.max(0, Math.min(scrambleTextWrapper.clientWidth, designatedWidthPx, widthBasis));
-    if (availableWidth <= 0) return;
+    const isMobileTimerView = mobileViewportQuery.matches && document.body.dataset.mobilePanel === 'timer';
 
     scrambleText.style.fontSize = '';
-    scrambleText.style.maxWidth = `${availableWidth}px`;
-    scrambleText.style.whiteSpace = 'nowrap';
+    scrambleText.style.removeProperty('max-width');
+    scrambleText.style.removeProperty('white-space');
 
-    if (scrambleText.scrollWidth <= scrambleText.clientWidth + 0.5) return;
+    const shouldForceLandscapeSingleLine = mobileLandscapeQuery.matches
+        && mobileViewportQuery.matches
+        && !isStructuredMegaminx
+        && scrambleText.style.display !== 'none';
 
-    const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-    const minFontSizePx = rootFontSize * 0.72;
-    let currentFontSizePx = parseFloat(getComputedStyle(scrambleText).fontSize) || rootFontSize;
+    if (shouldForceLandscapeSingleLine) {
+        let appLayoutContentWidth = 0;
+        if (appLayout) {
+            const appLayoutStyles = getComputedStyle(appLayout);
+            const paddingLeft = parseFloat(appLayoutStyles.paddingLeft) || 0;
+            const paddingRight = parseFloat(appLayoutStyles.paddingRight) || 0;
+            appLayoutContentWidth = Math.max(0, appLayout.clientWidth - paddingLeft - paddingRight);
+        }
 
-    while (currentFontSizePx > minFontSizePx && scrambleText.scrollWidth > scrambleText.clientWidth + 0.5) {
-        currentFontSizePx -= 0.25;
-        scrambleText.style.fontSize = `${currentFontSizePx}px`;
+        const widthBasis = appLayoutContentWidth > 0 ? appLayoutContentWidth : window.innerWidth;
+        const designatedWidthPx = Math.floor(widthBasis * 0.86);
+        const availableWidth = Math.max(0, Math.min(scrambleTextWrapper.clientWidth, designatedWidthPx, widthBasis));
+        if (availableWidth > 0) {
+            scrambleText.style.maxWidth = `${availableWidth}px`;
+            scrambleText.style.whiteSpace = 'nowrap';
+
+            if (scrambleText.scrollWidth > scrambleText.clientWidth + 0.5) {
+                const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+                const minFontSizePx = rootFontSize * 0.72;
+                let currentFontSizePx = parseFloat(getComputedStyle(scrambleText).fontSize) || rootFontSize;
+
+                while (currentFontSizePx > minFontSizePx && scrambleText.scrollWidth > scrambleText.clientWidth + 0.5) {
+                    currentFontSizePx -= 0.25;
+                    scrambleText.style.fontSize = `${currentFontSizePx}px`;
+                }
+
+                if (scrambleText.scrollWidth > scrambleText.clientWidth + 0.5) {
+                    scrambleText.style.whiteSpace = 'normal';
+                }
+            }
+        }
     }
 
-    if (scrambleText.scrollWidth > scrambleText.clientWidth + 0.5) {
-        scrambleText.style.whiteSpace = 'normal';
+    if (!isMobileTimerView || scrambleText.style.display === 'none') return;
+
+    const { availableHeight } = getMobileScrambleVerticalBounds();
+    if (availableHeight <= 0) return;
+
+    const measuredHeightEl = scrambleText;
+    const measuredHeight = measuredHeightEl.offsetHeight;
+    if (!measuredHeight || measuredHeight <= availableHeight + 0.5) return;
+
+    const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    const minFontSizePx = Math.max(6, Math.min(window.innerWidth, window.innerHeight) * 0.018);
+    let currentFontSizePx = parseFloat(getComputedStyle(scrambleText).fontSize) || rootFontSize;
+    const proportionalFontSizePx = currentFontSizePx * (availableHeight / measuredHeight);
+    currentFontSizePx = Math.max(minFontSizePx, Math.floor(proportionalFontSizePx * 100) / 100);
+    scrambleText.style.fontSize = `${currentFontSizePx}px`;
+
+    while (currentFontSizePx > minFontSizePx && measuredHeightEl.offsetHeight > availableHeight + 0.5) {
+        currentFontSizePx -= 0.25;
+        scrambleText.style.fontSize = `${currentFontSizePx}px`;
     }
 }
 
@@ -1144,7 +1243,16 @@ function syncViewportLayout() {
     const zenRect = zenButton.getBoundingClientRect();
     const scrambleRect = getLayoutRect(scrambleTextWrapper);
     const resolvedScrambleCenterY = targetScrambleCenterY ?? (((zenRect.top + zenRect.height / 2) + targetTimerCenterY) / 2);
-    const scrambleOffsetY = resolvedScrambleCenterY - (scrambleRect.top + scrambleRect.height / 2);
+    let scrambleOffsetY = resolvedScrambleCenterY - (scrambleRect.top + scrambleRect.height / 2);
+    if (isMobileTimerView) {
+        const { topLimit, bottomLimit } = getMobileScrambleVerticalBounds();
+        const scrambleCollisionRect = getMobileScrambleTextLayoutRect() || scrambleRect;
+        const minOffsetY = topLimit - scrambleRect.top;
+        const maxOffsetY = bottomLimit - scrambleCollisionRect.bottom;
+        scrambleOffsetY = maxOffsetY < minOffsetY
+            ? minOffsetY
+            : Math.min(Math.max(scrambleOffsetY, minOffsetY), maxOffsetY);
+    }
     applyCachedTransform(
         scrambleContainer,
         'scrambleTransform',
