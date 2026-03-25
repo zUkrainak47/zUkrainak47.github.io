@@ -215,17 +215,10 @@ body.scramble-type-button-hidden #scramble-type-menu-desktop {
 }
 
 .scramble-preview-face-icon {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1px;
+    display: block;
     width: 18px;
     height: 18px;
-}
-
-.scramble-preview-face-icon span {
-    display: block;
-    border-radius: 0.5px;
-    background: #fff;
+    flex: 0 0 auto;
 }
 
 #scramble-text {

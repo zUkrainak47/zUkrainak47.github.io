@@ -268,7 +268,13 @@ const SCRAMBLE_PREVIEW_TYPES = new Set([
     ...PYRAMINX_PREVIEW_SCRAMBLE_TYPES,
 ]);
 const PYRAMINX_PREVIEW_BUTTON_FACE_INDEX = 1;
-const PYRAMINX_PREVIEW_BUTTON_INDEX_MAP = Object.freeze([1, 0, 5, 4, 3, 7, 2, 6, 8]);
+const SCRAMBLE_PREVIEW_BUTTON_PLACEHOLDER_SIZE = 3;
+const SCRAMBLE_PREVIEW_BUTTON_STICKER_GAP_RATIO = 0.12;
+const SCRAMBLE_PREVIEW_BUTTON_STICKER_RADIUS_RATIO = 0.18;
+const SCRAMBLE_PREVIEW_BUTTON_OUTLINE = 'rgba(0, 0, 0, 0.35)';
+const PYRAMINX_PREVIEW_BUTTON_FACE_SIZE = 3;
+const PYRAMINX_PREVIEW_BUTTON_TRIANGLE_HEIGHT_RATIO = Math.sqrt(3) / 2;
+const PYRAMINX_PREVIEW_BUTTON_ROTATION_RAD = (2 * Math.PI) / 3;
 const STRICT_CUBE_EDIT_SCRAMBLE_TYPES = new Set(['333', ...YELLOW_TOP_PREVIEW_TYPES]);
 const yellowTopPreviewFaceMap = Object.freeze({
     U: 'D',
@@ -278,6 +284,7 @@ const yellowTopPreviewFaceMap = Object.freeze({
     F: 'F',
     B: 'B',
 });
+const PYRAMINX_PREVIEW_BUTTON_TRIANGLE_DEFINITIONS = Object.freeze(createPreviewPyraminxTriangleDefinitions());
 
 // ──── History & Back Button ────
 
@@ -1421,36 +1428,256 @@ function mapScrambleForPreview(scramble, type = getCurrentScrambleType()) {
         .join(' ');
 }
 
-function samplePreviewFaceSticker(face, faceSize, sampleRow, sampleCol, sampleSize = 3) {
-    const sourceRow = Math.min(faceSize - 1, Math.floor(((sampleRow + 0.5) * faceSize) / sampleSize));
-    const sourceCol = Math.min(faceSize - 1, Math.floor(((sampleCol + 0.5) * faceSize) / sampleSize));
-    return face[(sourceRow * faceSize) + sourceCol];
+function getScramblePreviewButtonCanvas() {
+    const canvas = getEl('btn-scramble-preview')?.querySelector('.scramble-preview-face-icon');
+    return canvas instanceof HTMLCanvasElement ? canvas : null;
+}
+
+function prepareScramblePreviewButtonCanvas(canvas) {
+    if (!(canvas instanceof HTMLCanvasElement)) return null;
+
+    const pixelRatio = window.devicePixelRatio || 1;
+    const styles = window.getComputedStyle(canvas);
+    const cssWidth = Math.max(parseFloat(styles.width) || canvas.clientWidth || 18, 1);
+    const cssHeight = Math.max(parseFloat(styles.height) || canvas.clientHeight || cssWidth, 1);
+    const pixelWidth = Math.max(1, Math.round(cssWidth * pixelRatio));
+    const pixelHeight = Math.max(1, Math.round(cssHeight * pixelRatio));
+
+    if (canvas.width !== pixelWidth) canvas.width = pixelWidth;
+    if (canvas.height !== pixelHeight) canvas.height = pixelHeight;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+
+    ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+    ctx.clearRect(0, 0, cssWidth, cssHeight);
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+
+    return {
+        ctx,
+        width: cssWidth,
+        height: cssHeight,
+    };
+}
+
+function traceCanvasPolygon(ctx, points) {
+    if (!Array.isArray(points) || points.length === 0) return;
+
+    ctx.beginPath();
+    ctx.moveTo(points[0][0], points[0][1]);
+
+    for (let index = 1; index < points.length; index += 1) {
+        ctx.lineTo(points[index][0], points[index][1]);
+    }
+
+    ctx.closePath();
+}
+
+function drawScramblePreviewButtonSticker(ctx, x, y, size, color) {
+    const radius = Math.max(0.35, size * SCRAMBLE_PREVIEW_BUTTON_STICKER_RADIUS_RATIO);
+
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.arcTo(x + size, y, x + size, y + size, radius);
+    ctx.arcTo(x + size, y + size, x, y + size, radius);
+    ctx.arcTo(x, y + size, x, y, radius);
+    ctx.arcTo(x, y, x + size, y, radius);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.strokeStyle = SCRAMBLE_PREVIEW_BUTTON_OUTLINE;
+    ctx.lineWidth = Math.max(0.35, Math.min(0.75, size * 0.08));
+    ctx.stroke();
+}
+
+function drawCubePreviewButtonFace(face, faceSize) {
+    const canvas = getScramblePreviewButtonCanvas();
+    const prepared = prepareScramblePreviewButtonCanvas(canvas);
+    if (!prepared) return;
+
+    const { ctx, width, height } = prepared;
+    const resolvedFaceSize = Math.max(2, Math.round(faceSize) || SCRAMBLE_PREVIEW_BUTTON_PLACEHOLDER_SIZE);
+    const padding = Math.max(0.6, Math.min(width, height) * 0.04);
+    const gridSize = Math.max(0, Math.min(width, height) - (padding * 2));
+    const cellSize = gridSize / resolvedFaceSize;
+    const stickerGap = Math.min(0.9, Math.max(0.12, cellSize * SCRAMBLE_PREVIEW_BUTTON_STICKER_GAP_RATIO));
+    const stickerInset = stickerGap / 2;
+    const resolvedGridSize = cellSize * resolvedFaceSize;
+    const offsetX = (width - resolvedGridSize) / 2;
+    const offsetY = (height - resolvedGridSize) / 2;
+
+    for (let row = 0; row < resolvedFaceSize; row += 1) {
+        for (let col = 0; col < resolvedFaceSize; col += 1) {
+            const faceIndex = face[(row * resolvedFaceSize) + col];
+            const x = offsetX + (col * cellSize) + stickerInset;
+            const y = offsetY + (row * cellSize) + stickerInset;
+            const size = Math.max(0.4, cellSize - stickerGap);
+            drawScramblePreviewButtonSticker(
+                ctx,
+                x,
+                y,
+                size,
+                cubeFaceColors[faceIndex] || cubeFaceColors[0],
+            );
+        }
+    }
+}
+
+function average2DPoints(points) {
+    if (!Array.isArray(points) || points.length === 0) return [0, 0];
+
+    const sums = points.reduce(
+        (acc, [x, y]) => [acc[0] + x, acc[1] + y],
+        [0, 0],
+    );
+
+    return [sums[0] / points.length, sums[1] / points.length];
+}
+
+function rotatePoint2D(point, center, angle) {
+    const dx = point[0] - center[0];
+    const dy = point[1] - center[1];
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+
+    return [
+        center[0] + (dx * cos) - (dy * sin),
+        center[1] + (dx * sin) + (dy * cos),
+    ];
+}
+
+function interpolateTrianglePoint2D(a, b, c, u, v, size = PYRAMINX_PREVIEW_BUTTON_FACE_SIZE) {
+    const uRatio = u / size;
+    const vRatio = v / size;
+
+    return [
+        a[0] + ((b[0] - a[0]) * uRatio) + ((c[0] - a[0]) * vRatio),
+        a[1] + ((b[1] - a[1]) * uRatio) + ((c[1] - a[1]) * vRatio),
+    ];
+}
+
+function createPreviewPyraminxTriangleDefinitions(size = PYRAMINX_PREVIEW_BUTTON_FACE_SIZE) {
+    const referenceA = [0, 0];
+    const referenceB = [1, 0];
+    const referenceC = [0.5, PYRAMINX_PREVIEW_BUTTON_TRIANGLE_HEIGHT_RATIO];
+    const definitions = [];
+
+    const pushTriangle = (gridPoints) => {
+        const centroid = average2DPoints(
+            gridPoints.map(([u, v]) => interpolateTrianglePoint2D(referenceA, referenceB, referenceC, u, v, size)),
+        );
+        definitions.push({ gridPoints, centroid });
+    };
+
+    for (let row = 0; row < size; row += 1) {
+        for (let col = 0; col < size - row; col += 1) {
+            pushTriangle([
+                [row, col],
+                [row + 1, col],
+                [row, col + 1],
+            ]);
+        }
+    }
+
+    for (let row = 0; row < size - 1; row += 1) {
+        for (let col = 0; col < size - 1 - row; col += 1) {
+            pushTriangle([
+                [row + 1, col],
+                [row + 1, col + 1],
+                [row, col + 1],
+            ]);
+        }
+    }
+
+    return definitions
+        .sort((a, b) => {
+            const verticalDelta = a.centroid[1] - b.centroid[1];
+            if (Math.abs(verticalDelta) > 1e-9) return verticalDelta;
+            return a.centroid[0] - b.centroid[0];
+        })
+        .map(({ gridPoints }) => gridPoints);
+}
+
+function distanceBetweenPoints(a, b) {
+    return Math.hypot(a[0] - b[0], a[1] - b[1]);
+}
+
+function insetTriangle(points, insetDistance) {
+    const centroid = average2DPoints(points);
+    const sideLength = distanceBetweenPoints(points[0], points[1]);
+    const inradius = (sideLength * Math.sqrt(3)) / 6;
+    const scale = inradius > 0 ? Math.max(0, 1 - (insetDistance / inradius)) : 1;
+
+    return points.map((point) => [
+        centroid[0] + ((point[0] - centroid[0]) * scale),
+        centroid[1] + ((point[1] - centroid[1]) * scale),
+    ]);
+}
+
+function drawPyraminxPreviewButtonFace(face) {
+    const canvas = getScramblePreviewButtonCanvas();
+    const prepared = prepareScramblePreviewButtonCanvas(canvas);
+    if (!prepared) return;
+
+    const { ctx, width, height } = prepared;
+    const padding = Math.max(0.75, Math.min(width, height) * 0.05);
+    const sideLength = Math.max(
+        0,
+        Math.min(
+            width - (padding * 2),
+            (height - (padding * 2)) / PYRAMINX_PREVIEW_BUTTON_TRIANGLE_HEIGHT_RATIO,
+        ),
+    );
+    const triangleHeight = sideLength * PYRAMINX_PREVIEW_BUTTON_TRIANGLE_HEIGHT_RATIO;
+    const originX = (width - sideLength) / 2;
+    const originY = (height - triangleHeight) / 2;
+    const a = [originX, originY + triangleHeight];
+    const b = [originX + sideLength, originY + triangleHeight];
+    const c = [originX + (sideLength / 2), originY];
+    const stickerInset = Math.min(0.5, Math.max(0.14, sideLength * 0.018));
+    const outlineWidth = Math.max(0.32, Math.min(0.65, sideLength * 0.03));
+    const triangleCenter = average2DPoints([a, b, c]);
+
+    PYRAMINX_PREVIEW_BUTTON_TRIANGLE_DEFINITIONS.forEach((triangle, index) => {
+        const stickerPoints = insetTriangle(
+            triangle.map(([u, v]) => interpolateTrianglePoint2D(a, b, c, u, v)),
+            stickerInset,
+        ).map((point) => rotatePoint2D(point, triangleCenter, PYRAMINX_PREVIEW_BUTTON_ROTATION_RAD));
+
+        ctx.fillStyle = pyraminxFaceColors[face[index]] || pyraminxFaceColors[0];
+        traceCanvasPolygon(ctx, stickerPoints);
+        ctx.fill();
+
+        ctx.strokeStyle = SCRAMBLE_PREVIEW_BUTTON_OUTLINE;
+        ctx.lineWidth = outlineWidth;
+        ctx.stroke();
+    });
+}
+
+function drawPlaceholderPreviewButtonFace() {
+    drawCubePreviewButtonFace(
+        new Array(SCRAMBLE_PREVIEW_BUTTON_PLACEHOLDER_SIZE ** 2).fill(0),
+        SCRAMBLE_PREVIEW_BUTTON_PLACEHOLDER_SIZE,
+    );
 }
 
 function updateScramblePreviewButtonFace(scramble, type = getCurrentScrambleType()) {
-    const icon = getEl('btn-scramble-preview')?.querySelector('.scramble-preview-face-icon');
-    if (!icon) return;
-
-    const stickers = icon.querySelectorAll('span');
-    if (stickers.length !== 9) return;
-
     if (!supportsScramblePreview(type)) {
-        stickers.forEach((sticker) => {
-            sticker.style.backgroundColor = cubeFaceColors[0];
-        });
+        drawPlaceholderPreviewButtonFace();
         return;
     }
 
     if (supportsPyraminxPreview(type)) {
         const pyraminx = applyPyraminxScramble(scramble);
         const previewFace = pyraminx?.[PYRAMINX_PREVIEW_BUTTON_FACE_INDEX];
-        if (!Array.isArray(previewFace) || previewFace.length !== stickers.length) return;
+        if (!Array.isArray(previewFace) || previewFace.length !== (PYRAMINX_PREVIEW_BUTTON_FACE_SIZE ** 2)) {
+            drawPlaceholderPreviewButtonFace();
+            return;
+        }
 
-        stickers.forEach((sticker, index) => {
-            const faceIndex = PYRAMINX_PREVIEW_BUTTON_INDEX_MAP[index] ?? index;
-            const color = pyraminxFaceColors[previewFace[faceIndex]] || pyraminxFaceColors[0];
-            sticker.style.backgroundColor = color;
-        });
+        drawPyraminxPreviewButtonFace(previewFace);
         return;
     }
 
@@ -1461,16 +1688,13 @@ function updateScramblePreviewButtonFace(scramble, type = getCurrentScrambleType
         getScramblePreviewSize(type),
     );
     const upFace = cube?.[0];
-    if (!Array.isArray(upFace) || upFace.length === 0) return;
-    const faceSize = Math.max(2, Math.round(Math.sqrt(upFace.length)));
+    if (!Array.isArray(upFace) || upFace.length === 0) {
+        drawPlaceholderPreviewButtonFace();
+        return;
+    }
 
-    stickers.forEach((sticker, index) => {
-        const row = Math.floor(index / 3);
-        const col = index % 3;
-        const faceIndex = samplePreviewFaceSticker(upFace, faceSize, row, col);
-        const color = cubeFaceColors[faceIndex] || '#FFF';
-        sticker.style.backgroundColor = color;
-    });
+    const faceSize = Math.max(2, Math.round(Math.sqrt(upFace.length)));
+    drawCubePreviewButtonFace(upFace, faceSize);
 }
 
 function renderScramblePreviewDisplays(scramble, type = getCurrentScrambleType()) {
@@ -1543,6 +1767,16 @@ function initScramblePreviewModal() {
         event.stopImmediatePropagation();
         closeScramblePreviewModal();
     });
+
+    const syncPreviewButtonFace = () => {
+        window.requestAnimationFrame(() => {
+            updateScramblePreviewButtonFace(currentScramble, getCurrentScrambleType());
+        });
+    };
+
+    window.addEventListener('resize', syncPreviewButtonFace);
+    window.addEventListener('orientationchange', syncPreviewButtonFace);
+    syncPreviewButtonFace();
 }
 
 // ──── Bootstrap ────

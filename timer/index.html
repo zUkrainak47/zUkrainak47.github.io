@@ -35,7 +35,7 @@
   <link rel="stylesheet" href="css/variables.css?v=6">
   <link rel="stylesheet" href="css/base.css?v=16">
   <link rel="stylesheet" href="css/layout.css?v=15">
-  <link rel="stylesheet" href="css/scramble.css?v=34">
+  <link rel="stylesheet" href="css/scramble.css?v=35">
   <link rel="stylesheet" href="css/timer.css?v=30">
   <link rel="stylesheet" href="css/stats.css?v=19">
   <link rel="stylesheet" href="css/cube.css?v=3">
@@ -66,11 +66,7 @@
         </div>
         <button id="btn-scramble-preview" class="btn-icon" title="Scramble preview"
           aria-label="Open scramble preview">
-          <span class="scramble-preview-face-icon" aria-hidden="true">
-            <span></span><span></span><span></span>
-            <span></span><span></span><span></span>
-            <span></span><span></span><span></span>
-          </span>
+          <canvas class="scramble-preview-face-icon" aria-hidden="true"></canvas>
         </button>
         <div id="scramble-type-menu-mobile" class="scramble-type-menu" data-no-timer-start>
           <button id="btn-scramble-type-mobile" class="btn-icon scramble-type-btn" type="button"
@@ -866,7 +862,7 @@
   </script>
 
   <!-- App Script -->
-  <script type="module" src="js/app.js?v=74"></script>
+  <script type="module" src="js/app.js?v=76"></script>
 </body>
 
 </html>
