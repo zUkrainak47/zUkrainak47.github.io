@@ -193,6 +193,21 @@ body.scramble-type-button-hidden #scramble-type-menu-desktop {
     transition: background var(--transition-fast);
 }
 
+#scramble-text .sq1-scramble-chunk {
+    white-space: nowrap;
+}
+
+#scramble-text .megaminx-scramble-row {
+    display: block;
+    white-space: nowrap;
+}
+
+#scramble-text .megaminx-scramble-block {
+    display: inline-block;
+    text-align: left;
+    max-width: 100%;
+}
+
 #scramble-text:hover {
     background: var(--surface-hover);
 }
@@ -290,59 +305,134 @@ body.scramble-type-button-hidden #scramble-type-menu-desktop {
 }
 
 @media (min-width: 1101px) and (pointer: fine) {
+    #scramble-bar {
+        min-height: var(--scramble-bar-height);
+        height: var(--scramble-bar-height);
+        overflow: visible;
+    }
+
     #btn-settings,
     #btn-zen {
         top: calc(var(--space-lg) + ((var(--space-2xl) - 28px) / 2));
     }
 
     #scramble-container {
-        --desktop-scramble-side-width: 72px;
-        --desktop-edit-button-left: calc(-1 * (32px + var(--space-sm)));
+        --desktop-scramble-text-width: 730px;
+        --desktop-scramble-text-half-width: 365px;
         position: relative;
-        display: grid;
-        grid-template-columns: var(--desktop-scramble-side-width) 730px var(--desktop-scramble-side-width);
-        align-items: center;
-        column-gap: var(--space-sm);
-        width: max-content;
+        display: block;
+        width: 100%;
         max-width: none;
+        min-height: 32px;
     }
 
     #scramble-type-menu-desktop {
         order: 0;
-        grid-column: 1;
-        grid-row: 1;
-        width: var(--desktop-scramble-side-width);
-        justify-self: stretch;
+        position: absolute;
+        left: calc(50% - var(--desktop-scramble-text-half-width) - 80px);
+        top: 0;
+        width: 72px;
+        justify-content: flex-start;
+        transform: translate3d(0, 0, 0);
+        will-change: left, transform, opacity;
+        transition: left 260ms cubic-bezier(0.22, 1, 0.36, 1),
+            transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
+            opacity 0.3s ease;
     }
 
     #scramble-type-menu-desktop .scramble-type-btn {
-        width: var(--desktop-scramble-side-width);
-        min-width: var(--desktop-scramble-side-width);
+        width: 72px;
+        min-width: 72px;
     }
 
     #scramble-text-wrapper {
-        grid-row: 1;
-        grid-column: 2;
+        flex: 0 1 auto;
+        width: min(100%, var(--desktop-scramble-text-width));
+        max-width: var(--desktop-scramble-text-width);
+        min-height: 32px;
+        align-items: center;
+        justify-content: flex-start;
+        margin-inline: auto;
+        transition: width 260ms cubic-bezier(0.22, 1, 0.36, 1),
+            max-width 260ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    #scramble-text {
+        display: block;
+        width: 100%;
+    }
+
+    #scramble-input {
+        min-height: 32px;
     }
 
     #scramble-actions {
-        display: flex;
-        grid-row: 1;
-        align-items: center;
-        justify-content: space-between;
-        width: var(--desktop-scramble-side-width);
-        grid-column: 3;
+        display: contents;
     }
 
     #btn-edit-scramble {
         position: absolute;
-        left: var(--desktop-edit-button-left);
-        top: 50%;
-        transform: translateY(-50%);
+        left: calc(50% - var(--desktop-scramble-text-half-width) - 120px);
+        top: 0;
+        transform: translate3d(0, 0, 0);
+        will-change: left, transform, opacity;
+        transition: left 260ms cubic-bezier(0.22, 1, 0.36, 1),
+            transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
+            opacity 0.3s ease;
     }
 
-    body.scramble-type-button-hidden #scramble-container {
-        --desktop-edit-button-left: calc(var(--desktop-scramble-side-width) - 32px);
+    #btn-prev-scramble,
+    #btn-next-scramble {
+        position: absolute;
+        left: auto;
+        top: 0;
+        transform: translate3d(0, 0, 0);
+        will-change: left, transform, opacity;
+        transition: left 260ms cubic-bezier(0.22, 1, 0.36, 1),
+            transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
+            opacity 0.3s ease;
+    }
+
+    #btn-prev-scramble {
+        left: calc(50% + var(--desktop-scramble-text-half-width) + 8px);
+    }
+
+    #btn-next-scramble {
+        left: calc(50% + var(--desktop-scramble-text-half-width) + 48px);
+    }
+
+    body.scramble-type-button-hidden #btn-edit-scramble {
+        left: calc(50% - var(--desktop-scramble-text-half-width) - 40px);
+    }
+
+    body.zen:not(.mobile-viewport) #scramble-type-menu-desktop {
+        visibility: hidden;
+        transform: translate3d(-14px, 0, 0);
+        transition: left 260ms cubic-bezier(0.22, 1, 0.36, 1),
+            transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
+            opacity 0.3s ease,
+            visibility 0s linear 0.3s;
+    }
+
+    body.zen:not(.mobile-viewport) #btn-edit-scramble {
+        transition: left 260ms cubic-bezier(0.22, 1, 0.36, 1),
+            transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
+            opacity 0.3s ease;
+        transform: translate3d(-18px, 0, 0);
+    }
+
+    body.zen:not(.mobile-viewport) #btn-prev-scramble {
+        transition: left 260ms cubic-bezier(0.22, 1, 0.36, 1),
+            transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
+            opacity 0.3s ease;
+        transform: translate3d(14px, 0, 0);
+    }
+
+    body.zen:not(.mobile-viewport) #btn-next-scramble {
+        transition: left 260ms cubic-bezier(0.22, 1, 0.36, 1),
+            transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
+            opacity 0.3s ease;
+        transform: translate3d(18px, 0, 0);
     }
 }
 
@@ -521,6 +611,11 @@ body.scramble-type-button-hidden #scramble-type-menu-desktop {
     #scramble-text {
         padding: 8px 0 6px;
         background: transparent !important;
+    }
+
+    #scramble-text[data-scramble-layout="megaminx-rows"] {
+        font-size: clamp(0.9rem, 3.3vw, 1rem);
+        line-height: 1.48;
     }
 
     #scramble-actions {

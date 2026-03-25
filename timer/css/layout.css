@@ -82,6 +82,10 @@ body.solving #btn-settings {
 }
 
 @media (min-width: 1101px) and (pointer: fine) {
+    #app-layout {
+        grid-template-rows: var(--scramble-bar-height) minmax(0, 1fr);
+    }
+
     #left-panel,
     #right-panel {
         height: calc(100% / var(--desktop-panel-scale, 1));

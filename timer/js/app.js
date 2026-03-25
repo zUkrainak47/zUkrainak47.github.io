@@ -927,11 +927,72 @@ function syncDesktopPanelScale() {
     root.style.setProperty('--desktop-panel-scale', scale.toFixed(4));
 }
 
+function syncDesktopScrambleBounds() {
+    const scrambleContainer = getEl('scramble-container');
+    const scrambleBar = getEl('scramble-bar');
+    if (!scrambleContainer || !scrambleBar) return;
+
+    if (mobileViewportQuery.matches) {
+        scrambleContainer.style.removeProperty('--desktop-scramble-text-width');
+        scrambleContainer.style.removeProperty('--desktop-scramble-text-half-width');
+        return;
+    }
+
+    const scrambleBarStyles = getComputedStyle(scrambleBar);
+    const paddingLeft = parseFloat(scrambleBarStyles.paddingLeft) || 0;
+    const paddingRight = parseFloat(scrambleBarStyles.paddingRight) || 0;
+    const scrambleBarInnerWidth = Math.max(0, scrambleBar.clientWidth - paddingLeft - paddingRight);
+    const isZen = document.body.classList.contains('zen');
+    let nextWidth = Math.min(scrambleBarInnerWidth, Math.round(window.innerWidth * 0.8));
+
+    if (!isZen) {
+        const leftRect = getEl('left-panel')?.getBoundingClientRect();
+        const rightRect = getEl('right-panel')?.getBoundingClientRect();
+        const panelMargin = 24;
+
+        nextWidth = scrambleBarInnerWidth;
+        if (leftRect && rightRect) {
+            nextWidth = Math.min(
+                scrambleBarInnerWidth,
+                Math.max(0, rightRect.left - leftRect.right - (panelMargin * 2)),
+            );
+        }
+    }
+
+    const nextWidthPx = Math.round(nextWidth);
+    scrambleContainer.style.setProperty('--desktop-scramble-text-width', `${nextWidthPx}px`);
+    scrambleContainer.style.setProperty('--desktop-scramble-text-half-width', `${Math.round(nextWidthPx / 2)}px`);
+}
+
 function syncLandscapeMobileScrambleSingleLineFit() {
     const scrambleText = getEl('scramble-text');
     const scrambleTextWrapper = getEl('scramble-text-wrapper');
     const appLayout = getEl('app-layout');
     if (!scrambleText || !scrambleTextWrapper) return;
+
+    const isStructuredMegaminx = scrambleText.dataset.scrambleLayout === 'megaminx-rows'
+        && scrambleText.style.display !== 'none';
+
+    if (isStructuredMegaminx) {
+        scrambleText.style.fontSize = '';
+        scrambleText.style.removeProperty('max-width');
+        scrambleText.style.removeProperty('white-space');
+
+        const availableWidth = scrambleTextWrapper.clientWidth;
+        if (availableWidth <= 0) return;
+        if (scrambleText.scrollWidth <= availableWidth + 0.5) return;
+
+        const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+        const minFontSizePx = rootFontSize * (mobileViewportQuery.matches ? 0.5 : 0.58);
+        let currentFontSizePx = parseFloat(getComputedStyle(scrambleText).fontSize) || rootFontSize;
+
+        while (currentFontSizePx > minFontSizePx && scrambleText.scrollWidth > availableWidth + 0.5) {
+            currentFontSizePx -= 0.25;
+            scrambleText.style.fontSize = `${currentFontSizePx}px`;
+        }
+
+        return;
+    }
 
     const shouldFit = mobileLandscapeQuery.matches
         && mobileViewportQuery.matches
@@ -979,6 +1040,7 @@ function syncLandscapeMobileScrambleSingleLineFit() {
 
 function syncViewportLayout() {
     syncDesktopPanelScale();
+    syncDesktopScrambleBounds();
     syncLandscapeMobileScrambleSingleLineFit();
 
     const timerDisplayWrapper = getEl('timer-display-wrapper');
@@ -2047,6 +2109,7 @@ function syncScrambleTypeMenus(type = getSelectedScrambleType()) {
 async function loadNewScramble() {
     const el = document.getElementById('scramble-text');
     let loadingTimer = window.setTimeout(() => {
+        clearStructuredScrambleLayout(el);
         el.textContent = 'Generating...';
         el.classList.add('loading');
     }, 120);
@@ -2056,6 +2119,7 @@ async function loadNewScramble() {
         updateScrambleUI(currentScramble);
     } catch (error) {
         console.error('Failed to load scramble:', error);
+        clearStructuredScrambleLayout(el);
         el.textContent = 'Scrambler unavailable';
         el.classList.remove('loading');
     } finally {
@@ -2071,10 +2135,107 @@ function syncInitialScrambleUI() {
     return true;
 }
 
-function updateScrambleUI(scrambleStr) {
+function clearStructuredScrambleLayout(el) {
+    if (!el) return;
+    delete el.dataset.scrambleLayout;
+}
+
+function isStandardMegaminxScramble(tokens) {
+    if (!Array.isArray(tokens) || tokens.length === 0 || tokens.length % 11 !== 0) return false;
+
+    for (let index = 0; index < tokens.length; index += 11) {
+        const rowTokens = tokens.slice(index, index + 11);
+        if (rowTokens.length !== 11) return false;
+
+        const rowMoves = rowTokens.slice(0, 10);
+        if (!rowMoves.every((token) => /^[RD](?:\+\+|--)$/i.test(token))) return false;
+        if (!/^U'?$/i.test(rowTokens[10])) return false;
+    }
+
+    return true;
+}
+
+function renderScrambleText(scrambleStr, type = getCurrentScrambleType()) {
     const el = document.getElementById('scramble-text');
+    if (!el) return;
+
+    clearStructuredScrambleLayout(el);
+
+    if (type !== 'sq1' && type !== 'minx') {
+        el.textContent = scrambleStr;
+        return;
+    }
+
+    const normalizedScramble = String(scrambleStr ?? '').trim();
+    if (!normalizedScramble) {
+        el.textContent = normalizedScramble;
+        return;
+    }
+
+    const tokens = normalizedScramble.split(/\s+/).filter(Boolean);
+    if (tokens.length === 0) {
+        el.textContent = normalizedScramble;
+        return;
+    }
+
+    if (type === 'minx' && isStandardMegaminxScramble(tokens)) {
+        el.dataset.scrambleLayout = 'megaminx-rows';
+
+        const fragment = document.createDocumentFragment();
+        const blockEl = document.createElement('span');
+        blockEl.className = 'megaminx-scramble-block';
+
+        for (let index = 0; index < tokens.length; index += 11) {
+            const rowEl = document.createElement('span');
+            rowEl.className = 'megaminx-scramble-row';
+            rowEl.textContent = tokens.slice(index, index + 11).join(' ');
+            blockEl.append(rowEl);
+        }
+
+        fragment.append(blockEl);
+        el.replaceChildren(fragment);
+        return;
+    }
+
+    if (type !== 'sq1') {
+        el.textContent = normalizedScramble;
+        return;
+    }
+
+    const fragment = document.createDocumentFragment();
+    let chunkTokens = [];
+
+    const appendChunk = (allowBreakAfter = false, insertTrailingSpace = false) => {
+        if (chunkTokens.length === 0) return;
+
+        const chunkEl = document.createElement('span');
+        chunkEl.className = 'sq1-scramble-chunk';
+        chunkEl.textContent = chunkTokens.join(' ');
+        fragment.append(chunkEl);
+
+        if (allowBreakAfter) {
+            fragment.append(document.createElement('wbr'));
+            if (insertTrailingSpace) fragment.append(document.createTextNode(' '));
+        }
+
+        chunkTokens = [];
+    };
+
+    tokens.forEach((token, index) => {
+        chunkTokens.push(token);
+        if (token === '/') {
+            appendChunk(true, index < tokens.length - 1);
+        }
+    });
+
+    appendChunk(false, false);
+    el.replaceChildren(fragment);
+}
+
+function updateScrambleUI(scrambleStr) {
     currentScramble = scrambleStr;
-    el.textContent = currentScramble;
+    renderScrambleText(currentScramble, getCurrentScrambleType());
+    const el = document.getElementById('scramble-text');
     el.classList.remove('loading');
     el.classList.toggle('is-previous-selected', isViewingPreviousScramble());
     renderScramblePreviewDisplays(currentScramble);
@@ -2133,6 +2294,7 @@ function initScrambleControls() {
 
         setScrambleActionsVisible(false);
         currentScramble = '';
+        clearStructuredScrambleLayout(textEl);
         textEl.textContent = '';
         textEl.classList.add('loading');
         renderScramblePreviewDisplays('');
@@ -2234,6 +2396,7 @@ function initScrambleControls() {
         if (textEl.classList.contains('loading')) return;
         closeScrambleTypeMenus();
         let loadingTimer = window.setTimeout(() => {
+            clearStructuredScrambleLayout(textEl);
             textEl.textContent = 'Generating...';
             textEl.classList.add('loading');
         }, 120);
@@ -2243,6 +2406,7 @@ function initScrambleControls() {
             updateScrambleUI(s);
         } catch (error) {
             console.error('Failed to load next scramble:', error);
+            clearStructuredScrambleLayout(textEl);
             textEl.textContent = 'Scrambler unavailable';
             textEl.classList.remove('loading');
         } finally {
