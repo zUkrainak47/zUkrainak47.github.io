@@ -221,25 +221,27 @@ class Timer extends EventEmitter {
         if (this._activePointerId != null) return;
 
         e.preventDefault();
-        this._activePointerId = e.pointerId;
-
-        if (this._displayEl?.setPointerCapture) {
-            try {
-                this._displayEl.setPointerCapture(e.pointerId);
-            } catch {
-                // Ignore pointer capture failures on browsers that reject it for synthetic events.
-            }
-        }
-
+        this._claimActivePointer(e);
         this._handleStartPress();
     }
 
     _onDocumentPointerDown(e) {
         if (!this._isTouchPointer(e)) return;
-        if (this.state !== State.RUNNING) return;
         if (!this._isMobileTimerViewActive()) return;
         if (this._hasBlockingOverlayOpen()) return;
         if (this._isManualTimeEntryActive()) return;
+
+        if (this._isInspectionTickingState(this.state)) {
+            if (this._isInspectionCancelTarget(e.target)) return;
+            if (this._activePointerId != null) return;
+
+            e.preventDefault();
+            this._claimActivePointer(e);
+            this._handleStartPress();
+            return;
+        }
+
+        if (this.state !== State.RUNNING) return;
         if (this._isInteractivePointerTarget(e.target)) return;
         if (this._isWithinInteractionArea(e.target)) return;
 
@@ -649,6 +651,18 @@ class Timer extends EventEmitter {
         }
     }
 
+    _claimActivePointer(e) {
+        this._activePointerId = e.pointerId;
+
+        if (this._displayEl?.setPointerCapture) {
+            try {
+                this._displayEl.setPointerCapture(e.pointerId);
+            } catch {
+                // Ignore pointer capture failures on browsers that reject it for synthetic events.
+            }
+        }
+    }
+
     _releaseActivePointer(pointerId) {
         if (!this._displayEl || pointerId == null) {
             this._activePointerId = null;
@@ -667,6 +681,16 @@ class Timer extends EventEmitter {
 
     _isTouchPointer(e) {
         return e.pointerType === 'touch' || e.pointerType === 'pen';
+    }
+
+    _isInspectionCancelTarget(target) {
+        if (target instanceof Element) {
+            return Boolean(target.closest('#inspection-cancel-wrap, #inspection-cancel-btn'));
+        }
+
+        return target instanceof Node && target.parentElement instanceof Element
+            ? Boolean(target.parentElement.closest('#inspection-cancel-wrap, #inspection-cancel-btn'))
+            : false;
     }
 
     _resetKeyboardStartState({ cancelPendingStart = false } = {}) {
