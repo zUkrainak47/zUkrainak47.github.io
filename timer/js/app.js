@@ -214,6 +214,7 @@ const viewportLayoutState = {
 };
 const mobileScrambleFreezeState = {
     hasSnapshot: false,
+    locked: false,
     transform: '',
     fontSize: '',
     maxWidth: '',
@@ -750,11 +751,28 @@ function getMobileScrambleTextLayoutRect() {
         : scrambleTextWrapper);
 }
 
-function shouldFreezeMobileScrambleLayout(state = timer.getState()) {
-    return state === 'holding'
-        || state === 'ready'
-        || state === 'inspection-holding'
-        || state === 'inspection-ready';
+function resetMobileScrambleLayoutFreeze({ clearSnapshot = false } = {}) {
+    mobileScrambleFreezeState.locked = false;
+
+    if (!clearSnapshot) return;
+
+    mobileScrambleFreezeState.hasSnapshot = false;
+    mobileScrambleFreezeState.transform = '';
+    mobileScrambleFreezeState.fontSize = '';
+    mobileScrambleFreezeState.maxWidth = '';
+    mobileScrambleFreezeState.whiteSpace = '';
+}
+
+function lockMobileScrambleLayoutFreeze() {
+    if (!mobileScrambleFreezeState.hasSnapshot) return;
+    mobileScrambleFreezeState.locked = true;
+}
+
+function shouldApplyFrozenMobileScrambleLayout() {
+    return mobileViewportQuery.matches
+        && document.body.dataset.mobilePanel === 'timer'
+        && mobileScrambleFreezeState.locked
+        && mobileScrambleFreezeState.hasSnapshot;
 }
 
 function applyFrozenMobileScrambleTextLayout() {
@@ -1126,9 +1144,8 @@ function syncLandscapeMobileScrambleSingleLineFit() {
     const isStructuredMegaminx = scrambleText.dataset.scrambleLayout === 'megaminx-rows'
         && scrambleText.style.display !== 'none';
     const isMobileTimerView = mobileViewportQuery.matches && document.body.dataset.mobilePanel === 'timer';
-    const state = timer.getState();
 
-    if (isMobileTimerView && shouldFreezeMobileScrambleLayout(state) && applyFrozenMobileScrambleTextLayout()) {
+    if (shouldApplyFrozenMobileScrambleLayout() && applyFrozenMobileScrambleTextLayout()) {
         return;
     }
 
@@ -1294,14 +1311,16 @@ function syncViewportLayout() {
         applyCachedTransform(timerDisplayWrapper, 'timerTransform', '');
     }
 
-    if (isMobileTimerView && shouldFreezeMobileScrambleLayout(state) && mobileScrambleFreezeState.hasSnapshot) {
+    if (shouldApplyFrozenMobileScrambleLayout()) {
         applyCachedTransform(scrambleContainer, 'scrambleTransform', mobileScrambleFreezeState.transform);
         return;
     }
 
     if (!shouldPositionMobileScramble || (targetScrambleCenterY == null && targetTimerCenterY == null)) {
         if (!isSolving) applyCachedTransform(scrambleContainer, 'scrambleTransform', '');
-        if (isMobileTimerView && (state === 'idle' || state === 'stopped')) captureMobileScrambleLayoutSnapshot();
+        if (isMobileTimerView && !mobileScrambleFreezeState.locked && (state === 'idle' || state === 'stopped')) {
+            captureMobileScrambleLayoutSnapshot();
+        }
         return;
     }
 
@@ -1324,7 +1343,7 @@ function syncViewportLayout() {
         `translateY(${Math.round(scrambleOffsetY * 10) / 10}px)`,
     );
 
-    if (isMobileTimerView && (state === 'idle' || state === 'stopped')) {
+    if (isMobileTimerView && !mobileScrambleFreezeState.locked && (state === 'idle' || state === 'stopped')) {
         captureMobileScrambleLayoutSnapshot();
     }
 }
@@ -2693,6 +2712,7 @@ function renderScrambleText(scrambleStr, type = getCurrentScrambleType()) {
 }
 
 function updateScrambleUI(scrambleStr) {
+    resetMobileScrambleLayoutFreeze({ clearSnapshot: true });
     currentScramble = scrambleStr;
     renderScrambleText(currentScramble, getCurrentScrambleType());
     const el = document.getElementById('scramble-text');
@@ -3713,6 +3733,11 @@ function onTimerStateChange(state) {
     const deltaEl = document.getElementById('timer-delta');
     const timerDisplayWrapper = document.getElementById('timer-display-wrapper');
     const shouldFocusTimer = state === 'running' || state === 'ready' || isInspectionState(state);
+    const shouldLockMobileScramble = state !== 'idle' && state !== 'stopped';
+
+    if (mobileViewportQuery.matches && shouldLockMobileScramble) {
+        lockMobileScrambleLayoutFreeze();
+    }
 
     if (mobileViewportQuery.matches && shouldFocusTimer) {
         setActiveMobilePanel('timer');
