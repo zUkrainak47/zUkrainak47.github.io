@@ -2,6 +2,8 @@ import { load, save } from './storage.js';
 
 let randomScrambleForEvent;
 let _cubingInitPromise = null;
+let _cubingUnavailable = false;
+let _cubingFallbackWarned = false;
 let _scrambowCtor = null;
 let _scrambowInitPromise = null;
 const _queueFillPromises = new Map();
@@ -36,11 +38,25 @@ export const SCRAMBLE_TYPE_OPTIONS = Object.freeze([
 ]);
 
 const SCRAMBLE_TYPE_SET = new Set(SCRAMBLE_TYPE_OPTIONS.map((option) => option.id));
-const SCRAMBOW_SCRAMBLE_TYPES = new Set(
+const SCRAMBOW_SUBSET_TYPES = new Set(
     SCRAMBLE_TYPE_OPTIONS
         .filter((option) => option.generator === 'scrambow')
         .map((option) => option.id),
 );
+const SCRAMBOW_SUPPORTED_TYPES = new Set([
+    '222',
+    '333',
+    '444',
+    '555',
+    '666',
+    '777',
+    'clock',
+    'minx',
+    'pyram',
+    'skewb',
+    'sq1',
+    ...SCRAMBOW_SUBSET_TYPES,
+]);
 const CUBING_SCRAMBLE_EVENTS = new Map(
     SCRAMBLE_TYPE_OPTIONS
         .filter((option) => option.generator === 'cubing')
@@ -94,6 +110,30 @@ function normalizeScrambleText(value) {
         .trim();
 }
 
+function isLocalDevelopmentRuntime() {
+    if (typeof window === 'undefined') return false;
+
+    const hostname = window.location?.hostname ?? '';
+    return window.location?.protocol === 'file:'
+        || hostname === 'localhost'
+        || hostname === '127.0.0.1'
+        || hostname === '0.0.0.0'
+        || hostname === '::1'
+        || hostname === '[::1]';
+}
+
+function warnCubingFallback(message, error = null) {
+    if (_cubingFallbackWarned) return;
+
+    if (error) {
+        console.warn(message, error);
+    } else {
+        console.warn(message);
+    }
+
+    _cubingFallbackWarned = true;
+}
+
 function isOnlyUpperFaceTurnsScramble(scramble) {
     const tokens = normalizeScrambleText(scramble).split(' ').filter(Boolean);
     return tokens.length > 0 && tokens.every((token) => /^U(?:2|'|)?$/.test(token));
@@ -121,6 +161,9 @@ function persistScrambleType() {
 
 async function initCubingScrambler() {
     if (randomScrambleForEvent) return randomScrambleForEvent;
+    if (_cubingUnavailable) {
+        throw new Error('cubing.js scrambler is unavailable.');
+    }
     if (_cubingInitPromise) return _cubingInitPromise;
 
     _cubingInitPromise = (async () => {
@@ -216,12 +259,37 @@ async function initScrambow() {
 }
 
 async function createCubingScramble(eventId) {
-    if (!randomScrambleForEvent) {
-        await initCubingScrambler();
+    const type = sanitizeScrambleType(eventId);
+    if (_cubingUnavailable) {
+        warnCubingFallback('cubing.js scrambler is unavailable; falling back to Scrambow for supported events.');
+        return createScrambowScramble(type);
     }
 
-    const alg = await randomScrambleForEvent(eventId);
-    return normalizeScrambleText(alg.toString());
+    if (isLocalDevelopmentRuntime() && SCRAMBOW_SUPPORTED_TYPES.has(type)) {
+        warnCubingFallback('Local development runtime detected; bypassing cubing.js worker and using Scrambow for supported events.');
+        return createScrambowScramble(type);
+    }
+
+    try {
+        if (!randomScrambleForEvent) {
+            await initCubingScrambler();
+        }
+
+        const alg = await randomScrambleForEvent(eventId);
+        return normalizeScrambleText(alg.toString());
+    } catch (error) {
+        _cubingUnavailable = true;
+        _cubingInitPromise = null;
+        randomScrambleForEvent = null;
+
+        warnCubingFallback('cubing.js scrambler is unavailable; falling back to Scrambow for supported events.', error);
+
+        if (SCRAMBOW_SUPPORTED_TYPES.has(type)) {
+            return createScrambowScramble(type);
+        }
+
+        throw error;
+    }
 }
 
 function takeQueuedScramble(type) {
@@ -382,14 +450,23 @@ function getScrambowInstance(type) {
     return _scrambowInstances.get(type);
 }
 
-async function createSubsetScramble(type) {
-    await initScrambow();
+function getSingleScrambowScramble(type) {
     const scrambler = getScrambowInstance(type);
+    const result = scrambler.get(1)?.[0];
+    return extractScrambleText(result);
+}
+
+async function createScrambowScramble(type) {
+    await initScrambow();
+
+    if (!SCRAMBOW_SUBSET_TYPES.has(type)) {
+        return getSingleScrambowScramble(type);
+    }
+
     let lastScramble = '';
 
     for (let attempt = 0; attempt < SUBSET_REDRAW_LIMIT; attempt += 1) {
-        const result = scrambler.get(1)?.[0];
-        const scramble = extractScrambleText(result);
+        const scramble = getSingleScrambowScramble(type);
         if (!isOnlyUpperFaceTurnsScramble(scramble)) {
             return scramble;
         }
@@ -404,7 +481,7 @@ async function createScrambleForType(type) {
     const normalizedType = sanitizeScrambleType(type);
     const cubingEventId = CUBING_SCRAMBLE_EVENTS.get(normalizedType);
     if (cubingEventId) return createCubingScramble(cubingEventId);
-    if (SCRAMBOW_SCRAMBLE_TYPES.has(normalizedType)) return createSubsetScramble(normalizedType);
+    if (SCRAMBOW_SUPPORTED_TYPES.has(normalizedType)) return createScrambowScramble(normalizedType);
     throw new Error(`Unsupported scramble type: ${type}`);
 }
 

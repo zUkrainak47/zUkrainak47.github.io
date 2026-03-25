@@ -845,6 +845,18 @@
 
       if (!token) return;
 
+      const hostname = window.location?.hostname ?? '';
+      if (
+        window.location?.protocol === 'file:'
+        || hostname === 'localhost'
+        || hostname === '127.0.0.1'
+        || hostname === '0.0.0.0'
+        || hostname === '::1'
+        || hostname === '[::1]'
+      ) {
+        return;
+      }
+
       const analyticsScript = document.createElement('script');
       analyticsScript.defer = true;
       analyticsScript.src = 'https://static.cloudflareinsights.com/beacon.min.js';
@@ -854,7 +866,7 @@
   </script>
 
   <!-- App Script -->
-  <script type="module" src="js/app.js?v=70"></script>
+  <script type="module" src="js/app.js?v=72"></script>
 </body>
 
 </html>
