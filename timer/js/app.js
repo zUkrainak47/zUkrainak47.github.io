@@ -200,6 +200,7 @@ let settingsOverlayEl = null;
 let shortcutsOverlayEl = null;
 let scramblePreviewOverlayEl = null;
 let scramblePreviewModalCanvas = null;
+let scramblePreviewModalSizeFrame = 0;
 let syncSettingsRowSeparators = () => {};
 let shortcutTooltipEl = null;
 let viewportLayoutFrame = null;
@@ -1454,10 +1455,85 @@ function supportsScramblePreview(type = getCurrentScrambleType()) {
     return SCRAMBLE_PREVIEW_TYPES.has(type);
 }
 
+function getScramblePreviewModalCanvasContainer() {
+    const container = getEl('scramble-preview-modal-canvas-container');
+    return container instanceof HTMLElement ? container : null;
+}
+
+function getScramblePreviewModalBox() {
+    const box = scramblePreviewOverlayEl?.querySelector('.scramble-preview-modal-box');
+    return box instanceof HTMLElement ? box : null;
+}
+
+function syncScramblePreviewModalSize() {
+    const box = getScramblePreviewModalBox();
+    const container = getScramblePreviewModalCanvasContainer();
+    const body = box?.querySelector('.scramble-preview-modal-body');
+    if (!box || !container || !(body instanceof HTMLElement)) return;
+
+    box.style.removeProperty('width');
+    container.style.removeProperty('width');
+
+    const viewportWidth = window.visualViewport?.width ?? window.innerWidth;
+    const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+    const preferredBoxWidth = Math.min(viewportWidth * 0.9, 820);
+    const maxBoxHeight = viewportHeight * 0.8;
+    const boxStyles = window.getComputedStyle(box);
+    const bodyStyles = window.getComputedStyle(body);
+    const horizontalInsets = (parseFloat(bodyStyles.paddingLeft) || 0)
+        + (parseFloat(bodyStyles.paddingRight) || 0)
+        + (parseFloat(boxStyles.borderLeftWidth) || 0)
+        + (parseFloat(boxStyles.borderRightWidth) || 0);
+    const verticalInsets = (parseFloat(bodyStyles.paddingTop) || 0)
+        + (parseFloat(bodyStyles.paddingBottom) || 0)
+        + (parseFloat(boxStyles.borderTopWidth) || 0)
+        + (parseFloat(boxStyles.borderBottomWidth) || 0);
+    const aspectRatio = parseFloat(
+        window.getComputedStyle(container).getPropertyValue('--scramble-preview-modal-aspect-ratio'),
+    );
+
+    if (
+        !Number.isFinite(preferredBoxWidth)
+        || preferredBoxWidth <= 0
+        || !Number.isFinite(maxBoxHeight)
+        || maxBoxHeight <= 0
+        || !Number.isFinite(aspectRatio)
+        || aspectRatio <= 0
+    ) {
+        return;
+    }
+
+    const preferredContentWidth = Math.max(0, preferredBoxWidth - horizontalInsets);
+    const preferredBoxHeight = (preferredContentWidth / aspectRatio) + verticalInsets;
+
+    if (preferredBoxHeight > maxBoxHeight) {
+        const resolvedContentHeight = Math.max(0, maxBoxHeight - verticalInsets);
+        const resolvedBoxWidth = (resolvedContentHeight * aspectRatio) + horizontalInsets;
+        box.style.width = `${resolvedBoxWidth}px`;
+    }
+}
+
+function scheduleScramblePreviewModalSizeSync() {
+    if (scramblePreviewModalSizeFrame) return;
+
+    scramblePreviewModalSizeFrame = window.requestAnimationFrame(() => {
+        scramblePreviewModalSizeFrame = 0;
+        syncScramblePreviewModalSize();
+    });
+}
+
 function syncScramblePreviewCanvasLayout(type = getCurrentScrambleType()) {
     const useMegaminxLayout = supportsMegaminxPreview(type);
-    getEl('cube-canvas-container')?.classList.toggle('megaminx-preview-layout', useMegaminxLayout);
-    getEl('scramble-preview-modal-canvas-container')?.classList.toggle('megaminx-preview-layout', useMegaminxLayout);
+    const usePyraminxLayout = supportsPyraminxPreview(type);
+
+    const panelCanvasContainer = getEl('cube-canvas-container');
+    panelCanvasContainer?.classList.toggle('megaminx-preview-layout', useMegaminxLayout);
+    panelCanvasContainer?.classList.toggle('pyraminx-preview-layout', usePyraminxLayout);
+
+    const modalCanvasContainer = getScramblePreviewModalCanvasContainer();
+    modalCanvasContainer?.classList.toggle('megaminx-preview-layout', useMegaminxLayout);
+    modalCanvasContainer?.classList.toggle('pyraminx-preview-layout', usePyraminxLayout);
+    scheduleScramblePreviewModalSizeSync();
 }
 
 function mapScrambleForPreview(scramble, type = getCurrentScrambleType()) {
@@ -1803,6 +1879,7 @@ function openScramblePreviewModal() {
     if (!scramblePreviewOverlayEl || isScramblePreviewModalOpen()) return;
     pushHistoryState();
     scramblePreviewOverlayEl.classList.add('active');
+    scheduleScramblePreviewModalSizeSync();
     renderScramblePreviewDisplays(currentScramble);
 }
 
@@ -1850,6 +1927,7 @@ function initScramblePreviewModal() {
     });
 
     const syncPreviewButtonFace = () => {
+        scheduleScramblePreviewModalSizeSync();
         window.requestAnimationFrame(() => {
             updateScramblePreviewButtonFace(currentScramble, getCurrentScrambleType());
         });
@@ -1857,6 +1935,7 @@ function initScramblePreviewModal() {
 
     window.addEventListener('resize', syncPreviewButtonFace);
     window.addEventListener('orientationchange', syncPreviewButtonFace);
+    window.visualViewport?.addEventListener('resize', syncPreviewButtonFace);
     syncPreviewButtonFace();
 }
 
