@@ -136,6 +136,37 @@ const MEGAMINX_LABEL_STYLE = Object.freeze({
     stroke: 'rgba(255, 255, 255, 0.88)',
 });
 
+function getCanvasPixelRatio() {
+    return window.devicePixelRatio || 1;
+}
+
+function getCanvasLogicalSize(canvas) {
+    const pixelRatio = getCanvasPixelRatio();
+    return {
+        pixelRatio,
+        width: canvas.width / pixelRatio,
+        height: canvas.height / pixelRatio,
+    };
+}
+
+function syncCanvasToDisplaySize(canvas) {
+    const rect = canvas.getBoundingClientRect();
+    const cssWidth = Math.max(0, rect.width);
+    const cssHeight = Math.max(0, rect.height);
+    if (cssWidth === 0 || cssHeight === 0) return false;
+
+    const pixelRatio = getCanvasPixelRatio();
+    const displayWidth = Math.max(1, Math.round(cssWidth * pixelRatio));
+    const displayHeight = Math.max(1, Math.round(cssHeight * pixelRatio));
+
+    if (canvas.width !== displayWidth) canvas.width = displayWidth;
+    if (canvas.height !== displayHeight) canvas.height = displayHeight;
+
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+    return true;
+}
+
 function normalizeCubeSize(size = 3) {
     const parsed = Number(size);
     if (!Number.isFinite(parsed)) return 3;
@@ -780,8 +811,7 @@ export function applyMegaminxScramble(scramble) {
 
 export function drawCube(canvas, cube) {
     const ctx = canvas.getContext('2d');
-    const w = canvas.width / devicePixelRatio;
-    const h = canvas.height / devicePixelRatio;
+    const { width: w, height: h } = getCanvasLogicalSize(canvas);
     const cubeSize = getFaceSize(cube?.[0]);
 
     const faceGap = Math.max(2, Math.min(w, h) * 0.02);
@@ -1000,8 +1030,7 @@ function drawPyraminxFace(ctx, face, vertices, sideLength) {
 
 export function drawPyraminx(canvas, pyraminx) {
     const ctx = canvas.getContext('2d');
-    const w = canvas.width / devicePixelRatio;
-    const h = canvas.height / devicePixelRatio;
+    const { width: w, height: h } = getCanvasLogicalSize(canvas);
 
     ctx.clearRect(0, 0, w, h);
 
@@ -1268,8 +1297,7 @@ function drawMegaminxLayout(ctx, megaminx, layoutFaces, scale, offsetX, offsetY,
 
 export function drawMegaminx(canvas, megaminx) {
     const ctx = canvas.getContext('2d');
-    const w = canvas.width / devicePixelRatio;
-    const h = canvas.height / devicePixelRatio;
+    const { width: w, height: h } = getCanvasLogicalSize(canvas);
 
     ctx.clearRect(0, 0, w, h);
 
@@ -1304,8 +1332,7 @@ export function drawMegaminx(canvas, megaminx) {
 
 export function drawMegaminxFacePreview(canvas, face, { label = '' } = {}) {
     const ctx = canvas.getContext('2d');
-    const w = canvas.width / devicePixelRatio;
-    const h = canvas.height / devicePixelRatio;
+    const { width: w, height: h } = getCanvasLogicalSize(canvas);
     const margin = Math.max(1.4, Math.min(w, h) * 0.08);
     const radius = Math.max(0, Math.min(w, h) - (margin * 2)) / 2;
     const polygon = createRegularPentagonVertices(w / 2, h / 2, radius, MEGAMINX_U_STAR_ROTATION);
@@ -1338,61 +1365,78 @@ function redrawLastDisplay(canvas) {
 }
 
 export function clearCubeDisplay(canvas) {
+    syncCanvasToDisplaySize(canvas);
     const ctx = canvas.getContext('2d');
-    ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
-    const w = canvas.width / devicePixelRatio;
-    const h = canvas.height / devicePixelRatio;
+    const { pixelRatio, width: w, height: h } = getCanvasLogicalSize(canvas);
+    ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
     _lastDisplay = null;
     ctx.clearRect(0, 0, w, h);
 }
 
 export function initCubeDisplay(canvas) {
-    const observer = new ResizeObserver((entries) => {
-        for (const entry of entries) {
-            const { width, height } = entry.contentRect;
-            if (width === 0 || height === 0) return;
-            canvas.width = width * devicePixelRatio;
-            canvas.height = height * devicePixelRatio;
-            const ctx = canvas.getContext('2d');
-            ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
-            if (_lastDisplay) {
-                redrawLastDisplay(canvas);
-            } else {
-                clearCubeDisplay(canvas);
-            }
+    let resizeFrame = 0;
+    const syncAndRedraw = () => {
+        resizeFrame = 0;
+        if (!syncCanvasToDisplaySize(canvas)) return;
+
+        if (_lastDisplay) {
+            redrawLastDisplay(canvas);
+        } else {
+            clearCubeDisplay(canvas);
         }
+    };
+    const scheduleSyncAndRedraw = () => {
+        if (resizeFrame) return;
+        resizeFrame = window.requestAnimationFrame(syncAndRedraw);
+    };
+    const observer = new ResizeObserver(() => {
+        scheduleSyncAndRedraw();
     });
 
-    observer.observe(canvas.parentElement);
+    observer.observe(canvas);
+    if (canvas.parentElement) observer.observe(canvas.parentElement);
+    scheduleSyncAndRedraw();
     return observer;
 }
 
 export function updateCubeDisplay(canvas, scramble, orientation = 'standard', size = 3) {
+    const didSync = syncCanvasToDisplaySize(canvas);
     _lastDisplay = {
         puzzle: 'cube',
         state: applyScramble(scramble, orientation, size),
     };
+    if (!didSync) return;
+
     const ctx = canvas.getContext('2d');
-    ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+    const pixelRatio = getCanvasPixelRatio();
+    ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
     redrawLastDisplay(canvas);
 }
 
 export function updatePyraminxDisplay(canvas, scramble) {
+    const didSync = syncCanvasToDisplaySize(canvas);
     _lastDisplay = {
         puzzle: 'pyraminx',
         state: applyPyraminxScramble(scramble),
     };
+    if (!didSync) return;
+
     const ctx = canvas.getContext('2d');
-    ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+    const pixelRatio = getCanvasPixelRatio();
+    ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
     redrawLastDisplay(canvas);
 }
 
 export function updateMegaminxDisplay(canvas, scramble) {
+    const didSync = syncCanvasToDisplaySize(canvas);
     _lastDisplay = {
         puzzle: 'megaminx',
         state: applyMegaminxScramble(scramble),
     };
+    if (!didSync) return;
+
     const ctx = canvas.getContext('2d');
-    ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+    const pixelRatio = getCanvasPixelRatio();
+    ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
     redrawLastDisplay(canvas);
 }

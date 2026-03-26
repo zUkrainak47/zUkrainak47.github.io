@@ -5,7 +5,7 @@ import { settings, DEFAULTS } from './settings.js';
 import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=2';
 import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate } from './utils.js';
 import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=12';
-import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, clearCubeDisplay, drawMegaminxFacePreview, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay } from './cube-display.js?v=11';
+import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, clearCubeDisplay, drawMegaminxFacePreview, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay } from './cube-display.js?v=12';
 import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=9';
 import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer } from './storage.js';
 
