@@ -34,3 +34,10 @@
         height: clamp(150px, 26vh, 204px);
     }
 }
+
+@media (max-width: 1100px) and (orientation: portrait), (pointer: coarse) and (orientation: portrait) {
+    body[data-mobile-panel="timer"] #cube-canvas-container.megaminx-preview-layout {
+        height: clamp(126px, 22vh, 164px);
+        padding: 8px 6px;
+    }
+}

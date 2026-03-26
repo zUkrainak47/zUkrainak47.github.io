@@ -129,8 +129,6 @@ const MEGAMINX_INNER_PENTAGON_SCALE = 0.54;
 const MEGAMINX_EDGE_SPLIT_RATIO = 0.33;
 const MEGAMINX_U_STAR_ROTATION = -Math.PI / 10;
 const MEGAMINX_D_STAR_ROTATION = Math.PI / 10;
-const MEGAMINX_RIGHT_STAR_OFFSET_X = 4.98;
-const MEGAMINX_RIGHT_STAR_OFFSET_Y = 0;
 const MEGAMINX_U_STAR_EDGE_TO_FACE = Object.freeze([4, 5, 9, 1, 8]);
 const MEGAMINX_D_STAR_EDGE_TO_FACE = Object.freeze([11, 2, 10, 6, 7]);
 const MEGAMINX_LABEL_STYLE = Object.freeze({
@@ -1055,15 +1053,31 @@ export function drawPyraminx(canvas, pyraminx) {
     ctx.restore();
 }
 
+function getMegaminxStarOffset(leftCenterPolygon, rightCenterPolygon) {
+    // Align the seam so the center-facing pentagons share a full edge instead of only touching at a point.
+    const leftInnerFace = reflectPolygon2D(leftCenterPolygon, 0);
+    const rightInnerFace = reflectPolygon2D(rightCenterPolygon, 2);
+    const leftEdgeStart = leftInnerFace[3];
+    const rightEdgeEnd = rightInnerFace[1];
+
+    return [
+        leftEdgeStart[0] - rightEdgeEnd[0],
+        leftEdgeStart[1] - rightEdgeEnd[1],
+    ];
+}
+
 function createMegaminxLayoutTemplate() {
     const layouts = [];
     const leftCenterPolygon = createRegularPentagonVertices(0, 0, 1, MEGAMINX_U_STAR_ROTATION);
-    const rightCenterPolygon = createRegularPentagonVertices(
-        MEGAMINX_RIGHT_STAR_OFFSET_X,
-        MEGAMINX_RIGHT_STAR_OFFSET_Y,
-        1,
-        MEGAMINX_D_STAR_ROTATION,
+    const rightCenterBasePolygon = createRegularPentagonVertices(0, 0, 1, MEGAMINX_D_STAR_ROTATION);
+    const [rightCenterOffsetX, rightCenterOffsetY] = getMegaminxStarOffset(
+        leftCenterPolygon,
+        rightCenterBasePolygon,
     );
+    const rightCenterPolygon = rightCenterBasePolygon.map(([x, y]) => [
+        x + rightCenterOffsetX,
+        y + rightCenterOffsetY,
+    ]);
     const referenceOrientationSign = Math.sign(getSignedPolygonArea(leftCenterPolygon)) || 1;
     const getEdgeNeighborStep = (polygon) => (
         (Math.sign(getSignedPolygonArea(polygon)) || referenceOrientationSign) === referenceOrientationSign ? 1 : -1
