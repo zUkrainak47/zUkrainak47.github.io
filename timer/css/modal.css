@@ -564,7 +564,7 @@
     .modal-box {
         width: 100vw;
         max-width: none;
-        max-height: min(92dvh, 840px);
+        max-height: 92dvh;
         border-radius: var(--radius-2xl) var(--radius-2xl) 0 0;
         transform: translateY(20px);
     }
@@ -639,12 +639,12 @@
     }
 
     .scramble-preview-modal-box {
-        width: min(96vw, 520px);
+        width: 96vw;
     }
 
     #scramble-preview-modal-canvas-container {
         width: 100%;
-        max-width: 420px;
+        /* max-width: 420px; */
     }
 }
 
