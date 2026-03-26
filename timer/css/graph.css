@@ -365,8 +365,9 @@
     }
 }
 
-@media (max-width: 1100px) and (orientation: landscape) and (max-height: 750px),
-(pointer: coarse) and (orientation: landscape) and (max-height: 750px) {
+/* @media (max-width: 1100px) and (orientation: landscape) and (max-height: 650px),
+(pointer: coarse) and (orientation: landscape) and (max-height: 650px) { */
+@media (orientation: landscape) {
     body.mobile-viewport[data-mobile-panel="trend"] #graph-panel>.panel-header {
         display: none;
     }

@@ -240,7 +240,7 @@ const quickActionsState = {
 };
 const mobilePanelIds = new Set(['timer', 'stats', 'trend']);
 const mobileViewportQuery = window.matchMedia('(max-width: 1100px), (pointer: coarse)');
-const shortMobileLandscapeQuery = window.matchMedia('(max-width: 1100px) and (orientation: landscape) and (max-height: 750px), (pointer: coarse) and (orientation: landscape) and (max-height: 750px)');
+const shortMobileLandscapeQuery = window.matchMedia('(max-width: 1100px) and (orientation: landscape) and (max-height: 650px), (pointer: coarse) and (orientation: landscape) and (max-height: 650px)');
 const mobileLandscapeQuery = window.matchMedia('(max-width: 1100px) and (orientation: landscape), (pointer: coarse) and (orientation: landscape)');
 const touchPrimaryQuery = window.matchMedia('(hover: none) and (pointer: coarse)');
 const inspectionSpeechUnlockState = {
