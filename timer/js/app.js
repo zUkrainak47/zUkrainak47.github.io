@@ -1474,10 +1474,9 @@ function syncScramblePreviewModalSize() {
     box.style.removeProperty('width');
     container.style.removeProperty('width');
 
-    const viewportWidth = window.visualViewport?.width ?? window.innerWidth;
     const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
-    const preferredBoxWidth = Math.min(viewportWidth * 0.9, 820);
-    const maxBoxHeight = viewportHeight * 0.8;
+    const maxBoxHeight = viewportHeight * 0.95;
+    const preferredBoxWidth = box.getBoundingClientRect().width;
     const boxStyles = window.getComputedStyle(box);
     const bodyStyles = window.getComputedStyle(body);
     const horizontalInsets = (parseFloat(bodyStyles.paddingLeft) || 0)

@@ -288,6 +288,7 @@
 
 .scramble-preview-modal-box {
     max-width: min(97vw, 820px);
+    max-height: 95vh;
     overflow: hidden;
 }
 
@@ -679,10 +680,15 @@
 (pointer: coarse) and (orientation: landscape) {
     #modal-overlay .modal-box,
     #confirm-overlay .modal-box,
-    #prompt-overlay .modal-box {
+    #prompt-overlay .modal-box,
+    #scramble-preview-overlay .scramble-preview-modal-box {
         width: 86vw;
         max-width: 86vw;
         margin-inline: 7vw;
+    }
+
+    #scramble-preview-overlay #scramble-preview-modal-canvas-container {
+        max-width: none;
     }
 
     .modal-overlay.mobile-detail-active .modal-body {
