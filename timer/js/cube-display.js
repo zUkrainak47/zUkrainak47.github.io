@@ -129,7 +129,7 @@ const MEGAMINX_INNER_PENTAGON_SCALE = 0.54;
 const MEGAMINX_EDGE_SPLIT_RATIO = 0.33;
 const MEGAMINX_U_STAR_ROTATION = -Math.PI / 10;
 const MEGAMINX_D_STAR_ROTATION = Math.PI / 10;
-const MEGAMINX_RIGHT_STAR_OFFSET_X = 4.3;
+const MEGAMINX_RIGHT_STAR_OFFSET_X = 4.98;
 const MEGAMINX_RIGHT_STAR_OFFSET_Y = 0;
 const MEGAMINX_U_STAR_EDGE_TO_FACE = Object.freeze([4, 5, 9, 1, 8]);
 const MEGAMINX_D_STAR_EDGE_TO_FACE = Object.freeze([11, 2, 10, 6, 7]);
@@ -1263,7 +1263,7 @@ export function drawMegaminx(canvas, megaminx) {
         return;
     }
 
-    const margin = Math.max(10, Math.min(w, h) * 0.05);
+    const margin = Math.max(4, Math.min(w, h) * 0.02);
     const templateWidth = MEGAMINX_LAYOUT_TEMPLATE.bounds.maxX - MEGAMINX_LAYOUT_TEMPLATE.bounds.minX;
     const templateHeight = MEGAMINX_LAYOUT_TEMPLATE.bounds.maxY - MEGAMINX_LAYOUT_TEMPLATE.bounds.minY;
     const scale = Math.max(0, Math.min(

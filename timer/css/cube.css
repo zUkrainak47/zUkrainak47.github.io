@@ -14,7 +14,7 @@
 }
 
 #cube-canvas-container.megaminx-preview-layout {
-    aspect-ratio: 2.05 / 1;
+    aspect-ratio: 1.9 / 1;
 }
 
 #cube-canvas {
@@ -31,6 +31,6 @@
     }
 
     body[data-mobile-panel="timer"] #cube-canvas-container.megaminx-preview-layout {
-        height: clamp(140px, 24vh, 188px);
+        height: clamp(150px, 26vh, 204px);
     }
 }
