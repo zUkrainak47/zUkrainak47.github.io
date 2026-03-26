@@ -230,6 +230,7 @@ class Timer extends EventEmitter {
         if (!this._isMobileTimerViewActive()) return;
         if (this._hasBlockingOverlayOpen()) return;
         if (this._isManualTimeEntryActive()) return;
+        if (this._isInteractivePointerTarget(e.target)) return;
 
         if (this._isInspectionTickingState(this.state)) {
             if (this._isInspectionCancelTarget(e.target)) return;
@@ -241,14 +242,22 @@ class Timer extends EventEmitter {
             return;
         }
 
-        if (this.state !== State.RUNNING) return;
-        if (this._isInteractivePointerTarget(e.target)) return;
-        if (this._isWithinInteractionArea(e.target)) return;
+        if (this.state === State.RUNNING) {
+            if (this._isWithinInteractionArea(e.target)) return;
+
+            e.preventDefault();
+            this._releaseActivePointer(this._activePointerId);
+            this._armGhostClickGuard(e);
+            this._stopTimer(null, this._getEventTimestamp(e));
+            return;
+        }
+
+        if (!this._shouldStartFromZenDocumentArea(e.target)) return;
+        if (this._activePointerId != null) return;
 
         e.preventDefault();
-        this._releaseActivePointer(this._activePointerId);
-        this._armGhostClickGuard(e);
-        this._stopTimer(null, this._getEventTimestamp(e));
+        this._claimActivePointer(e);
+        this._handleStartPress();
     }
 
     _onCapturedClick(e) {
@@ -629,6 +638,12 @@ class Timer extends EventEmitter {
     _isMobileTimerViewActive() {
         return document.body.classList.contains('mobile-viewport')
             && document.body.dataset.mobilePanel === 'timer';
+    }
+
+    _shouldStartFromZenDocumentArea(target) {
+        if (!document.body.classList.contains('zen')) return false;
+        if (this.state !== State.IDLE && this.state !== State.STOPPED) return false;
+        return !this._isWithinInteractionArea(target);
     }
 
     _armGhostClickGuard(e) {

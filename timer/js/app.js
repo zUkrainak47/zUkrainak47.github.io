@@ -2446,9 +2446,11 @@ function syncZenButtonState() {
 
 function setZenMode(isZen) {
     const nextZen = Boolean(isZen);
+    const didChange = document.body.classList.contains('zen') !== nextZen;
     document.body.classList.toggle('zen', nextZen);
     settings.set('zenMode', nextZen);
     syncZenButtonState();
+    if (didChange) resetMobileScrambleLayoutFreeze({ clearSnapshot: true });
     scheduleViewportLayoutSync();
 }
 
