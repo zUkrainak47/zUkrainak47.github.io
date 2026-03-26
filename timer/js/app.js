@@ -1821,11 +1821,16 @@ function initScramblePreviewModal() {
     initCubeDisplay(scramblePreviewModalCanvas);
 
     const openBtn = getEl('btn-scramble-preview');
+    const panelPreviewTrigger = getEl('cube-canvas-container');
     const closeBtn = getEl('scramble-preview-close');
 
     openBtn?.addEventListener('click', () => {
         openScramblePreviewModal();
         openBtn.blur();
+    });
+
+    panelPreviewTrigger?.addEventListener('click', () => {
+        openScramblePreviewModal();
     });
 
     closeBtn?.addEventListener('click', () => {

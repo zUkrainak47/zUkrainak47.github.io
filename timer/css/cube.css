@@ -11,10 +11,16 @@
     width: 100%;
     aspect-ratio: 4 / 3.2;
     padding: var(--space-sm);
+    cursor: pointer;
+    transition: background var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 #cube-canvas-container.megaminx-preview-layout {
     aspect-ratio: 1.9 / 1;
+}
+
+#cube-canvas-container:hover {
+    background: var(--surface-hover);
 }
 
 #cube-canvas {
