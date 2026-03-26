@@ -1,6 +1,6 @@
 /**
  * Canvas scramble preview renderers.
- * Supports NxN cube nets plus a flat pyraminx preview.
+ * Supports NxN cube nets, a flat pyraminx preview, and a two-star megaminx net.
  */
 
 // Face indices: U=0, R=1, F=2, D=3, L=4, B=5
@@ -73,6 +73,71 @@ const PYRAMINX_FACE_DRAW_CONFIGS = Object.freeze([
     Object.freeze({ orientation: 'down', vertexOrder: Object.freeze([0, 1, 2]) }),
 ]);
 
+const MEGAMINX_FACE_SIZE = 11;
+const MEGAMINX_COLORS = [
+    '#F8F8F5',
+    '#F9C91C',
+    '#FFF6B4',
+    '#9C9C9C',
+    '#EC1111',
+    '#0A7F12',
+    '#74FB00',
+    '#FF9136',
+    '#1223C8',
+    '#8A28FF',
+    '#E28DEE',
+    '#8BD6F8',
+];
+const MEGAMINX_FACE_NORMALS = Object.freeze([
+    Object.freeze([0, 0.5257311121191336, 0.85065080835204]),
+    Object.freeze([0, -0.5257311121191336, 0.85065080835204]),
+    Object.freeze([0, 0.5257311121191336, -0.85065080835204]),
+    Object.freeze([0, -0.5257311121191336, -0.85065080835204]),
+    Object.freeze([0.5257311121191336, 0.85065080835204, 0]),
+    Object.freeze([-0.5257311121191336, 0.85065080835204, 0]),
+    Object.freeze([0.5257311121191336, -0.85065080835204, 0]),
+    Object.freeze([-0.5257311121191336, -0.85065080835204, 0]),
+    Object.freeze([0.85065080835204, 0, 0.5257311121191336]),
+    Object.freeze([-0.85065080835204, 0, 0.5257311121191336]),
+    Object.freeze([0.85065080835204, 0, -0.5257311121191336]),
+    Object.freeze([-0.85065080835204, 0, -0.5257311121191336]),
+]);
+const MEGAMINX_FACE_NEIGHBORS = Object.freeze([
+    Object.freeze([9, 1, 8, 4, 5]),
+    Object.freeze([7, 6, 8, 0, 9]),
+    Object.freeze([10, 3, 11, 5, 4]),
+    Object.freeze([6, 7, 11, 2, 10]),
+    Object.freeze([8, 10, 2, 5, 0]),
+    Object.freeze([11, 9, 0, 4, 2]),
+    Object.freeze([1, 7, 3, 10, 8]),
+    Object.freeze([3, 6, 1, 9, 11]),
+    Object.freeze([1, 6, 10, 4, 0]),
+    Object.freeze([7, 1, 0, 5, 11]),
+    Object.freeze([6, 3, 2, 4, 8]),
+    Object.freeze([3, 7, 9, 5, 2]),
+]);
+const MEGAMINX_U_FACE = 0;
+const MEGAMINX_D_FACE = 3;
+const MEGAMINX_FRONT_FACE = 5;
+const MEGAMINX_LEFT_FACE = 9;
+const MEGAMINX_RIGHT_AXIS_FACE = 10;
+const MEGAMINX_CENTER_WEIGHT = 3;
+const MEGAMINX_LAYER_THRESHOLD = 0.58;
+const MEGAMINX_FIFTH_TURN_RAD = (2 * Math.PI) / 5;
+const MEGAMINX_STICKER_OUTLINE = 'rgba(0, 0, 0, 0.45)';
+const MEGAMINX_INNER_PENTAGON_SCALE = 0.54;
+const MEGAMINX_EDGE_SPLIT_RATIO = 0.33;
+const MEGAMINX_U_STAR_ROTATION = -Math.PI / 10;
+const MEGAMINX_D_STAR_ROTATION = Math.PI / 10;
+const MEGAMINX_RIGHT_STAR_OFFSET_X = 4.3;
+const MEGAMINX_RIGHT_STAR_OFFSET_Y = 0;
+const MEGAMINX_U_STAR_EDGE_TO_FACE = Object.freeze([4, 5, 9, 1, 8]);
+const MEGAMINX_D_STAR_EDGE_TO_FACE = Object.freeze([11, 2, 10, 6, 7]);
+const MEGAMINX_LABEL_STYLE = Object.freeze({
+    fill: 'rgba(42, 24, 18, 0.9)',
+    stroke: 'rgba(255, 255, 255, 0.88)',
+});
+
 function normalizeCubeSize(size = 3) {
     const parsed = Number(size);
     if (!Number.isFinite(parsed)) return 3;
@@ -116,6 +181,13 @@ function scaleVector(vector, scalar) {
     ];
 }
 
+function sumVectors(...vectors) {
+    return vectors.reduce(
+        (total, vector) => addVectors(total, vector),
+        [0, 0, 0],
+    );
+}
+
 function cross(a, b) {
     return [
         (a[1] * b[2]) - (a[2] * b[1]),
@@ -132,6 +204,10 @@ function normalizeVector(vector) {
     const length = magnitude(vector);
     if (!length) return [0, 0, 0];
     return scaleVector(vector, 1 / length);
+}
+
+function positiveModulo(value, divisor) {
+    return ((value % divisor) + divisor) % divisor;
 }
 
 function averagePoints(points) {
@@ -554,6 +630,156 @@ export function applyPyraminxScramble(scramble) {
     return materializePyraminxFaces(stickers);
 }
 
+function createMegaminxFaceMetas() {
+    return MEGAMINX_FACE_NORMALS.map((normal, face) => {
+        const neighbors = MEGAMINX_FACE_NEIGHBORS[face];
+        const solvedSlots = [[...normal]];
+
+        for (let index = 0; index < neighbors.length; index += 1) {
+            const nextIndex = (index + 1) % neighbors.length;
+            const currentNeighbor = MEGAMINX_FACE_NORMALS[neighbors[index]];
+            const nextNeighbor = MEGAMINX_FACE_NORMALS[neighbors[nextIndex]];
+            solvedSlots.push(normalizeVector(sumVectors(
+                scaleVector(normal, MEGAMINX_CENTER_WEIGHT),
+                currentNeighbor,
+                nextNeighbor,
+            )));
+            solvedSlots.push(normalizeVector(addVectors(
+                scaleVector(normal, MEGAMINX_CENTER_WEIGHT),
+                nextNeighbor,
+            )));
+        }
+
+        return {
+            face,
+            normal,
+            neighbors,
+            solvedSlots,
+        };
+    });
+}
+
+const MEGAMINX_FACE_METAS = Object.freeze(createMegaminxFaceMetas());
+
+function parseMegaminxMoveToken(token) {
+    const normalized = String(token ?? '')
+        .trim()
+        .replace(/[`´‘’′]/g, "'");
+
+    if (!normalized) return null;
+
+    const sliceMatch = normalized.match(/^([RD])(\+\+|--)$/i);
+    if (sliceMatch) {
+        return {
+            kind: sliceMatch[1].toUpperCase(),
+            turns: sliceMatch[2] === '++' ? 2 : -2,
+        };
+    }
+
+    const upperMatch = normalized.match(/^U([2']?)$/i);
+    if (!upperMatch) return null;
+
+    const [, modifier] = upperMatch;
+
+    return {
+        kind: 'U',
+        turns: modifier === '2'
+            ? 2
+            : modifier === "'"
+                ? -1
+                : 1,
+    };
+}
+
+function createSolvedMegaminxState() {
+    const stickers = [];
+
+    MEGAMINX_FACE_METAS.forEach((face) => {
+        face.solvedSlots.forEach((position) => {
+            stickers.push({
+                color: face.face,
+                position: [...position],
+                normal: [...face.normal],
+            });
+        });
+    });
+
+    return stickers;
+}
+
+function resolveMegaminxFaceIndex(normal) {
+    let bestFaceIndex = 0;
+    let bestDot = -Infinity;
+
+    MEGAMINX_FACE_METAS.forEach((face) => {
+        const similarity = dot(normal, face.normal);
+        if (similarity > bestDot) {
+            bestDot = similarity;
+            bestFaceIndex = face.face;
+        }
+    });
+
+    return bestFaceIndex;
+}
+
+function applyMegaminxMove(stickers, move) {
+    if (!move || move.turns === 0) return;
+
+    let axis = MEGAMINX_FACE_NORMALS[MEGAMINX_U_FACE];
+    let shouldRotate = (sticker) => dot(sticker.position, axis) > MEGAMINX_LAYER_THRESHOLD;
+
+    if (move.kind === 'D') {
+        axis = MEGAMINX_FACE_NORMALS[MEGAMINX_D_FACE];
+        shouldRotate = (sticker) => dot(sticker.position, MEGAMINX_FACE_NORMALS[MEGAMINX_U_FACE]) < MEGAMINX_LAYER_THRESHOLD;
+    } else if (move.kind === 'R') {
+        axis = MEGAMINX_FACE_NORMALS[MEGAMINX_RIGHT_AXIS_FACE];
+        shouldRotate = (sticker) => dot(sticker.position, MEGAMINX_FACE_NORMALS[MEGAMINX_LEFT_FACE]) < MEGAMINX_LAYER_THRESHOLD;
+    }
+
+    const angle = move.turns * MEGAMINX_FIFTH_TURN_RAD;
+
+    stickers.forEach((sticker) => {
+        if (!shouldRotate(sticker)) return;
+        sticker.position = rotateVectorAroundAxis(sticker.position, axis, angle);
+        sticker.normal = rotateVectorAroundAxis(sticker.normal, axis, angle);
+    });
+}
+
+function materializeMegaminxFaces(stickers) {
+    const faces = MEGAMINX_FACE_METAS.map((face) => new Array(MEGAMINX_FACE_SIZE).fill(face.face));
+    const occupiedSlots = MEGAMINX_FACE_METAS.map(() => new Set());
+
+    stickers.forEach((sticker) => {
+        const faceIndex = resolveMegaminxFaceIndex(sticker.normal);
+        const face = MEGAMINX_FACE_METAS[faceIndex];
+        const slotCandidates = face.solvedSlots
+            .map((slot, index) => ({ index, distance: distanceSquared(sticker.position, slot) }))
+            .sort((a, b) => a.distance - b.distance);
+        const nextSlot = slotCandidates.find(({ index }) => !occupiedSlots[faceIndex].has(index)) ?? slotCandidates[0];
+
+        occupiedSlots[faceIndex].add(nextSlot.index);
+        faces[faceIndex][nextSlot.index] = sticker.color;
+    });
+
+    return faces;
+}
+
+export function applyMegaminxScramble(scramble) {
+    const stickers = createSolvedMegaminxState();
+
+    if (scramble) {
+        String(scramble)
+            .trim()
+            .split(/\s+/)
+            .forEach((token) => {
+                const parsedMove = parseMegaminxMoveToken(token);
+                applyMegaminxMove(stickers, parsedMove);
+            });
+    }
+
+    return materializeMegaminxFaces(stickers);
+}
+
 export function drawCube(canvas, cube) {
     const ctx = canvas.getContext('2d');
     const w = canvas.width / devicePixelRatio;
@@ -628,6 +854,111 @@ function createInsetTriangle(points, insetDistance) {
         centroid[0] + ((point[0] - centroid[0]) * scale),
         centroid[1] + ((point[1] - centroid[1]) * scale),
     ]);
+}
+
+function createInsetPolygon(points, insetDistance) {
+    const centroid = averagePoints(points);
+    const maxDistance = Math.max(
+        ...points.map((point) => distance2D(point, centroid)),
+        0,
+    );
+    const scale = maxDistance > 0 ? Math.max(0, 1 - (insetDistance / maxDistance)) : 1;
+
+    return points.map((point) => [
+        centroid[0] + ((point[0] - centroid[0]) * scale),
+        centroid[1] + ((point[1] - centroid[1]) * scale),
+    ]);
+}
+
+function createRegularPentagonVertices(centerX, centerY, radius, rotation = 0) {
+    return Array.from({ length: 5 }, (_, index) => {
+        const angle = rotation + (index * ((2 * Math.PI) / 5));
+        return [
+            centerX + (Math.cos(angle) * radius),
+            centerY + (Math.sin(angle) * radius),
+        ];
+    });
+}
+
+function reflectPointAcrossLine2D(point, lineStart, lineEnd) {
+    const [px, py] = point;
+    const [ax, ay] = lineStart;
+    const [bx, by] = lineEnd;
+    const dx = bx - ax;
+    const dy = by - ay;
+    const lengthSquared = (dx * dx) + (dy * dy);
+    if (lengthSquared === 0) return [px, py];
+
+    const factor = (((px - ax) * dx) + ((py - ay) * dy)) / lengthSquared;
+    const projection = [
+        ax + (factor * dx),
+        ay + (factor * dy),
+    ];
+
+    return [
+        (projection[0] * 2) - px,
+        (projection[1] * 2) - py,
+    ];
+}
+
+function reflectPolygon2D(points, edgeIndex) {
+    const edgeStart = points[edgeIndex];
+    const edgeEnd = points[(edgeIndex + 1) % points.length];
+    return points.map((point) => reflectPointAcrossLine2D(point, edgeStart, edgeEnd));
+}
+
+function getPolygonBounds(polygons) {
+    const allPoints = polygons.flat();
+    const xs = allPoints.map(([x]) => x);
+    const ys = allPoints.map(([, y]) => y);
+
+    return {
+        minX: Math.min(...xs),
+        maxX: Math.max(...xs),
+        minY: Math.min(...ys),
+        maxY: Math.max(...ys),
+    };
+}
+
+function getSignedPolygonArea(points) {
+    let area = 0;
+
+    for (let index = 0; index < points.length; index += 1) {
+        const current = points[index];
+        const next = points[(index + 1) % points.length];
+        area += (current[0] * next[1]) - (next[0] * current[1]);
+    }
+
+    return area / 2;
+}
+
+function scaleAndTranslatePolygon(points, scale, offsetX, offsetY) {
+    return points.map(([x, y]) => [
+        offsetX + (x * scale),
+        offsetY + (y * scale),
+    ]);
+}
+
+function interpolatePoint2D(a, b, ratio) {
+    return [
+        a[0] + ((b[0] - a[0]) * ratio),
+        a[1] + ((b[1] - a[1]) * ratio),
+    ];
+}
+
+function getMegaminxEdgeSlotIndex(neighborIndex) {
+    return neighborIndex === 0 ? 10 : neighborIndex * 2;
+}
+
+function getMegaminxCornerSlotIndex(neighborIndex) {
+    return neighborIndex === 0 ? 9 : (neighborIndex * 2) - 1;
+}
+
+function findMegaminxEdgeNeighborStartForStep(faceId, anchorFaceId, anchorEdge = 0, edgeNeighborStep = 1) {
+    const anchorNeighborIndex = MEGAMINX_FACE_NEIGHBORS[faceId].indexOf(anchorFaceId);
+    return edgeNeighborStep >= 0
+        ? positiveModulo(anchorNeighborIndex - anchorEdge, 5)
+        : positiveModulo(anchorNeighborIndex + anchorEdge, 5);
 }
 
 function getPyraminxScreenTriangleVertices(x, y, sideLength, triangleHeight, orientation = 'down') {
@@ -724,6 +1055,256 @@ export function drawPyraminx(canvas, pyraminx) {
     ctx.restore();
 }
 
+function createMegaminxLayoutTemplate() {
+    const layouts = [];
+    const leftCenterPolygon = createRegularPentagonVertices(0, 0, 1, MEGAMINX_U_STAR_ROTATION);
+    const rightCenterPolygon = createRegularPentagonVertices(
+        MEGAMINX_RIGHT_STAR_OFFSET_X,
+        MEGAMINX_RIGHT_STAR_OFFSET_Y,
+        1,
+        MEGAMINX_D_STAR_ROTATION,
+    );
+    const referenceOrientationSign = Math.sign(getSignedPolygonArea(leftCenterPolygon)) || 1;
+    const getEdgeNeighborStep = (polygon) => (
+        (Math.sign(getSignedPolygonArea(polygon)) || referenceOrientationSign) === referenceOrientationSign ? 1 : -1
+    );
+    const leftCenterStep = getEdgeNeighborStep(leftCenterPolygon);
+    const rightCenterStep = getEdgeNeighborStep(rightCenterPolygon);
+
+    layouts.push({
+        faceId: MEGAMINX_U_FACE,
+        polygon: leftCenterPolygon,
+        edgeNeighborStart: findMegaminxEdgeNeighborStartForStep(
+            MEGAMINX_U_FACE,
+            MEGAMINX_U_STAR_EDGE_TO_FACE[0],
+            0,
+            leftCenterStep,
+        ),
+        edgeNeighborStep: leftCenterStep,
+        label: 'U',
+    });
+    MEGAMINX_U_STAR_EDGE_TO_FACE.forEach((faceId, edgeIndex) => {
+        const polygon = reflectPolygon2D(leftCenterPolygon, edgeIndex);
+        const edgeNeighborStep = getEdgeNeighborStep(polygon);
+        layouts.push({
+            faceId,
+            polygon,
+            edgeNeighborStart: findMegaminxEdgeNeighborStartForStep(
+                faceId,
+                MEGAMINX_U_FACE,
+                edgeIndex,
+                edgeNeighborStep,
+            ),
+            edgeNeighborStep,
+            label: faceId === MEGAMINX_FRONT_FACE ? 'F' : '',
+        });
+    });
+
+    layouts.push({
+        faceId: MEGAMINX_D_FACE,
+        polygon: rightCenterPolygon,
+        edgeNeighborStart: findMegaminxEdgeNeighborStartForStep(
+            MEGAMINX_D_FACE,
+            MEGAMINX_D_STAR_EDGE_TO_FACE[0],
+            0,
+            rightCenterStep,
+        ),
+        edgeNeighborStep: rightCenterStep,
+        label: '',
+    });
+    MEGAMINX_D_STAR_EDGE_TO_FACE.forEach((faceId, edgeIndex) => {
+        const polygon = reflectPolygon2D(rightCenterPolygon, edgeIndex);
+        const edgeNeighborStep = getEdgeNeighborStep(polygon);
+        layouts.push({
+            faceId,
+            polygon,
+            edgeNeighborStart: findMegaminxEdgeNeighborStartForStep(
+                faceId,
+                MEGAMINX_D_FACE,
+                edgeIndex,
+                edgeNeighborStep,
+            ),
+            edgeNeighborStep,
+            label: '',
+        });
+    });
+
+    return {
+        faces: layouts,
+        bounds: getPolygonBounds(layouts.map(({ polygon }) => polygon)),
+    };
+}
+
+const MEGAMINX_LAYOUT_TEMPLATE = createMegaminxLayoutTemplate();
+const MEGAMINX_PREVIEW_FACE_EDGE_NEIGHBOR_START = MEGAMINX_LAYOUT_TEMPLATE.faces.find(
+    ({ faceId }) => faceId === MEGAMINX_U_FACE,
+)?.edgeNeighborStart ?? 0;
+
+function drawMegaminxSticker(ctx, polygon, color, insetDistance, outlineWidth) {
+    const insetPolygon = createInsetPolygon(polygon, insetDistance);
+    ctx.fillStyle = color;
+    tracePolygon(ctx, insetPolygon);
+    ctx.fill();
+
+    ctx.strokeStyle = MEGAMINX_STICKER_OUTLINE;
+    ctx.lineWidth = outlineWidth;
+    ctx.stroke();
+}
+
+function drawMegaminxFace(ctx, face, polygon, edgeNeighborStart = 0, edgeNeighborStep = 1) {
+    const centroid = averagePoints(polygon);
+    const innerPolygon = polygon.map(([x, y]) => [
+        centroid[0] + ((x - centroid[0]) * MEGAMINX_INNER_PENTAGON_SCALE),
+        centroid[1] + ((y - centroid[1]) * MEGAMINX_INNER_PENTAGON_SCALE),
+    ]);
+    const edgeCutsNearStart = polygon.map((point, edgeIndex) => (
+        interpolatePoint2D(point, polygon[(edgeIndex + 1) % 5], MEGAMINX_EDGE_SPLIT_RATIO)
+    ));
+    const edgeCutsNearEnd = polygon.map((point, edgeIndex) => (
+        interpolatePoint2D(point, polygon[(edgeIndex + 1) % 5], 1 - MEGAMINX_EDGE_SPLIT_RATIO)
+    ));
+    const sideLength = distance2D(polygon[0], polygon[1]);
+    const insetDistance = Math.max(0.4, sideLength * 0.032);
+    const outlineWidth = Math.max(0.55, Math.min(1.25, sideLength * 0.03));
+
+    for (let edgeIndex = 0; edgeIndex < 5; edgeIndex += 1) {
+        const neighborIndex = positiveModulo(edgeNeighborStart + (edgeNeighborStep * edgeIndex), 5);
+        const cornerNeighborIndex = edgeNeighborStep >= 0
+            ? neighborIndex
+            : positiveModulo(neighborIndex + 1, 5);
+        const cornerSlot = getMegaminxCornerSlotIndex(cornerNeighborIndex);
+        const edgeSlot = getMegaminxEdgeSlotIndex(neighborIndex);
+        const nextIndex = (edgeIndex + 1) % 5;
+        const previousIndex = positiveModulo(edgeIndex - 1, 5);
+        const cornerColor = MEGAMINX_COLORS[face?.[cornerSlot]] || MEGAMINX_COLORS[0];
+        const edgeColor = MEGAMINX_COLORS[face?.[edgeSlot]] || MEGAMINX_COLORS[0];
+
+        drawMegaminxSticker(
+            ctx,
+            [
+                edgeCutsNearEnd[previousIndex],
+                polygon[edgeIndex],
+                edgeCutsNearStart[edgeIndex],
+                innerPolygon[edgeIndex],
+            ],
+            cornerColor,
+            insetDistance,
+            outlineWidth,
+        );
+        drawMegaminxSticker(
+            ctx,
+            [
+                edgeCutsNearStart[edgeIndex],
+                edgeCutsNearEnd[edgeIndex],
+                innerPolygon[nextIndex],
+                innerPolygon[edgeIndex],
+            ],
+            edgeColor,
+            insetDistance,
+            outlineWidth,
+        );
+    }
+
+    drawMegaminxSticker(
+        ctx,
+        innerPolygon,
+        MEGAMINX_COLORS[face?.[0]] || MEGAMINX_COLORS[0],
+        insetDistance * 0.72,
+        outlineWidth,
+    );
+}
+
+function drawMegaminxFaceLabel(ctx, polygon, label) {
+    if (!label) return;
+
+    const centroid = averagePoints(polygon);
+    const sideLength = distance2D(polygon[0], polygon[1]);
+    const fontSize = Math.max(13, Math.min(34, sideLength * 0.36));
+
+    ctx.font = `700 ${fontSize}px Inter, system-ui, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineWidth = Math.max(1.4, fontSize * 0.14);
+    ctx.strokeStyle = MEGAMINX_LABEL_STYLE.stroke;
+    ctx.fillStyle = MEGAMINX_LABEL_STYLE.fill;
+    ctx.strokeText(label, centroid[0], centroid[1] + (fontSize * 0.02));
+    ctx.fillText(label, centroid[0], centroid[1] + (fontSize * 0.02));
+}
+
+function drawMegaminxLayout(ctx, megaminx, layoutFaces, scale, offsetX, offsetY, { showLabels = true } = {}) {
+    layoutFaces.forEach(({ faceId, polygon, edgeNeighborStart, edgeNeighborStep = 1 }) => {
+        const transformedPolygon = scaleAndTranslatePolygon(polygon, scale, offsetX, offsetY);
+        drawMegaminxFace(
+            ctx,
+            megaminx?.[faceId] || [],
+            transformedPolygon,
+            edgeNeighborStart,
+            edgeNeighborStep,
+        );
+    });
+
+    if (!showLabels) return;
+
+    layoutFaces.forEach(({ polygon, label }) => {
+        if (!label) return;
+        const transformedPolygon = scaleAndTranslatePolygon(polygon, scale, offsetX, offsetY);
+        drawMegaminxFaceLabel(ctx, transformedPolygon, label);
+    });
+}
+
+export function drawMegaminx(canvas, megaminx) {
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width / devicePixelRatio;
+    const h = canvas.height / devicePixelRatio;
+
+    ctx.clearRect(0, 0, w, h);
+
+    if (!Array.isArray(megaminx) || megaminx.length === 0) {
+        return;
+    }
+
+    const margin = Math.max(10, Math.min(w, h) * 0.05);
+    const templateWidth = MEGAMINX_LAYOUT_TEMPLATE.bounds.maxX - MEGAMINX_LAYOUT_TEMPLATE.bounds.minX;
+    const templateHeight = MEGAMINX_LAYOUT_TEMPLATE.bounds.maxY - MEGAMINX_LAYOUT_TEMPLATE.bounds.minY;
+    const scale = Math.max(0, Math.min(
+        (w - (margin * 2)) / templateWidth,
+        (h - (margin * 2)) / templateHeight,
+    ));
+    const offsetX = ((w - (templateWidth * scale)) / 2) - (MEGAMINX_LAYOUT_TEMPLATE.bounds.minX * scale);
+    const offsetY = ((h - (templateHeight * scale)) / 2) - (MEGAMINX_LAYOUT_TEMPLATE.bounds.minY * scale);
+
+    ctx.save();
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    drawMegaminxLayout(
+        ctx,
+        megaminx,
+        MEGAMINX_LAYOUT_TEMPLATE.faces,
+        scale,
+        offsetX,
+        offsetY,
+        { showLabels: true },
+    );
+    ctx.restore();
+}
+
+export function drawMegaminxFacePreview(canvas, face, { label = '' } = {}) {
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width / devicePixelRatio;
+    const h = canvas.height / devicePixelRatio;
+    const margin = Math.max(1.4, Math.min(w, h) * 0.08);
+    const radius = Math.max(0, Math.min(w, h) - (margin * 2)) / 2;
+    const polygon = createRegularPentagonVertices(w / 2, h / 2, radius, MEGAMINX_U_STAR_ROTATION);
+
+    ctx.clearRect(0, 0, w, h);
+    ctx.save();
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    drawMegaminxFace(ctx, face, polygon, MEGAMINX_PREVIEW_FACE_EDGE_NEIGHBOR_START, 1);
+    if (label) drawMegaminxFaceLabel(ctx, polygon, label);
+    ctx.restore();
+}
+
 let _lastDisplay = null;
 
 function redrawLastDisplay(canvas) {
@@ -731,6 +1312,11 @@ function redrawLastDisplay(canvas) {
 
     if (_lastDisplay.puzzle === 'pyraminx') {
         drawPyraminx(canvas, _lastDisplay.state);
+        return;
+    }
+
+    if (_lastDisplay.puzzle === 'megaminx') {
+        drawMegaminx(canvas, _lastDisplay.state);
         return;
     }
 
@@ -781,6 +1367,16 @@ export function updatePyraminxDisplay(canvas, scramble) {
     _lastDisplay = {
         puzzle: 'pyraminx',
         state: applyPyraminxScramble(scramble),
+    };
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+    redrawLastDisplay(canvas);
+}
+
+export function updateMegaminxDisplay(canvas, scramble) {
+    _lastDisplay = {
+        puzzle: 'megaminx',
+        state: applyMegaminxScramble(scramble),
     };
     const ctx = canvas.getContext('2d');
     ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);

@@ -287,7 +287,7 @@
 }
 
 .scramble-preview-modal-box {
-    max-width: min(96vw, 560px);
+    max-width: min(96vw, 720px);
     overflow: hidden;
 }
 
@@ -303,6 +303,11 @@
     width: min(100%, 460px);
     aspect-ratio: 4 / 3.2;
     padding: 10px;
+}
+
+#scramble-preview-modal-canvas-container.megaminx-preview-layout {
+    width: min(100%, 720px);
+    aspect-ratio: 2.05 / 1;
 }
 
 #scramble-preview-modal-canvas {

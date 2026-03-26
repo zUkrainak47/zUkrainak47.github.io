@@ -5,7 +5,7 @@ import { settings, DEFAULTS } from './settings.js';
 import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=2';
 import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate } from './utils.js';
 import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=12';
-import { applyPyraminxScramble, applyScramble, clearCubeDisplay, initCubeDisplay, updateCubeDisplay, updatePyraminxDisplay } from './cube-display.js?v=7';
+import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, clearCubeDisplay, drawMegaminxFacePreview, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay } from './cube-display.js?v=8';
 import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=9';
 import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer } from './storage.js';
 
@@ -264,9 +264,11 @@ const CUBE_PREVIEW_SCRAMBLE_TYPES = new Set([
     ...STANDARD_CUBE_PREVIEW_SIZES.keys(),
     ...YELLOW_TOP_PREVIEW_TYPES,
 ]);
+const MEGAMINX_PREVIEW_SCRAMBLE_TYPES = new Set(['minx']);
 const PYRAMINX_PREVIEW_SCRAMBLE_TYPES = new Set(['pyram']);
 const SCRAMBLE_PREVIEW_TYPES = new Set([
     ...CUBE_PREVIEW_SCRAMBLE_TYPES,
+    ...MEGAMINX_PREVIEW_SCRAMBLE_TYPES,
     ...PYRAMINX_PREVIEW_SCRAMBLE_TYPES,
 ]);
 const PYRAMINX_PREVIEW_BUTTON_FACE_INDEX = 1;
@@ -1440,12 +1442,22 @@ function supportsCubePreview(type = getCurrentScrambleType()) {
     return CUBE_PREVIEW_SCRAMBLE_TYPES.has(type);
 }
 
+function supportsMegaminxPreview(type = getCurrentScrambleType()) {
+    return MEGAMINX_PREVIEW_SCRAMBLE_TYPES.has(type);
+}
+
 function supportsPyraminxPreview(type = getCurrentScrambleType()) {
     return PYRAMINX_PREVIEW_SCRAMBLE_TYPES.has(type);
 }
 
 function supportsScramblePreview(type = getCurrentScrambleType()) {
     return SCRAMBLE_PREVIEW_TYPES.has(type);
+}
+
+function syncScramblePreviewCanvasLayout(type = getCurrentScrambleType()) {
+    const useMegaminxLayout = supportsMegaminxPreview(type);
+    getEl('cube-canvas-container')?.classList.toggle('megaminx-preview-layout', useMegaminxLayout);
+    getEl('scramble-preview-modal-canvas-container')?.classList.toggle('megaminx-preview-layout', useMegaminxLayout);
 }
 
 function mapScrambleForPreview(scramble, type = getCurrentScrambleType()) {
@@ -1692,6 +1704,14 @@ function drawPyraminxPreviewButtonFace(face) {
     });
 }
 
+function drawMegaminxPreviewButtonFace(face) {
+    const canvas = getScramblePreviewButtonCanvas();
+    const prepared = prepareScramblePreviewButtonCanvas(canvas);
+    if (!prepared || !(canvas instanceof HTMLCanvasElement)) return;
+
+    drawMegaminxFacePreview(canvas, face);
+}
+
 function drawPlaceholderPreviewButtonFace() {
     drawCubePreviewButtonFace(
         new Array(SCRAMBLE_PREVIEW_BUTTON_PLACEHOLDER_SIZE ** 2).fill(0),
@@ -1702,6 +1722,18 @@ function drawPlaceholderPreviewButtonFace() {
 function updateScramblePreviewButtonFace(scramble, type = getCurrentScrambleType()) {
     if (!supportsScramblePreview(type)) {
         drawPlaceholderPreviewButtonFace();
+        return;
+    }
+
+    if (supportsMegaminxPreview(type)) {
+        const megaminx = applyMegaminxScramble(scramble);
+        const previewFace = megaminx?.[0];
+        if (!Array.isArray(previewFace) || previewFace.length !== 11) {
+            drawPlaceholderPreviewButtonFace();
+            return;
+        }
+
+        drawMegaminxPreviewButtonFace(previewFace);
         return;
     }
 
@@ -1736,10 +1768,18 @@ function updateScramblePreviewButtonFace(scramble, type = getCurrentScrambleType
 function renderScramblePreviewDisplays(scramble, type = getCurrentScrambleType()) {
     const normalizedScramble = String(scramble ?? '');
     const mainCanvas = getEl('cube-canvas');
+    syncScramblePreviewCanvasLayout(type);
 
     if (!supportsScramblePreview(type)) {
         if (mainCanvas) clearCubeDisplay(mainCanvas);
         if (scramblePreviewModalCanvas) clearCubeDisplay(scramblePreviewModalCanvas);
+        updateScramblePreviewButtonFace(normalizedScramble, type);
+        return;
+    }
+
+    if (supportsMegaminxPreview(type)) {
+        if (mainCanvas) updateMegaminxDisplay(mainCanvas, normalizedScramble);
+        if (scramblePreviewModalCanvas) updateMegaminxDisplay(scramblePreviewModalCanvas, normalizedScramble);
         updateScramblePreviewButtonFace(normalizedScramble, type);
         return;
     }

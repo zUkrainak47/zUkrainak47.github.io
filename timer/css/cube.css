@@ -13,6 +13,10 @@
     padding: var(--space-sm);
 }
 
+#cube-canvas-container.megaminx-preview-layout {
+    aspect-ratio: 2.05 / 1;
+}
+
 #cube-canvas {
     width: 100%;
     height: 100%;
@@ -24,5 +28,9 @@
         height: clamp(126px, 22vh, 164px);
         aspect-ratio: auto;
         padding: 10px;
+    }
+
+    body[data-mobile-panel="timer"] #cube-canvas-container.megaminx-preview-layout {
+        height: clamp(140px, 24vh, 188px);
     }
 }
