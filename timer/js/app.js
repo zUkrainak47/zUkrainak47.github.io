@@ -2190,11 +2190,15 @@ function initTimerQuickActions() {
         hiddenInput.blur();
     });
 
+    const isQuickActionsSwipeIgnoredTarget = (target) => target instanceof Element
+        && Boolean(target.closest('.scramble-type-menu, .custom-select-menu'));
+
     const handleQuickActionsSwipeStart = (event) => {
         if (!isMobileTimerPanelActive()) return;
         if (hasBlockingOverlayOpen() || settingsOverlayEl?.classList.contains('active')) return;
         if (quickActionsState.manualEntryActive) return;
         if (event.pointerType !== 'touch' && event.pointerType !== 'pen') return;
+        if (isQuickActionsSwipeIgnoredTarget(event.target)) return;
         if (event.target instanceof Element && event.target.closest('input[type="text"], input[type="search"], input[type="number"], input[type="email"], input[type="url"], input[type="tel"], textarea, [contenteditable="true"]')) return;
         if (!quickActionsState.visible && !settings.get('swipeDownGestureEnabled')) return;
 

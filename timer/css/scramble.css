@@ -101,7 +101,9 @@ body.scramble-type-button-hidden #scramble-type-menu-desktop {
     top: calc(100% + var(--scramble-type-dropdown-gap));
     right: 0;
     display: block;
+    width: max-content;
     min-width: 116px;
+    max-width: calc(100vw - 24px);
     max-height: var(--scramble-type-dropdown-max-height-resolved);
     overflow: hidden;
     padding: 6px;
@@ -182,6 +184,7 @@ body.scramble-type-button-hidden #scramble-type-menu-desktop {
     font-size: 0.9rem;
     font-weight: 600;
     text-align: left;
+    white-space: nowrap;
     padding: 0 10px;
     cursor: pointer;
     transition: background var(--transition-fast), color var(--transition-fast);
