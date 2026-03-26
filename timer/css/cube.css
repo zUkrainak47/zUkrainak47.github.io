@@ -57,7 +57,7 @@
 @media (pointer: coarse) and (min-width: 1101px) and (min-height: 751px) {
     body[data-mobile-panel="timer"] #cube-canvas-container {
         flex: 1 1 auto;
-        min-height: clamp(145px, 22vh, 180px);
-        height: clamp(154px, 22vh, 180px);
+        min-height: clamp(154px, 26vh, 180px);
+        height: clamp(154px, 26vh, 180px);
     }
 }
