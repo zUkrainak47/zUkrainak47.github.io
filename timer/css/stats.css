@@ -113,7 +113,7 @@
 }
 
 /* Desktop override: 14px border-radius for stats panel */
-@media (min-width: 1101px) {
+@media (min-width: 1101px) and (pointer: fine) {
     #stats-panel.panel {
         border-radius: 14px !important;
     }

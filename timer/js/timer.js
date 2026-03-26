@@ -526,9 +526,14 @@ class Timer extends EventEmitter {
     _stopTimer(penaltyOverride = null, stopTimestamp = null) {
         this._cancelRaf();
         const now = performance.now();
-        const resolvedStopTime = Number.isFinite(stopTimestamp)
-            ? Math.min(Math.max(stopTimestamp, this.startTime), now)
-            : now;
+        // Some mobile hardware-keyboard events (notably on WebKit/iPadOS) can
+        // report a timestamp from the wrong clock origin or as 0. If the stop
+        // timestamp is outside this solve's lifetime, fall back to "now" so we
+        // don't collapse the solve to 0.00.
+        const hasUsableStopTimestamp = Number.isFinite(stopTimestamp)
+            && stopTimestamp >= this.startTime
+            && stopTimestamp <= now;
+        const resolvedStopTime = hasUsableStopTimestamp ? stopTimestamp : now;
         this.elapsed = resolvedStopTime - this.startTime;
 
         const finalPenalty = penaltyOverride ?? this._pendingPenalty ?? null;
