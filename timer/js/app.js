@@ -1657,6 +1657,66 @@ function drawCubePreviewButtonFace(face, faceSize) {
     }
 }
 
+function drawSkewbPreviewButtonFace(face) {
+    const canvas = getScramblePreviewButtonCanvas();
+    const prepared = prepareScramblePreviewButtonCanvas(canvas);
+    if (!prepared) return;
+
+    const { ctx, width, height } = prepared;
+    const padding = Math.max(0.6, Math.min(width, height) * 0.04);
+    const gridSize = Math.max(0, Math.min(width, height) - (padding * 2));
+    const cellSize = gridSize / 2;
+    const stickerGap = Math.min(0.9, Math.max(0.12, cellSize * SCRAMBLE_PREVIEW_BUTTON_STICKER_GAP_RATIO));
+    const offsetX = (width - gridSize) / 2;
+    const offsetY = (height - gridSize) / 2;
+
+    const S = gridSize;
+
+    const tl = [offsetX, offsetY];
+    const tr = [offsetX + S, offsetY];
+    const br = [offsetX + S, offsetY + S];
+    const bl = [offsetX, offsetY + S];
+    const midTop = [offsetX + S / 2, offsetY];
+    const midRight = [offsetX + S, offsetY + S / 2];
+    const midBottom = [offsetX + S / 2, offsetY + S];
+    const midLeft = [offsetX, offsetY + S / 2];
+
+    const polygons = [
+        [midTop, midRight, midBottom, midLeft], // 0: Center
+        [tl, midTop, midLeft],                  // 1: Top-Left
+        [tr, midRight, midTop],                 // 2: Top-Right
+        [br, midBottom, midRight],              // 3: Bottom-Right
+        [bl, midLeft, midBottom],               // 4: Bottom-Left
+    ];
+
+    const outlineWidth = Math.max(0.35, Math.min(0.75, cellSize * 0.08));
+
+    polygons.forEach((points, index) => {
+        const centroid = average2DPoints(points);
+        const maxDist = Math.max(...points.map(p => Math.hypot(p[0] - centroid[0], p[1] - centroid[1])));
+        const scale = maxDist > 0 ? Math.max(0, 1 - ((stickerGap / 2) / maxDist)) : 1;
+
+        const insetPoints = points.map(p => [
+            centroid[0] + (p[0] - centroid[0]) * scale,
+            centroid[1] + (p[1] - centroid[1]) * scale
+        ]);
+
+        ctx.fillStyle = cubeFaceColors[face[index]] || cubeFaceColors[0];
+        
+        ctx.beginPath();
+        ctx.moveTo(insetPoints[0][0], insetPoints[0][1]);
+        for (let i = 1; i < insetPoints.length; i++) {
+            ctx.lineTo(insetPoints[i][0], insetPoints[i][1]);
+        }
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = SCRAMBLE_PREVIEW_BUTTON_OUTLINE;
+        ctx.lineWidth = outlineWidth;
+        ctx.stroke();
+    });
+}
+
 function average2DPoints(points) {
     if (!Array.isArray(points) || points.length === 0) return [0, 0];
 
@@ -1841,7 +1901,7 @@ function updateScramblePreviewButtonFace(scramble, type = getCurrentScrambleType
             return;
         }
 
-        drawCubePreviewButtonFace(upFace, 2);
+        drawSkewbPreviewButtonFace(upFace);
         return;
     }
 
