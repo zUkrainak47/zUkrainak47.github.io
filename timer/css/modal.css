@@ -327,6 +327,10 @@
     #scramble-preview-modal-canvas-container.pyraminx-preview-layout {
         --scramble-preview-modal-aspect-ratio: 1.1920186347;
     }
+
+    #scramble-preview-modal-canvas-container.skewb-preview-layout {
+        --scramble-preview-modal-aspect-ratio: 1.1547005384;
+    }
 }
 
 @media (max-height: 614px) {

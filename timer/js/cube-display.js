@@ -809,6 +809,235 @@ export function applyMegaminxScramble(scramble) {
     return materializeMegaminxFaces(stickers);
 }
 
+// ──── Skewb ────────────────────────────────────────────────────────────────────
+//
+// State: flat array of 30 values (6 faces × 5 stickers).
+// Face order: U=0, R=1, F=2, D=3, L=4, B=5
+// Per-face sticker layout (looking directly at the face):
+//
+//     [1]  [2]         0 = center
+//       [0]            1 = top-left corner
+//     [4]  [3]         2 = top-right corner
+//                      3 = bottom-right corner
+//                      4 = bottom-left corner
+//
+// Vertex-to-sticker mapping:
+//   UFR: U[3], F[2], R[1]       UFL: U[4], F[1], L[2]
+//   UBR: U[2], B[1], R[2]       UBL: U[1], B[2], L[1]
+//   DFR: D[2], F[3], R[4]       DFL: D[1], F[4], L[3]
+//   DBR: D[3], B[4], R[3]       DBL: D[4], B[3], L[4]
+
+const SKEWB_COLORS = COLORS;
+const SKEWB_STICKER_OUTLINE = 'rgba(0, 0, 0, 0.55)';
+
+// Each move is a set of 3-cycles. Cycle [a, b, c]: new[a]=old[c], new[b]=old[a], new[c]=old[b].
+
+const SKEWB_MOVE_R = Object.freeze([ // axis = DBR
+    Object.freeze([5, 25, 15]),
+    Object.freeze([24, 13, 2]),   Object.freeze([19, 9, 26]),   Object.freeze([28, 17, 7]),
+    Object.freeze([8, 29, 18]),
+]);
+
+const SKEWB_MOVE_L = Object.freeze([ // axis = DFL
+    Object.freeze([10, 15, 20]),
+    Object.freeze([9, 28, 4]),    Object.freeze([17, 24, 11]),  Object.freeze([13, 19, 22]),
+    Object.freeze([23, 14, 16]),
+]);
+
+const SKEWB_MOVE_U = Object.freeze([ // axis = UBL
+    Object.freeze([0, 20, 25]),
+    Object.freeze([24, 26, 4]),   Object.freeze([19, 7, 11]),   Object.freeze([28, 2, 22]),
+    Object.freeze([21, 27, 1]),
+]);
+
+const SKEWB_MOVE_B = Object.freeze([ // axis = DBL
+    Object.freeze([15, 25, 20]),
+    Object.freeze([14, 8, 1]),    Object.freeze([23, 18, 27]),  Object.freeze([16, 29, 21]),
+    Object.freeze([28, 24, 19]),
+]);
+
+const SKEWB_MOVES = Object.freeze({
+    R: SKEWB_MOVE_R,
+    L: SKEWB_MOVE_L,
+    U: SKEWB_MOVE_U,
+    B: SKEWB_MOVE_B,
+});
+
+function createSolvedSkewbState() {
+    const state = new Array(30);
+    for (let face = 0; face < 6; face += 1) {
+        for (let sticker = 0; sticker < 5; sticker += 1) {
+            state[(face * 5) + sticker] = face;
+        }
+    }
+    return state;
+}
+
+function applySkewbCycles(state, cycles) {
+    for (let cycleIdx = 0; cycleIdx < cycles.length; cycleIdx += 1) {
+        const cycle = cycles[cycleIdx];
+        const last = state[cycle[cycle.length - 1]];
+        for (let i = cycle.length - 1; i > 0; i -= 1) {
+            state[cycle[i]] = state[cycle[i - 1]];
+        }
+        state[cycle[0]] = last;
+    }
+}
+
+function parseSkewbMoveToken(token) {
+    const normalized = String(token ?? '')
+        .trim()
+        .replace(/[`´''′]/g, "'");
+
+    if (!normalized) return null;
+
+    const match = normalized.match(/^([RULB])([']?)$/i);
+    if (!match) return null;
+
+    const [, base, modifier] = match;
+
+    return {
+        face: base.toUpperCase(),
+        inverse: modifier === "'",
+    };
+}
+
+function skewbStateToFaces(state) {
+    const faces = [];
+    for (let face = 0; face < 6; face += 1) {
+        faces.push(state.slice(face * 5, (face * 5) + 5));
+    }
+    return faces;
+}
+
+export function applySkewbScramble(scramble) {
+    const state = createSolvedSkewbState();
+
+    if (scramble) {
+        String(scramble)
+            .trim()
+            .split(/\s+/)
+            .forEach((token) => {
+                const parsed = parseSkewbMoveToken(token);
+                if (!parsed) return;
+
+                const cycles = SKEWB_MOVES[parsed.face];
+                if (!cycles) return;
+
+                if (parsed.inverse) {
+                    // Inverse = apply twice (120° × 2 = -120°)
+                    applySkewbCycles(state, cycles);
+                    applySkewbCycles(state, cycles);
+                } else {
+                    applySkewbCycles(state, cycles);
+                }
+            });
+    }
+
+    return skewbStateToFaces(state);
+}
+
+// ──── Skewb isometric renderer ────
+
+const SKEWB_ISO_ANGLE = Math.PI / 6;
+
+function drawSkewbRhombus(ctx, points, color, outlineWidth) {
+    const insetPoints = createInsetPolygon(points, outlineWidth * 0.6);
+
+    ctx.fillStyle = color;
+    tracePolygon(ctx, insetPoints);
+    ctx.fill();
+
+    ctx.strokeStyle = SKEWB_STICKER_OUTLINE;
+    ctx.lineWidth = outlineWidth;
+    ctx.stroke();
+}
+
+function drawSkewbFace(ctx, face, faceVertices, centerVertex, outlineWidth) {
+    if (!Array.isArray(face) || face.length < 5) return;
+
+    const [tl, tr, br, bl] = faceVertices;
+    const midTop = [(tl[0] + tr[0]) / 2, (tl[1] + tr[1]) / 2];
+    const midRight = [(tr[0] + br[0]) / 2, (tr[1] + br[1]) / 2];
+    const midBottom = [(br[0] + bl[0]) / 2, (br[1] + bl[1]) / 2];
+    const midLeft = [(bl[0] + tl[0]) / 2, (bl[1] + tl[1]) / 2];
+
+    drawSkewbRhombus(ctx, [tl, midTop, centerVertex, midLeft],
+        SKEWB_COLORS[face[1]] || SKEWB_COLORS[0], outlineWidth);
+    drawSkewbRhombus(ctx, [tr, midRight, centerVertex, midTop],
+        SKEWB_COLORS[face[2]] || SKEWB_COLORS[0], outlineWidth);
+    drawSkewbRhombus(ctx, [br, midBottom, centerVertex, midRight],
+        SKEWB_COLORS[face[3]] || SKEWB_COLORS[0], outlineWidth);
+    drawSkewbRhombus(ctx, [bl, midLeft, centerVertex, midBottom],
+        SKEWB_COLORS[face[4]] || SKEWB_COLORS[0], outlineWidth);
+    drawSkewbRhombus(ctx, [midTop, midRight, midBottom, midLeft],
+        SKEWB_COLORS[face[0]] || SKEWB_COLORS[0], outlineWidth);
+}
+
+export function drawSkewb(canvas, skewb) {
+    const ctx = canvas.getContext('2d');
+    const { width: w, height: h } = getCanvasLogicalSize(canvas);
+
+    ctx.clearRect(0, 0, w, h);
+
+    if (!Array.isArray(skewb) || skewb.length < 6) return;
+
+    const margin = Math.max(4, Math.min(w, h) * 0.04);
+    const cos30 = Math.cos(SKEWB_ISO_ANGLE);
+    const sin30 = Math.sin(SKEWB_ISO_ANGLE);
+
+    const isoWidth = 4 * cos30;
+    const isoHeight = 2 + (2 * sin30);
+    const scale = Math.max(0, Math.min(
+        (w - (margin * 2)) / isoWidth,
+        (h - (margin * 2)) / isoHeight,
+    ));
+
+    const cx = w / 2;
+    const cy = (h / 2) - (0.5 * scale);
+
+    const top = [cx, cy - scale];
+    const topLeft = [cx - (cos30 * scale), cy - (sin30 * scale)];
+    const topRight = [cx + (cos30 * scale), cy - (sin30 * scale)];
+    const center = [cx, cy];
+    const botLeft = [cx - (cos30 * scale), cy + (sin30 * scale)];
+    const botRight = [cx + (cos30 * scale), cy + (sin30 * scale)];
+    const bottom = [cx, cy + scale];
+
+    const lFaceTopLeft = [topLeft[0] - (cos30 * scale), topLeft[1] - (sin30 * scale)];
+    const lFaceBotLeft = [botLeft[0] - (cos30 * scale), botLeft[1] - (sin30 * scale)];
+    const bFaceTopRight = [topRight[0] + (cos30 * scale), topRight[1] - (sin30 * scale)];
+    const bFaceBotRight = [botRight[0] + (cos30 * scale), botRight[1] - (sin30 * scale)];
+    const dFaceBotLeft = [botLeft[0], botLeft[1] + scale];
+    const dFaceBottom = [bottom[0], bottom[1] + scale];
+
+    const outlineWidth = Math.max(0.55, Math.min(1.5, scale * 0.025));
+
+    ctx.save();
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+
+    const lFaceVerts = [lFaceTopLeft, topLeft, botLeft, lFaceBotLeft];
+    drawSkewbFace(ctx, skewb[4], lFaceVerts, averagePoints(lFaceVerts), outlineWidth);
+
+    const bFaceVerts = [topRight, bFaceTopRight, bFaceBotRight, botRight];
+    drawSkewbFace(ctx, skewb[5], bFaceVerts, averagePoints(bFaceVerts), outlineWidth);
+
+    const dFaceVerts = [botLeft, bottom, dFaceBottom, dFaceBotLeft];
+    drawSkewbFace(ctx, skewb[3], dFaceVerts, averagePoints(dFaceVerts), outlineWidth);
+
+    const uFaceVerts = [top, topRight, center, topLeft];
+    drawSkewbFace(ctx, skewb[0], uFaceVerts, averagePoints(uFaceVerts), outlineWidth);
+
+    const fFaceVerts = [topLeft, center, bottom, botLeft];
+    drawSkewbFace(ctx, skewb[2], fFaceVerts, averagePoints(fFaceVerts), outlineWidth);
+
+    const rFaceVerts = [center, topRight, botRight, bottom];
+    drawSkewbFace(ctx, skewb[1], rFaceVerts, averagePoints(rFaceVerts), outlineWidth);
+
+    ctx.restore();
+}
+
 export function drawCube(canvas, cube) {
     const ctx = canvas.getContext('2d');
     const { width: w, height: h } = getCanvasLogicalSize(canvas);
@@ -1361,6 +1590,11 @@ function redrawLastDisplay(canvas) {
         return;
     }
 
+    if (_lastDisplay.puzzle === 'skewb') {
+        drawSkewb(canvas, _lastDisplay.state);
+        return;
+    }
+
     drawCube(canvas, _lastDisplay.state);
 }
 
@@ -1418,6 +1652,20 @@ export function updatePyraminxDisplay(canvas, scramble) {
     _lastDisplay = {
         puzzle: 'pyraminx',
         state: applyPyraminxScramble(scramble),
+    };
+    if (!didSync) return;
+
+    const ctx = canvas.getContext('2d');
+    const pixelRatio = getCanvasPixelRatio();
+    ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+    redrawLastDisplay(canvas);
+}
+
+export function updateSkewbDisplay(canvas, scramble) {
+    const didSync = syncCanvasToDisplaySize(canvas);
+    _lastDisplay = {
+        puzzle: 'skewb',
+        state: applySkewbScramble(scramble),
     };
     if (!didSync) return;
 
