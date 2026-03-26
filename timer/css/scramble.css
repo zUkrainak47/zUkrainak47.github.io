@@ -390,11 +390,14 @@ body.scramble-type-button-hidden #scramble-type-menu-desktop {
     }
 
     #scramble-text-wrapper {
+        --desktop-scramble-row-height: 32px;
+        --desktop-scramble-text-top-offset: max(0px, calc((var(--desktop-scramble-row-height) - (var(--text-lg) * 1.6)) / 2));
         flex: 0 1 auto;
         width: min(100%, var(--desktop-scramble-text-width));
         max-width: var(--desktop-scramble-text-width);
-        min-height: 32px;
-        align-items: center;
+        min-height: calc(var(--desktop-scramble-row-height) - var(--desktop-scramble-text-top-offset));
+        padding-top: var(--desktop-scramble-text-top-offset);
+        align-items: flex-start;
         justify-content: flex-start;
         margin-inline: auto;
         pointer-events: none;

@@ -1,5 +1,5 @@
 import { timer } from './timer.js?v=6';
-import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble } from './scramble.js?v=12';
+import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble } from './scramble.js?v=14';
 import { sessionManager } from './session.js';
 import { settings, DEFAULTS } from './settings.js';
 import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=2';
@@ -277,7 +277,6 @@ const SCRAMBLE_PREVIEW_BUTTON_OUTLINE = 'rgba(0, 0, 0, 0.35)';
 const PYRAMINX_PREVIEW_BUTTON_FACE_SIZE = 3;
 const PYRAMINX_PREVIEW_BUTTON_TRIANGLE_HEIGHT_RATIO = Math.sqrt(3) / 2;
 const PYRAMINX_PREVIEW_BUTTON_ROTATION_RAD = (2 * Math.PI) / 3;
-const STRICT_CUBE_EDIT_SCRAMBLE_TYPES = new Set(['333', ...YELLOW_TOP_PREVIEW_TYPES]);
 const yellowTopPreviewFaceMap = Object.freeze({
     U: 'D',
     D: 'U',
@@ -2744,22 +2743,6 @@ function updateScrambleUI(scrambleStr) {
     scheduleViewportLayoutSync();
 }
 
-function normalizeScrambleEditValue(value, type = getCurrentScrambleType()) {
-    let nextValue = String(value ?? '').replace(/[`´‘’′]/g, "'");
-
-    if (!STRICT_CUBE_EDIT_SCRAMBLE_TYPES.has(type)) {
-        return nextValue.replace(/\s+/g, ' ');
-    }
-
-    nextValue = nextValue.toUpperCase();
-    nextValue = nextValue.replace(/[^RLUDBF2' ]/g, '');
-    nextValue = nextValue.replace(/([RLUDBF2'])([RLUDBF])/g, '$1 $2');
-    nextValue = nextValue.replace(/(^| )['2]+/g, '$1');
-    nextValue = nextValue.replace(/([RLUDBF])(['2])(['2]+)/g, '$1$2');
-    nextValue = nextValue.replace(/ +/g, ' ');
-    return nextValue;
-}
-
 function initScrambleControls() {
     const textEl = document.getElementById('scramble-text');
     const inputEl = document.getElementById('scramble-input');
@@ -2864,7 +2847,7 @@ function initScrambleControls() {
         textEl.style.display = 'block';
         inputEl.style.display = 'none';
 
-        if (val && val !== currentScramble) {
+        if (val !== currentScramble) {
             setCurrentScramble(val);
             updateScrambleUI(val);
         } else {
@@ -2884,9 +2867,7 @@ function initScrambleControls() {
         }
     });
     inputEl.addEventListener('input', (e) => {
-        const val = normalizeScrambleEditValue(e.target.value, getCurrentScrambleType());
-        e.target.value = val;
-        renderScramblePreviewDisplays(val);
+        renderScramblePreviewDisplays(e.target.value);
     });
 
     // 3. Navigation

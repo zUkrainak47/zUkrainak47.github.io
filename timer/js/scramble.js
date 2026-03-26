@@ -498,7 +498,7 @@ function resetScrambleHistory() {
 function pushNewScramble(scrambleStr, type = _scrambleType, isManual = false) {
     _prevScramble = _currentScramble;
     _currentScramble = {
-        text: normalizeScrambleText(scrambleStr),
+        text: isManual ? String(scrambleStr ?? '') : normalizeScrambleText(scrambleStr),
         isManual,
         type: sanitizeScrambleType(type),
     };
@@ -559,18 +559,18 @@ export function getCurrentScramble() {
 }
 
 export function setCurrentScramble(scrambleStr) {
-    const normalized = normalizeScrambleText(scrambleStr);
+    const nextText = String(scrambleStr ?? '');
     const active = getActiveScrambleEntry();
     const entryType = active?.type ?? _scrambleType;
 
     if (_isViewingPrev) {
-        pushNewScramble(normalized, entryType, true);
+        pushNewScramble(nextText, entryType, true);
     } else if (_currentScramble) {
-        _currentScramble.text = normalized;
+        _currentScramble.text = nextText;
         _currentScramble.isManual = true;
         _currentScramble.type = entryType;
     } else {
-        pushNewScramble(normalized, entryType, true);
+        pushNewScramble(nextText, entryType, true);
     }
 }
 
