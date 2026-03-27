@@ -41,6 +41,7 @@ class Timer extends EventEmitter {
         this._ghostClickGuardExpiresAt = 0;
         this._ghostClickGuardOrigin = null;
         this._ghostClickGuardTimeout = null;
+        this._typingInspectionTimeout = null;
 
         this._onKeyDown = this._onKeyDown.bind(this);
         this._onKeyUp = this._onKeyUp.bind(this);
@@ -92,18 +93,46 @@ class Timer extends EventEmitter {
         this._clearGhostClickGuard();
         this._cancelHold();
         this._cancelRaf();
+        this._cancelTypingInspectionAutoTimeout();
     }
 
     _onKeyDown(e) {
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
+            // In typing+inspection mode, let Space through even from the manual time input
+            const isTypingInspectionSpace = this._isDesktopTypingEntryMode()
+                && this._inspectionEnabled()
+                && e.code === 'Space'
+                && e.target.id === 'manual-time-hidden-input';
+            if (!isTypingInspectionSpace) return;
+        }
         if (this._hasBlockingOverlayOpen()) return;
-        if (this._isManualTimeEntryActive()) return;
+        if (this._isManualTimeEntryActive() && !(this._isDesktopTypingEntryMode() && this._inspectionEnabled())) return;
 
         const isStackmatKey = this._isStackmatKey(e);
         const isEscape = e.code === 'Escape' || e.key === 'Escape' || e.keyCode === 27;
         const isDnfKey = isEscape || e.code === 'Backspace' || e.key === 'Backspace' || e.keyCode === 8 || e.code === 'Delete' || e.key === 'Delete' || e.keyCode === 46;
 
         if (this._isDesktopTypingEntryMode()) {
+            // In typing mode with inspection: allow Space to arm inspection from idle/stopped,
+            // allow any key to dismiss active inspection, allow Escape to cancel inspection.
+            if (this._inspectionEnabled()) {
+                if (this._isInspectionTickingState(this.state)) {
+                    // Any key dismisses typing inspection, including Escape
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    this._endTypingInspection();
+                    return;
+                }
+
+                if (e.code === 'Space' && (this.state === State.IDLE || this.state === State.STOPPED)) {
+                    e.preventDefault();
+                    if (this._spaceDown) return;
+                    this._spaceDown = true;
+                    this._handleStartPress();
+                    return;
+                }
+            }
+
             if (e.code === 'Space') this._spaceDown = false;
             if (isStackmatKey) this._setStackmatFlag(e.code, false);
             return;
@@ -160,10 +189,25 @@ class Timer extends EventEmitter {
     }
 
     _onKeyUp(e) {
-        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
+            const isTypingInspectionSpace = this._isDesktopTypingEntryMode()
+                && this._inspectionEnabled()
+                && e.code === 'Space'
+                && e.target.id === 'manual-time-hidden-input';
+            if (!isTypingInspectionSpace) return;
+        }
         const isStackmatKey = this._isStackmatKey(e);
 
         if (this._isManualTimeEntryActive() || this._isDesktopTypingEntryMode()) {
+            // In typing mode with inspection: allow Space release to start inspection from primed state
+            if (this._isDesktopTypingEntryMode() && this._inspectionEnabled() && e.code === 'Space') {
+                this._spaceDown = false;
+                if (this.state === State.INSPECTION_PRIMED) {
+                    e.preventDefault();
+                    this._handleStartRelease();
+                    return;
+                }
+            }
             if (e.code === 'Space') this._spaceDown = false;
             if (isStackmatKey) this._setStackmatFlag(e.code, false);
             return;
@@ -401,6 +445,11 @@ class Timer extends EventEmitter {
             this._updateDisplay('Inspect');
         }
 
+        // In typing mode, auto-end inspection after 15s
+        if (this._isDesktopTypingEntryMode()) {
+            this._startTypingInspectionAutoTimeout();
+        }
+
         this._tick();
     }
 
@@ -422,6 +471,7 @@ class Timer extends EventEmitter {
     _cancelInspection() {
         this._cancelHold();
         this._cancelRaf();
+        this._cancelTypingInspectionAutoTimeout();
         this._inspectionStartTime = 0;
         this._inspectionElapsed = 0;
         this._pendingPenalty = null;
@@ -565,6 +615,39 @@ class Timer extends EventEmitter {
         if (this._rafId) {
             cancelAnimationFrame(this._rafId);
             this._rafId = null;
+        }
+    }
+
+    _endTypingInspection() {
+        this._cancelHold();
+        this._cancelRaf();
+        this._cancelTypingInspectionAutoTimeout();
+        this._inspectionStartTime = 0;
+        this._inspectionElapsed = 0;
+        this._pendingPenalty = null;
+        this._inspectionAlertsFired.clear();
+        this._inspectionSnapshot = null;
+
+        this._setState(State.STOPPED);
+        this._setColor(State.STOPPED);
+        this._updateDisplay('0.00');
+        this.emit('typingInspectionDone');
+    }
+
+    _startTypingInspectionAutoTimeout() {
+        this._cancelTypingInspectionAutoTimeout();
+        this._typingInspectionTimeout = setTimeout(() => {
+            this._typingInspectionTimeout = null;
+            if (this._isInspectionTickingState(this.state)) {
+                this._endTypingInspection();
+            }
+        }, 15000);
+    }
+
+    _cancelTypingInspectionAutoTimeout() {
+        if (this._typingInspectionTimeout) {
+            clearTimeout(this._typingInspectionTimeout);
+            this._typingInspectionTimeout = null;
         }
     }
 

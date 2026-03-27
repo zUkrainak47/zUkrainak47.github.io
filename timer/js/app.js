@@ -2069,6 +2069,11 @@ async function init() {
     timer.on('started', onTimerStarted);
     timer.on('stateChange', onTimerStateChange);
     timer.on('inspectionAlert', onInspectionAlert);
+    timer.on('typingInspectionDone', () => {
+        if (isDesktopTypingEntryModeEnabled()) {
+            syncPersistentManualEntryMode();
+        }
+    });
 
     sessionManager.on('solveAdded', () => { if (!_skipSolveAddedRefresh) refreshUI(); });
     sessionManager.on('solveUpdated', () => { rebuildStatsCache(); refreshUI(); });
