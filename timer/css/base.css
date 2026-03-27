@@ -418,19 +418,6 @@ body.zen.mobile-viewport #scramble-top-row {
     justify-content: flex-end;
 }
 
-body.zen.mobile-viewport #btn-copy-scramble,
-body.zen.mobile-viewport #btn-edit-scramble,
-body.zen.mobile-viewport #btn-prev-scramble,
-body.zen.mobile-viewport #btn-next-scramble {
-    opacity: 1;
-    pointer-events: auto;
-}
-
-body.zen.mobile-viewport #btn-prev-scramble:disabled,
-body.zen.mobile-viewport #btn-next-scramble:disabled {
-    opacity: 0.32;
-    pointer-events: none;
-}
 
 /* Smooth transitions back when exiting zen */
 #left-panel,

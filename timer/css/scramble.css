@@ -725,6 +725,17 @@ body.scramble-type-button-hidden #scramble-type-menu-desktop {
         transform: translateY(0);
     }
 
+    body.zen.mobile-viewport #scramble-container.scramble-actions-visible #scramble-actions {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transform: translateY(6px);
+    }
+
+    body.zen.mobile-viewport #scramble-text-wrapper {
+        pointer-events: none;
+    }
+
     #btn-copy-scramble,
     #btn-edit-scramble,
     #btn-prev-scramble,
