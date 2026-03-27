@@ -976,7 +976,8 @@ export function applySquare1Scramble(scramble) {
 //   DBR: D[3], B[4], R[3]       DBL: D[4], B[3], L[4]
 
 const SKEWB_COLORS = COLORS;
-const SKEWB_STICKER_OUTLINE = 'rgba(0, 0, 0, 0.55)';
+const SKEWB_STICKER_OUTLINE = '#000000';
+const SKEWB_OUTLINE_RATIO = 0.025;
 
 // Each move is a set of 3-cycles. Cycle [a, b, c]: new[a]=old[c], new[b]=old[a], new[c]=old[b].
 
@@ -1090,10 +1091,8 @@ export function applySkewbScramble(scramble) {
 const SKEWB_ISO_ANGLE = Math.PI / 6;
 
 function drawSkewbRhombus(ctx, points, color, outlineWidth) {
-    const insetPoints = createInsetPolygon(points, outlineWidth * 0.6);
-
     ctx.fillStyle = color;
-    tracePolygon(ctx, insetPoints);
+    tracePolygon(ctx, points);
     ctx.fill();
 
     ctx.strokeStyle = SKEWB_STICKER_OUTLINE;
@@ -1159,7 +1158,7 @@ export function drawSkewb(canvas, skewb) {
     const dFaceBotLeft = [botLeft[0], botLeft[1] + scale];
     const dFaceBottom = [bottom[0], bottom[1] + scale];
 
-    const outlineWidth = Math.max(0.55, Math.min(1.5, scale * 0.025));
+    const outlineWidth = scale * SKEWB_OUTLINE_RATIO;
 
     ctx.save();
     ctx.lineJoin = 'round';
