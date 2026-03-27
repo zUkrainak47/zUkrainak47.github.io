@@ -147,7 +147,7 @@ const keyboardShortcutGroups = [
                 action: 'Toggle zen mode',
                 bindings: [['Z']],
             },
-    {
+            {
                 action: 'Toggle delta display',
                 bindings: [['D']],
             },
@@ -201,7 +201,7 @@ let shortcutsOverlayEl = null;
 let scramblePreviewOverlayEl = null;
 let scramblePreviewModalCanvas = null;
 let scramblePreviewModalSizeFrame = 0;
-let syncSettingsRowSeparators = () => {};
+let syncSettingsRowSeparators = () => { };
 let shortcutTooltipEl = null;
 let viewportLayoutFrame = null;
 let instantTimerTabLayoutCleanupFrame = null;
@@ -1702,7 +1702,7 @@ function drawSkewbPreviewButtonFace(face) {
         ]);
 
         ctx.fillStyle = cubeFaceColors[face[index]] || cubeFaceColors[0];
-        
+
         ctx.beginPath();
         ctx.moveTo(insetPoints[0][0], insetPoints[0][1]);
         for (let i = 1; i < insetPoints.length; i++) {
@@ -3052,10 +3052,8 @@ function initScrambleControls() {
         if (textEl.classList.contains('loading')) return;
         setScrambleActionsVisible(false);
         closeScrambleTypeMenus();
-        
-        textEl.style.display = 'none';
-        textEl.textContent = ''; // Hotfix for iOS Safari overlay bug
-        
+        textEl.style.position = 'absolute';
+        textEl.style.left = '-9999px';
         inputEl.style.display = 'block';
         inputEl.value = currentScramble;
         inputEl.focus();
@@ -3064,7 +3062,8 @@ function initScrambleControls() {
 
     function commitEdit() {
         const val = inputEl.value.trim();
-        textEl.style.display = 'block';
+        textEl.style.position = '';
+        textEl.style.left = '';
         inputEl.style.display = 'none';
 
         if (val !== currentScramble) {
@@ -3073,7 +3072,6 @@ function initScrambleControls() {
         } else {
             // Restore visualizer if it was changed during input
             renderScramblePreviewDisplays(currentScramble);
-            renderScrambleText(currentScramble, getCurrentScrambleType());
         }
     }
 
@@ -3082,10 +3080,10 @@ function initScrambleControls() {
     inputEl.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') commitEdit();
         if (e.key === 'Escape') {
-            textEl.style.display = 'block';
+            textEl.style.position = '';
+            textEl.style.left = '';
             inputEl.style.display = 'none';
             inputEl.blur();
-            renderScrambleText(currentScramble, getCurrentScrambleType());
         }
     });
     inputEl.addEventListener('input', (e) => {
@@ -5043,8 +5041,8 @@ function initSettingsPanel() {
         summaryFeedback.textContent = parsed.truncated
             ? `Will show first ${MAX_CUSTOM_SUMMARY_STATS}: ${parsed.tokens.join(', ')}`
             : parsed.tokens.length === 0
-            ? 'Will show: none'
-            : `Will show: ${parsed.tokens.join(', ')}`;
+                ? 'Will show: none'
+                : `Will show: ${parsed.tokens.join(', ')}`;
         syncSettingsRowSeparators();
     };
 
