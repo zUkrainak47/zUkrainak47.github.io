@@ -396,6 +396,7 @@ function initInspectionSpeechUnlockState() {
 
 function shouldShowInspectionSpeechUnlockPrompt() {
     if (!inspectionSpeechUnlockState.required) return false;
+    if (!isTouchPrimaryInput()) return false;
     if (inspectionSpeechUnlockState.unlocked) return false;
     if (inspectionSpeechUnlockState.dismissed) return false;
     const timerState = timer.getState();

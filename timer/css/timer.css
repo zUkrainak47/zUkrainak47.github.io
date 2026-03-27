@@ -319,6 +319,7 @@ body.typing-entry-mode:not(.mobile-viewport) #timer-delta {
 
 body.typing-entry-mode:not(.mobile-viewport) #manual-time-entry {
     pointer-events: auto;
+    transform: translate(-50%, -0.5px);
 }
 
 /* body:not(.mobile-viewport) #manual-time-entry {
@@ -730,7 +731,8 @@ body.pill-size-large #timer-info .stat-label {
         justify-content: center;
     }
 
-    #timer-display {
+    #timer-display,
+    #manual-time-formatted {
         font-size: clamp(5.15rem, 23vw, 8rem);
         letter-spacing: -0.04em;
         line-height: 1;
@@ -739,11 +741,13 @@ body.pill-size-large #timer-info .stat-label {
     #manual-time-entry-display {
         position: relative;
         gap: 0;
+        line-height: 1;
     }
 
     #manual-time-formatted {
-        font-size: clamp(5.15rem, 23vw, 8rem);
-        line-height: 1;
+        display: block;
+        text-align: center;
+        white-space: nowrap;
     }
 
     .manual-time-caret {
@@ -787,10 +791,7 @@ body.pill-size-large #timer-info .stat-label {
         --mobile-quick-actions-offset: 20px;
     }
 
-    #timer-display {
-        font-size: clamp(4.65rem, 21vw, 6.6rem);
-    }
-
+    #timer-display,
     #manual-time-formatted {
         font-size: clamp(4.65rem, 21vw, 6.6rem);
     }
@@ -830,10 +831,7 @@ body.pill-size-large #timer-info .stat-label {
 
 @media (max-width: 1100px) and (orientation: landscape) and (max-height: 650px),
 (pointer: coarse) and (orientation: landscape) and (max-height: 650px) {
-    #timer-display {
-        font-size: clamp(3.85rem, 18.5vw, 5.3rem);
-    }
-
+    #timer-display,
     #manual-time-formatted {
         font-size: clamp(3.85rem, 18.5vw, 5.3rem);
     }
