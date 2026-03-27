@@ -162,7 +162,9 @@ const SQUARE1_PIECES = Object.freeze([
     Object.freeze({ type: 'edge', colors: Object.freeze([SQUARE1_COLORS.D, SQUARE1_COLORS.F]) }),
 ]);
 const SQUARE1_SOLVED_TOP = Object.freeze([1, 1, 2, 3, 3, 4, 5, 5, 6, 7, 7, 0]);
-const SQUARE1_SOLVED_BOTTOM = Object.freeze([8, 8, 9, 10, 10, 11, 12, 12, 13, 14, 14, 15]);
+// Shifted by one bottom turn so imported Square-1 scrambles line up with the
+// generator's reference orientation without requiring a manual "(0, 1)" prefix.
+const SQUARE1_SOLVED_BOTTOM = Object.freeze([15, 8, 8, 9, 10, 10, 11, 12, 12, 13, 14, 14]);
 const SQUARE1_TAN15 = 0.267949;
 const SQUARE1_INNER_RADIUS = 0.65;
 const SQUARE1_TOP_START_ANGLE = 75;
@@ -172,6 +174,7 @@ const SQUARE1_OUTLINE_TARGET_PX = 1.2;
 const SQUARE1_MIDDLE_LAYER_WIDTH = 2.0;
 const SQUARE1_MIDDLE_LAYER_HEIGHT = 0.3;
 const SQUARE1_MIDDLE_LAYER_Y_OFFSET = -1.15;
+const SQUARE1_MIDDLE_LAYER_LEFT_RATIO = 0.37;
 const SQUARE1_TOP_FACE_CENTER = Object.freeze([-1.7, 0.06]);
 const SQUARE1_BOTTOM_FACE_CENTER = Object.freeze([1.7, 0.06]);
 const SQUARE1_SINGLE_FACE_CENTER = Object.freeze([0, 0.06]);
@@ -1788,9 +1791,11 @@ function createRectanglePolygon(x, y, width, height) {
 }
 
 function getSquare1MiddleLayerPolygons(mlFlipped, centerX = 0, centerY = 0) {
-    const leftRatio = mlFlipped ? (2 / 3) : (1 / 3);
+    const leftRatio = SQUARE1_MIDDLE_LAYER_LEFT_RATIO;
     const leftWidth = SQUARE1_MIDDLE_LAYER_WIDTH * leftRatio;
-    const rightWidth = SQUARE1_MIDDLE_LAYER_WIDTH - leftWidth;
+    const rightWidth = mlFlipped
+        ? leftWidth
+        : (SQUARE1_MIDDLE_LAYER_WIDTH - leftWidth);
     const startX = centerX - (SQUARE1_MIDDLE_LAYER_WIDTH / 2);
     const startY = centerY + SQUARE1_MIDDLE_LAYER_Y_OFFSET - (SQUARE1_MIDDLE_LAYER_HEIGHT / 2);
 
@@ -1831,9 +1836,11 @@ function drawSquare1Face(ctx, slots, startAngleDeg) {
 }
 
 function drawSquare1MiddleLayer(ctx, mlFlipped) {
-    const leftRatio = mlFlipped ? (2 / 3) : (1 / 3);
+    const leftRatio = SQUARE1_MIDDLE_LAYER_LEFT_RATIO;
     const leftWidth = SQUARE1_MIDDLE_LAYER_WIDTH * leftRatio;
-    const rightWidth = SQUARE1_MIDDLE_LAYER_WIDTH - leftWidth;
+    const rightWidth = mlFlipped
+        ? leftWidth
+        : (SQUARE1_MIDDLE_LAYER_WIDTH - leftWidth);
     const startX = -(SQUARE1_MIDDLE_LAYER_WIDTH / 2);
     const startY = SQUARE1_MIDDLE_LAYER_Y_OFFSET - (SQUARE1_MIDDLE_LAYER_HEIGHT / 2);
 
@@ -1863,6 +1870,12 @@ export function drawSquare1(canvas, square1, { topOnly = false } = {}) {
 
     const polygons = [
         ...getSquare1FacePolygons(state.top, SQUARE1_TOP_START_ANGLE, topFaceCenter[0], topFaceCenter[1]),
+        createRectanglePolygon(
+            topFaceCenter[0] - (SQUARE1_MIDDLE_LAYER_WIDTH / 2),
+            topFaceCenter[1] + SQUARE1_MIDDLE_LAYER_Y_OFFSET - (SQUARE1_MIDDLE_LAYER_HEIGHT / 2),
+            SQUARE1_MIDDLE_LAYER_WIDTH,
+            SQUARE1_MIDDLE_LAYER_HEIGHT,
+        ),
         ...getSquare1MiddleLayerPolygons(state.mlFlipped, topFaceCenter[0], topFaceCenter[1]),
     ];
 
@@ -1900,8 +1913,8 @@ export function drawSquare1(canvas, square1, { topOnly = false } = {}) {
 
     ctx.save();
     ctx.translate(topFaceCenter[0], topFaceCenter[1]);
-    drawSquare1Face(ctx, state.top, SQUARE1_TOP_START_ANGLE);
     drawSquare1MiddleLayer(ctx, state.mlFlipped);
+    drawSquare1Face(ctx, state.top, SQUARE1_TOP_START_ANGLE);
     ctx.restore();
 
     if (bottomFaceCenter) {
