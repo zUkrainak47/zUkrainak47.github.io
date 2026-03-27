@@ -611,16 +611,20 @@ export function customPrompt(message, defaultValue = '', maxLength = 100, title 
 
 
 function autoResizeTextarea(el) {
+    const scrollTop = window.scrollY || document.documentElement.scrollTop;
     el.style.height = 'auto';
     // Constrain maximum height to avoid breaking the modal
     const maxHeight = window.innerHeight * 0.4;
-    if (el.scrollHeight > maxHeight) {
+    const scrollHeight = el.scrollHeight;
+    
+    if (scrollHeight > maxHeight) {
         el.style.height = maxHeight + 'px';
         el.style.overflowY = 'auto';
     } else {
-        el.style.height = el.scrollHeight + 'px';
+        el.style.height = scrollHeight + 'px';
         el.style.overflowY = 'hidden';
     }
+    window.scrollTo(0, scrollTop);
 }
 
 function isMobileDetailLayout() {
