@@ -506,6 +506,8 @@
     font-weight: 500 !important;
     text-align: center !important;
     line-height: 1.55 !important;
+    max-height: calc(1.55em * 6 + 18px) !important;
+    overflow-y: auto !important;
 }
 
 /* Confirm Modal Specifics */
