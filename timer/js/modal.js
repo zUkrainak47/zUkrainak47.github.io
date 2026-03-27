@@ -611,20 +611,29 @@ export function customPrompt(message, defaultValue = '', maxLength = 100, title 
 
 
 function autoResizeTextarea(el) {
-    const scrollTop = window.scrollY || document.documentElement.scrollTop;
-    el.style.height = 'auto';
-    // Constrain maximum height to avoid breaking the modal
-    const maxHeight = window.innerHeight * 0.4;
-    const scrollHeight = el.scrollHeight;
+    const modalBody = el.closest('.modal-body');
+    const scrollTop = modalBody ? modalBody.scrollTop : 0;
+
+    // Use screen height on mobile to prevent the textarea from shrinking when the virtual keyboard pops up
+    const isMobile = window.matchMedia('(max-width: 1100px), (pointer: coarse)').matches;
+    const referenceHeight = isMobile ? (window.screen.availHeight || window.innerHeight) : window.innerHeight;
+    const maxHeight = referenceHeight * 0.4;
     
-    if (scrollHeight > maxHeight) {
+    el.style.height = 'auto';
+    const sHeight = el.scrollHeight;
+
+    if (sHeight > maxHeight) {
         el.style.height = maxHeight + 'px';
         el.style.overflowY = 'auto';
     } else {
-        el.style.height = scrollHeight + 'px';
+        el.style.height = sHeight + 'px';
         el.style.overflowY = 'hidden';
     }
-    window.scrollTo(0, scrollTop);
+
+    // Restore scroll position to prevent layout jumping
+    if (modalBody && modalBody.scrollTop !== scrollTop) {
+        modalBody.scrollTop = scrollTop;
+    }
 }
 
 function isMobileDetailLayout() {

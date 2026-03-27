@@ -1527,11 +1527,7 @@ function scheduleScramblePreviewModalSizeSync() {
     });
 }
 
-let _lastSyncedPreviewType = null;
 function syncScramblePreviewCanvasLayout(type = getCurrentScrambleType()) {
-    if (_lastSyncedPreviewType === type) return;
-    _lastSyncedPreviewType = type;
-
     const useMegaminxLayout = supportsMegaminxPreview(type);
     const usePyraminxLayout = supportsPyraminxPreview(type);
     const useSkewbLayout = supportsSkewbPreview(type);
@@ -3141,10 +3137,8 @@ function initScrambleControls() {
         }
     });
     inputEl.addEventListener('input', (e) => {
-        const scrollTop = window.scrollY || document.documentElement.scrollTop;
         inputEl.style.height = 'auto';
         inputEl.style.height = inputEl.scrollHeight + 'px';
-        window.scrollTo(0, scrollTop);
         renderScramblePreviewDisplays(e.target.value);
     });
 
