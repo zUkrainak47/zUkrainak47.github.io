@@ -114,13 +114,26 @@ class Timer extends EventEmitter {
 
         if (this._isDesktopTypingEntryMode()) {
             // In typing mode with inspection: allow Space to arm inspection from idle/stopped,
-            // allow any key to dismiss active inspection, allow Escape to cancel inspection.
+            // allow any key to dismiss active inspection, and allow Escape to cancel primed inspection.
             if (this._inspectionEnabled()) {
                 if (this._isInspectionTickingState(this.state)) {
-                    // Any key dismisses typing inspection, including Escape
+                    // Any key dismisses typing inspection.
+                    // Numeric keys should pass through so the first typed digit is kept.
+                    const isDigitKey = /^\d$/.test(e.key);
+                    if (!isDigitKey) {
+                        e.preventDefault();
+                        e.stopImmediatePropagation();
+                    }
+                    this._endTypingInspection();
+                    return;
+                }
+
+                if (isEscape && this.state === State.INSPECTION_PRIMED) {
                     e.preventDefault();
                     e.stopImmediatePropagation();
-                    this._endTypingInspection();
+                    this._spaceDown = false;
+                    this._cancelInspection();
+                    this.emit('typingInspectionDone');
                     return;
                 }
 
