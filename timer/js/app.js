@@ -2899,32 +2899,23 @@ function renderScrambleText(scrambleStr, type = getCurrentScrambleType()) {
     }
 
     const fragment = document.createDocumentFragment();
-    let chunkTokens = [];
+    const slashSegments = normalizedScramble.split('/');
 
-    const appendChunk = (allowBreakAfter = false, insertTrailingSpace = false) => {
-        if (chunkTokens.length === 0) return;
-
-        const chunkEl = document.createElement('span');
-        chunkEl.className = 'sq1-scramble-chunk';
-        chunkEl.textContent = chunkTokens.join(' ');
-        fragment.append(chunkEl);
-
-        if (allowBreakAfter) {
-            fragment.append(document.createElement('wbr'));
-            if (insertTrailingSpace) fragment.append(document.createTextNode(' '));
+    slashSegments.forEach((segment, index) => {
+        const isLastSegment = index === slashSegments.length - 1;
+        const chunkText = isLastSegment ? segment : `${segment}/`;
+        if (chunkText) {
+            const chunkEl = document.createElement('span');
+            chunkEl.className = 'sq1-scramble-chunk';
+            chunkEl.textContent = chunkText;
+            fragment.append(chunkEl);
         }
 
-        chunkTokens = [];
-    };
-
-    tokens.forEach((token, index) => {
-        chunkTokens.push(token);
-        if (token === '/') {
-            appendChunk(true, index < tokens.length - 1);
+        if (!isLastSegment) {
+            fragment.append(document.createElement('wbr'));
         }
     });
 
-    appendChunk(false, false);
     el.replaceChildren(fragment);
 }
 
