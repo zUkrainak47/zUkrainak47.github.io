@@ -5,7 +5,7 @@ import { settings, DEFAULTS } from './settings.js';
 import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=2';
 import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate } from './utils.js';
 import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=12';
-import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay } from './cube-display.js?v=14';
+import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay } from './cube-display.js?v=15';
 import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=9';
 import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer } from './storage.js';
 
@@ -2819,6 +2819,7 @@ function initCustomSelectMenus() {
 function syncScrambleTypeMenus(type = getSelectedScrambleType()) {
     const activeType = getScrambleTypeMeta(type).id;
     const activeMeta = getScrambleTypeMeta(activeType);
+    const previewButton = getEl('btn-scramble-preview');
 
     document.querySelectorAll('.scramble-type-btn').forEach((buttonEl) => {
         buttonEl.textContent = activeMeta.buttonLabel;
@@ -2831,6 +2832,8 @@ function syncScrambleTypeMenus(type = getSelectedScrambleType()) {
         optionEl.classList.toggle('active', isActive);
         optionEl.setAttribute('aria-checked', String(isActive));
     });
+
+    previewButton?.classList.toggle('square1-preview-type', activeType === 'sq1');
 }
 
 async function loadNewScramble() {

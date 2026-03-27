@@ -827,6 +827,11 @@
         height: 20px;
     }
 
+    #btn-scramble-preview.square1-preview-type .scramble-preview-face-icon {
+        width: 40px;
+        height: 40px;
+    }
+
     #scramble-text,
     #scramble-input {
         font-size: clamp(1.1rem, 2.45vw, 1.3rem);
