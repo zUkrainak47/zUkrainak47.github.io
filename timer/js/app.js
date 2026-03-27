@@ -2045,7 +2045,6 @@ async function init() {
     initCubeDisplay(document.getElementById('cube-canvas'));
     initScramblePreviewModal();
     populateScrambleTypeMenus();
-    syncHiddenScrambleTypeSetting();
     syncScrambleTypeMenus();
     const shouldLoadInitialScramble = !syncInitialScrambleUI();
     await sessionInitPromise;
@@ -2088,10 +2087,6 @@ async function init() {
         }
         if (key === 'newBestPopupEnabled' && !settings.get('newBestPopupEnabled')) clearNewBestAlert();
         if (key === 'shortcutTooltipsEnabled' && !settings.get('shortcutTooltipsEnabled')) hideShortcutTooltip();
-        if (key === 'showScrambleTypeButton' && !settings.get('showScrambleTypeButton')) {
-            closeScrambleTypeMenus();
-            void applyHiddenScrambleTypeSetting();
-        }
         if (key === 'statsFilter' || key === 'customFilterDuration' || key === 'showDelta' || key.startsWith('graphColor') || key.startsWith('graphLine') || key === 'graphTooltipDateEnabled' || key === 'newBestColor' || key === 'summaryStatsList') {
             if (key === 'statsFilter' || key === 'customFilterDuration') rebuildStatsCache();
             if (key === 'summaryStatsList') {
@@ -2107,7 +2102,7 @@ async function init() {
             clearPenaltyShortcutAlert();
             syncPersistentManualEntryMode();
         }
-        if (key === 'centerTimer' || key === 'displayFont' || key === 'pillSize' || key === 'showScrambleTypeButton') scheduleViewportLayoutSync();
+        if (key === 'centerTimer' || key === 'displayFont' || key === 'pillSize') scheduleViewportLayoutSync();
     });
 
     // Init UI
@@ -2659,36 +2654,6 @@ function positionScrambleTypeMenu(menuEl, { ensureActiveVisible = false } = {}) 
     }
 }
 
-function syncHiddenScrambleTypeSetting() {
-    if (settings.get('showScrambleTypeButton')) return false;
-    return setScrambleType('333');
-}
-
-async function applyHiddenScrambleTypeSetting() {
-    if (settings.get('showScrambleTypeButton')) return false;
-
-    const changed = syncHiddenScrambleTypeSetting();
-    syncScrambleTypeMenus('333');
-
-    if (!changed) {
-        scheduleViewportLayoutSync();
-        return false;
-    }
-
-    currentScramble = '';
-    const scrambleTextEl = document.getElementById('scramble-text');
-    if (scrambleTextEl) {
-        scrambleTextEl.textContent = '';
-        scrambleTextEl.classList.add('loading');
-    }
-
-    renderScramblePreviewDisplays('');
-    const prevScrambleButton = document.getElementById('btn-prev-scramble');
-    if (prevScrambleButton) prevScrambleButton.disabled = true;
-    scheduleViewportLayoutSync();
-    await loadNewScramble();
-    return true;
-}
 
 function closeCustomSelectMenus() {
     document.querySelectorAll('.custom-select-menu').forEach((menuEl) => {
@@ -5043,14 +5008,6 @@ function initSettingsPanel() {
         };
     }
 
-    const showScrambleTypeToggle = document.getElementById('setting-show-scramble-type');
-    if (showScrambleTypeToggle) {
-        showScrambleTypeToggle.checked = settings.get('showScrambleTypeButton');
-        showScrambleTypeToggle.onchange = () => {
-            settings.set('showScrambleTypeButton', showScrambleTypeToggle.checked);
-            showScrambleTypeToggle.blur();
-        };
-    }
 
     const shortcutTooltipsToggle = document.getElementById('setting-shortcut-tooltips');
     if (shortcutTooltipsToggle) {

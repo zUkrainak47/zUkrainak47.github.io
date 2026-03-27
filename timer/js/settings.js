@@ -39,7 +39,6 @@ const DEFAULTS = {
     hideUIWhileSolving: true,
     swipeDownGestureEnabled: true,
     shortcutTooltipsEnabled: true,
-    showScrambleTypeButton: true,
 };
 
 export { DEFAULTS };
@@ -117,7 +116,6 @@ class Settings extends EventEmitter {
         document.body.classList.toggle('high-contrast-mode', Boolean(this._settings.highContrastMode));
         document.body.classList.toggle('shortcut-tooltips-disabled', !this._settings.shortcutTooltipsEnabled);
         document.body.classList.toggle('typing-entry-mode', this._settings.timeEntryMode === 'typing');
-        document.body.classList.toggle('scramble-type-button-hidden', !this._settings.showScrambleTypeButton);
 
         document.body.classList.remove('pill-size-small', 'pill-size-medium', 'pill-size-large', 'pill-size-hidden');
         document.body.classList.add(`pill-size-${this._settings.pillSize}`);

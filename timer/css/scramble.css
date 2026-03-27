@@ -57,10 +57,6 @@
     order: -1;
 }
 
-body.scramble-type-button-hidden #scramble-type-menu-mobile,
-body.scramble-type-button-hidden #scramble-type-menu-desktop {
-    display: none;
-}
 
 .scramble-type-menu {
     --scramble-type-dropdown-gap: 8px;
@@ -488,9 +484,6 @@ body.scramble-type-button-hidden #scramble-type-menu-desktop {
         left: calc(50% + var(--desktop-scramble-text-half-width) + 48px);
     }
 
-    body.scramble-type-button-hidden #btn-edit-scramble {
-        left: calc(50% - var(--desktop-scramble-text-half-width) - 40px);
-    }
 
     body.zen:not(.mobile-viewport) #scramble-type-menu-desktop {
         visibility: hidden;
