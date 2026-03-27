@@ -220,15 +220,17 @@ body.high-contrast-mode:not(.mobile-viewport) #timer-delta::before {
 }
 
 #manual-time-entry-display {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 14px;
+    position: relative;
+    display: inline-block;
     min-height: 1em;
     cursor: text;
 }
 
 .manual-time-caret {
+    position: absolute;
+    left: 100%;
+    top: 50%;
+    transform: translate(12px, -50%);
     width: 3px;
     height: 0.9em;
     border-radius: 999px;
@@ -236,6 +238,7 @@ body.high-contrast-mode:not(.mobile-viewport) #timer-delta::before {
     box-shadow: 0 0 0 1px rgba(47, 129, 247, 0.16);
     opacity: 0;
     animation: none;
+    pointer-events: none;
 }
 
 body.manual-time-input-focused #manual-time-entry .manual-time-caret {
@@ -248,7 +251,8 @@ body.manual-time-input-focused #manual-time-entry .manual-time-caret {
     font-family: var(--font-timer);
     font-size: var(--text-timer);
     font-weight: 700;
-    letter-spacing: -0.04em;
+    letter-spacing: 2px;
+    line-height: 1;
     font-variant-numeric: tabular-nums;
 }
 
@@ -317,9 +321,9 @@ body.typing-entry-mode:not(.mobile-viewport) #manual-time-entry {
     pointer-events: auto;
 }
 
-body:not(.mobile-viewport) #manual-time-entry {
+/* body:not(.mobile-viewport) #manual-time-entry {
     top: 0.08em;
-}
+} */
 
 body.typing-entry-mode:not(.mobile-viewport) #manual-time-entry-display {
     cursor: text;
