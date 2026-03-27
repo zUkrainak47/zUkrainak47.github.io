@@ -500,6 +500,14 @@
     outline: none;
 }
 
+#prompt-input.scramble-font {
+    font-family: var(--font-mono) !important;
+    font-size: var(--text-lg) !important;
+    font-weight: 500 !important;
+    text-align: center !important;
+    line-height: 1.55 !important;
+}
+
 /* Confirm Modal Specifics */
 #confirm-overlay,
 #prompt-overlay {

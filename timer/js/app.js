@@ -3069,13 +3069,19 @@ function initScrambleControls() {
             const previewContainer = getEl('prompt-scramble-preview-container');
             if (previewContainer) previewContainer.style.display = 'flex';
             
+            const promptInput = getEl('prompt-input');
+            if (promptInput) promptInput.classList.add('scramble-font');
+
             // Render initially so it's populated when modal opens
             renderScramblePreviewDisplays(currentScramble);
 
             customPrompt('', currentScramble, 1000, 'Edit scramble', 'Enter scramble...', (val) => {
                 renderScramblePreviewDisplays(val);
             }).then((val) => {
-                if (previewContainer) previewContainer.style.display = 'none';
+                setTimeout(() => {
+                    if (previewContainer) previewContainer.style.display = 'none';
+                    if (promptInput) promptInput.classList.remove('scramble-font');
+                }, 300);
 
                 if (val === null) {
                     renderScramblePreviewDisplays(currentScramble);
