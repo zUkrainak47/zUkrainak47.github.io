@@ -127,6 +127,9 @@ const MEGAMINX_FIFTH_TURN_RAD = (2 * Math.PI) / 5;
 const MEGAMINX_STICKER_OUTLINE = 'rgba(0, 0, 0, 0.45)';
 const MEGAMINX_INNER_PENTAGON_SCALE = 0.54;
 const MEGAMINX_EDGE_SPLIT_RATIO = 0.33;
+const MEGAMINX_FACE_LAYOUT_SCALE = 0.96;
+const MEGAMINX_STICKER_INSET_RATIO = 0.026;
+const MEGAMINX_STICKER_INSET_MIN = 0.32;
 const MEGAMINX_U_STAR_ROTATION = -Math.PI / 10;
 const MEGAMINX_D_STAR_ROTATION = Math.PI / 10;
 const MEGAMINX_U_STAR_EDGE_TO_FACE = Object.freeze([4, 5, 9, 1, 8]);
@@ -1343,6 +1346,15 @@ function scaleAndTranslatePolygon(points, scale, offsetX, offsetY) {
     ]);
 }
 
+function scalePolygonAroundCentroid(points, scaleFactor = 1) {
+    const centroid = averagePoints(points);
+
+    return points.map(([x, y]) => [
+        centroid[0] + ((x - centroid[0]) * scaleFactor),
+        centroid[1] + ((y - centroid[1]) * scaleFactor),
+    ]);
+}
+
 function interpolatePoint2D(a, b, ratio) {
     return [
         a[0] + ((b[0] - a[0]) * ratio),
@@ -1548,9 +1560,14 @@ function createMegaminxLayoutTemplate() {
         });
     });
 
+    const spacedLayouts = layouts.map((layout) => ({
+        ...layout,
+        polygon: scalePolygonAroundCentroid(layout.polygon, MEGAMINX_FACE_LAYOUT_SCALE),
+    }));
+
     return {
-        faces: layouts,
-        bounds: getPolygonBounds(layouts.map(({ polygon }) => polygon)),
+        faces: spacedLayouts,
+        bounds: getPolygonBounds(spacedLayouts.map(({ polygon }) => polygon)),
     };
 }
 
@@ -1583,7 +1600,7 @@ function drawMegaminxFace(ctx, face, polygon, edgeNeighborStart = 0, edgeNeighbo
         interpolatePoint2D(point, polygon[(edgeIndex + 1) % 5], 1 - MEGAMINX_EDGE_SPLIT_RATIO)
     ));
     const sideLength = distance2D(polygon[0], polygon[1]);
-    const insetDistance = Math.max(0.4, sideLength * 0.032);
+    const insetDistance = Math.max(MEGAMINX_STICKER_INSET_MIN, sideLength * MEGAMINX_STICKER_INSET_RATIO);
     const outlineWidth = Math.max(0.55, Math.min(1.25, sideLength * 0.03));
 
     for (let edgeIndex = 0; edgeIndex < 5; edgeIndex += 1) {
