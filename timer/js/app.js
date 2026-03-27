@@ -5,7 +5,7 @@ import { settings, DEFAULTS } from './settings.js';
 import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=2';
 import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate } from './utils.js';
 import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=12';
-import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySkewbScramble, clearCubeDisplay, drawMegaminxFacePreview, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSkewbDisplay } from './cube-display.js?v=13';
+import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay } from './cube-display.js?v=14';
 import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=9';
 import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer } from './storage.js';
 
@@ -268,11 +268,13 @@ const CUBE_PREVIEW_SCRAMBLE_TYPES = new Set([
 const MEGAMINX_PREVIEW_SCRAMBLE_TYPES = new Set(['minx']);
 const PYRAMINX_PREVIEW_SCRAMBLE_TYPES = new Set(['pyram']);
 const SKEWB_PREVIEW_SCRAMBLE_TYPES = new Set(['skewb']);
+const SQUARE1_PREVIEW_SCRAMBLE_TYPES = new Set(['sq1']);
 const SCRAMBLE_PREVIEW_TYPES = new Set([
     ...CUBE_PREVIEW_SCRAMBLE_TYPES,
     ...MEGAMINX_PREVIEW_SCRAMBLE_TYPES,
     ...PYRAMINX_PREVIEW_SCRAMBLE_TYPES,
     ...SKEWB_PREVIEW_SCRAMBLE_TYPES,
+    ...SQUARE1_PREVIEW_SCRAMBLE_TYPES,
 ]);
 const PYRAMINX_PREVIEW_BUTTON_FACE_INDEX = 1;
 const SCRAMBLE_PREVIEW_BUTTON_PLACEHOLDER_SIZE = 3;
@@ -1458,6 +1460,10 @@ function supportsSkewbPreview(type = getCurrentScrambleType()) {
     return SKEWB_PREVIEW_SCRAMBLE_TYPES.has(type);
 }
 
+function supportsSquare1Preview(type = getCurrentScrambleType()) {
+    return SQUARE1_PREVIEW_SCRAMBLE_TYPES.has(type);
+}
+
 function supportsScramblePreview(type = getCurrentScrambleType()) {
     return SCRAMBLE_PREVIEW_TYPES.has(type);
 }
@@ -1532,21 +1538,25 @@ function syncScramblePreviewCanvasLayout(type = getCurrentScrambleType()) {
     const useMegaminxLayout = supportsMegaminxPreview(type);
     const usePyraminxLayout = supportsPyraminxPreview(type);
     const useSkewbLayout = supportsSkewbPreview(type);
+    const useSquare1Layout = supportsSquare1Preview(type);
 
     const panelCanvasContainer = getEl('cube-canvas-container');
     panelCanvasContainer?.classList.toggle('megaminx-preview-layout', useMegaminxLayout);
     panelCanvasContainer?.classList.toggle('pyraminx-preview-layout', usePyraminxLayout);
     panelCanvasContainer?.classList.toggle('skewb-preview-layout', useSkewbLayout);
+    panelCanvasContainer?.classList.toggle('square1-preview-layout', useSquare1Layout);
 
     const modalCanvasContainer = getScramblePreviewModalCanvasContainer();
     modalCanvasContainer?.classList.toggle('megaminx-preview-layout', useMegaminxLayout);
     modalCanvasContainer?.classList.toggle('pyraminx-preview-layout', usePyraminxLayout);
     modalCanvasContainer?.classList.toggle('skewb-preview-layout', useSkewbLayout);
+    modalCanvasContainer?.classList.toggle('square1-preview-layout', useSquare1Layout);
 
     const promptCanvasContainer = getEl('prompt-scramble-preview-container');
     promptCanvasContainer?.classList.toggle('megaminx-preview-layout', useMegaminxLayout);
     promptCanvasContainer?.classList.toggle('pyraminx-preview-layout', usePyraminxLayout);
     promptCanvasContainer?.classList.toggle('skewb-preview-layout', useSkewbLayout);
+    promptCanvasContainer?.classList.toggle('square1-preview-layout', useSquare1Layout);
 
     scheduleScramblePreviewModalSizeSync();
 }
@@ -1912,6 +1922,19 @@ function updateScramblePreviewButtonFace(scramble, type = getCurrentScrambleType
         return;
     }
 
+    if (supportsSquare1Preview(type)) {
+        const canvas = getScramblePreviewButtonCanvas();
+        if (!(canvas instanceof HTMLCanvasElement)) return;
+        if (!prepareScramblePreviewButtonCanvas(canvas)) return;
+
+        drawSquare1(
+            canvas,
+            applySquare1Scramble(scramble),
+            { topOnly: true },
+        );
+        return;
+    }
+
     const previewScramble = mapScrambleForPreview(scramble, type);
     const cube = applyScramble(
         previewScramble,
@@ -1962,6 +1985,14 @@ function renderScramblePreviewDisplays(scramble, type = getCurrentScrambleType()
         if (mainCanvas) updateSkewbDisplay(mainCanvas, normalizedScramble);
         if (scramblePreviewModalCanvas) updateSkewbDisplay(scramblePreviewModalCanvas, normalizedScramble);
         if (promptCanvas && promptCanvas.offsetParent !== null) updateSkewbDisplay(promptCanvas, normalizedScramble);
+        updateScramblePreviewButtonFace(normalizedScramble, type);
+        return;
+    }
+
+    if (supportsSquare1Preview(type)) {
+        if (mainCanvas) updateSquare1Display(mainCanvas, normalizedScramble);
+        if (scramblePreviewModalCanvas) updateSquare1Display(scramblePreviewModalCanvas, normalizedScramble);
+        if (promptCanvas && promptCanvas.offsetParent !== null) updateSquare1Display(promptCanvas, normalizedScramble);
         updateScramblePreviewButtonFace(normalizedScramble, type);
         return;
     }
@@ -3030,7 +3061,7 @@ function initScrambleControls() {
         if (mobileViewportQuery.matches) {
             const previewContainer = getEl('prompt-scramble-preview-container');
             if (previewContainer) previewContainer.style.display = 'flex';
-            
+
             const promptInput = getEl('prompt-input');
             if (promptInput) promptInput.classList.add('scramble-font');
 

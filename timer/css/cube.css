@@ -29,6 +29,10 @@
     --scramble-preview-panel-aspect-ratio: 1.1547005384;
 }
 
+#cube-canvas-container.square1-preview-layout {
+    --scramble-preview-panel-aspect-ratio: 2.05;
+}
+
 #cube-canvas-container:hover {
     background: var(--surface-hover);
 }
@@ -39,7 +43,8 @@
     display: block;
 }
 
-@media (max-width: 1100px), (pointer: coarse) {
+@media (max-width: 1100px),
+(pointer: coarse) {
     body[data-mobile-panel="timer"] #cube-canvas-container {
         height: clamp(154px, 22vh, 164px);
         aspect-ratio: auto;
@@ -51,7 +56,8 @@
     }
 }
 
-@media (max-width: 1100px) and (orientation: portrait), (pointer: coarse) and (orientation: portrait) {
+@media (max-width: 1100px) and (orientation: portrait),
+(pointer: coarse) and (orientation: portrait) {
     body[data-mobile-panel="timer"] #cube-canvas-container.megaminx-preview-layout {
         height: clamp(154px, 22vh, 164px);
         padding: 8px 6px;

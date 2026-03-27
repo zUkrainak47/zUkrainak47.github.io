@@ -1,6 +1,6 @@
 /**
  * Canvas scramble preview renderers.
- * Supports NxN cube nets, a flat pyraminx preview, and a two-star megaminx net.
+ * Supports NxN cube nets, Square-1, a flat pyraminx preview, a two-star megaminx net, and skewb.
  */
 
 // Face indices: U=0, R=1, F=2, D=3, L=4, B=5
@@ -135,6 +135,80 @@ const MEGAMINX_LABEL_STYLE = Object.freeze({
     fill: 'rgba(42, 24, 18, 0.9)',
     stroke: 'rgba(255, 255, 255, 0.88)',
 });
+const SQUARE1_COLORS = Object.freeze({
+    U: '#ffff00',
+    D: '#ffffff',
+    F: '#ff0000',
+    B: '#ff8800',
+    L: '#0000ff',
+    R: '#00ff00',
+});
+const SQUARE1_PIECES = Object.freeze([
+    Object.freeze({ type: 'edge', colors: Object.freeze([SQUARE1_COLORS.U, SQUARE1_COLORS.B]) }),
+    Object.freeze({ type: 'corner', colors: Object.freeze([SQUARE1_COLORS.U, SQUARE1_COLORS.B, SQUARE1_COLORS.R]) }),
+    Object.freeze({ type: 'edge', colors: Object.freeze([SQUARE1_COLORS.U, SQUARE1_COLORS.R]) }),
+    Object.freeze({ type: 'corner', colors: Object.freeze([SQUARE1_COLORS.U, SQUARE1_COLORS.R, SQUARE1_COLORS.F]) }),
+    Object.freeze({ type: 'edge', colors: Object.freeze([SQUARE1_COLORS.U, SQUARE1_COLORS.F]) }),
+    Object.freeze({ type: 'corner', colors: Object.freeze([SQUARE1_COLORS.U, SQUARE1_COLORS.F, SQUARE1_COLORS.L]) }),
+    Object.freeze({ type: 'edge', colors: Object.freeze([SQUARE1_COLORS.U, SQUARE1_COLORS.L]) }),
+    Object.freeze({ type: 'corner', colors: Object.freeze([SQUARE1_COLORS.U, SQUARE1_COLORS.L, SQUARE1_COLORS.B]) }),
+    Object.freeze({ type: 'corner', colors: Object.freeze([SQUARE1_COLORS.D, SQUARE1_COLORS.F, SQUARE1_COLORS.R]) }),
+    Object.freeze({ type: 'edge', colors: Object.freeze([SQUARE1_COLORS.D, SQUARE1_COLORS.R]) }),
+    Object.freeze({ type: 'corner', colors: Object.freeze([SQUARE1_COLORS.D, SQUARE1_COLORS.R, SQUARE1_COLORS.B]) }),
+    Object.freeze({ type: 'edge', colors: Object.freeze([SQUARE1_COLORS.D, SQUARE1_COLORS.B]) }),
+    Object.freeze({ type: 'corner', colors: Object.freeze([SQUARE1_COLORS.D, SQUARE1_COLORS.B, SQUARE1_COLORS.L]) }),
+    Object.freeze({ type: 'edge', colors: Object.freeze([SQUARE1_COLORS.D, SQUARE1_COLORS.L]) }),
+    Object.freeze({ type: 'corner', colors: Object.freeze([SQUARE1_COLORS.D, SQUARE1_COLORS.L, SQUARE1_COLORS.F]) }),
+    Object.freeze({ type: 'edge', colors: Object.freeze([SQUARE1_COLORS.D, SQUARE1_COLORS.F]) }),
+]);
+const SQUARE1_SOLVED_TOP = Object.freeze([1, 1, 2, 3, 3, 4, 5, 5, 6, 7, 7, 0]);
+const SQUARE1_SOLVED_BOTTOM = Object.freeze([8, 8, 9, 10, 10, 11, 12, 12, 13, 14, 14, 15]);
+const SQUARE1_TAN15 = 0.267949;
+const SQUARE1_INNER_RADIUS = 0.65;
+const SQUARE1_TOP_START_ANGLE = 75;
+const SQUARE1_BOTTOM_START_ANGLE = 105;
+const SQUARE1_OUTLINE_COLOR = '#000000';
+const SQUARE1_OUTLINE_TARGET_PX = 1.2;
+const SQUARE1_MIDDLE_LAYER_WIDTH = 2.0;
+const SQUARE1_MIDDLE_LAYER_HEIGHT = 0.3;
+const SQUARE1_MIDDLE_LAYER_Y_OFFSET = -1.15;
+const SQUARE1_TOP_FACE_CENTER = Object.freeze([-1.7, 0.06]);
+const SQUARE1_BOTTOM_FACE_CENTER = Object.freeze([1.7, 0.06]);
+const SQUARE1_SINGLE_FACE_CENTER = Object.freeze([0, 0.06]);
+const SQUARE1_LAYOUT_MARGIN_RATIO = 0.08;
+const SQUARE1_EDGE_BASE_POLYGONS = Object.freeze([
+    Object.freeze([
+        Object.freeze([0, 0]),
+        Object.freeze([SQUARE1_INNER_RADIUS, -SQUARE1_INNER_RADIUS * SQUARE1_TAN15]),
+        Object.freeze([SQUARE1_INNER_RADIUS, SQUARE1_INNER_RADIUS * SQUARE1_TAN15]),
+    ]),
+    Object.freeze([
+        Object.freeze([SQUARE1_INNER_RADIUS, -SQUARE1_INNER_RADIUS * SQUARE1_TAN15]),
+        Object.freeze([1, -SQUARE1_TAN15]),
+        Object.freeze([1, SQUARE1_TAN15]),
+        Object.freeze([SQUARE1_INNER_RADIUS, SQUARE1_INNER_RADIUS * SQUARE1_TAN15]),
+    ]),
+]);
+const SQUARE1_CORNER_BASE_POLYGONS = Object.freeze([
+    Object.freeze([
+        Object.freeze([0, 0]),
+        Object.freeze([SQUARE1_INNER_RADIUS, SQUARE1_INNER_RADIUS * SQUARE1_TAN15]),
+        Object.freeze([SQUARE1_INNER_RADIUS, SQUARE1_INNER_RADIUS]),
+        Object.freeze([SQUARE1_INNER_RADIUS * SQUARE1_TAN15, SQUARE1_INNER_RADIUS]),
+    ]),
+    Object.freeze([
+        Object.freeze([SQUARE1_INNER_RADIUS * SQUARE1_TAN15, SQUARE1_INNER_RADIUS]),
+        Object.freeze([SQUARE1_TAN15, 1]),
+        Object.freeze([1, 1]),
+        Object.freeze([SQUARE1_INNER_RADIUS, SQUARE1_INNER_RADIUS]),
+    ]),
+    Object.freeze([
+        Object.freeze([SQUARE1_INNER_RADIUS, SQUARE1_INNER_RADIUS]),
+        Object.freeze([1, 1]),
+        Object.freeze([1, SQUARE1_TAN15]),
+        Object.freeze([SQUARE1_INNER_RADIUS, SQUARE1_INNER_RADIUS * SQUARE1_TAN15]),
+    ]),
+]);
 
 function getCanvasPixelRatio() {
     return window.devicePixelRatio || 1;
@@ -809,6 +883,77 @@ export function applyMegaminxScramble(scramble) {
     return materializeMegaminxFaces(stickers);
 }
 
+function createSolvedSquare1State() {
+    return {
+        top: [...SQUARE1_SOLVED_TOP],
+        bottom: [...SQUARE1_SOLVED_BOTTOM],
+        mlFlipped: false,
+    };
+}
+
+function rotateSquare1Slots(slots, amount) {
+    const offset = positiveModulo(amount, slots.length);
+    if (!offset) return [...slots];
+
+    return [
+        ...slots.slice(slots.length - offset),
+        ...slots.slice(0, slots.length - offset),
+    ];
+}
+
+function parseSquare1Scramble(scramble) {
+    const moves = [];
+    const normalized = String(scramble ?? '');
+    const tokenPattern = /\((-?\d+)\s*,\s*(-?\d+)\)|\//g;
+    let match = tokenPattern.exec(normalized);
+
+    while (match) {
+        if (match[0] === '/') {
+            moves.push({ kind: 'slice' });
+        } else {
+            moves.push({
+                kind: 'rotation',
+                topTurns: Number(match[1]),
+                bottomTurns: Number(match[2]),
+            });
+        }
+
+        match = tokenPattern.exec(normalized);
+    }
+
+    return moves;
+}
+
+function applySquare1Rotation(state, topTurns, bottomTurns) {
+    state.top = rotateSquare1Slots(state.top, topTurns);
+    state.bottom = rotateSquare1Slots(state.bottom, bottomTurns);
+}
+
+function applySquare1Slice(state) {
+    for (let index = 0; index < 6; index += 1) {
+        const nextTop = state.top[index];
+        state.top[index] = state.bottom[index];
+        state.bottom[index] = nextTop;
+    }
+
+    state.mlFlipped = !state.mlFlipped;
+}
+
+export function applySquare1Scramble(scramble) {
+    const state = createSolvedSquare1State();
+
+    parseSquare1Scramble(scramble).forEach((move) => {
+        if (move.kind === 'slice') {
+            applySquare1Slice(state);
+            return;
+        }
+
+        applySquare1Rotation(state, move.topTurns, move.bottomTurns);
+    });
+
+    return state;
+}
+
 // ──── Skewb ────────────────────────────────────────────────────────────────────
 //
 // State: flat array of 30 values (6 faces × 5 stickers).
@@ -834,25 +979,25 @@ const SKEWB_STICKER_OUTLINE = 'rgba(0, 0, 0, 0.55)';
 
 const SKEWB_MOVE_R = Object.freeze([ // axis = DBR
     Object.freeze([5, 25, 15]),
-    Object.freeze([24, 13, 2]),   Object.freeze([19, 9, 26]),   Object.freeze([28, 17, 7]),
+    Object.freeze([24, 13, 2]), Object.freeze([19, 9, 26]), Object.freeze([28, 17, 7]),
     Object.freeze([8, 29, 18]),
 ]);
 
 const SKEWB_MOVE_L = Object.freeze([ // axis = DFL
     Object.freeze([10, 15, 20]),
-    Object.freeze([9, 28, 4]),    Object.freeze([17, 24, 11]),  Object.freeze([13, 19, 22]),
+    Object.freeze([9, 28, 4]), Object.freeze([17, 24, 11]), Object.freeze([13, 19, 22]),
     Object.freeze([23, 14, 16]),
 ]);
 
 const SKEWB_MOVE_U = Object.freeze([ // axis = UBL
     Object.freeze([0, 20, 25]),
-    Object.freeze([24, 26, 4]),   Object.freeze([19, 7, 11]),   Object.freeze([28, 2, 22]),
+    Object.freeze([24, 26, 4]), Object.freeze([19, 7, 11]), Object.freeze([28, 2, 22]),
     Object.freeze([21, 27, 1]),
 ]);
 
 const SKEWB_MOVE_B = Object.freeze([ // axis = DBL
     Object.freeze([15, 25, 20]),
-    Object.freeze([14, 8, 1]),    Object.freeze([23, 18, 27]),  Object.freeze([16, 29, 21]),
+    Object.freeze([14, 8, 1]), Object.freeze([23, 18, 27]), Object.freeze([16, 29, 21]),
     Object.freeze([28, 24, 19]),
 ]);
 
@@ -1575,6 +1720,200 @@ export function drawMegaminxFacePreview(canvas, face, { label = '' } = {}) {
     ctx.restore();
 }
 
+function isSquare1State(square1) {
+    return Boolean(square1)
+        && Array.isArray(square1.top)
+        && square1.top.length === 12
+        && Array.isArray(square1.bottom)
+        && square1.bottom.length === 12;
+}
+
+function getSquare1PieceBasePolygons(piece) {
+    return piece?.type === 'corner'
+        ? SQUARE1_CORNER_BASE_POLYGONS
+        : SQUARE1_EDGE_BASE_POLYGONS;
+}
+
+function getSquare1PieceRotationRad(piece, angleDeg) {
+    const nativeLeadingEdge = piece?.type === 'corner' ? 75 : 15;
+    return ((angleDeg - nativeLeadingEdge) * Math.PI) / 180;
+}
+
+function rotatePoint2DAboutOrigin(point, angleRad) {
+    const [x, y] = point;
+    const cos = Math.cos(angleRad);
+    const sin = Math.sin(angleRad);
+
+    return [
+        (x * cos) - (y * sin),
+        (x * sin) + (y * cos),
+    ];
+}
+
+function transformSquare1Polygon(points, angleRad, offsetX = 0, offsetY = 0) {
+    return points.map((point) => {
+        const [x, y] = rotatePoint2DAboutOrigin(point, angleRad);
+        return [x + offsetX, y + offsetY];
+    });
+}
+
+function getSquare1FacePolygons(slots, startAngleDeg, centerX = 0, centerY = 0) {
+    const polygons = [];
+    if (!Array.isArray(slots) || slots.length !== 12) return polygons;
+
+    for (let index = 0; index < 12; index += 1) {
+        const pieceId = slots[index];
+        if (slots[positiveModulo(index - 1, 12)] === pieceId) continue;
+
+        const piece = SQUARE1_PIECES[pieceId];
+        if (!piece) continue;
+
+        const angleDeg = startAngleDeg - (index * 30);
+        const angleRad = getSquare1PieceRotationRad(piece, angleDeg);
+        getSquare1PieceBasePolygons(piece).forEach((polygon) => {
+            polygons.push(transformSquare1Polygon(polygon, angleRad, centerX, centerY));
+        });
+    }
+
+    return polygons;
+}
+
+function createRectanglePolygon(x, y, width, height) {
+    return [
+        [x, y],
+        [x + width, y],
+        [x + width, y + height],
+        [x, y + height],
+    ];
+}
+
+function getSquare1MiddleLayerPolygons(mlFlipped, centerX = 0, centerY = 0) {
+    const leftRatio = mlFlipped ? (2 / 3) : (1 / 3);
+    const leftWidth = SQUARE1_MIDDLE_LAYER_WIDTH * leftRatio;
+    const rightWidth = SQUARE1_MIDDLE_LAYER_WIDTH - leftWidth;
+    const startX = centerX - (SQUARE1_MIDDLE_LAYER_WIDTH / 2);
+    const startY = centerY + SQUARE1_MIDDLE_LAYER_Y_OFFSET - (SQUARE1_MIDDLE_LAYER_HEIGHT / 2);
+
+    return [
+        createRectanglePolygon(startX, startY, leftWidth, SQUARE1_MIDDLE_LAYER_HEIGHT),
+        createRectanglePolygon(startX + leftWidth, startY, rightWidth, SQUARE1_MIDDLE_LAYER_HEIGHT),
+    ];
+}
+
+function drawSquare1Piece(ctx, piece, angleDeg) {
+    if (!piece) return;
+
+    ctx.save();
+    ctx.rotate(getSquare1PieceRotationRad(piece, angleDeg));
+
+    getSquare1PieceBasePolygons(piece).forEach((polygon, index) => {
+        ctx.fillStyle = piece.colors[index];
+        tracePolygon(ctx, polygon);
+        ctx.fill();
+        ctx.stroke();
+    });
+
+    ctx.restore();
+}
+
+function drawSquare1Face(ctx, slots, startAngleDeg) {
+    if (!Array.isArray(slots) || slots.length !== 12) return;
+
+    for (let index = 0; index < 12; index += 1) {
+        const pieceId = slots[index];
+        if (slots[positiveModulo(index - 1, 12)] === pieceId) continue;
+
+        const piece = SQUARE1_PIECES[pieceId];
+        if (!piece) continue;
+
+        drawSquare1Piece(ctx, piece, startAngleDeg - (index * 30));
+    }
+}
+
+function drawSquare1MiddleLayer(ctx, mlFlipped) {
+    const leftRatio = mlFlipped ? (2 / 3) : (1 / 3);
+    const leftWidth = SQUARE1_MIDDLE_LAYER_WIDTH * leftRatio;
+    const rightWidth = SQUARE1_MIDDLE_LAYER_WIDTH - leftWidth;
+    const startX = -(SQUARE1_MIDDLE_LAYER_WIDTH / 2);
+    const startY = SQUARE1_MIDDLE_LAYER_Y_OFFSET - (SQUARE1_MIDDLE_LAYER_HEIGHT / 2);
+
+    ctx.fillStyle = SQUARE1_COLORS.F;
+    ctx.fillRect(startX, startY, leftWidth, SQUARE1_MIDDLE_LAYER_HEIGHT);
+    ctx.strokeRect(startX, startY, leftWidth, SQUARE1_MIDDLE_LAYER_HEIGHT);
+
+    ctx.fillStyle = mlFlipped ? SQUARE1_COLORS.B : SQUARE1_COLORS.F;
+    ctx.fillRect(startX + leftWidth, startY, rightWidth, SQUARE1_MIDDLE_LAYER_HEIGHT);
+    ctx.strokeRect(startX + leftWidth, startY, rightWidth, SQUARE1_MIDDLE_LAYER_HEIGHT);
+}
+
+function getSquare1LayoutCenters({ topOnly = false } = {}) {
+    return {
+        topFaceCenter: topOnly ? SQUARE1_SINGLE_FACE_CENTER : SQUARE1_TOP_FACE_CENTER,
+        bottomFaceCenter: topOnly ? null : SQUARE1_BOTTOM_FACE_CENTER,
+    };
+}
+
+export function drawSquare1(canvas, square1, { topOnly = false } = {}) {
+    const ctx = canvas.getContext('2d');
+    const { width: w, height: h } = getCanvasLogicalSize(canvas);
+    const state = isSquare1State(square1) ? square1 : createSolvedSquare1State();
+    const { topFaceCenter, bottomFaceCenter } = getSquare1LayoutCenters({ topOnly });
+
+    ctx.clearRect(0, 0, w, h);
+
+    const polygons = [
+        ...getSquare1FacePolygons(state.top, SQUARE1_TOP_START_ANGLE, topFaceCenter[0], topFaceCenter[1]),
+        ...getSquare1MiddleLayerPolygons(state.mlFlipped, topFaceCenter[0], topFaceCenter[1]),
+    ];
+
+    if (bottomFaceCenter) {
+        polygons.push(
+            ...getSquare1FacePolygons(
+                state.bottom,
+                SQUARE1_BOTTOM_START_ANGLE,
+                bottomFaceCenter[0],
+                bottomFaceCenter[1],
+            ),
+        );
+    }
+
+    if (polygons.length === 0) return;
+
+    const bounds = getPolygonBounds(polygons);
+    const worldWidth = Math.max(0.001, bounds.maxX - bounds.minX);
+    const worldHeight = Math.max(0.001, bounds.maxY - bounds.minY);
+    const margin = Math.max(6, Math.min(w, h) * SQUARE1_LAYOUT_MARGIN_RATIO);
+    const availableWidth = Math.max(1, w - (margin * 2));
+    const availableHeight = Math.max(1, h - (margin * 2));
+    const scale = Math.min(availableWidth / worldWidth, availableHeight / worldHeight);
+    const centerX = (bounds.minX + bounds.maxX) / 2;
+    const centerY = (bounds.minY + bounds.maxY) / 2;
+
+    ctx.save();
+    ctx.translate(w / 2, h / 2);
+    ctx.scale(scale, -scale);
+    ctx.translate(-centerX, -centerY);
+    ctx.strokeStyle = SQUARE1_OUTLINE_COLOR;
+    ctx.lineWidth = Math.max(0.01, SQUARE1_OUTLINE_TARGET_PX / scale);
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+
+    ctx.save();
+    ctx.translate(topFaceCenter[0], topFaceCenter[1]);
+    drawSquare1Face(ctx, state.top, SQUARE1_TOP_START_ANGLE);
+    drawSquare1MiddleLayer(ctx, state.mlFlipped);
+    ctx.restore();
+
+    if (bottomFaceCenter) {
+        ctx.save();
+        ctx.translate(bottomFaceCenter[0], bottomFaceCenter[1]);
+        drawSquare1Face(ctx, state.bottom, SQUARE1_BOTTOM_START_ANGLE);
+        ctx.restore();
+    }
+
+    ctx.restore();
+}
+
 let _lastDisplay = null;
 
 function redrawLastDisplay(canvas) {
@@ -1592,6 +1931,11 @@ function redrawLastDisplay(canvas) {
 
     if (_lastDisplay.puzzle === 'skewb') {
         drawSkewb(canvas, _lastDisplay.state);
+        return;
+    }
+
+    if (_lastDisplay.puzzle === 'square1') {
+        drawSquare1(canvas, _lastDisplay.state);
         return;
     }
 
@@ -1666,6 +2010,20 @@ export function updateSkewbDisplay(canvas, scramble) {
     _lastDisplay = {
         puzzle: 'skewb',
         state: applySkewbScramble(scramble),
+    };
+    if (!didSync) return;
+
+    const ctx = canvas.getContext('2d');
+    const pixelRatio = getCanvasPixelRatio();
+    ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+    redrawLastDisplay(canvas);
+}
+
+export function updateSquare1Display(canvas, scramble) {
+    const didSync = syncCanvasToDisplaySize(canvas);
+    _lastDisplay = {
+        puzzle: 'square1',
+        state: applySquare1Scramble(scramble),
     };
     if (!didSync) return;
 
