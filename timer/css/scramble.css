@@ -302,6 +302,9 @@ body.scramble-type-button-hidden #scramble-type-menu-desktop {
     border: 1px solid var(--accent);
     color: var(--text-primary);
     padding: 2px var(--space-xs);
+    border-radius: var(--radius-sm);
+    -webkit-appearance: none;
+    appearance: none;
 }
 
 #btn-copy-scramble {
@@ -665,12 +668,19 @@ body.scramble-type-button-hidden #scramble-type-menu-desktop {
         justify-content: stretch;
     }
 
-    #scramble-text,
-    #scramble-input {
+    #scramble-text {
         width: 100%;
         font-size: clamp(1rem, 4vw, 1.15rem);
         line-height: 1.55;
         word-spacing: 2px;
+    }
+
+    #scramble-input {
+        width: 100%;
+        font-size: clamp(1rem, 4vw, 1.15rem);
+        line-height: normal;
+        word-spacing: 2px;
+        padding: 8px var(--space-xs);
     }
 
     #scramble-text {
