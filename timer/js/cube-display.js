@@ -1383,7 +1383,7 @@ function getPyraminxScreenTriangleVertices(x, y, sideLength, triangleHeight, ori
 
 function drawPyraminxFace(ctx, face, vertices, sideLength) {
     const smallSide = sideLength / PYRAMINX_FACE_SIZE;
-    const stickerGap = smallSide * STICKER_GAP_TO_CELL_RATIO;
+    const stickerGap = smallSide * STICKER_GAP_TO_CELL_RATIO * 1/2;
     const outlineWidth = Math.max(0.45, Math.min(1, smallSide * 0.06));
     const [a, b, c] = vertices;
 
