@@ -365,6 +365,13 @@ body.scramble-type-button-hidden #scramble-type-menu-desktop {
     cursor: not-allowed;
 }
 
+@media (max-width: 1150px) and (pointer: fine) {
+    #scramble-text[data-scramble-layout="megaminx-rows"] {
+        font-size: min(var(--text-lg), 1.15rem);
+        word-spacing: normal;
+    }
+}
+
 @media (min-width: 1101px) and (pointer: fine) {
     #scramble-bar {
         min-height: var(--scramble-bar-height);
