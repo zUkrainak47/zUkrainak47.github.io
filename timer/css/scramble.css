@@ -298,10 +298,14 @@ body.scramble-type-button-hidden #scramble-type-menu-desktop {
     text-align: center;
     letter-spacing: 0.5px;
     word-spacing: 4px;
+    line-height: 1.6;
     background: var(--surface);
     border: 1px solid var(--accent);
     color: var(--text-primary);
-    padding: 2px var(--space-xs);
+    padding: 3px;
+    resize: none;
+    overflow: hidden;
+    box-sizing: border-box;
 }
 
 #btn-copy-scramble {
@@ -405,7 +409,7 @@ body.scramble-type-button-hidden #scramble-type-menu-desktop {
 
     #scramble-text-wrapper {
         --desktop-scramble-row-height: 32px;
-        --desktop-scramble-text-top-offset: max(0px, calc((var(--desktop-scramble-row-height) - (var(--text-lg) * 1.6)) / 2));
+        --desktop-scramble-text-top-offset: max(0px, calc((var(--desktop-scramble-row-height) - (var(--text-lg) * 1.53)) / 2));
         flex: 0 1 auto;
         width: min(100%, var(--desktop-scramble-text-width));
         max-width: var(--desktop-scramble-text-width);
@@ -417,6 +421,10 @@ body.scramble-type-button-hidden #scramble-type-menu-desktop {
         pointer-events: none;
         transition: width 260ms cubic-bezier(0.22, 1, 0.36, 1),
             max-width 260ms cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    #scramble-text-wrapper:focus-within {
+        padding-top: 0;
     }
 
     #scramble-text {

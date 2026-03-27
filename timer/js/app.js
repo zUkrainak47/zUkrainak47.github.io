@@ -3101,6 +3101,8 @@ function initScrambleControls() {
         textEl.style.display = 'none';
         inputEl.style.display = 'block';
         inputEl.value = currentScramble;
+        inputEl.style.height = 'auto';
+        inputEl.style.height = inputEl.scrollHeight + 'px';
         inputEl.focus();
         // Pause timer keys optionally, but timer.js ignores input tags.
     }
@@ -3124,7 +3126,10 @@ function initScrambleControls() {
     editBtn.addEventListener('click', startEdit);
     inputEl.addEventListener('blur', commitEdit);
     inputEl.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') commitEdit();
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            commitEdit();
+        }
         if (e.key === 'Escape') {
             textEl.style.display = 'block';
             inputEl.style.display = 'none';
@@ -3132,6 +3137,8 @@ function initScrambleControls() {
         }
     });
     inputEl.addEventListener('input', (e) => {
+        inputEl.style.height = 'auto';
+        inputEl.style.height = inputEl.scrollHeight + 'px';
         renderScramblePreviewDisplays(e.target.value);
     });
 
