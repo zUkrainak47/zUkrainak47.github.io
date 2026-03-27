@@ -532,7 +532,7 @@ export function customConfirm(message) {
  * Custom async prompt modal matching the application aesthetics.
  * Returns a Promise that resolves to the input value (string) or null (Cancel).
  */
-export function customPrompt(message, defaultValue = '', maxLength = 100, title = 'Session name', placeholder = '') {
+export function customPrompt(message, defaultValue = '', maxLength = 100, title = 'Session name', placeholder = '', onInputCb = null) {
     return new Promise((resolve) => {
         const overlay = document.getElementById('prompt-overlay');
         const titleEl = document.getElementById('prompt-title');
@@ -570,7 +570,10 @@ export function customPrompt(message, defaultValue = '', maxLength = 100, title 
         const onDiscard = () => { cleanup(); resolve(null); };
         const onCancel = () => { cleanup(); resolve(inputEl.value); };
         const onOverlayClick = (e) => { if (e.target === overlay) onCancel(); };
-        const onInput = () => autoResizeTextarea(inputEl);
+        const onInput = () => {
+            autoResizeTextarea(inputEl);
+            if (onInputCb) onInputCb(inputEl.value);
+        };
         const onKeydown = (e) => {
             if (!overlay.classList.contains('active')) return;
             if (e.key === 'Escape') {

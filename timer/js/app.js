@@ -1541,6 +1541,12 @@ function syncScramblePreviewCanvasLayout(type = getCurrentScrambleType()) {
     modalCanvasContainer?.classList.toggle('megaminx-preview-layout', useMegaminxLayout);
     modalCanvasContainer?.classList.toggle('pyraminx-preview-layout', usePyraminxLayout);
     modalCanvasContainer?.classList.toggle('skewb-preview-layout', useSkewbLayout);
+
+    const promptCanvasContainer = getEl('prompt-scramble-preview-container');
+    promptCanvasContainer?.classList.toggle('megaminx-preview-layout', useMegaminxLayout);
+    promptCanvasContainer?.classList.toggle('pyraminx-preview-layout', usePyraminxLayout);
+    promptCanvasContainer?.classList.toggle('skewb-preview-layout', useSkewbLayout);
+
     scheduleScramblePreviewModalSizeSync();
 }
 
@@ -1924,11 +1930,13 @@ function updateScramblePreviewButtonFace(scramble, type = getCurrentScrambleType
 function renderScramblePreviewDisplays(scramble, type = getCurrentScrambleType()) {
     const normalizedScramble = String(scramble ?? '');
     const mainCanvas = getEl('cube-canvas');
+    const promptCanvas = getEl('prompt-scramble-canvas');
     syncScramblePreviewCanvasLayout(type);
 
     if (!supportsScramblePreview(type)) {
         if (mainCanvas) clearCubeDisplay(mainCanvas);
         if (scramblePreviewModalCanvas) clearCubeDisplay(scramblePreviewModalCanvas);
+        if (promptCanvas && promptCanvas.offsetParent !== null) clearCubeDisplay(promptCanvas);
         updateScramblePreviewButtonFace(normalizedScramble, type);
         return;
     }
@@ -1936,6 +1944,7 @@ function renderScramblePreviewDisplays(scramble, type = getCurrentScrambleType()
     if (supportsMegaminxPreview(type)) {
         if (mainCanvas) updateMegaminxDisplay(mainCanvas, normalizedScramble);
         if (scramblePreviewModalCanvas) updateMegaminxDisplay(scramblePreviewModalCanvas, normalizedScramble);
+        if (promptCanvas && promptCanvas.offsetParent !== null) updateMegaminxDisplay(promptCanvas, normalizedScramble);
         updateScramblePreviewButtonFace(normalizedScramble, type);
         return;
     }
@@ -1943,6 +1952,7 @@ function renderScramblePreviewDisplays(scramble, type = getCurrentScrambleType()
     if (supportsPyraminxPreview(type)) {
         if (mainCanvas) updatePyraminxDisplay(mainCanvas, normalizedScramble);
         if (scramblePreviewModalCanvas) updatePyraminxDisplay(scramblePreviewModalCanvas, normalizedScramble);
+        if (promptCanvas && promptCanvas.offsetParent !== null) updatePyraminxDisplay(promptCanvas, normalizedScramble);
         updateScramblePreviewButtonFace(normalizedScramble, type);
         return;
     }
@@ -1950,6 +1960,7 @@ function renderScramblePreviewDisplays(scramble, type = getCurrentScrambleType()
     if (supportsSkewbPreview(type)) {
         if (mainCanvas) updateSkewbDisplay(mainCanvas, normalizedScramble);
         if (scramblePreviewModalCanvas) updateSkewbDisplay(scramblePreviewModalCanvas, normalizedScramble);
+        if (promptCanvas && promptCanvas.offsetParent !== null) updateSkewbDisplay(promptCanvas, normalizedScramble);
         updateScramblePreviewButtonFace(normalizedScramble, type);
         return;
     }
@@ -1959,6 +1970,7 @@ function renderScramblePreviewDisplays(scramble, type = getCurrentScrambleType()
     const previewSize = getScramblePreviewSize(type);
     if (mainCanvas) updateCubeDisplay(mainCanvas, previewScramble, orientation, previewSize);
     if (scramblePreviewModalCanvas) updateCubeDisplay(scramblePreviewModalCanvas, previewScramble, orientation, previewSize);
+    if (promptCanvas && promptCanvas.offsetParent !== null) updateCubeDisplay(promptCanvas, previewScramble, orientation, previewSize);
     updateScramblePreviewButtonFace(normalizedScramble, type);
 }
 
@@ -3052,8 +3064,35 @@ function initScrambleControls() {
         if (textEl.classList.contains('loading')) return;
         setScrambleActionsVisible(false);
         closeScrambleTypeMenus();
-        textEl.style.position = 'absolute';
-        textEl.style.left = '-9999px';
+
+        if (mobileViewportQuery.matches) {
+            const previewContainer = getEl('prompt-scramble-preview-container');
+            if (previewContainer) previewContainer.style.display = 'flex';
+            
+            // Render initially so it's populated when modal opens
+            renderScramblePreviewDisplays(currentScramble);
+
+            customPrompt('', currentScramble, 1000, 'Edit scramble', 'Enter scramble...', (val) => {
+                renderScramblePreviewDisplays(val);
+            }).then((val) => {
+                if (previewContainer) previewContainer.style.display = 'none';
+
+                if (val === null) {
+                    renderScramblePreviewDisplays(currentScramble);
+                    return;
+                }
+                const trimmed = val.trim();
+                if (trimmed !== currentScramble) {
+                    setCurrentScramble(trimmed);
+                    updateScrambleUI(trimmed);
+                } else {
+                    renderScramblePreviewDisplays(currentScramble);
+                }
+            });
+            return;
+        }
+
+        textEl.style.display = 'none';
         inputEl.style.display = 'block';
         inputEl.value = currentScramble;
         inputEl.focus();
@@ -3061,9 +3100,10 @@ function initScrambleControls() {
     }
 
     function commitEdit() {
+        if (inputEl.style.display === 'none') return;
+
         const val = inputEl.value.trim();
-        textEl.style.position = '';
-        textEl.style.left = '';
+        textEl.style.display = 'block';
         inputEl.style.display = 'none';
 
         if (val !== currentScramble) {
@@ -3080,8 +3120,7 @@ function initScrambleControls() {
     inputEl.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') commitEdit();
         if (e.key === 'Escape') {
-            textEl.style.position = '';
-            textEl.style.left = '';
+            textEl.style.display = 'block';
             inputEl.style.display = 'none';
             inputEl.blur();
         }

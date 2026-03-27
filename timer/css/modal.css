@@ -710,4 +710,21 @@
         max-height: none;
         overflow: visible;
     }
+
+    #prompt-content-wrapper {
+        flex-direction: row !important;
+        align-items: center;
+        gap: 16px;
+    }
+
+    #prompt-content-wrapper > textarea {
+        flex: 1;
+        margin-bottom: 0 !important;
+    }
+
+    #prompt-content-wrapper > #prompt-scramble-preview-container {
+        flex: 1;
+        margin-bottom: 0 !important;
+        height: 120px !important;
+    }
 }
