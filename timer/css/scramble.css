@@ -302,9 +302,6 @@ body.scramble-type-button-hidden #scramble-type-menu-desktop {
     border: 1px solid var(--accent);
     color: var(--text-primary);
     padding: 2px var(--space-xs);
-    border-radius: var(--radius-sm);
-    -webkit-appearance: none;
-    appearance: none;
 }
 
 #btn-copy-scramble {
@@ -327,10 +324,21 @@ body.scramble-type-button-hidden #scramble-type-menu-desktop {
     margin-top: 0;
 }
 
-#btn-edit-scramble { order: -2; }
-#btn-prev-scramble { order: 1; }
-#btn-next-scramble { order: 2; }
-#btn-copy-scramble { order: 3; }
+#btn-edit-scramble {
+    order: -2;
+}
+
+#btn-prev-scramble {
+    order: 1;
+}
+
+#btn-next-scramble {
+    order: 2;
+}
+
+#btn-copy-scramble {
+    order: 3;
+}
 
 #scramble-type-menu-desktop .scramble-type-btn {
     width: 84px;
@@ -668,19 +676,12 @@ body.scramble-type-button-hidden #scramble-type-menu-desktop {
         justify-content: stretch;
     }
 
-    #scramble-text {
+    #scramble-text,
+    #scramble-input {
         width: 100%;
         font-size: clamp(1rem, 4vw, 1.15rem);
         line-height: 1.55;
         word-spacing: 2px;
-    }
-
-    #scramble-input {
-        width: 100%;
-        font-size: clamp(1rem, 4vw, 1.15rem);
-        line-height: normal;
-        word-spacing: 2px;
-        padding: 8px var(--space-xs);
     }
 
     #scramble-text {
@@ -798,7 +799,7 @@ body.scramble-type-button-hidden #scramble-type-menu-desktop {
         margin-left: 0;
     }
 
-    #btn-scramble-preview + #btn-zen {
+    #btn-scramble-preview+#btn-zen {
         margin-left: 0;
     }
 

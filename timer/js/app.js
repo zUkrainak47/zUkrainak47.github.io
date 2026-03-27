@@ -3052,7 +3052,10 @@ function initScrambleControls() {
         if (textEl.classList.contains('loading')) return;
         setScrambleActionsVisible(false);
         closeScrambleTypeMenus();
+        
         textEl.style.display = 'none';
+        textEl.textContent = ''; // Hotfix for iOS Safari overlay bug
+        
         inputEl.style.display = 'block';
         inputEl.value = currentScramble;
         inputEl.focus();
@@ -3070,6 +3073,7 @@ function initScrambleControls() {
         } else {
             // Restore visualizer if it was changed during input
             renderScramblePreviewDisplays(currentScramble);
+            renderScrambleText(currentScramble, getCurrentScrambleType());
         }
     }
 
@@ -3081,6 +3085,7 @@ function initScrambleControls() {
             textEl.style.display = 'block';
             inputEl.style.display = 'none';
             inputEl.blur();
+            renderScrambleText(currentScramble, getCurrentScrambleType());
         }
     });
     inputEl.addEventListener('input', (e) => {
