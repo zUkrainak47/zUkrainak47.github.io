@@ -7,7 +7,8 @@ const DEFAULTS = {
     timerUpdate: '0.01s',   // 'none', 'inspection', '1s', '0.1s', '0.01s'
     timeEntryMode: 'timer', // 'timer', 'typing'
     holdDuration: 300,       // ms
-    animationsEnabled: true,
+    animationMode: 'auto',   // 'auto', 'on', 'off'
+    animationsEnabled: true, // Legacy effective boolean kept for backwards compatibility.
     highContrastMode: false,
     displayFont: 'jetbrains-mono',
     pillSize: 'medium',       // 'small', 'medium', 'large', 'hidden'
@@ -43,6 +44,8 @@ const DEFAULTS = {
 
 export { DEFAULTS };
 
+const ANIMATION_MODES = new Set(['auto', 'on', 'off']);
+
 const DISPLAY_FONT_STACKS = {
     arial: "Arial, 'Helvetica Neue', Helvetica, sans-serif",
     'jetbrains-mono': "'JetBrains Mono', 'Consolas', monospace",
@@ -53,8 +56,19 @@ const DISPLAY_FONT_STACKS = {
 class Settings extends EventEmitter {
     constructor() {
         super();
+        this._motionPreferenceQuery = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+            ? window.matchMedia('(prefers-reduced-motion: reduce)')
+            : null;
         const loaded = load('settings', {});
         this._settings = { ...DEFAULTS, ...loaded };
+
+        if (!ANIMATION_MODES.has(this._settings.animationMode)) {
+            if (typeof loaded.animationsEnabled === 'boolean') {
+                this._settings.animationMode = loaded.animationsEnabled ? 'on' : 'off';
+            } else {
+                this._settings.animationMode = DEFAULTS.animationMode;
+            }
+        }
 
         if (!('graphColorLine1' in loaded) && typeof loaded.graphColorAo5 === 'string') {
             this._settings.graphColorLine1 = loaded.graphColorAo5;
@@ -74,6 +88,8 @@ class Settings extends EventEmitter {
             this._settings.graphLines = nextGraphLines;
         }
 
+        this._syncAnimationSettings();
+        this._bindMotionPreferenceListener();
         this._apply();
     }
 
@@ -90,7 +106,65 @@ class Settings extends EventEmitter {
         return JSON.parse(JSON.stringify(this._settings));
     }
 
+    _normalizeAnimationMode(value) {
+        if (value === true) return 'on';
+        if (value === false) return 'off';
+        return ANIMATION_MODES.has(value) ? value : DEFAULTS.animationMode;
+    }
+
+    _areAnimationsEnabled() {
+        const animationMode = this._normalizeAnimationMode(this._settings.animationMode);
+        if (animationMode === 'on') return true;
+        if (animationMode === 'off') return false;
+        return !Boolean(this._motionPreferenceQuery?.matches);
+    }
+
+    _syncAnimationSettings() {
+        this._settings.animationMode = this._normalizeAnimationMode(this._settings.animationMode);
+        this._settings.animationsEnabled = this._areAnimationsEnabled();
+    }
+
+    _bindMotionPreferenceListener() {
+        if (!this._motionPreferenceQuery) return;
+
+        const handleMotionPreferenceChange = () => {
+            if (this._settings.animationMode !== 'auto') return;
+
+            const previousEnabled = this._settings.animationsEnabled;
+            this._syncAnimationSettings();
+
+            if (previousEnabled === this._settings.animationsEnabled) return;
+
+            save('settings', this._settings);
+            this._apply();
+        };
+
+        if (typeof this._motionPreferenceQuery.addEventListener === 'function') {
+            this._motionPreferenceQuery.addEventListener('change', handleMotionPreferenceChange);
+        } else if (typeof this._motionPreferenceQuery.addListener === 'function') {
+            this._motionPreferenceQuery.addListener(handleMotionPreferenceChange);
+        }
+    }
+
     set(key, value) {
+        if (key === 'animationsEnabled') {
+            key = 'animationMode';
+            value = value ? 'on' : 'off';
+        }
+
+        if (key === 'animationMode') {
+            const nextAnimationMode = this._normalizeAnimationMode(value);
+            if (this._settings.animationMode === nextAnimationMode) return;
+
+            this._settings.animationMode = nextAnimationMode;
+            this._syncAnimationSettings();
+            save('settings', this._settings);
+            this._apply();
+            this.emit('change', 'animationMode', nextAnimationMode);
+            this.emit('change', 'animationsEnabled', this._settings.animationsEnabled);
+            return;
+        }
+
         // Deep clone the incoming value if it's an object to prevent external mutation
         const isObj = typeof value === 'object' && value !== null;
         const nextVal = isObj ? JSON.parse(JSON.stringify(value)) : value;
@@ -106,12 +180,14 @@ class Settings extends EventEmitter {
 
     reset() {
         this._settings = { ...DEFAULTS };
+        this._syncAnimationSettings();
         save('settings', this._settings);
         this._apply();
         this.emit('reset');
     }
 
     _apply() {
+        this._syncAnimationSettings();
         document.body.classList.toggle('no-animations', !this._settings.animationsEnabled);
         document.body.classList.toggle('high-contrast-mode', Boolean(this._settings.highContrastMode));
         document.body.classList.toggle('shortcut-tooltips-disabled', !this._settings.shortcutTooltipsEnabled);

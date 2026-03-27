@@ -4902,10 +4902,18 @@ function initSettingsPanel() {
         };
     }
 
-    // Animations toggle
-    const animToggle = document.getElementById('setting-animations');
-    animToggle.checked = settings.get('animationsEnabled');
-    animToggle.onchange = () => settings.set('animationsEnabled', animToggle.checked);
+    // Animations mode
+    const animSelect = document.getElementById('setting-animations');
+    if (animSelect) {
+        animSelect.value = settings.get('animationMode');
+        if (!animSelect.value) {
+            animSelect.value = DEFAULTS.animationMode;
+        }
+        animSelect.onchange = () => {
+            settings.set('animationMode', animSelect.value);
+            animSelect.blur();
+        };
+    }
 
     const highContrastToggle = document.getElementById('setting-high-contrast');
     if (highContrastToggle) {

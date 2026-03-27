@@ -604,11 +604,15 @@
         <div class="setting-group">
           <h3>Interface</h3>
           <div class="setting-row">
-            <div class="setting-label">Animations</div>
-            <label class="toggle">
-              <input type="checkbox" id="setting-animations">
-              <span class="toggle-slider"></span>
-            </label>
+            <div class="setting-label">
+              Animations
+              <small>Auto follows your device motion preference</small>
+            </div>
+            <select id="setting-animations">
+              <option value="auto">Auto</option>
+              <option value="on">On</option>
+              <option value="off">Off</option>
+            </select>
           </div>
 
           <div class="setting-row" id="setting-hide-ui-row">
