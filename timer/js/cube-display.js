@@ -170,7 +170,7 @@ const SQUARE1_INNER_RADIUS = 0.65;
 const SQUARE1_TOP_START_ANGLE = 75;
 const SQUARE1_BOTTOM_START_ANGLE = 105;
 const SQUARE1_OUTLINE_COLOR = '#000000';
-const SQUARE1_OUTLINE_TARGET_PX = 1.2;
+const SQUARE1_OUTLINE_WIDTH = 0.018;
 const SQUARE1_MIDDLE_LAYER_WIDTH = 2.0;
 const SQUARE1_MIDDLE_LAYER_HEIGHT = 0.3;
 const SQUARE1_MIDDLE_LAYER_Y_OFFSET = -1.15;
@@ -1805,6 +1805,24 @@ function getSquare1MiddleLayerPolygons(mlFlipped, centerX = 0, centerY = 0) {
     ];
 }
 
+function getSquare1ReferenceFacePolygons(startAngleDeg, centerX = 0, centerY = 0) {
+    const polygons = [];
+    const referencePieces = [SQUARE1_PIECES[0], SQUARE1_PIECES[1]];
+
+    for (let index = 0; index < 12; index += 1) {
+        const angleDeg = startAngleDeg - (index * 30);
+
+        referencePieces.forEach((piece) => {
+            const angleRad = getSquare1PieceRotationRad(piece, angleDeg);
+            getSquare1PieceBasePolygons(piece).forEach((polygon) => {
+                polygons.push(transformSquare1Polygon(polygon, angleRad, centerX, centerY));
+            });
+        });
+    }
+
+    return polygons;
+}
+
 function drawSquare1Piece(ctx, piece, angleDeg) {
     if (!piece) return;
 
@@ -1860,6 +1878,37 @@ function getSquare1LayoutCenters({ topOnly = false } = {}) {
     };
 }
 
+function getSquare1LayoutBounds({ topOnly = false } = {}) {
+    const { topFaceCenter, bottomFaceCenter } = getSquare1LayoutCenters({ topOnly });
+    const polygons = [
+        ...getSquare1ReferenceFacePolygons(
+            SQUARE1_TOP_START_ANGLE,
+            topFaceCenter[0],
+            topFaceCenter[1],
+        ),
+        createRectanglePolygon(
+            topFaceCenter[0] - (SQUARE1_MIDDLE_LAYER_WIDTH / 2),
+            topFaceCenter[1] + SQUARE1_MIDDLE_LAYER_Y_OFFSET - (SQUARE1_MIDDLE_LAYER_HEIGHT / 2),
+            SQUARE1_MIDDLE_LAYER_WIDTH,
+            SQUARE1_MIDDLE_LAYER_HEIGHT,
+        ),
+        ...getSquare1MiddleLayerPolygons(false, topFaceCenter[0], topFaceCenter[1]),
+        ...getSquare1MiddleLayerPolygons(true, topFaceCenter[0], topFaceCenter[1]),
+    ];
+
+    if (bottomFaceCenter) {
+        polygons.push(
+            ...getSquare1ReferenceFacePolygons(
+                SQUARE1_BOTTOM_START_ANGLE,
+                bottomFaceCenter[0],
+                bottomFaceCenter[1],
+            ),
+        );
+    }
+
+    return getPolygonBounds(polygons);
+}
+
 export function drawSquare1(canvas, square1, { topOnly = false } = {}) {
     const ctx = canvas.getContext('2d');
     const { width: w, height: h } = getCanvasLogicalSize(canvas);
@@ -1868,31 +1917,7 @@ export function drawSquare1(canvas, square1, { topOnly = false } = {}) {
 
     ctx.clearRect(0, 0, w, h);
 
-    const polygons = [
-        ...getSquare1FacePolygons(state.top, SQUARE1_TOP_START_ANGLE, topFaceCenter[0], topFaceCenter[1]),
-        createRectanglePolygon(
-            topFaceCenter[0] - (SQUARE1_MIDDLE_LAYER_WIDTH / 2),
-            topFaceCenter[1] + SQUARE1_MIDDLE_LAYER_Y_OFFSET - (SQUARE1_MIDDLE_LAYER_HEIGHT / 2),
-            SQUARE1_MIDDLE_LAYER_WIDTH,
-            SQUARE1_MIDDLE_LAYER_HEIGHT,
-        ),
-        ...getSquare1MiddleLayerPolygons(state.mlFlipped, topFaceCenter[0], topFaceCenter[1]),
-    ];
-
-    if (bottomFaceCenter) {
-        polygons.push(
-            ...getSquare1FacePolygons(
-                state.bottom,
-                SQUARE1_BOTTOM_START_ANGLE,
-                bottomFaceCenter[0],
-                bottomFaceCenter[1],
-            ),
-        );
-    }
-
-    if (polygons.length === 0) return;
-
-    const bounds = getPolygonBounds(polygons);
+    const bounds = getSquare1LayoutBounds({ topOnly });
     const worldWidth = Math.max(0.001, bounds.maxX - bounds.minX);
     const worldHeight = Math.max(0.001, bounds.maxY - bounds.minY);
     const margin = Math.max(6, Math.min(w, h) * SQUARE1_LAYOUT_MARGIN_RATIO);
@@ -1907,7 +1932,7 @@ export function drawSquare1(canvas, square1, { topOnly = false } = {}) {
     ctx.scale(scale, -scale);
     ctx.translate(-centerX, -centerY);
     ctx.strokeStyle = SQUARE1_OUTLINE_COLOR;
-    ctx.lineWidth = Math.max(0.01, SQUARE1_OUTLINE_TARGET_PX / scale);
+    ctx.lineWidth = SQUARE1_OUTLINE_WIDTH;
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
 
