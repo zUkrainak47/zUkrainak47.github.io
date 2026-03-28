@@ -572,14 +572,14 @@ tr:hover .solve-actions {
     #stats-summary {
         margin: var(--space-md);
         padding: 14px;
-        border-radius: var(--radius-xl);
+        border-radius: 12px;
     }
 
     #session-info {
-        gap: 8px;
+        gap: var(--space-xs);
         flex-wrap: wrap;
-        margin: 0;
-        padding: 0 var(--space-md) var(--space-sm);
+        margin: 0 var(--space-md) var(--space-sm);
+        padding: 0;
     }
 
     #session-info span {
@@ -589,7 +589,7 @@ tr:hover .solve-actions {
         min-width: 0;
         padding: 6px 10px;
         border: 1px solid var(--text-muted);
-        border-radius: var(--radius-xl);
+        border-radius: 12px;
     }
 
     #stats-filter-bar {
@@ -666,12 +666,13 @@ tr:hover .solve-actions {
 
     body[data-mobile-panel="stats"] #session-info {
         display: flex;
-        margin: 0;
-        padding: 0 var(--space-sm) 10px;
+        gap: var(--space-xs);
+        margin: 0 var(--space-sm) var(--space-sm);
+        padding: 0;
     }
 
     body[data-mobile-panel="stats"] #stats-summary {
-        margin: var(--space-xs) var(--space-sm) var(--space-sm);
+        margin: var(--space-xs) var(--space-sm) var(--space-xs);
         padding: 12px;
         border-radius: 12px;
     }
