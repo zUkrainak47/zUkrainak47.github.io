@@ -874,25 +874,37 @@ class Timer extends EventEmitter {
         let displayStr = text;
         if (!document.body.classList.contains('zen')) {
             const width = window.innerWidth || document.documentElement.clientWidth;
-            if (width > 1100 && text.length > 5 && !text.includes('DNF') && !text.includes('Inspect')) {
-                const hasPlus = text.endsWith('+');
-                let numberPart = hasPlus ? text.slice(0, -1) : text;
-                const maxChars = width < 1200 ? 5 : 6 + Math.floor((width - 1200) / 70);
-                
-                const limit = hasPlus ? maxChars - 1 : maxChars;
-                
-                if (numberPart.length > limit) {
-                    const colonIndex = numberPart.indexOf(':');
-                    if (colonIndex !== -1 && colonIndex >= limit - 2) {
-                        numberPart = numberPart.substring(0, colonIndex) + 'm';
-                    } else {
-                        numberPart = numberPart.substring(0, limit);
-                        if (numberPart.endsWith('.')) {
-                            numberPart = numberPart.substring(0, numberPart.length - 1);
+            const height = window.innerHeight || document.documentElement.clientHeight;
+
+            if (!text.includes('DNF') && !text.includes('Inspect')) {
+                let maxChars = null;
+
+                if (width > 1100) {
+                    if (text.length > 5) {
+                        maxChars = width < 1200 ? 5 : 6 + Math.floor((width - 1200) / 70);
+                    }
+                } else if (height > width) {
+                    maxChars = width < 360 ? 7 : 8;
+                }
+
+                if (maxChars !== null) {
+                    const hasPlus = text.endsWith('+');
+                    let numberPart = hasPlus ? text.slice(0, -1) : text;
+                    const limit = hasPlus ? maxChars - 1 : maxChars;
+                    
+                    if (numberPart.length > limit) {
+                        const colonIndex = numberPart.indexOf(':');
+                        if (colonIndex !== -1 && colonIndex >= limit - 2) {
+                            numberPart = numberPart.substring(0, colonIndex) + 'm';
+                        } else {
+                            numberPart = numberPart.substring(0, limit);
+                            if (numberPart.endsWith('.')) {
+                                numberPart = numberPart.substring(0, numberPart.length - 1);
+                            }
                         }
                     }
+                    displayStr = hasPlus ? numberPart + '+' : numberPart;
                 }
-                displayStr = hasPlus ? numberPart + '+' : numberPart;
             }
         }
 
