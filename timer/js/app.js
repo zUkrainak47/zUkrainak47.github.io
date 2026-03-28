@@ -2881,6 +2881,7 @@ function syncScrambleTypeMenus(type = getSelectedScrambleType()) {
     previewButton?.classList.toggle('square1-preview-type', activeType === 'sq1');
     previewButton?.classList.toggle('pyraminx-preview-type', activeType === 'pyram');
     previewButton?.classList.toggle('clock-preview-type', activeType === 'clock');
+    previewButton?.classList.toggle('megaminx-preview-type', activeType === 'minx');
 }
 
 async function loadNewScramble() {
