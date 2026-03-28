@@ -2823,7 +2823,12 @@ function setZenMode(isZen) {
     document.body.classList.toggle('zen', nextZen);
     settings.set('zenMode', nextZen);
     syncZenButtonState();
-    if (didChange) resetMobileScrambleLayoutFreeze({ clearSnapshot: true });
+    if (didChange) {
+        resetMobileScrambleLayoutFreeze({ clearSnapshot: true });
+        if (typeof timer.refreshDisplayRules === 'function') {
+            timer.refreshDisplayRules();
+        }
+    }
     scheduleViewportLayoutSync();
 }
 

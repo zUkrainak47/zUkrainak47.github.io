@@ -53,6 +53,7 @@ class Timer extends EventEmitter {
         this._onDocumentPointerDown = this._onDocumentPointerDown.bind(this);
         this._onCapturedClick = this._onCapturedClick.bind(this);
         this._tick = this._tick.bind(this);
+        this.refreshDisplayRules = this.refreshDisplayRules.bind(this);
     }
 
     init(displayEl, interactionEls = [displayEl]) {
@@ -66,6 +67,7 @@ class Timer extends EventEmitter {
         document.addEventListener('pointerup', this._onPointerUp);
         document.addEventListener('pointercancel', this._onPointerCancel);
         document.addEventListener('click', this._onCapturedClick, true);
+        window.addEventListener('resize', this.refreshDisplayRules);
         this._interactionEls.forEach((el) => {
             el.addEventListener('pointerdown', this._onPointerDown);
             el.addEventListener('pointerup', this._onPointerUp);
@@ -84,6 +86,7 @@ class Timer extends EventEmitter {
         document.removeEventListener('pointerup', this._onPointerUp);
         document.removeEventListener('pointercancel', this._onPointerCancel);
         document.removeEventListener('click', this._onCapturedClick, true);
+        window.removeEventListener('resize', this.refreshDisplayRules);
         this._interactionEls.forEach((el) => {
             el.removeEventListener('pointerdown', this._onPointerDown);
             el.removeEventListener('pointerup', this._onPointerUp);
@@ -858,9 +861,44 @@ class Timer extends EventEmitter {
         this._displayEl.dataset.timerState = state;
     }
 
+    refreshDisplayRules() {
+        if (this._lastFullText) {
+            this._updateDisplay(this._lastFullText);
+        }
+    }
+
     _updateDisplay(text) {
+        this._lastFullText = text;
         if (!this._displayEl) return;
-        this._displayEl.textContent = text;
+
+        let displayStr = text;
+        if (!document.body.classList.contains('zen')) {
+            const width = window.innerWidth || document.documentElement.clientWidth;
+            if (width > 1100 && text.length > 5 && !text.includes('DNF') && !text.includes('Inspect')) {
+                const hasPlus = text.endsWith('+');
+                let numberPart = hasPlus ? text.slice(0, -1) : text;
+                const maxChars = width < 1200 ? 5 : 6 + Math.floor((width - 1200) / 70);
+                
+                const limit = hasPlus ? maxChars - 1 : maxChars;
+                
+                if (numberPart.length > limit) {
+                    const colonIndex = numberPart.indexOf(':');
+                    if (colonIndex !== -1 && colonIndex >= limit - 2) {
+                        numberPart = numberPart.substring(0, colonIndex) + 'm';
+                    } else {
+                        numberPart = numberPart.substring(0, limit);
+                        if (numberPart.endsWith('.')) {
+                            numberPart = numberPart.substring(0, numberPart.length - 1);
+                        }
+                    }
+                }
+                displayStr = hasPlus ? numberPart + '+' : numberPart;
+            }
+        }
+
+        if (this._displayEl.textContent !== displayStr) {
+            this._displayEl.textContent = displayStr;
+        }
     }
 
     setDisplay(text) {
