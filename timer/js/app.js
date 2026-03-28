@@ -1841,20 +1841,21 @@ function drawPyraminxPreviewButtonFace(face) {
 
     const { ctx, width, height } = prepared;
     const padding = Math.max(0.75, Math.min(width, height) * 0.05);
+    const maxTriangleHeight = (height / 2 - padding) / 0.59;
     const sideLength = Math.max(
         0,
         Math.min(
             width - (padding * 2),
-            (height - (padding * 2)) / PYRAMINX_PREVIEW_BUTTON_TRIANGLE_HEIGHT_RATIO,
+            maxTriangleHeight / PYRAMINX_PREVIEW_BUTTON_TRIANGLE_HEIGHT_RATIO,
         ),
     );
     const triangleHeight = sideLength * PYRAMINX_PREVIEW_BUTTON_TRIANGLE_HEIGHT_RATIO;
     const originX = (width - sideLength) / 2;
-    const originY = (height - triangleHeight) / 2;
+    const originY = (height / 2) - (triangleHeight * 0.59);
     const a = [originX, originY + triangleHeight];
     const b = [originX + sideLength, originY + triangleHeight];
     const c = [originX + (sideLength / 2), originY];
-    const stickerInset = Math.min(0.5, Math.max(0.14, sideLength * 0.018));
+    const stickerInset = Math.min(0.5, Math.max(0.14, sideLength * 0.018)) * 0.5;
     const outlineWidth = Math.max(0.32, Math.min(0.65, sideLength * 0.03));
     const triangleCenter = average2DPoints([a, b, c]);
 
@@ -2864,6 +2865,7 @@ function syncScrambleTypeMenus(type = getSelectedScrambleType()) {
     });
 
     previewButton?.classList.toggle('square1-preview-type', activeType === 'sq1');
+    previewButton?.classList.toggle('pyraminx-preview-type', activeType === 'pyram');
     previewButton?.classList.toggle('clock-preview-type', activeType === 'clock');
 }
 

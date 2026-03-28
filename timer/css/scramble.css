@@ -827,7 +827,8 @@
         height: 25px;
     }
 
-    #btn-scramble-preview.square1-preview-type .scramble-preview-face-icon {
+    #btn-scramble-preview.square1-preview-type .scramble-preview-face-icon,
+    #btn-scramble-preview.pyraminx-preview-type .scramble-preview-face-icon {
         width: 30px;
         height: 30px;
     }
