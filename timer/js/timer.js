@@ -1,5 +1,5 @@
 import { settings } from './settings.js?v=2';
-import { EventEmitter, formatTime } from './utils.js';
+import { EventEmitter, formatTime, truncateTimeDisplay } from './utils.js';
 
 const State = {
     IDLE: 'idle',
@@ -888,22 +888,7 @@ class Timer extends EventEmitter {
                 }
 
                 if (maxChars !== null) {
-                    const hasPlus = text.endsWith('+');
-                    let numberPart = hasPlus ? text.slice(0, -1) : text;
-                    const limit = hasPlus ? maxChars - 1 : maxChars;
-                    
-                    if (numberPart.length > limit) {
-                        const colonIndex = numberPart.indexOf(':');
-                        if (colonIndex !== -1 && colonIndex >= limit - 2) {
-                            numberPart = numberPart.substring(0, colonIndex) + 'm';
-                        } else {
-                            numberPart = numberPart.substring(0, limit);
-                            if (numberPart.endsWith('.')) {
-                                numberPart = numberPart.substring(0, numberPart.length - 1);
-                            }
-                        }
-                    }
-                    displayStr = hasPlus ? numberPart + '+' : numberPart;
+                    displayStr = truncateTimeDisplay(text, maxChars);
                 }
             }
         }

@@ -3,7 +3,7 @@ import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScram
 import { sessionManager } from './session.js?v=2';
 import { settings, DEFAULTS } from './settings.js?v=2';
 import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=2';
-import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate } from './utils.js';
+import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, truncateTimeDisplay } from './utils.js';
 import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=13';
 import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=18';
 import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=10';
@@ -2401,7 +2401,9 @@ async function init() {
     initKeyboardShortcuts();
     initTimerClick();
     window.addEventListener('resize', scheduleViewportLayoutSync);
+    window.addEventListener('resize', syncMobileSummaryDisplays);
     window.addEventListener('orientationchange', scheduleViewportLayoutSync);
+    window.addEventListener('orientationchange', syncMobileSummaryDisplays);
     scheduleViewportLayoutSync();
 
     if (shouldLoadInitialScramble) {
@@ -4420,6 +4422,29 @@ function refreshUI() {
     scheduleViewportLayoutSync();
 }
 
+let lastSummaryValues = { ao5: null, ao12: null, ao100: null, meanStr: '-' };
+
+function syncMobileSummaryDisplays() {
+    const width = window.innerWidth || document.documentElement.clientWidth;
+    const height = window.innerHeight || document.documentElement.clientHeight;
+    let maxSummaryChars = null;
+    if (height > width && width < 630) {
+        maxSummaryChars = 6;
+    }
+
+    const fmt = (val) => maxSummaryChars ? truncateTimeDisplay(formatTime(val), maxSummaryChars) : formatTime(val);
+
+    const ao5El = document.getElementById('mobile-summary-ao5');
+    const ao12El = document.getElementById('mobile-summary-ao12');
+    const ao100El = document.getElementById('mobile-summary-ao100');
+    const meanEl = document.getElementById('mobile-summary-mean');
+
+    if (ao5El) ao5El.textContent = lastSummaryValues.ao5 != null ? fmt(lastSummaryValues.ao5) : '-';
+    if (ao12El) ao12El.textContent = lastSummaryValues.ao12 != null ? fmt(lastSummaryValues.ao12) : '-';
+    if (ao100El) ao100El.textContent = lastSummaryValues.ao100 != null ? fmt(lastSummaryValues.ao100) : '-';
+    if (meanEl) meanEl.textContent = maxSummaryChars ? truncateTimeDisplay(lastSummaryValues.meanStr, maxSummaryChars) : lastSummaryValues.meanStr;
+}
+
 function updateTimerInfo(stats, solves) {
     const infoEl = document.getElementById('timer-info');
 
@@ -4432,14 +4457,17 @@ function updateTimerInfo(stats, solves) {
     ao12El.textContent = stats.current.ao12 != null ? formatTime(stats.current.ao12) : '-';
 
     const validTimes = solves.map(s => getEffectiveTime(s)).filter(t => t !== Infinity);
-    const mean = validTimes.length > 0
+    const meanStr = validTimes.length > 0
         ? formatTime(validTimes.reduce((a, b) => a + b, 0) / validTimes.length)
         : '-';
 
-    document.getElementById('mobile-summary-ao5').textContent = stats.current.ao5 != null ? formatTime(stats.current.ao5) : '-';
-    document.getElementById('mobile-summary-ao12').textContent = stats.current.ao12 != null ? formatTime(stats.current.ao12) : '-';
-    document.getElementById('mobile-summary-ao100').textContent = stats.current.ao100 != null ? formatTime(stats.current.ao100) : '-';
-    document.getElementById('mobile-summary-mean').textContent = mean;
+    lastSummaryValues = {
+        ao5: stats.current.ao5,
+        ao12: stats.current.ao12,
+        ao100: stats.current.ao100,
+        meanStr: meanStr
+    };
+    syncMobileSummaryDisplays();
 
     document.querySelectorAll('#mobile-summary-card [data-mobile-summary-action]').forEach((cell) => {
         const action = cell.dataset.mobileSummaryAction;

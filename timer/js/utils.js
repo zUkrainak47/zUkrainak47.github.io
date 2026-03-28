@@ -211,3 +211,34 @@ export class EventEmitter {
     (this._listeners[event] || []).forEach(fn => fn(...args));
   }
 }
+
+/**
+ * Truncate a time string based on character max limits
+ * Handles specific speedcubing notations like +2, decimals, and minutes
+ * @param {string} text - The time string to truncate
+ * @param {number} maxChars - Maximum characters allowed
+ * @returns {string} The truncated time string
+ */
+export function truncateTimeDisplay(text, maxChars) {
+  if (maxChars == null || text === '-' || text.includes('DNF') || text.includes('Inspect')) {
+    return text;
+  }
+  
+  const hasPlus = text.endsWith('+');
+  let numberPart = hasPlus ? text.slice(0, -1) : text;
+  const limit = hasPlus ? maxChars - 1 : maxChars;
+  
+  if (numberPart.length > limit) {
+    const colonIndex = numberPart.indexOf(':');
+    if (colonIndex !== -1 && colonIndex >= limit - 2) {
+        numberPart = numberPart.substring(0, colonIndex) + 'm';
+    } else {
+        numberPart = numberPart.substring(0, limit);
+        if (numberPart.endsWith('.')) {
+            numberPart = numberPart.substring(0, numberPart.length - 1);
+        }
+    }
+  }
+  
+  return hasPlus ? numberPart + '+' : numberPart;
+}
