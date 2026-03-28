@@ -1891,6 +1891,20 @@ function drawPlaceholderPreviewButtonFace() {
 }
 
 function updateScramblePreviewButtonFace(scramble, type = getCurrentScrambleType()) {
+    _updateScramblePreviewButtonFace(scramble, type);
+    requestAnimationFrame(updateFaviconFromScramblePreviewButton);
+}
+
+function updateFaviconFromScramblePreviewButton() {
+    const canvas = getScramblePreviewButtonCanvas();
+    if (!canvas) return;
+    const favicon = document.querySelector('link[rel="icon"]');
+    if (favicon) {
+        favicon.href = canvas.toDataURL('image/png');
+    }
+}
+
+function _updateScramblePreviewButtonFace(scramble, type) {
     if (!supportsScramblePreview(type)) {
         drawPlaceholderPreviewButtonFace();
         return;
