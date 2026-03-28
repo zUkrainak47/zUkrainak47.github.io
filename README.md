@@ -5,7 +5,9 @@
 ### Everything is backed up in your browser locally as well, so you won't have to input all of your data every time.
 I hope this is helpful to some. Good luck on your pulls! :) -->
 
-I like clean UI so decided to remake [csTimer](https://cstimer.net/) in a more modern way, feedback appreciated! Mobile version inspired by [CubeTime](https://cubetime.app/).
+I like clean UI so decided to remake [csTimer](https://cstimer.net/) in a more modern way.
+
+Mobile version inspired by [CubeTime](https://cubetime.app/).
 
 
 ## Desktop version
