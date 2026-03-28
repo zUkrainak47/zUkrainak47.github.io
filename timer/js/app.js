@@ -1280,9 +1280,11 @@ function doesDesktopLargeScrambleTextFit(scrambleText, timerDisplay, timerDispla
 
     const scrambleRect = scrambleText.getBoundingClientRect();
     const timerRect = timerDisplay.getBoundingClientRect();
-    const timerTransform = timerDisplayWrapper ? getComputedStyle(timerDisplayWrapper).transform : 'none';
+    const wrapperTransform = timerDisplayWrapper ? getComputedStyle(timerDisplayWrapper).transform : 'none';
+    const timerTransform = getComputedStyle(timerDisplay).transform;
+    const { y: wrapperTranslateY } = getTransformTranslate(wrapperTransform);
     const { y: timerTranslateY } = getTransformTranslate(timerTransform);
-    const baselineTimerTop = timerRect.top - timerTranslateY;
+    const baselineTimerTop = timerRect.top - wrapperTranslateY - timerTranslateY;
     return scrambleRect.bottom <= baselineTimerTop + 0.5;
 }
 
