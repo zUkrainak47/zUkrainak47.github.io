@@ -5,7 +5,7 @@ import { settings, DEFAULTS } from './settings.js';
 import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=2';
 import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate } from './utils.js';
 import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=12';
-import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay } from './cube-display.js?v=18';
+import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=18';
 import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=9';
 import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer } from './storage.js';
 
@@ -269,12 +269,14 @@ const MEGAMINX_PREVIEW_SCRAMBLE_TYPES = new Set(['minx']);
 const PYRAMINX_PREVIEW_SCRAMBLE_TYPES = new Set(['pyram']);
 const SKEWB_PREVIEW_SCRAMBLE_TYPES = new Set(['skewb']);
 const SQUARE1_PREVIEW_SCRAMBLE_TYPES = new Set(['sq1']);
+const CLOCK_PREVIEW_SCRAMBLE_TYPES = new Set(['clock']);
 const SCRAMBLE_PREVIEW_TYPES = new Set([
     ...CUBE_PREVIEW_SCRAMBLE_TYPES,
     ...MEGAMINX_PREVIEW_SCRAMBLE_TYPES,
     ...PYRAMINX_PREVIEW_SCRAMBLE_TYPES,
     ...SKEWB_PREVIEW_SCRAMBLE_TYPES,
     ...SQUARE1_PREVIEW_SCRAMBLE_TYPES,
+    ...CLOCK_PREVIEW_SCRAMBLE_TYPES,
 ]);
 const PYRAMINX_PREVIEW_BUTTON_FACE_INDEX = 1;
 const SCRAMBLE_PREVIEW_BUTTON_PLACEHOLDER_SIZE = 3;
@@ -1464,6 +1466,10 @@ function supportsSquare1Preview(type = getCurrentScrambleType()) {
     return SQUARE1_PREVIEW_SCRAMBLE_TYPES.has(type);
 }
 
+function supportsClockPreview(type = getCurrentScrambleType()) {
+    return CLOCK_PREVIEW_SCRAMBLE_TYPES.has(type);
+}
+
 function supportsScramblePreview(type = getCurrentScrambleType()) {
     return SCRAMBLE_PREVIEW_TYPES.has(type);
 }
@@ -1539,18 +1545,21 @@ function syncScramblePreviewCanvasLayout(type = getCurrentScrambleType()) {
     const usePyraminxLayout = supportsPyraminxPreview(type);
     const useSkewbLayout = supportsSkewbPreview(type);
     const useSquare1Layout = supportsSquare1Preview(type);
+    const useClockLayout = supportsClockPreview(type);
 
     const panelCanvasContainer = getEl('cube-canvas-container');
     panelCanvasContainer?.classList.toggle('megaminx-preview-layout', useMegaminxLayout);
     panelCanvasContainer?.classList.toggle('pyraminx-preview-layout', usePyraminxLayout);
     panelCanvasContainer?.classList.toggle('skewb-preview-layout', useSkewbLayout);
     panelCanvasContainer?.classList.toggle('square1-preview-layout', useSquare1Layout);
+    panelCanvasContainer?.classList.toggle('clock-preview-layout', useClockLayout);
 
     const modalCanvasContainer = getScramblePreviewModalCanvasContainer();
     modalCanvasContainer?.classList.toggle('megaminx-preview-layout', useMegaminxLayout);
     modalCanvasContainer?.classList.toggle('pyraminx-preview-layout', usePyraminxLayout);
     modalCanvasContainer?.classList.toggle('skewb-preview-layout', useSkewbLayout);
     modalCanvasContainer?.classList.toggle('square1-preview-layout', useSquare1Layout);
+    modalCanvasContainer?.classList.toggle('clock-preview-layout', useClockLayout);
 
     const promptCanvasContainer = getEl('prompt-scramble-preview-container');
     promptCanvasContainer?.classList.toggle('megaminx-preview-layout', useMegaminxLayout);
@@ -1935,6 +1944,19 @@ function updateScramblePreviewButtonFace(scramble, type = getCurrentScrambleType
         return;
     }
 
+    if (supportsClockPreview(type)) {
+        const canvas = getScramblePreviewButtonCanvas();
+        if (!(canvas instanceof HTMLCanvasElement)) return;
+        if (!prepareScramblePreviewButtonCanvas(canvas)) return;
+
+        drawClock(
+            canvas,
+            applyClockScramble(scramble),
+            { previewOnly: true },
+        );
+        return;
+    }
+
     const previewScramble = mapScrambleForPreview(scramble, type);
     const cube = applyScramble(
         previewScramble,
@@ -1993,6 +2015,14 @@ function renderScramblePreviewDisplays(scramble, type = getCurrentScrambleType()
         if (mainCanvas) updateSquare1Display(mainCanvas, normalizedScramble);
         if (scramblePreviewModalCanvas) updateSquare1Display(scramblePreviewModalCanvas, normalizedScramble);
         if (promptCanvas && promptCanvas.offsetParent !== null) updateSquare1Display(promptCanvas, normalizedScramble);
+        updateScramblePreviewButtonFace(normalizedScramble, type);
+        return;
+    }
+
+    if (supportsClockPreview(type)) {
+        if (mainCanvas) updateClockDisplay(mainCanvas, normalizedScramble);
+        if (scramblePreviewModalCanvas) updateClockDisplay(scramblePreviewModalCanvas, normalizedScramble);
+        if (promptCanvas && promptCanvas.offsetParent !== null) updateClockDisplay(promptCanvas, normalizedScramble);
         updateScramblePreviewButtonFace(normalizedScramble, type);
         return;
     }
@@ -2834,6 +2864,7 @@ function syncScrambleTypeMenus(type = getSelectedScrambleType()) {
     });
 
     previewButton?.classList.toggle('square1-preview-type', activeType === 'sq1');
+    previewButton?.classList.toggle('clock-preview-type', activeType === 'clock');
 }
 
 async function loadNewScramble() {

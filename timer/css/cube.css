@@ -33,6 +33,10 @@
     --scramble-preview-panel-aspect-ratio: 2.05;
 }
 
+#cube-canvas-container.clock-preview-layout {
+    --scramble-preview-panel-aspect-ratio: 2;
+}
+
 #cube-canvas-container:hover {
     background: var(--surface-hover);
 }

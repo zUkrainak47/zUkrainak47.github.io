@@ -179,8 +179,8 @@ const SQUARE1_MIDDLE_LAYER_HEIGHT = 0.3;
 const SQUARE1_MIDDLE_LAYER_Y_OFFSET = -1.15;
 const SQUARE1_MIDDLE_LAYER_LEFT_RATIO = 0.37;
 const SQUARE1_TOP_FACE_CENTER = Object.freeze([-1.7, 0.06]);
-const SQUARE1_BOTTOM_FACE_CENTER = Object.freeze([1.7, 0.06]);
-const SQUARE1_SINGLE_FACE_CENTER = Object.freeze([0, 0.06]);
+const SQUARE1_BOTTOM_FACE_CENTER = Object.freeze([1.4, 0.06]);
+const SQUARE1_SINGLE_FACE_CENTER = Object.freeze([0.3, 0.06]);
 const SQUARE1_LAYOUT_MARGIN_RATIO = 0.08;
 const SQUARE1_EDGE_BASE_POLYGONS = Object.freeze([
     Object.freeze([
@@ -1936,7 +1936,7 @@ export function drawSquare1(canvas, square1, { topOnly = false } = {}) {
     const bounds = getSquare1LayoutBounds({ topOnly });
     const worldWidth = Math.max(0.001, bounds.maxX - bounds.minX);
     const worldHeight = Math.max(0.001, bounds.maxY - bounds.minY);
-    const margin = Math.max(6, Math.min(w, h) * SQUARE1_LAYOUT_MARGIN_RATIO);
+    const margin = 0;
     const availableWidth = Math.max(1, w - (margin * 2));
     const availableHeight = Math.max(1, h - (margin * 2));
     const scale = Math.min(availableWidth / worldWidth, availableHeight / worldHeight);
@@ -1990,6 +1990,11 @@ function redrawLastDisplay(canvas) {
 
     if (_lastDisplay.puzzle === 'square1') {
         drawSquare1(canvas, _lastDisplay.state);
+        return;
+    }
+
+    if (_lastDisplay.puzzle === 'clock') {
+        drawClock(canvas, _lastDisplay.state);
         return;
     }
 
@@ -2092,6 +2097,203 @@ export function updateMegaminxDisplay(canvas, scramble) {
     _lastDisplay = {
         puzzle: 'megaminx',
         state: applyMegaminxScramble(scramble),
+    };
+    if (!didSync) return;
+
+    const ctx = canvas.getContext('2d');
+    const pixelRatio = getCanvasPixelRatio();
+    ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+    redrawLastDisplay(canvas);
+}
+
+export function applyClockScramble(scrambleStr) {
+    let front = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+    let back  = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+    let pins = { UL: false, UR: false, DL: false, DR: false };
+
+    const tokens = (scrambleStr || '').trim().split(/\s+/).filter(Boolean);
+    
+    const mutate = (fIdxs, bIdxs, x) => {
+        for (let i of fIdxs) front[i] = positiveModulo(front[i] + x, 12);
+        for (let i of bIdxs) back[i] =  positiveModulo(back[i] - x, 12);
+    };
+
+    for (let token of tokens) {
+        if (token === 'y2') {
+            let temp = front;
+            front = back;
+            back = temp;
+            continue;
+        }
+
+        if (['UL', 'UR', 'DL', 'DR'].includes(token) && !token.includes('+') && !token.includes('-')) {
+            pins[token] = true;
+            continue;
+        }
+
+        let match = token.match(/^([A-Z]+)(\d+)([\+\-])$/);
+        if (!match) continue;
+
+        const move = match[1];
+        let x = parseInt(match[2], 10);
+        if (match[3] === '-') x = -x;
+
+        if (move === 'UR') mutate([1, 2, 4, 5], [0], x);
+        else if (move === 'DR') mutate([4, 5, 7, 8], [6], x);
+        else if (move === 'DL') mutate([3, 4, 6, 7], [8], x);
+        else if (move === 'UL') mutate([0, 1, 3, 4], [2], x);
+        else if (move === 'U') mutate([0, 1, 2, 3, 4, 5], [0, 2], x);
+        else if (move === 'R') mutate([1, 2, 4, 5, 7, 8], [0, 6], x);
+        else if (move === 'D') mutate([3, 4, 5, 6, 7, 8], [6, 8], x);
+        else if (move === 'L') mutate([0, 1, 3, 4, 6, 7], [2, 8], x);
+        else if (move === 'ALL') mutate([0, 1, 2, 3, 4, 5, 6, 7, 8], [0, 2, 6, 8], x);
+    }
+
+    return { front, back, pins };
+}
+
+function drawClockFace(ctx, dials, pinsState, isBackFace) {
+    const S = 1;
+    const R_dial = 0.36;
+    const R_main = S + R_dial + 0.32; 
+    const R_corner = R_dial + 0.12;
+    const R_pin = 0.12;
+    const strokeW = 0.05;
+
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.arc(0, 0, R_main + strokeW, 0, Math.PI*2);
+    ctx.fill();
+    for (let dx of [-1, 1]) {
+        for (let dy of [-1, 1]) {
+            ctx.beginPath();
+            ctx.arc(dx*S, dy*S, R_corner + strokeW, 0, Math.PI*2);
+            ctx.fill();
+        }
+    }
+
+    ctx.fillStyle = isBackFace ? '#315f9b' : '#57c5f8';
+    ctx.beginPath();
+    ctx.arc(0, 0, R_main, 0, Math.PI*2);
+    ctx.fill();
+    for (let dx of [-1, 1]) {
+        for (let dy of [-1, 1]) {
+            ctx.beginPath();
+            ctx.arc(dx*S, dy*S, R_corner, 0, Math.PI*2);
+            ctx.fill();
+        }
+    }
+
+    for (let i = 0; i < 9; i++) {
+        const col = (i % 3) - 1;
+        const row = Math.floor(i / 3) - 1;
+        const cx = col * S;
+        const cy = row * S;
+
+        ctx.fillStyle = '#000';
+        ctx.beginPath(); ctx.arc(cx, cy, R_dial + strokeW*0.6, 0, Math.PI*2); ctx.fill();
+        
+        ctx.fillStyle = isBackFace ? '#57c5f8' : '#315f9b';
+        ctx.beginPath(); ctx.arc(cx, cy, R_dial, 0, Math.PI*2); ctx.fill();
+
+        const angle = dials[i] * (Math.PI / 6);
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(angle);
+        
+        ctx.fillStyle = '#FFD700';
+        ctx.strokeStyle = '#FF0000';
+        ctx.lineWidth = strokeW * 0.4;
+        ctx.lineJoin = 'round';
+        
+        ctx.beginPath();
+        ctx.arc(0, 0, 0.06, 0, Math.PI, false);
+        ctx.lineTo(0, -R_dial * 0.85);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        
+        ctx.restore();
+    }
+
+    const pinPos = [
+        [-0.5, -0.5], [0.5, -0.5], 
+        [-0.5, 0.5],  [0.5, 0.5]
+    ];
+    for (let i = 0; i < 4; i++) {
+        const px = pinPos[i][0] * S;
+        const py = pinPos[i][1] * S;
+        
+        let isUp;
+        if (!isBackFace) {
+            if (i === 0) isUp = pinsState.UL;
+            else if (i === 1) isUp = pinsState.UR;
+            else if (i === 2) isUp = pinsState.DL;
+            else if (i === 3) isUp = pinsState.DR;
+        } else {
+            if (i === 0) isUp = !pinsState.UR;
+            else if (i === 1) isUp = !pinsState.UL;
+            else if (i === 2) isUp = !pinsState.DR;
+            else if (i === 3) isUp = !pinsState.DL;
+        }
+
+        ctx.fillStyle = '#000';
+        ctx.beginPath(); ctx.arc(px, py, R_pin + strokeW*0.6, 0, Math.PI*2); ctx.fill();
+        
+        ctx.fillStyle = isUp ? '#FFEB3B' : '#7b4c20';
+        ctx.beginPath(); ctx.arc(px, py, R_pin, 0, Math.PI*2); ctx.fill();
+    }
+}
+
+export function drawClock(canvas, clock, { previewOnly = false } = {}) {
+    const ctx = canvas.getContext('2d');
+    const { width: w, height: h } = getCanvasLogicalSize(canvas);
+    ctx.clearRect(0, 0, w, h);
+
+    const state = clock || {
+        front: [0,0,0,0,0,0,0,0,0],
+        back: [0,0,0,0,0,0,0,0,0],
+        pins: { UL: true, UR: true, DL: true, DR: true }
+    };
+
+    const bodyR = 1.73; // 1 + R_dial (0.36) + 0.32 + strokeW (0.05)
+    const gap = 0.3;
+    const totalW = previewOnly ? bodyR * 2 : bodyR * 4 + gap;
+    const totalH = bodyR * 2;
+    
+    // Use similar margin scaling to other 2D puzzle previews
+    const margin = 0;
+    const availableWidth = Math.max(1, w - (margin * 2));
+    const availableHeight = Math.max(1, h - (margin * 2));
+    const scale = Math.min(availableWidth / totalW, availableHeight / totalH);
+
+    ctx.save();
+    ctx.translate(w / 2, h / 2);
+    ctx.scale(scale, scale);
+
+    if (previewOnly) {
+        drawClockFace(ctx, state.front, state.pins, false);
+    } else {
+        const offset = bodyR + gap / 2;
+        ctx.save();
+        ctx.translate(-offset, 0);
+        drawClockFace(ctx, state.front, state.pins, false);
+        ctx.restore();
+
+        ctx.save();
+        ctx.translate(offset, 0);
+        drawClockFace(ctx, state.back, state.pins, true);
+        ctx.restore();
+    }
+
+    ctx.restore();
+}
+
+export function updateClockDisplay(canvas, scramble) {
+    const didSync = syncCanvasToDisplaySize(canvas);
+    _lastDisplay = {
+        puzzle: 'clock',
+        state: applyClockScramble(scramble),
     };
     if (!didSync) return;
 
