@@ -1285,7 +1285,14 @@ function doesDesktopLargeScrambleTextFit(scrambleText, timerDisplay, timerDispla
     const { y: wrapperTranslateY } = getTransformTranslate(wrapperTransform);
     const { y: timerTranslateY } = getTransformTranslate(timerTransform);
     const baselineTimerTop = timerRect.top - wrapperTranslateY - timerTranslateY;
-    return scrambleRect.bottom <= baselineTimerTop + 0.5;
+    
+    let fits = scrambleRect.bottom <= baselineTimerTop + 0.5;
+    
+    if (fits && scrambleText.dataset.scrambleLayout === 'megaminx-rows') {
+        fits = scrambleText.scrollWidth <= scrambleText.clientWidth + 1;
+    }
+    
+    return fits;
 }
 
 function syncDesktopLargeScrambleTextFit() {
