@@ -21,11 +21,11 @@ const SUBSET_BOOTSTRAP_QUEUE_FILL_DELAY_MS = 280;
 
 export const SCRAMBLE_TYPE_OPTIONS = Object.freeze([
     { id: '333', menuLabel: '3x3x3', buttonLabel: '3x3x3', generator: 'cubing', eventId: '333' },
-    { id: '222', menuLabel: '2x2x2', buttonLabel: '2x2', generator: 'cubing', eventId: '222' },
-    { id: '444', menuLabel: '4x4x4', buttonLabel: '4x4', generator: 'cubing', eventId: '444' },
-    { id: '555', menuLabel: '5x5x5', buttonLabel: '5x5', generator: 'cubing', eventId: '555' },
-    { id: '666', menuLabel: '6x6x6', buttonLabel: '6x6', generator: 'cubing', eventId: '666' },
-    { id: '777', menuLabel: '7x7x7', buttonLabel: '7x7', generator: 'cubing', eventId: '777' },
+    { id: '222', menuLabel: '2x2x2', buttonLabel: '2x2x2', generator: 'cubing', eventId: '222' },
+    { id: '444', menuLabel: '4x4x4', buttonLabel: '4x4x4', generator: 'cubing', eventId: '444' },
+    { id: '555', menuLabel: '5x5x5', buttonLabel: '5x5x5', generator: 'cubing', eventId: '555' },
+    { id: '666', menuLabel: '6x6x6', buttonLabel: '6x6x6', generator: 'cubing', eventId: '666' },
+    { id: '777', menuLabel: '7x7x7', buttonLabel: '7x7x7', generator: 'cubing', eventId: '777' },
     { id: 'pyram', menuLabel: 'Pyraminx', buttonLabel: 'Pyra', generator: 'cubing', eventId: 'pyram' },
     { id: 'minx', menuLabel: 'Megaminx', buttonLabel: 'Mega', generator: 'cubing', eventId: 'minx' },
     { id: 'skewb', menuLabel: 'Skewb', buttonLabel: 'Skewb', generator: 'cubing', eventId: 'skewb' },
