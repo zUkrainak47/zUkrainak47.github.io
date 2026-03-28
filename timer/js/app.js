@@ -1244,18 +1244,53 @@ function clearDesktopLargeScrambleTextFit(scrambleText = getEl('scramble-text'),
     setDesktopLargeScrambleFontSize(null, scrambleText, scrambleInput);
 }
 
-function doesDesktopLargeScrambleTextFit(scrambleText, timerDisplay) {
+function getTransformTranslate(transformValue) {
+    if (!transformValue || transformValue === 'none') {
+        return { x: 0, y: 0 };
+    }
+
+    if (typeof DOMMatrixReadOnly === 'function') {
+        const matrix = new DOMMatrixReadOnly(transformValue);
+        return { x: matrix.m41, y: matrix.m42 };
+    }
+
+    const matrix3dMatch = transformValue.match(/^matrix3d\((.+)\)$/);
+    if (matrix3dMatch) {
+        const values = matrix3dMatch[1].split(',').map((value) => Number.parseFloat(value.trim()));
+        return {
+            x: values[12] || 0,
+            y: values[13] || 0,
+        };
+    }
+
+    const matrixMatch = transformValue.match(/^matrix\((.+)\)$/);
+    if (matrixMatch) {
+        const values = matrixMatch[1].split(',').map((value) => Number.parseFloat(value.trim()));
+        return {
+            x: values[4] || 0,
+            y: values[5] || 0,
+        };
+    }
+
+    return { x: 0, y: 0 };
+}
+
+function doesDesktopLargeScrambleTextFit(scrambleText, timerDisplay, timerDisplayWrapper = getEl('timer-display-wrapper')) {
     if (!scrambleText || !timerDisplay) return true;
 
     const scrambleRect = scrambleText.getBoundingClientRect();
     const timerRect = timerDisplay.getBoundingClientRect();
-    return scrambleRect.bottom <= timerRect.top + 0.5;
+    const timerTransform = timerDisplayWrapper ? getComputedStyle(timerDisplayWrapper).transform : 'none';
+    const { y: timerTranslateY } = getTransformTranslate(timerTransform);
+    const baselineTimerTop = timerRect.top - timerTranslateY;
+    return scrambleRect.bottom <= baselineTimerTop + 0.5;
 }
 
 function syncDesktopLargeScrambleTextFit() {
     const scrambleText = getEl('scramble-text');
     const scrambleInput = getEl('scramble-input');
     const timerDisplay = getEl('timer-display');
+    const timerDisplayWrapper = getEl('timer-display-wrapper');
     if (!scrambleText || !scrambleInput || !timerDisplay) return;
 
     if (mobileViewportQuery.matches) {
@@ -1294,7 +1329,7 @@ function syncDesktopLargeScrambleTextFit() {
         const mid = (low + high) / 2;
         setDesktopLargeScrambleFontSize(mid, scrambleText, scrambleInput);
 
-        if (doesDesktopLargeScrambleTextFit(scrambleText, timerDisplay)) {
+        if (doesDesktopLargeScrambleTextFit(scrambleText, timerDisplay, timerDisplayWrapper)) {
             bestFontSizePx = mid;
             low = mid;
         } else {
