@@ -2402,6 +2402,7 @@ async function init() {
     initTimerClick();
     window.addEventListener('resize', scheduleViewportLayoutSync);
     window.addEventListener('resize', syncMobileSummaryDisplays);
+    window.addEventListener('resize', () => renderSolvesTable());
     window.addEventListener('orientationchange', scheduleViewportLayoutSync);
     window.addEventListener('orientationchange', syncMobileSummaryDisplays);
     scheduleViewportLayoutSync();
@@ -4881,8 +4882,19 @@ function handleStatClick(type, which, solves, stats) {
     }
 }
 
+let _lastTableParams = null;
+
 // ──── Solves Table ────
 function renderSolvesTable(solves, stats) {
+    if (solves && stats) {
+        _lastTableParams = { solves, stats };
+    } else if (_lastTableParams) {
+        solves = _lastTableParams.solves;
+        stats = _lastTableParams.stats;
+    } else {
+        return;
+    }
+
     const container = document.getElementById('solves-container');
     const tbody = document.getElementById('solves-tbody');
 
@@ -4984,18 +4996,19 @@ function renderSolvesTable(solves, stats) {
             html += `<tr style="height:${topPad}px"><td colspan="4"></td></tr>`;
         }
 
+        const isMobile = window.innerWidth <= 1100 || mobileViewportQuery.matches;
         for (let row = startRow; row < endRow; row++) {
             const i = _tableSortedIndices[row];
             const solve = solves[i];
             const ps = statsCache.getPerSolveAt(i);
-            const timeStr = formatSolveTime(solve);
+            const timeStr = isMobile ? formatSolveTime(solve) : truncateTimeDisplay(formatSolveTime(solve), 7);
 
             const isBestTime = statsCache.isNewBestAt(i);
             const isBestAo5 = isNewBestAo5Array[i];
             const isBestAo12 = isNewBestAo12Array[i];
 
-            const ao5Str = ps && ps.ao5 != null ? formatTime(ps.ao5) : '';
-            const ao12Str = ps && ps.ao12 != null ? formatTime(ps.ao12) : '';
+            const ao5Str = ps && ps.ao5 != null ? (isMobile ? formatTime(ps.ao5) : truncateTimeDisplay(formatTime(ps.ao5), 7)) : '';
+            const ao12Str = ps && ps.ao12 != null ? (isMobile ? formatTime(ps.ao12) : truncateTimeDisplay(formatTime(ps.ao12), 7)) : '';
 
             let indicator = '';
             if (solve.comment) indicator += '*';
