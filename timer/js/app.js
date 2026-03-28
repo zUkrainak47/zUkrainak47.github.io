@@ -2939,14 +2939,27 @@ function renderScrambleText(scrambleStr, type = getCurrentScrambleType()) {
 
     clearStructuredScrambleLayout(el);
 
-    if (type !== 'sq1' && type !== 'minx') {
-        el.textContent = scrambleStr;
+    const normalizedScramble = String(scrambleStr ?? '').trim();
+
+    if (!normalizedScramble) {
+        const emptyMessages = [
+            "Such empty...",
+            "Nothing but crickets...",
+            "It's quiet in here...",
+            "You found 💥Easter Egg💥",
+            "Don't quit your day job",
+            "Wait. That's illegal.",
+            "The Vault Keeper's name is 'Spooky'...",
+            "Try Ctrl+/",
+            "Ping @zukrainak47 on discord to suggest more quotes to put here"
+        ];
+        const randomMsg = emptyMessages[Math.floor(Math.random() * emptyMessages.length)];
+        el.innerHTML = `<span style="color: var(--text-muted); font-style: italic;">${randomMsg}</span>`;
         return;
     }
 
-    const normalizedScramble = String(scrambleStr ?? '').trim();
-    if (!normalizedScramble) {
-        el.textContent = normalizedScramble;
+    if (type !== 'sq1' && type !== 'minx') {
+        el.textContent = scrambleStr;
         return;
     }
 
