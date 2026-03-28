@@ -3049,12 +3049,16 @@ function initScrambleControls() {
         containerEl.classList.toggle('scramble-actions-visible', visible);
     }
 
+    let copyTimeout = null;
     function copyCurrentScramble() {
         if (textEl.classList.contains('loading')) return;
         navigator.clipboard.writeText(currentScramble);
-        const origColor = textEl.style.color;
         textEl.style.color = 'var(--stat-best)';
-        setTimeout(() => textEl.style.color = origColor, 500);
+        if (copyTimeout) clearTimeout(copyTimeout);
+        copyTimeout = setTimeout(() => {
+            textEl.style.color = '';
+            copyTimeout = null;
+        }, 500);
     }
 
     async function handleScrambleTypeSelection(nextType) {
