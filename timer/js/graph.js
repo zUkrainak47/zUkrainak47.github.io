@@ -1,5 +1,5 @@
 import { formatTime, getEffectiveTime, EventEmitter } from './utils.js';
-import { settings } from './settings.js';
+import { settings } from './settings.js?v=2';
 import { parseGraphStatType } from './stats.js?v=2';
 
 /**

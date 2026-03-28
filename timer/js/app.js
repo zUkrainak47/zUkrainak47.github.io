@@ -1,12 +1,12 @@
-import { timer } from './timer.js?v=6';
+import { timer } from './timer.js?v=7';
 import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble } from './scramble.js?v=14';
-import { sessionManager } from './session.js';
-import { settings, DEFAULTS } from './settings.js';
+import { sessionManager } from './session.js?v=2';
+import { settings, DEFAULTS } from './settings.js?v=2';
 import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=2';
 import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate } from './utils.js';
-import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=12';
+import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=13';
 import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=18';
-import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=9';
+import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=10';
 import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer } from './storage.js';
 
 let currentScramble = '';
@@ -205,6 +205,7 @@ let syncSettingsRowSeparators = () => { };
 let shortcutTooltipEl = null;
 let viewportLayoutFrame = null;
 let instantTimerTabLayoutCleanupFrame = null;
+let desktopScrambleTransitionSyncFrame = null;
 let summaryRowsCache = { signature: '', rows: [] };
 const rollingStatSummaryCache = new Map();
 const domCache = new Map();
@@ -222,6 +223,7 @@ const mobileScrambleFreezeState = {
     maxWidth: '',
     whiteSpace: '',
 };
+const desktopScrambleTransitionProperties = new Set();
 const quickActionsState = {
     visible: false,
     pinned: false,
@@ -1087,6 +1089,38 @@ function scheduleViewportLayoutSync() {
     });
 }
 
+function isDesktopScrambleWidthTransitionProperty(propertyName) {
+    return propertyName === 'width' || propertyName === 'max-width';
+}
+
+function queueDesktopScrambleTransitionSync() {
+    if (desktopScrambleTransitionSyncFrame != null) return;
+
+    desktopScrambleTransitionSyncFrame = window.requestAnimationFrame(() => {
+        desktopScrambleTransitionSyncFrame = null;
+        if (!mobileViewportQuery.matches) {
+            syncDesktopLargeScrambleTextFit();
+        }
+
+        if (desktopScrambleTransitionProperties.size > 0) {
+            queueDesktopScrambleTransitionSync();
+        }
+    });
+}
+
+function startDesktopScrambleTransitionSync(propertyName) {
+    if (!isDesktopScrambleWidthTransitionProperty(propertyName)) return;
+    desktopScrambleTransitionProperties.add(propertyName);
+    scheduleViewportLayoutSync();
+    queueDesktopScrambleTransitionSync();
+}
+
+function stopDesktopScrambleTransitionSync(propertyName) {
+    if (!isDesktopScrambleWidthTransitionProperty(propertyName)) return;
+    desktopScrambleTransitionProperties.delete(propertyName);
+    scheduleViewportLayoutSync();
+}
+
 function syncTimerTabLayoutWithoutAnimation() {
     if (instantTimerTabLayoutCleanupFrame != null) {
         window.cancelAnimationFrame(instantTimerTabLayoutCleanupFrame);
@@ -1159,6 +1193,122 @@ function syncDesktopScrambleBounds() {
     const nextWidthPx = Math.round(nextWidth);
     scrambleContainer.style.setProperty('--desktop-scramble-text-width', `${nextWidthPx}px`);
     scrambleContainer.style.setProperty('--desktop-scramble-text-half-width', `${Math.round(nextWidthPx / 2)}px`);
+}
+
+function syncDesktopInlineScrambleInputHeight(scrambleInput = getEl('scramble-input'), scrambleTextWrapper = getEl('scramble-text-wrapper')) {
+    if (mobileViewportQuery.matches) {
+        scrambleTextWrapper?.style.removeProperty('--desktop-scramble-input-offset-y');
+        return;
+    }
+
+    if (!scrambleInput || scrambleInput.style.display === 'none') {
+        scrambleTextWrapper?.style.removeProperty('--desktop-scramble-input-offset-y');
+        return;
+    }
+
+    scrambleInput.style.height = 'auto';
+    scrambleInput.style.height = `${scrambleInput.scrollHeight}px`;
+
+    const rowHeight = parseFloat(getComputedStyle(scrambleTextWrapper).getPropertyValue('--desktop-scramble-row-height')) || 32;
+    const inputStyles = getComputedStyle(scrambleInput);
+    const lineHeight = parseFloat(inputStyles.lineHeight) || parseFloat(getComputedStyle(scrambleTextWrapper).getPropertyValue('--desktop-scramble-line-height')) || rowHeight;
+    const topInset = (parseFloat(inputStyles.borderTopWidth) || 0) + (parseFloat(inputStyles.paddingTop) || 0);
+    const firstLineOffset = Math.round(((((rowHeight - lineHeight) / 2) - topInset) * 10)) / 10;
+    scrambleTextWrapper?.style.setProperty('--desktop-scramble-input-offset-y', `${firstLineOffset}px`);
+}
+
+function setDesktopLargeScrambleFontSize(fontSizePx, scrambleText = getEl('scramble-text'), scrambleInput = getEl('scramble-input'), scrambleTextWrapper = getEl('scramble-text-wrapper')) {
+    if (mobileViewportQuery.matches) return;
+    const fontSizeValue = typeof fontSizePx === 'number' ? `${fontSizePx}px` : '';
+
+    if (scrambleText) {
+        if (fontSizeValue) scrambleText.style.fontSize = fontSizeValue;
+        else scrambleText.style.removeProperty('font-size');
+    }
+
+    if (scrambleInput) {
+        if (fontSizeValue) scrambleInput.style.fontSize = fontSizeValue;
+        else scrambleInput.style.removeProperty('font-size');
+    }
+
+    if (scrambleTextWrapper) {
+        if (fontSizeValue) scrambleTextWrapper.style.setProperty('--desktop-scramble-font-size', fontSizeValue);
+        else scrambleTextWrapper.style.removeProperty('--desktop-scramble-font-size');
+    }
+
+    syncDesktopInlineScrambleInputHeight(scrambleInput, scrambleTextWrapper);
+}
+
+function clearDesktopLargeScrambleTextFit(scrambleText = getEl('scramble-text'), scrambleInput = getEl('scramble-input')) {
+    if (mobileViewportQuery.matches) return;
+    setDesktopLargeScrambleFontSize(null, scrambleText, scrambleInput);
+}
+
+function doesDesktopLargeScrambleTextFit(scrambleText, timerDisplay) {
+    if (!scrambleText || !timerDisplay) return true;
+
+    const scrambleRect = scrambleText.getBoundingClientRect();
+    const timerRect = timerDisplay.getBoundingClientRect();
+    return scrambleRect.bottom <= timerRect.top + 0.5;
+}
+
+function syncDesktopLargeScrambleTextFit() {
+    const scrambleText = getEl('scramble-text');
+    const scrambleInput = getEl('scramble-input');
+    const timerDisplay = getEl('timer-display');
+    if (!scrambleText || !scrambleInput || !timerDisplay) return;
+
+    if (mobileViewportQuery.matches) {
+        clearDesktopLargeScrambleTextFit(scrambleText, scrambleInput);
+        return;
+    }
+
+    if (scrambleInput.style.display !== 'none') {
+        const currentFontSizePx = parseFloat(scrambleText.style.fontSize) || parseFloat(getComputedStyle(scrambleText).fontSize) || 0;
+        if (currentFontSizePx > 0) {
+            setDesktopLargeScrambleFontSize(currentFontSizePx, scrambleText, scrambleInput);
+        } else {
+            clearDesktopLargeScrambleTextFit(scrambleText, scrambleInput);
+        }
+        return;
+    }
+
+    if (scrambleText.style.display === 'none') {
+        clearDesktopLargeScrambleTextFit(scrambleText, scrambleInput);
+        return;
+    }
+
+    clearDesktopLargeScrambleTextFit(scrambleText, scrambleInput);
+
+    const defaultFontSizePx = parseFloat(getComputedStyle(scrambleText).fontSize) || 0;
+    if (defaultFontSizePx <= 0) return;
+
+    const largeScrambleTextEnabled = settings.get('largeScrambleText');
+    const minFontSizePx = 1;
+    const maxFontSizePx = largeScrambleTextEnabled ? (defaultFontSizePx * 2) : defaultFontSizePx;
+    let low = minFontSizePx;
+    let high = maxFontSizePx;
+    let bestFontSizePx = minFontSizePx;
+
+    for (let iteration = 0; iteration < 14; iteration += 1) {
+        const mid = (low + high) / 2;
+        setDesktopLargeScrambleFontSize(mid, scrambleText, scrambleInput);
+
+        if (doesDesktopLargeScrambleTextFit(scrambleText, timerDisplay)) {
+            bestFontSizePx = mid;
+            low = mid;
+        } else {
+            high = mid;
+        }
+    }
+
+    const resolvedFontSizePx = Math.max(minFontSizePx, Math.min(maxFontSizePx, Math.floor(bestFontSizePx * 100) / 100));
+    if (Math.abs(resolvedFontSizePx - defaultFontSizePx) <= 0.05) {
+        clearDesktopLargeScrambleTextFit(scrambleText, scrambleInput);
+        return;
+    }
+
+    setDesktopLargeScrambleFontSize(resolvedFontSizePx, scrambleText, scrambleInput);
 }
 
 function syncLandscapeMobileScrambleSingleLineFit() {
@@ -1337,6 +1487,8 @@ function syncViewportLayout() {
     } else {
         applyCachedTransform(timerDisplayWrapper, 'timerTransform', '');
     }
+
+    syncDesktopLargeScrambleTextFit();
 
     if (shouldApplyFrozenMobileScrambleLayout()) {
         applyCachedTransform(scrambleContainer, 'scrambleTransform', mobileScrambleFreezeState.transform);
@@ -2179,7 +2331,7 @@ async function init() {
             clearPenaltyShortcutAlert();
             syncPersistentManualEntryMode();
         }
-        if (key === 'centerTimer' || key === 'displayFont' || key === 'pillSize') scheduleViewportLayoutSync();
+        if (key === 'centerTimer' || key === 'displayFont' || key === 'pillSize' || key === 'largeScrambleText') scheduleViewportLayoutSync();
     });
 
     // Init UI
@@ -3037,6 +3189,7 @@ function initScrambleControls() {
     const prevBtn = document.getElementById('btn-prev-scramble');
     const nextBtn = document.getElementById('btn-next-scramble');
     const containerEl = document.getElementById('scramble-container');
+    const textWrapperEl = document.getElementById('scramble-text-wrapper');
     const scrambleTypeMenus = Array.from(document.querySelectorAll('.scramble-type-menu'));
     const repositionOpenScrambleTypeMenus = () => {
         scrambleTypeMenus
@@ -3048,6 +3201,24 @@ function initScrambleControls() {
         if (!mobileViewportQuery.matches) return;
         containerEl.classList.toggle('scramble-actions-visible', visible);
     }
+
+    textWrapperEl?.addEventListener('transitionstart', (event) => {
+        if (mobileViewportQuery.matches) return;
+        if (event.target !== textWrapperEl) return;
+        startDesktopScrambleTransitionSync(event.propertyName);
+    });
+
+    textWrapperEl?.addEventListener('transitionend', (event) => {
+        if (mobileViewportQuery.matches) return;
+        if (event.target !== textWrapperEl) return;
+        stopDesktopScrambleTransitionSync(event.propertyName);
+    });
+
+    textWrapperEl?.addEventListener('transitioncancel', (event) => {
+        if (mobileViewportQuery.matches) return;
+        if (event.target !== textWrapperEl) return;
+        stopDesktopScrambleTransitionSync(event.propertyName);
+    });
 
     let copyTimeout = null;
     function copyCurrentScramble() {
@@ -3164,6 +3335,7 @@ function initScrambleControls() {
         inputEl.value = currentScramble;
         inputEl.style.height = 'auto';
         inputEl.style.height = inputEl.scrollHeight + 'px';
+        syncDesktopLargeScrambleTextFit();
         inputEl.focus();
         // Pause timer keys optionally, but timer.js ignores input tags.
     }
@@ -3182,6 +3354,8 @@ function initScrambleControls() {
             // Restore visualizer if it was changed during input
             renderScramblePreviewDisplays(currentScramble);
         }
+
+        scheduleViewportLayoutSync();
     }
 
     editBtn.addEventListener('click', startEdit);
@@ -3195,6 +3369,7 @@ function initScrambleControls() {
             textEl.style.display = 'block';
             inputEl.style.display = 'none';
             inputEl.blur();
+            scheduleViewportLayoutSync();
         }
     });
     inputEl.addEventListener('input', (e) => {
@@ -5105,6 +5280,12 @@ function initSettingsPanel() {
             settings.set('displayFont', displayFontSelect.value);
             displayFontSelect.blur();
         };
+    }
+
+    const largeScrambleTextToggle = document.getElementById('setting-large-scramble-text');
+    if (largeScrambleTextToggle) {
+        largeScrambleTextToggle.checked = settings.get('largeScrambleText');
+        largeScrambleTextToggle.onchange = () => settings.set('largeScrambleText', largeScrambleTextToggle.checked);
     }
 
 

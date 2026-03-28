@@ -413,12 +413,14 @@
 
     #scramble-text-wrapper {
         --desktop-scramble-row-height: 32px;
-        --desktop-scramble-text-top-offset: max(0px, calc((var(--desktop-scramble-row-height) - (var(--text-lg) * 1.53)) / 2));
+        --desktop-scramble-font-size: var(--text-lg);
+        --desktop-scramble-line-height: calc(var(--desktop-scramble-font-size) * 1.6);
+        --desktop-scramble-text-offset-y: calc((var(--desktop-scramble-row-height) - var(--desktop-scramble-line-height)) / 2);
+        --desktop-scramble-input-offset-y: 0px;
         flex: 0 1 auto;
         width: min(100%, var(--desktop-scramble-text-width));
         max-width: var(--desktop-scramble-text-width);
-        min-height: calc(var(--desktop-scramble-row-height) - var(--desktop-scramble-text-top-offset));
-        padding-top: var(--desktop-scramble-text-top-offset);
+        min-height: var(--desktop-scramble-row-height);
         align-items: flex-start;
         justify-content: flex-start;
         margin-inline: auto;
@@ -428,16 +430,22 @@
     }
 
     #scramble-text-wrapper:focus-within {
-        padding-top: 0;
+        min-height: var(--desktop-scramble-row-height);
+    }
+
+    #scramble-text,
+    #scramble-input {
+        display: block;
+        width: 100%;
     }
 
     #scramble-text {
-        display: block;
-        width: 100%;
+        transform: translateY(var(--desktop-scramble-text-offset-y));
         pointer-events: auto;
     }
 
     #scramble-input {
+        transform: translateY(var(--desktop-scramble-input-offset-y));
         min-height: 32px;
         pointer-events: auto;
     }

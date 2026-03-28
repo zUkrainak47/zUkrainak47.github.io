@@ -94,7 +94,8 @@
 }
 
 body.mobile-viewport #setting-shortcut-tooltips-row,
-body.mobile-viewport #setting-hide-ui-row {
+body.mobile-viewport #setting-hide-ui-row,
+body.mobile-viewport #setting-large-scramble-text-row {
     display: none;
 }
 

@@ -1,4 +1,4 @@
-import { settings } from './settings.js';
+import { settings } from './settings.js?v=2';
 import { EventEmitter, formatTime } from './utils.js';
 
 const State = {

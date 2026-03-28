@@ -11,6 +11,7 @@ const DEFAULTS = {
     animationsEnabled: true, // Legacy effective boolean kept for backwards compatibility.
     highContrastMode: false,
     displayFont: 'jetbrains-mono',
+    largeScrambleText: false,
     pillSize: 'medium',       // 'small', 'medium', 'large', 'hidden'
     statsFilter: 'all',     // 'all', 'today', 'week', 'month', 'custom'
     customFilterDuration: '', // e.g. '3d', '2h'
