@@ -395,7 +395,7 @@
     #scramble-type-menu-desktop {
         order: 0;
         position: absolute;
-        left: calc(50% - var(--desktop-scramble-text-half-width) - 80px);
+        left: calc(50% - var(--desktop-scramble-text-half-width) - 96px);
         top: 0;
         width: 72px;
         justify-content: flex-start;
@@ -464,7 +464,7 @@
 
     #btn-edit-scramble {
         position: absolute;
-        left: calc(50% - var(--desktop-scramble-text-half-width) - 120px);
+        left: calc(50% - var(--desktop-scramble-text-half-width) - 136px);
         top: 0;
         transform: translate3d(0, 0, 0);
         will-change: left, transform, opacity;
@@ -486,11 +486,11 @@
     }
 
     #btn-prev-scramble {
-        left: calc(50% + var(--desktop-scramble-text-half-width) + 8px);
+        left: calc(50% + var(--desktop-scramble-text-half-width) + 24px);
     }
 
     #btn-next-scramble {
-        left: calc(50% + var(--desktop-scramble-text-half-width) + 48px);
+        left: calc(50% + var(--desktop-scramble-text-half-width) + 64px);
     }
 
 
