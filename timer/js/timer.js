@@ -872,10 +872,12 @@ class Timer extends EventEmitter {
         if (!this._displayEl) return;
 
         let displayStr = text;
-        if (!document.body.classList.contains('zen')) {
-            const width = window.innerWidth || document.documentElement.clientWidth;
-            const height = window.innerHeight || document.documentElement.clientHeight;
+        const isZen = document.body.classList.contains('zen');
+        const width = window.innerWidth || document.documentElement.clientWidth;
+        const height = window.innerHeight || document.documentElement.clientHeight;
+        const isMobilePortrait = width <= 1100 && height > width;
 
+        if (!isZen || isMobilePortrait) {
             if (!text.includes('DNF') && !text.includes('Inspect')) {
                 let maxChars = null;
 
