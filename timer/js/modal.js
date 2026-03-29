@@ -971,15 +971,13 @@ function getTextareaVisualRowCount(text) {
     const paddingY = parsePx(computed.paddingTop) + parsePx(computed.paddingBottom);
     const previousValue = _textarea.value;
     const previousRows = _textarea.rows;
-    const previousHeight = _textarea.style.height;
-    const previousMinHeight = _textarea.style.minHeight;
-    const previousOverflowY = _textarea.style.overflowY;
+    const previousCssText = _textarea.style.cssText;
 
     _textarea.value = text;
     _textarea.rows = 1;
-    _textarea.style.height = '0px';
-    _textarea.style.minHeight = '0px';
-    _textarea.style.overflowY = 'hidden';
+    _textarea.style.setProperty('height', '0px', 'important');
+    _textarea.style.setProperty('min-height', '0px', 'important');
+    _textarea.style.setProperty('overflow-y', 'hidden', 'important');
 
     const contentHeight = Math.max(0, _textarea.scrollHeight - paddingY);
     // scrollHeight is integer-rounded, so allow a 1px tolerance to avoid reserving
@@ -989,9 +987,7 @@ function getTextareaVisualRowCount(text) {
 
     _textarea.value = previousValue;
     _textarea.rows = previousRows;
-    _textarea.style.height = previousHeight;
-    _textarea.style.minHeight = previousMinHeight;
-    _textarea.style.overflowY = previousOverflowY;
+    _textarea.style.cssText = previousCssText;
 
     return visualRowCount;
 }
