@@ -2375,7 +2375,10 @@ async function init() {
             clearPenaltyShortcutAlert();
             syncPersistentManualEntryMode();
         }
-        if (key === 'centerTimer' || key === 'displayFont' || key === 'pillSize' || key === 'largeScrambleText') scheduleViewportLayoutSync();
+        if (key === 'centerTimer' || key === 'displayFont' || key === 'pillSize' || key === 'largeScrambleText') {
+            scheduleViewportLayoutSync();
+            if (key === 'pillSize') syncDesktopTimerInfoPills();
+        }
     });
 
     // Init UI
@@ -2402,9 +2405,11 @@ async function init() {
     initTimerClick();
     window.addEventListener('resize', scheduleViewportLayoutSync);
     window.addEventListener('resize', syncMobileSummaryDisplays);
+    window.addEventListener('resize', syncDesktopTimerInfoPills);
     window.addEventListener('resize', () => renderSolvesTable());
     window.addEventListener('orientationchange', scheduleViewportLayoutSync);
     window.addEventListener('orientationchange', syncMobileSummaryDisplays);
+    window.addEventListener('orientationchange', syncDesktopTimerInfoPills);
     scheduleViewportLayoutSync();
 
     if (shouldLoadInitialScramble) {
@@ -4446,16 +4451,40 @@ function syncMobileSummaryDisplays() {
     if (meanEl) meanEl.textContent = maxSummaryChars ? truncateTimeDisplay(lastSummaryValues.meanStr, maxSummaryChars) : lastSummaryValues.meanStr;
 }
 
+function syncDesktopTimerInfoPills() {
+    const width = window.innerWidth || document.documentElement.clientWidth;
+    const isMobile = width <= 1100 || mobileViewportQuery.matches;
+    const desktopTruncated = !isMobile && width < 1200;
+    const isMediumPill = settings.get('pillSize') === 'medium';
+    const mediumTruncated = !isMobile && isMediumPill && width < 1150;
+
+    let maxPillChars = 0;
+    if (mediumTruncated) {
+        maxPillChars = 6;
+    } else if (desktopTruncated) {
+        maxPillChars = 7;
+    }
+
+    const infoAo5El = document.getElementById('info-ao5');
+    const infoAo12El = document.getElementById('info-ao12');
+
+    if (infoAo5El) {
+        let ao5Str = lastSummaryValues.ao5 != null ? formatTime(lastSummaryValues.ao5) : '-';
+        if (maxPillChars) ao5Str = truncateTimeDisplay(ao5Str, maxPillChars);
+        infoAo5El.textContent = ao5Str;
+    }
+    if (infoAo12El) {
+        let ao12Str = lastSummaryValues.ao12 != null ? formatTime(lastSummaryValues.ao12) : '-';
+        if (maxPillChars) ao12Str = truncateTimeDisplay(ao12Str, maxPillChars);
+        infoAo12El.textContent = ao12Str;
+    }
+}
+
 function updateTimerInfo(stats, solves) {
     const infoEl = document.getElementById('timer-info');
 
     infoEl.style.visibility = '';
     infoEl.style.opacity = '';
-
-    const ao5El = document.getElementById('info-ao5');
-    const ao12El = document.getElementById('info-ao12');
-    ao5El.textContent = stats.current.ao5 != null ? formatTime(stats.current.ao5) : '-';
-    ao12El.textContent = stats.current.ao12 != null ? formatTime(stats.current.ao12) : '-';
 
     const validTimes = solves.map(s => getEffectiveTime(s)).filter(t => t !== Infinity);
     const meanStr = validTimes.length > 0
@@ -4469,6 +4498,7 @@ function updateTimerInfo(stats, solves) {
         meanStr: meanStr
     };
     syncMobileSummaryDisplays();
+    syncDesktopTimerInfoPills();
 
     document.querySelectorAll('#mobile-summary-card [data-mobile-summary-action]').forEach((cell) => {
         const action = cell.dataset.mobileSummaryAction;
