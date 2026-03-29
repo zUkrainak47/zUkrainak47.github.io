@@ -20,7 +20,7 @@ body.solving #btn-settings {
 
 #app-layout {
     display: grid;
-    grid-template-columns: var(--sidebar-width) 1fr var(--right-panel-width);
+    grid-template-columns: var(--sidebar-width) minmax(0, 1fr) var(--right-panel-width);
     grid-template-rows: auto 1fr;
     grid-template-areas:
         "scramble scramble scramble"
@@ -43,6 +43,7 @@ body.solving #btn-settings {
     gap: var(--space-sm);
     overflow: hidden;
     min-height: 0;
+    z-index: 1;
 }
 
 #left-panel.custom-select-open {
@@ -59,6 +60,7 @@ body.solving #btn-settings {
     position: relative;
     min-height: 0;
     padding-bottom: 12vh;
+    z-index: 10;
 }
 
 #right-panel {
@@ -70,6 +72,7 @@ body.solving #btn-settings {
     padding-bottom: calc(var(--space-xl) * 2.5);
     overflow: hidden;
     min-height: 0;
+    z-index: 1;
 }
 
 #cube-panel,
@@ -106,7 +109,7 @@ body.solving #btn-settings {
 
 @media (max-width: 1100px), (pointer: coarse) {
     #app-layout {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
         grid-template-rows: auto 1fr auto;
         grid-template-areas:
             "scramble scramble"
@@ -129,7 +132,7 @@ body.solving #btn-settings {
     }
 
     #app-layout {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
         grid-template-rows: auto auto minmax(0, 1fr);
         grid-template-areas:
             "scramble"
