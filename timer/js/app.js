@@ -32,7 +32,7 @@ const SUMMARY_STAT_PRESETS = {
     full: ['mo3', 'ao5', 'ao12', 'ao25', 'ao50', 'ao100', 'ao200', 'ao500', 'ao1000', 'ao2000', 'ao5000', 'ao10000'],
 };
 const MAX_CUSTOM_SUMMARY_STATS = 12;
-const MAX_ROLLING_STAT_WINDOW_LABEL = '99999';
+const MAX_ROLLING_STAT_INPUT_LENGTH = 7;
 const SOLVES_TABLE_STAT_SETTING_KEYS = ['solvesTableStat1', 'solvesTableStat2'];
 const SHIFT_STAT_SHORTCUT_CODES = ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0', 'Minus', 'Equal'];
 const SHIFT_STAT_SHORTCUT_DISPLAY = {
@@ -3661,7 +3661,7 @@ function parseGraphLineStatInput(rawInput) {
             ok: false,
             token,
             message: token
-                ? `Use mean, moN, or aoN up to ${MAX_ROLLING_STAT_WINDOW_LABEL}`
+                ? `Invalid stat: ${token}`
                 : `Enter a stat like mean, mo3, or ao12`,
         };
     }
@@ -3684,7 +3684,7 @@ function parseSummaryStatInput(rawInput, { truncate = true } = {}) {
         if (!config) {
             return {
                 ok: false,
-                message: `Invalid token: ${part}. Use moN/aoN up to ${MAX_ROLLING_STAT_WINDOW_LABEL}`,
+                message: `Invalid token: ${part}`,
                 tokens,
                 truncated: false,
             };
@@ -3738,7 +3738,7 @@ function parseSolvesTableStatInput(rawInput) {
             ok: false,
             token,
             empty: false,
-            message: `Use moN or aoN up to ${MAX_ROLLING_STAT_WINDOW_LABEL}`,
+            message: `Invalid stat: ${token}`,
         };
     }
 
@@ -5677,7 +5677,8 @@ function initSettingsPanel() {
         };
 
         solvesTableSettingRows.forEach(({ input, settingKey }) => {
-            input.value = settings.get(settingKey) || '';
+            input.maxLength = MAX_ROLLING_STAT_INPUT_LENGTH;
+            input.value = String(settings.get(settingKey) || '').slice(0, MAX_ROLLING_STAT_INPUT_LENGTH);
         });
         updateSolvesTableSettingsUI();
 
@@ -5727,7 +5728,8 @@ function initSettingsPanel() {
         const feedback = document.getElementById(feedbackId);
         if (!input || !feedback) return;
 
-        input.value = settings.get(settingKey) || DEFAULTS[settingKey];
+        input.maxLength = MAX_ROLLING_STAT_INPUT_LENGTH;
+        input.value = String(settings.get(settingKey) || DEFAULTS[settingKey]).slice(0, MAX_ROLLING_STAT_INPUT_LENGTH);
 
         const updateFeedback = () => {
             const parsed = parseGraphLineStatInput(input.value);
