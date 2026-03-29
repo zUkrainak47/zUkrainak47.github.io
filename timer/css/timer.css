@@ -72,6 +72,7 @@
     line-height: 1.25;
     border-color: rgba(63, 185, 80, 0.45);
     color: var(--stat-best);
+    background: rgba(13, 17, 23, 0.94);
 }
 
 .timer-popup-danger {
@@ -394,7 +395,7 @@ body:not(.mobile-viewport) #inspection-cancel-wrap {
     display: none !important;
 }
 
-body.mobile-viewport[data-mobile-panel="timer"] #timer-display-wrapper:has(#new-best-alert.visible) {
+#timer-display-wrapper:has(.timer-popup:not(:empty)) {
     z-index: 60;
 }
 
