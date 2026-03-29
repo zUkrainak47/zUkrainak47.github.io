@@ -872,20 +872,26 @@ class Timer extends EventEmitter {
         if (!this._displayEl) return;
 
         let displayStr = text;
-        const isZen = document.body.classList.contains('zen');
         const width = window.innerWidth || document.documentElement.clientWidth;
         const height = window.innerHeight || document.documentElement.clientHeight;
+        const isDesktop = width > 1100;
         const isMobilePortrait = width <= 1100 && height > width;
 
-        if (!isZen || isMobilePortrait) {
+        if (isDesktop || isMobilePortrait) {
             if (!text.includes('DNF') && !text.includes('Inspect')) {
                 let maxChars = null;
 
-                if (width > 1100) {
+                if (isDesktop) {
+                    const minViewportHeight = 50;
+                    const maxViewportHeight = 850;
+                    const clampedRatio = Math.min(1, Math.max(0, (height - minViewportHeight) / (maxViewportHeight - minViewportHeight)));
+                    const scale = 0.25 + (0.75 * clampedRatio);
+                    const effectiveWidth = width + (170 * (1 - scale));
+
                     if (text.length > 5) {
-                        maxChars = width < 1200 ? 5 : 6 + Math.floor((width - 1200) / 70);
+                        maxChars = effectiveWidth < 1200 ? 5 : 6 + Math.floor((effectiveWidth - 1200) / 70);
                     }
-                } else if (height > width) {
+                } else if (isMobilePortrait) {
                     maxChars = width < 360 ? 7 : 8;
                 }
 
