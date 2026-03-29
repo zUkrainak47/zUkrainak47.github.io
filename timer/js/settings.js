@@ -18,6 +18,8 @@ const DEFAULTS = {
     summaryStatsPreset: 'basic', // 'basic', 'extended', 'full', 'custom'
     summaryStatsCustom: 'mo3 ao5 ao12 ao100',
     summaryStatsList: ['mo3', 'ao5', 'ao12', 'ao100'],
+    solvesTableStat1: 'ao5',
+    solvesTableStat2: 'ao12',
     zenMode: false,
     cubeCollapsed: false,
     graphCollapsed: false,

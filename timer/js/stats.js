@@ -1,5 +1,7 @@
 import { getEffectiveTime } from './utils.js';
 
+const MAX_ROLLING_STAT_WINDOW = 99999;
+
 export function getAverageTrimCount(n) {
     return Math.ceil(n / 20);
 }
@@ -11,6 +13,7 @@ export function parseRollingStatType(type) {
     const kind = match[1];
     const windowSize = Number(match[2]);
     if (!Number.isInteger(windowSize) || windowSize < 1) return null;
+    if (windowSize > MAX_ROLLING_STAT_WINDOW) return null;
 
     if (kind === 'mo' && windowSize < 2) return null;
     if (kind === 'ao' && windowSize < 3) return null;
@@ -265,6 +268,166 @@ export function perSolveStats(solves) {
     }));
 }
 
+class FenwickTree {
+    constructor(size) {
+        this.size = size;
+        this.tree = new Float64Array(size + 1);
+    }
+
+    add(index, delta) {
+        for (let i = index; i <= this.size; i += i & -i) {
+            this.tree[i] += delta;
+        }
+    }
+}
+
+function sumOfSmallestK(countTree, sumTree, indexToValue, k, totalCount, totalSum) {
+    if (k <= 0) return 0;
+    if (k >= totalCount) return totalSum;
+
+    let idx = 0;
+    let bit = 1;
+    while ((bit << 1) <= countTree.size) bit <<= 1;
+
+    let countSoFar = 0;
+    let sumSoFar = 0;
+
+    while (bit > 0) {
+        const next = idx + bit;
+        if (next <= countTree.size && (countSoFar + countTree.tree[next]) < k) {
+            idx = next;
+            countSoFar += countTree.tree[next];
+            sumSoFar += sumTree.tree[next];
+        }
+        bit >>= 1;
+    }
+
+    const targetIndex = idx + 1;
+    const remaining = k - countSoFar;
+    const pivotValue = indexToValue[targetIndex - 1] ?? 0;
+    return sumSoFar + (remaining * pivotValue);
+}
+
+function buildRollingMeanValues(times, windowSize) {
+    const values = new Array(times.length).fill(null);
+    let sum = 0;
+    let dnfCount = 0;
+
+    for (let i = 0; i < times.length; i++) {
+        const time = times[i];
+        if (time === Infinity) {
+            dnfCount++;
+        } else {
+            sum += time;
+        }
+
+        if (i >= windowSize) {
+            const outgoing = times[i - windowSize];
+            if (outgoing === Infinity) {
+                dnfCount--;
+            } else {
+                sum -= outgoing;
+            }
+        }
+
+        if (i < windowSize - 1) continue;
+        values[i] = dnfCount > 0 ? Infinity : (sum / windowSize);
+    }
+
+    return values;
+}
+
+function buildRollingAverageValues(times, windowSize, trim) {
+    const values = new Array(times.length).fill(null);
+    if (times.length < windowSize) return values;
+
+    const finiteValues = times.filter(time => time !== Infinity);
+    const indexToValue = Array.from(new Set(finiteValues)).sort((a, b) => a - b);
+    const valueToIndex = new Map(indexToValue.map((value, index) => [value, index + 1]));
+    const countTree = indexToValue.length ? new FenwickTree(indexToValue.length) : null;
+    const sumTree = indexToValue.length ? new FenwickTree(indexToValue.length) : null;
+
+    let dnfCount = 0;
+    let finiteCount = 0;
+    let finiteSum = 0;
+
+    const addTime = (time) => {
+        if (time === Infinity) {
+            dnfCount++;
+            return;
+        }
+
+        const index = valueToIndex.get(time);
+        if (!index || !countTree || !sumTree) return;
+        countTree.add(index, 1);
+        sumTree.add(index, time);
+        finiteCount++;
+        finiteSum += time;
+    };
+
+    const removeTime = (time) => {
+        if (time === Infinity) {
+            dnfCount--;
+            return;
+        }
+
+        const index = valueToIndex.get(time);
+        if (!index || !countTree || !sumTree) return;
+        countTree.add(index, -1);
+        sumTree.add(index, -time);
+        finiteCount--;
+        finiteSum -= time;
+    };
+
+    for (let i = 0; i < times.length; i++) {
+        addTime(times[i]);
+
+        if (i >= windowSize) {
+            removeTime(times[i - windowSize]);
+        }
+
+        if (i < windowSize - 1) continue;
+        if (dnfCount > trim) {
+            values[i] = Infinity;
+            continue;
+        }
+        if (!countTree || !sumTree) continue;
+
+        const lowTrim = trim;
+        const highTrim = trim - dnfCount;
+        const rightRank = finiteCount - highTrim;
+        const leftRankMinusOne = lowTrim;
+        if (rightRank <= leftRankMinusOne) continue;
+
+        const rightSum = sumOfSmallestK(countTree, sumTree, indexToValue, rightRank, finiteCount, finiteSum);
+        const leftSum = sumOfSmallestK(countTree, sumTree, indexToValue, leftRankMinusOne, finiteCount, finiteSum);
+        values[i] = (rightSum - leftSum) / (windowSize - (trim * 2));
+    }
+
+    return values;
+}
+
+function buildRollingStatValues(times, config) {
+    if (config.kind === 'mo') {
+        return buildRollingMeanValues(times, config.windowSize);
+    }
+    return buildRollingAverageValues(times, config.windowSize, config.trim);
+}
+
+function buildRollingBestFlags(values) {
+    const flags = new Array(values.length).fill(false);
+    let rollingBest = Infinity;
+
+    for (let i = 0; i < values.length; i++) {
+        const value = values[i];
+        if (value == null || value === Infinity || value >= rollingBest) continue;
+        rollingBest = value;
+        flags[i] = true;
+    }
+
+    return { flags, rollingBest };
+}
+
 // ──── Incremental Stats Cache ────
 
 /**
@@ -344,6 +507,8 @@ export class StatsCache {
         this._times = [];
         /** @type {{ ao5: number|null, ao12: number|null, ao100: number|null }[]} */
         this._perSolve = [];
+        /** @type {Map<string, { config: ReturnType<typeof parseRollingStatType>, values: (number|null)[], newBestFlags: boolean[], rollingBest: number }>} */
+        this._rollingSeries = new Map();
 
         this._bestTime = null;
         this._bestMo3 = null;
@@ -380,6 +545,7 @@ export class StatsCache {
         this._win5 = new SortedWindow(5, 1);
         this._win12 = new SortedWindow(12, 1);
         this._win100 = new SortedWindow(100, 5);
+        this._rollingSeries.clear();
     }
 
     /**
@@ -491,6 +657,67 @@ export class StatsCache {
     /** Get effective time at index i. */
     getTimeAt(i) {
         return this._times[i];
+    }
+
+    _ensureRollingSeries(statType) {
+        const config = parseRollingStatType(statType);
+        if (!config) return null;
+
+        const key = config.type;
+        const length = this._times.length;
+        let entry = this._rollingSeries.get(key) || null;
+
+        if (!entry || entry.values.length > length) {
+            const values = buildRollingStatValues(this._times, config);
+            const { flags, rollingBest } = buildRollingBestFlags(values);
+            entry = { config, values, newBestFlags: flags, rollingBest };
+            this._rollingSeries.set(key, entry);
+            return entry;
+        }
+
+        if (entry.values.length === length) {
+            return entry;
+        }
+
+        if (entry.values.length === (length - 1)) {
+            const nextValue = rollingStatAt(this._times, length - 1, key);
+            entry.values.push(nextValue);
+
+            if (nextValue != null && nextValue !== Infinity && nextValue < entry.rollingBest) {
+                entry.rollingBest = nextValue;
+                entry.newBestFlags.push(true);
+            } else {
+                entry.newBestFlags.push(false);
+            }
+
+            return entry;
+        }
+
+        const values = buildRollingStatValues(this._times, config);
+        const { flags, rollingBest } = buildRollingBestFlags(values);
+        entry = { config, values, newBestFlags: flags, rollingBest };
+        this._rollingSeries.set(key, entry);
+        return entry;
+    }
+
+    getRollingStatValueAt(statType, i) {
+        const entry = this._ensureRollingSeries(statType);
+        return entry?.values[i] ?? null;
+    }
+
+    isRollingStatNewBestAt(statType, i) {
+        const entry = this._ensureRollingSeries(statType);
+        return !!entry?.newBestFlags[i];
+    }
+
+    getRollingStatNewBestFlags(statType) {
+        const entry = this._ensureRollingSeries(statType);
+        return entry?.newBestFlags || [];
+    }
+
+    getRollingStatValues(statType) {
+        const entry = this._ensureRollingSeries(statType);
+        return entry?.values || [];
     }
 
     /** Get the full times array. */

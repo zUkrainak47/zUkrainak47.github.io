@@ -32,6 +32,8 @@ const SUMMARY_STAT_PRESETS = {
     full: ['mo3', 'ao5', 'ao12', 'ao25', 'ao50', 'ao100', 'ao200', 'ao500', 'ao1000', 'ao2000', 'ao5000', 'ao10000'],
 };
 const MAX_CUSTOM_SUMMARY_STATS = 12;
+const MAX_ROLLING_STAT_WINDOW_LABEL = '99999';
+const SOLVES_TABLE_STAT_SETTING_KEYS = ['solvesTableStat1', 'solvesTableStat2'];
 const SHIFT_STAT_SHORTCUT_CODES = ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0', 'Minus', 'Equal'];
 const SHIFT_STAT_SHORTCUT_DISPLAY = {
     Digit1: '1',
@@ -2360,7 +2362,7 @@ async function init() {
         }
         if (key === 'newBestPopupEnabled' && !settings.get('newBestPopupEnabled')) clearNewBestAlert();
         if (key === 'shortcutTooltipsEnabled' && !settings.get('shortcutTooltipsEnabled')) hideShortcutTooltip();
-        if (key === 'statsFilter' || key === 'customFilterDuration' || key === 'showDelta' || key.startsWith('graphColor') || key.startsWith('graphLine') || key === 'graphTooltipDateEnabled' || key === 'newBestColor' || key === 'summaryStatsList') {
+        if (key === 'statsFilter' || key === 'customFilterDuration' || key === 'showDelta' || key.startsWith('graphColor') || key.startsWith('graphLine') || key === 'graphTooltipDateEnabled' || key === 'newBestColor' || key === 'summaryStatsList' || key.startsWith('solvesTableStat')) {
             if (key === 'statsFilter' || key === 'customFilterDuration') rebuildStatsCache();
             if (key === 'summaryStatsList') {
                 syncModalStatNavigation();
@@ -3482,28 +3484,31 @@ function initScrambleControls() {
 
 // ──── Table Sorting ────
 function initTableSorting() {
-    const headers = document.querySelectorAll('#solves-table th[data-sort]');
-    headers.forEach(th => {
-        th.addEventListener('click', () => {
-            const col = th.dataset.sort;
+    const table = document.getElementById('solves-table');
+    if (!table) return;
 
-            if (col === 'comments') {
-                commentsOnlyFilterActive = !commentsOnlyFilterActive;
+    table.addEventListener('click', (event) => {
+        const th = event.target instanceof Element ? event.target.closest('th[data-sort]') : null;
+        if (!th || !table.contains(th)) return;
+
+        const col = th.dataset.sort;
+        if (!col) return;
+
+        if (col === 'comments') {
+            commentsOnlyFilterActive = !commentsOnlyFilterActive;
+        } else if (currentSortCol === col) {
+            if (currentSortDir === 'asc') {
+                currentSortDir = 'desc';
             } else {
-                if (currentSortCol === col) {
-                    if (currentSortDir === 'asc') {
-                        currentSortDir = 'desc';
-                    } else {
-                        currentSortCol = null;
-                        currentSortDir = null;
-                    }
-                } else {
-                    currentSortCol = col;
-                    currentSortDir = 'asc';
-                }
+                currentSortCol = null;
+                currentSortDir = null;
             }
-            refreshUI();
-        });
+        } else {
+            currentSortCol = col;
+            currentSortDir = 'asc';
+        }
+
+        refreshUI();
     });
 }
 
@@ -3656,8 +3661,8 @@ function parseGraphLineStatInput(rawInput) {
             ok: false,
             token,
             message: token
-                ? `Invalid stat: ${token}`
-                : 'Enter a stat like mean, mo3, or ao12',
+                ? `Use mean, moN, or aoN up to ${MAX_ROLLING_STAT_WINDOW_LABEL}`
+                : `Enter a stat like mean, mo3, or ao12`,
         };
     }
 
@@ -3679,7 +3684,7 @@ function parseSummaryStatInput(rawInput, { truncate = true } = {}) {
         if (!config) {
             return {
                 ok: false,
-                message: `Invalid token: ${part}`,
+                message: `Invalid token: ${part}. Use moN/aoN up to ${MAX_ROLLING_STAT_WINDOW_LABEL}`,
                 tokens,
                 truncated: false,
             };
@@ -3716,6 +3721,35 @@ function parseSummaryStatInput(rawInput, { truncate = true } = {}) {
     };
 }
 
+function parseSolvesTableStatInput(rawInput) {
+    const token = normalizeSummaryStatToken(rawInput);
+    if (!token) {
+        return {
+            ok: true,
+            token: '',
+            empty: true,
+            message: '',
+        };
+    }
+
+    const config = parseRollingStatType(token);
+    if (!config) {
+        return {
+            ok: false,
+            token,
+            empty: false,
+            message: `Use moN or aoN up to ${MAX_ROLLING_STAT_WINDOW_LABEL}`,
+        };
+    }
+
+    return {
+        ok: true,
+        token: config.type,
+        empty: false,
+        message: '',
+    };
+}
+
 function getPresetSummaryTokens(preset) {
     const key = String(preset ?? '').toLowerCase();
     const list = SUMMARY_STAT_PRESETS[key] || SUMMARY_STAT_PRESETS.basic;
@@ -3738,6 +3772,27 @@ function getConfiguredSummaryStatTokens() {
     if (custom.ok) return custom.tokens;
 
     return [...SUMMARY_STAT_PRESETS.basic];
+}
+
+function getConfiguredSolvesTableStatTokens() {
+    const tokens = [];
+    const seen = new Set();
+
+    SOLVES_TABLE_STAT_SETTING_KEYS.forEach((key, index) => {
+        const fallback = DEFAULTS[key] || '';
+        const rawValue = settings.get(key);
+        const parsed = parseSolvesTableStatInput(rawValue == null ? fallback : rawValue);
+        if (!parsed.ok || parsed.empty || seen.has(parsed.token)) return;
+        seen.add(parsed.token);
+        tokens.push({
+            type: parsed.token,
+            label: parsed.token,
+            settingKey: key,
+            slot: index,
+        });
+    });
+
+    return tokens;
 }
 
 function getShiftStatShortcutSlots() {
@@ -4914,6 +4969,91 @@ function handleStatClick(type, which, solves, stats) {
 
 let _lastTableParams = null;
 
+function getSolvesTableHeaderState(columnKey) {
+    const label = columnKey === 'comments'
+        ? (commentsOnlyFilterActive ? '#\u2009*' : '#')
+        : columnKey;
+
+    let sortIndicator = '';
+    if (columnKey === currentSortCol) {
+        sortIndicator = currentSortDir === 'asc' ? '▴' : '▾';
+    }
+
+    return { label, sortIndicator };
+}
+
+function ensureValidSolvesTableSort(configuredColumns) {
+    if (!currentSortCol) return;
+    if (currentSortCol === 'comments' || currentSortCol === 'time') return;
+
+    const allowed = new Set(configuredColumns.map((column) => column.type));
+    if (allowed.has(currentSortCol)) return;
+
+    currentSortCol = null;
+    currentSortDir = null;
+}
+
+function syncSolvesTableHeader(configuredColumns) {
+    const table = document.getElementById('solves-table');
+    const headerRow = table?.querySelector('thead tr');
+    if (!table || !headerRow) return;
+
+    const statCount = configuredColumns.length;
+    const isMobile = window.innerWidth <= 1100 || mobileViewportQuery.matches;
+    const longestStatLabelLength = configuredColumns.reduce((max, column) => Math.max(max, column.label.length), 0);
+    let indexWidth;
+    let timeWidth;
+    let statWidth = 0;
+    let headerFontSize = isMobile ? '0.62rem' : 'var(--text-xs)';
+
+    if (statCount === 0) {
+        indexWidth = isMobile ? 14 : 18;
+        timeWidth = 100 - indexWidth;
+    } else {
+        const indexWeight = isMobile ? 1 : 2;
+        const statWeight = longestStatLabelLength >= 7
+            ? (isMobile ? 3.45 : 3.25)
+            : longestStatLabelLength >= 6
+                ? (isMobile ? 3.2 : 3.1)
+                : 3;
+        const timeWeight = longestStatLabelLength >= 7
+            ? (isMobile ? 2.55 : 2.75)
+            : longestStatLabelLength >= 6
+                ? (isMobile ? 2.8 : 2.9)
+                : 3;
+        const totalWeight = indexWeight + timeWeight + (statCount * statWeight);
+        indexWidth = (indexWeight / totalWeight) * 100;
+        timeWidth = (timeWeight / totalWeight) * 100;
+        statWidth = (statWeight / totalWeight) * 100;
+        if (longestStatLabelLength >= 7) {
+            headerFontSize = isMobile ? '0.54rem' : '0.68rem';
+        } else if (longestStatLabelLength >= 6) {
+            headerFontSize = isMobile ? '0.58rem' : '0.72rem';
+        }
+    }
+
+    table.style.setProperty('--solves-table-index-width', `${indexWidth.toFixed(3)}%`);
+    table.style.setProperty('--solves-table-time-width', `${timeWidth.toFixed(3)}%`);
+    table.style.setProperty('--solves-table-stat-width', `${statWidth.toFixed(3)}%`);
+    table.style.setProperty('--solves-table-header-font-size', headerFontSize);
+
+    const renderHeaderCell = (columnKey, extraAttributes = '') => {
+        const { label, sortIndicator } = getSolvesTableHeaderState(columnKey);
+        return `<th data-sort="${columnKey}" ${extraAttributes} style="cursor: pointer;">
+            <span class="solves-table-header-content">
+                <span class="solves-table-header-label">${label}</span>
+                <span class="solves-table-header-sort" aria-hidden="true">${sortIndicator}</span>
+            </span>
+        </th>`;
+    };
+
+    headerRow.innerHTML = [
+        renderHeaderCell('comments'),
+        renderHeaderCell('time'),
+        ...configuredColumns.map((column) => renderHeaderCell(column.type, 'data-stat-column="true"')),
+    ].join('');
+}
+
 // ──── Solves Table ────
 function renderSolvesTable(solves, stats) {
     if (solves && stats) {
@@ -4927,35 +5067,16 @@ function renderSolvesTable(solves, stats) {
 
     const container = document.getElementById('solves-container');
     const tbody = document.getElementById('solves-tbody');
+    const configuredColumns = getConfiguredSolvesTableStatTokens();
+    const visibleColumnCount = 2 + configuredColumns.length;
+    ensureValidSolvesTableSort(configuredColumns);
+    syncSolvesTableHeader(configuredColumns);
 
-    // Compute new-best flags for ao5/ao12 (rolling)
-    // These are lightweight O(n) scans over the cached per-solve data
-    const isNewBestAo5Array = new Array(solves.length).fill(false);
-    const isNewBestAo12Array = new Array(solves.length).fill(false);
-    let rollingBestAo5 = Infinity;
-    let rollingBestAo12 = Infinity;
-    for (let i = 0; i < solves.length; i++) {
-        const ps = statsCache.getPerSolveAt(i);
-        if (ps && ps.ao5 != null && ps.ao5 < rollingBestAo5) {
-            rollingBestAo5 = ps.ao5;
-            isNewBestAo5Array[i] = true;
-        }
-        if (ps && ps.ao12 != null && ps.ao12 < rollingBestAo12) {
-            rollingBestAo12 = ps.ao12;
-            isNewBestAo12Array[i] = true;
-        }
-    }
-
-    // Update headers to show sort direction
-    document.querySelectorAll('#solves-table th[data-sort]').forEach(th => {
-        const col = th.dataset.sort;
-        let text = col === 'comments' ? '#' : col;
-        if (col === 'comments' && commentsOnlyFilterActive) {
-            text += '\u2009*';
-        } else if (col === currentSortCol) {
-            text += currentSortDir === 'asc' ? ' ▴' : ' ▾';
-        }
-        th.textContent = text;
+    const rollingStatValues = new Map();
+    const rollingStatBestFlags = new Map();
+    configuredColumns.forEach(({ type }) => {
+        rollingStatValues.set(type, statsCache.getRollingStatValues(type));
+        rollingStatBestFlags.set(type, statsCache.getRollingStatNewBestFlags(type));
     });
 
     // Build sorted index order
@@ -4972,16 +5093,12 @@ function renderSolvesTable(solves, stats) {
             if (currentSortCol === 'time') {
                 valA = getEffectiveTime(solves[a]);
                 valB = getEffectiveTime(solves[b]);
-            } else if (currentSortCol === 'ao5') {
-                const psA = statsCache.getPerSolveAt(a);
-                const psB = statsCache.getPerSolveAt(b);
-                valA = psA && psA.ao5 != null ? psA.ao5 : Infinity;
-                valB = psB && psB.ao5 != null ? psB.ao5 : Infinity;
-            } else if (currentSortCol === 'ao12') {
-                const psA = statsCache.getPerSolveAt(a);
-                const psB = statsCache.getPerSolveAt(b);
-                valA = psA && psA.ao12 != null ? psA.ao12 : Infinity;
-                valB = psB && psB.ao12 != null ? psB.ao12 : Infinity;
+            } else {
+                const sortValues = rollingStatValues.get(currentSortCol) || statsCache.getRollingStatValues(currentSortCol);
+                valA = sortValues[a];
+                valB = sortValues[b];
+                valA = valA != null ? valA : Infinity;
+                valB = valB != null ? valB : Infinity;
             }
 
             if (valA === valB) {
@@ -5023,22 +5140,24 @@ function renderSolvesTable(solves, stats) {
 
         let html = '';
         if (topPad > 0) {
-            html += `<tr style="height:${topPad}px"><td colspan="4"></td></tr>`;
+            html += `<tr style="height:${topPad}px"><td colspan="${visibleColumnCount}"></td></tr>`;
         }
 
         const isMobile = window.innerWidth <= 1100 || mobileViewportQuery.matches;
         for (let row = startRow; row < endRow; row++) {
             const i = _tableSortedIndices[row];
             const solve = solves[i];
-            const ps = statsCache.getPerSolveAt(i);
             const timeStr = isMobile ? formatSolveTime(solve) : truncateTimeDisplay(formatSolveTime(solve), 7);
 
             const isBestTime = statsCache.isNewBestAt(i);
-            const isBestAo5 = isNewBestAo5Array[i];
-            const isBestAo12 = isNewBestAo12Array[i];
-
-            const ao5Str = ps && ps.ao5 != null ? (isMobile ? formatTime(ps.ao5) : truncateTimeDisplay(formatTime(ps.ao5), 7)) : '';
-            const ao12Str = ps && ps.ao12 != null ? (isMobile ? formatTime(ps.ao12) : truncateTimeDisplay(formatTime(ps.ao12), 7)) : '';
+            const statCells = configuredColumns.map(({ type }) => {
+                const value = rollingStatValues.get(type)?.[i] ?? null;
+                const isBestStat = !!rollingStatBestFlags.get(type)?.[i];
+                const display = value != null
+                    ? (isMobile ? formatTime(value) : truncateTimeDisplay(formatTime(value), 7))
+                    : '';
+                return `<td class="rolling-stat-cell ${isBestStat ? 'new-best-cell' : ''}" data-stat-type="${type}">${display}</td>`;
+            }).join('');
 
             let indicator = '';
             if (solve.comment) indicator += '*';
@@ -5048,13 +5167,12 @@ function renderSolvesTable(solves, stats) {
       <td class="solve-time-cell ${solve.penalty === 'DNF' ? 'dnf-time' : ''} ${isBestTime ? 'new-best-cell' : ''}">
         ${timeStr}
       </td>
-      <td class="ao5-cell ${isBestAo5 ? 'new-best-cell' : ''}">${ao5Str}</td>
-      <td class="ao12-cell ${isBestAo12 ? 'new-best-cell' : ''}">${ao12Str}</td>
+      ${statCells}
     </tr>`;
         }
 
         if (bottomPad > 0) {
-            html += `<tr style="height:${bottomPad}px"><td colspan="4"></td></tr>`;
+            html += `<tr style="height:${bottomPad}px"><td colspan="${visibleColumnCount}"></td></tr>`;
         }
 
         tbody.innerHTML = html;
@@ -5085,10 +5203,8 @@ function renderSolvesTable(solves, stats) {
 
         if (td.classList.contains('solve-time-cell')) {
             openStatDetailAtIndex('time', solves, stats, idx);
-        } else if (td.classList.contains('ao5-cell')) {
-            openStatDetailAtIndex('ao5', solves, stats, idx);
-        } else if (td.classList.contains('ao12-cell')) {
-            openStatDetailAtIndex('ao12', solves, stats, idx);
+        } else if (td.dataset.statType) {
+            openStatDetailAtIndex(td.dataset.statType, solves, stats, idx);
         }
     };
 }
@@ -5496,6 +5612,84 @@ function initSettingsPanel() {
             }
 
             updateSummarySettingsUI();
+        });
+    }
+
+    const solvesTableSettingRows = [
+        { inputId: 'setting-solves-table-stat1', feedbackId: 'setting-solves-table-stat1-feedback', settingKey: 'solvesTableStat1', label: 'Column 1' },
+        { inputId: 'setting-solves-table-stat2', feedbackId: 'setting-solves-table-stat2-feedback', settingKey: 'solvesTableStat2', label: 'Column 2' },
+    ].map((row) => ({
+        ...row,
+        input: document.getElementById(row.inputId),
+        feedback: document.getElementById(row.feedbackId),
+    })).filter((row) => row.input && row.feedback);
+
+    if (solvesTableSettingRows.length) {
+        const readSolvesTableSettingState = () => {
+            const parsedRows = solvesTableSettingRows.map((row) => ({
+                ...row,
+                parsed: parseSolvesTableStatInput(row.input.value),
+                duplicateLabel: '',
+            }));
+            const seen = new Map();
+
+            parsedRows.forEach((row) => {
+                if (!row.parsed.ok || row.parsed.empty) return;
+                const firstSeen = seen.get(row.parsed.token);
+                if (firstSeen) {
+                    row.duplicateLabel = firstSeen;
+                    return;
+                }
+                seen.set(row.parsed.token, row.label);
+            });
+
+            return parsedRows;
+        };
+
+        const updateSolvesTableSettingsUI = () => {
+            const parsedRows = readSolvesTableSettingState();
+
+            parsedRows.forEach((row) => {
+                const { feedback, parsed, duplicateLabel } = row;
+                if (!feedback) return;
+
+                if (!parsed.ok) {
+                    feedback.classList.add('is-error');
+                    feedback.textContent = parsed.message;
+                    return;
+                }
+
+                if (parsed.empty) {
+                    feedback.classList.remove('is-error');
+                    feedback.textContent = 'Hidden';
+                    return;
+                }
+
+                if (duplicateLabel) {
+                    feedback.classList.add('is-error');
+                    feedback.textContent = `Already used in ${duplicateLabel}`;
+                    return;
+                }
+
+                feedback.classList.remove('is-error');
+                feedback.textContent = `Using ${parsed.token}`;
+            });
+        };
+
+        solvesTableSettingRows.forEach(({ input, settingKey }) => {
+            input.value = settings.get(settingKey) || '';
+        });
+        updateSolvesTableSettingsUI();
+
+        solvesTableSettingRows.forEach(({ input, settingKey }) => {
+            input.addEventListener('input', () => {
+                const parsedRows = readSolvesTableSettingState();
+                const currentRow = parsedRows.find((row) => row.settingKey === settingKey);
+                if (currentRow?.parsed.ok && !currentRow.duplicateLabel) {
+                    settings.set(settingKey, currentRow.parsed.token);
+                }
+                updateSolvesTableSettingsUI();
+            });
         });
     }
 
