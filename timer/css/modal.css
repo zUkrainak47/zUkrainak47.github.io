@@ -972,10 +972,15 @@
     #modal-overlay .modal-box,
     #confirm-overlay .modal-box,
     #prompt-overlay .modal-box,
-    #scramble-preview-overlay .scramble-preview-modal-box {
+    #scramble-preview-overlay .scramble-preview-modal-box,
+    .distribution-modal-box {
         width: 86vw;
         max-width: 86vw;
         margin-inline: 7vw;
+    }
+
+    .distribution-modal-body {
+        padding-inline: 90px;
     }
 
     #scramble-preview-overlay #scramble-preview-modal-canvas-container {
