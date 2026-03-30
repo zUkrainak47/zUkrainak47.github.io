@@ -144,6 +144,18 @@
     border-color: rgba(248, 81, 73, 0.5);
 }
 
+.btn-action.btn-error {
+    background: rgba(248, 81, 73, 0.15);
+    color: var(--stat-worst);
+    border-color: rgba(248, 81, 73, 0.5);
+}
+
+.btn-action.btn-error:hover {
+    background: rgba(248, 81, 73, 0.25);
+    color: var(--stat-worst);
+    border-color: rgba(248, 81, 73, 0.6);
+}
+
 .btn-action.active-penalty {
     color: var(--stat-worst);
     border-color: rgba(248, 81, 73, 0.5);

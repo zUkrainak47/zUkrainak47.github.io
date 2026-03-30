@@ -441,14 +441,20 @@ function buildDistributionTextSummary() {
     ].join('\n')
 }
 
-function setButtonFeedback(button, label) {
+function setButtonFeedback(button, label, errorClass = null) {
     if (!button) return
     const originalLabel = button.dataset.originalLabel || button.textContent
     if (!button.dataset.originalLabel) button.dataset.originalLabel = originalLabel
     button.textContent = label
+    if (errorClass) {
+        button.classList.add(errorClass)
+    }
     window.clearTimeout(button._feedbackTimeout)
     button._feedbackTimeout = window.setTimeout(() => {
         button.textContent = button.dataset.originalLabel || originalLabel
+        if (errorClass) {
+            button.classList.remove(errorClass)
+        }
     }, 1400)
 }
 
@@ -1000,12 +1006,16 @@ async function copyChartImage(button = _copyImageButton) {
         setButtonFeedback(button, 'Copied image')
     } catch {
         if (!navigator.clipboard?.writeText) {
-            setButtonFeedback(button, 'Copy failed')
+            setButtonFeedback(button, 'Copy failed', 'btn-error')
             return
         }
 
-        await navigator.clipboard.writeText(buildDistributionTextSummary())
-        setButtonFeedback(button, 'Copied text')
+        try {
+            await navigator.clipboard.writeText(buildDistributionTextSummary())
+            setButtonFeedback(button, 'Copied text')
+        } catch {
+            setButtonFeedback(button, 'Copy failed', 'btn-error')
+        }
     }
 }
 
@@ -1015,7 +1025,7 @@ async function copyDistributionText(button = _copyTextButton) {
         await navigator.clipboard.writeText(buildDistributionTextSummary())
         setButtonFeedback(button, 'Copied text')
     } catch {
-        setButtonFeedback(button, 'Copy failed')
+        setButtonFeedback(button, 'Copy failed', 'btn-error')
     }
 }
 
