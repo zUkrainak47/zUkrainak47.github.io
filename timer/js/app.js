@@ -14,6 +14,7 @@ let currentScramble = '';
 let currentSortCol = null;
 let currentSortDir = null; // 'asc' or 'desc'
 let commentsOnlyFilterActive = false;
+let scrambleCopyTimeout = null;
 const statsCache = new StatsCache();
 let _skipSolveAddedRefresh = false; // set true when commitSolve manages the refresh itself
 
@@ -3266,6 +3267,19 @@ function updateScrambleUI(scrambleStr) {
     scheduleViewportLayoutSync();
 }
 
+function copyCurrentScrambleToClipboard() {
+    const textEl = getEl('scramble-text');
+    if (!textEl || textEl.classList.contains('loading')) return;
+
+    navigator.clipboard.writeText(currentScramble);
+    textEl.style.color = 'var(--stat-best)';
+    if (scrambleCopyTimeout) clearTimeout(scrambleCopyTimeout);
+    scrambleCopyTimeout = setTimeout(() => {
+        textEl.style.color = '';
+        scrambleCopyTimeout = null;
+    }, 500);
+}
+
 function initScrambleControls() {
     const textEl = document.getElementById('scramble-text');
     const inputEl = document.getElementById('scramble-input');
@@ -3305,18 +3319,6 @@ function initScrambleControls() {
         stopDesktopScrambleTransitionSync(event.propertyName);
     });
 
-    let copyTimeout = null;
-    function copyCurrentScramble() {
-        if (textEl.classList.contains('loading')) return;
-        navigator.clipboard.writeText(currentScramble);
-        textEl.style.color = 'var(--stat-best)';
-        if (copyTimeout) clearTimeout(copyTimeout);
-        copyTimeout = setTimeout(() => {
-            textEl.style.color = '';
-            copyTimeout = null;
-        }, 500);
-    }
-
     async function handleScrambleTypeSelection(nextType) {
         if (textEl.classList.contains('loading')) return;
         const changed = setScrambleType(nextType);
@@ -3343,13 +3345,13 @@ function initScrambleControls() {
             clearNewBestAlert();
             containerEl.classList.toggle('scramble-actions-visible');
         } else {
-            copyCurrentScramble();
+            copyCurrentScrambleToClipboard();
         }
     });
 
     copyBtn?.addEventListener('click', () => {
         closeScrambleTypeMenus();
-        copyCurrentScramble();
+        copyCurrentScrambleToClipboard();
         setScrambleActionsVisible(false);
     });
 
@@ -4139,7 +4141,9 @@ function initKeyboardShortcuts() {
                 promptForSolveComment(lastSolve);
                 break;
             case 'KeyC':
-                document.getElementById('scramble-text').click();
+                e.preventDefault();
+                closeScrambleTypeMenus();
+                copyCurrentScrambleToClipboard();
                 break;
             case 'Backspace':
             case 'Delete':
