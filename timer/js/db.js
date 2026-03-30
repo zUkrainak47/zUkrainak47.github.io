@@ -176,6 +176,19 @@ export async function getSolvesBySession(sessionId) {
     });
 }
 
+export async function getSolveCountBySession(sessionId) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction('solves', 'readonly');
+        const store = tx.objectStore('solves');
+        const index = store.index('sessionId');
+        const request = index.count(sessionId);
+
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = (event) => reject(event.target.error);
+    });
+}
+
 export async function addSolve(solve) {
     const db = await openDB();
     const tx = db.transaction('solves', 'readwrite');

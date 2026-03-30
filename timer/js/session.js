@@ -6,7 +6,7 @@ import { settings } from './settings.js?v=2';
 class SessionManager extends EventEmitter {
     constructor() {
         super();
-        /** @type {{ id: string, name: string, createdAt: number, solves: object[] }[]} */
+        /** @type {{ id: string, name: string, createdAt: number, order: number, solveCount: number, solves: object[] }[]} */
         this._sessions = [];
         this._activeId = null;
         this._ready = false;
@@ -29,13 +29,17 @@ class SessionManager extends EventEmitter {
 
         // Load session metadata from IndexedDB
         const dbSessions = await db.getAllSessions();
+        const solveCounts = await Promise.all(
+            dbSessions.map(session => db.getSolveCountBySession(session.id))
+        );
 
         // Build in-memory session objects (metadata + empty solves array)
-        this._sessions = dbSessions.map(s => ({
+        this._sessions = dbSessions.map((s, index) => ({
             id: s.id,
             name: s.name,
             createdAt: s.createdAt,
             order: Number.isFinite(s.order) ? s.order : 0,
+            solveCount: solveCounts[index] ?? 0,
             solves: [],
         }));
 
@@ -58,6 +62,7 @@ class SessionManager extends EventEmitter {
         const session = this._sessions.find(s => s.id === sessionId);
         if (!session) return;
         session.solves = await db.getSolvesBySession(sessionId);
+        session.solveCount = session.solves.length;
     }
 
     async _createDefault() {
@@ -66,6 +71,7 @@ class SessionManager extends EventEmitter {
             name: 'Session 1',
             createdAt: Date.now(),
             order: this._getNextSessionOrder(),
+            solveCount: 0,
             solves: [],
         };
         this._sessions.push(session);
@@ -75,7 +81,7 @@ class SessionManager extends EventEmitter {
     // --- Session CRUD ---
 
     getSessions() {
-        return this._sessions.map(s => ({ id: s.id, name: s.name, createdAt: s.createdAt, order: s.order, solveCount: s.solves.length }));
+        return this._sessions.map(s => ({ id: s.id, name: s.name, createdAt: s.createdAt, order: s.order, solveCount: s.solveCount }));
     }
 
     getActiveSession() {
@@ -101,6 +107,7 @@ class SessionManager extends EventEmitter {
             name: name || `Session ${num}`,
             createdAt: Date.now(),
             order: this._getNextSessionOrder(),
+            solveCount: 0,
             solves: [],
         };
         this._sessions.push(session);
@@ -153,6 +160,7 @@ class SessionManager extends EventEmitter {
             timestamp: Date.now(),
         };
         session.solves.push(solve);
+        session.solveCount += 1;
         // Fire-and-forget write — in-memory state is already updated
         db.addSolve(solve);
         this.emit('solveAdded', solve);
@@ -180,7 +188,10 @@ class SessionManager extends EventEmitter {
 
     deleteSolve(solveId) {
         const session = this.getActiveSession();
-        session.solves = session.solves.filter(s => s.id !== solveId);
+        const nextSolves = session.solves.filter(s => s.id !== solveId);
+        if (nextSolves.length === session.solves.length) return;
+        session.solves = nextSolves;
+        session.solveCount = Math.max(0, session.solveCount - 1);
         db.deleteSolve(solveId);
         this.emit('solveDeleted', solveId);
     }

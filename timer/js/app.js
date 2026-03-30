@@ -2356,9 +2356,16 @@ async function init() {
         }
     });
 
-    sessionManager.on('solveAdded', () => { if (!_skipSolveAddedRefresh) refreshUI(); });
+    sessionManager.on('solveAdded', () => {
+        refreshSessionList();
+        if (!_skipSolveAddedRefresh) refreshUI();
+    });
     sessionManager.on('solveUpdated', () => { rebuildStatsCache(); refreshUI(); });
-    sessionManager.on('solveDeleted', () => { rebuildStatsCache(); refreshUI(); });
+    sessionManager.on('solveDeleted', () => {
+        refreshSessionList();
+        rebuildStatsCache();
+        refreshUI();
+    });
     sessionManager.on('sessionChanged', onSessionChanged);
     sessionManager.on('sessionDeleted', refreshSessionList);
 
