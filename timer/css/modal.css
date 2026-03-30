@@ -170,6 +170,12 @@
     flex-direction: column;
 }
 
+@media (max-width: 1100px) {
+    .chart-image-modal-box {
+        aspect-ratio: 11/10;
+    }
+}
+
 .chart-image-modal-body {
     display: flex;
     flex-direction: column;
