@@ -253,6 +253,15 @@ function formatSummaryDuration(ms, digits) {
     return formatDurationHms(ms, digits, digits === 0)
 }
 
+function formatCountPercentage(count, total) {
+    if (!Number.isFinite(total) || total <= 0) return '0%'
+    const percentage = (count / total) * 100
+    if (Math.abs(percentage - Math.round(percentage)) < 0.05) {
+        return `${Math.round(percentage)}%`
+    }
+    return `${percentage.toFixed(1)}%`
+}
+
 function sanitizeRangeInputText(value) {
     const text = String(value ?? '')
     const filtered = text.replace(/[^\d:.,]/g, '').replace(',', '.')
@@ -678,7 +687,7 @@ function renderChart(targetCanvas, width, height, { interactive = false, activeI
     const tickFont = interactive ? '12px Inter, system-ui, sans-serif' : '14px Inter, system-ui, sans-serif'
     const padding = {
         top: 22,
-        right: 24,
+        right: interactive ? 58 : 66,
         bottom: 44,
         left: 52,
     }
@@ -703,9 +712,9 @@ function renderChart(targetCanvas, width, height, { interactive = false, activeI
     ctx.fill()
 
     const maxCount = Math.max(1, distribution.maxCount)
+    const visibleCount = Math.max(0, distribution.visibleCount)
     const yStep = niceIntegerStep(maxCount, 7)
     ctx.font = tickFont
-    ctx.textAlign = 'right'
     ctx.textBaseline = 'middle'
     ctx.strokeStyle = colors.grid
     ctx.fillStyle = colors.textMuted
@@ -717,7 +726,10 @@ function renderChart(targetCanvas, width, height, { interactive = false, activeI
         ctx.moveTo(plotLeft, y)
         ctx.lineTo(plotRight, y)
         ctx.stroke()
+        ctx.textAlign = 'right'
         ctx.fillText(String(value), plotLeft - 8, y)
+        ctx.textAlign = 'left'
+        ctx.fillText(formatCountPercentage(value, visibleCount), plotRight + 8, y)
     }
 
     const stepWidth = plotWidth / Math.max(distribution.bins.length, 1)
