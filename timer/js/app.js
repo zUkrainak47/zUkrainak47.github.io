@@ -199,7 +199,7 @@ const keyboardShortcutGroups = [
         ],
     },
 ];
-const blockingOverlayIds = ['modal-overlay', 'distribution-overlay', 'scramble-preview-overlay', 'confirm-overlay', 'prompt-overlay', 'shortcuts-overlay'];
+const blockingOverlayIds = ['modal-overlay', 'distribution-overlay', 'scramble-preview-overlay', 'confirm-overlay', 'prompt-overlay', 'shortcuts-overlay', 'chart-image-overlay'];
 let settingsOverlayEl = null;
 let shortcutsOverlayEl = null;
 let scramblePreviewOverlayEl = null;

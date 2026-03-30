@@ -1005,6 +1005,38 @@ async function copyChartImage(button = _copyImageButton) {
         ])
         setButtonFeedback(button, 'Copied image')
     } catch {
+        // Try to show image in modal for manual copy
+        try {
+            const exportCanvas = document.createElement('canvas')
+            renderChart(exportCanvas, EXPORT_SIZE.width, EXPORT_SIZE.height, {
+                interactive: false,
+                activeIndex: -1,
+            })
+            
+            const dataUrl = exportCanvas.toDataURL('image/png')
+            const chartImage = document.getElementById('chart-image')
+            const chartImageOverlay = document.getElementById('chart-image-overlay')
+            const chartImageInstructions = chartImageOverlay?.querySelector('.chart-image-instructions')
+            
+            if (chartImage && chartImageOverlay && dataUrl) {
+                chartImage.src = dataUrl
+                
+                // Update instruction text based on pointer type
+                if (chartImageInstructions) {
+                    chartImageInstructions.textContent = touchPrimaryQuery.matches
+                        ? 'Long press to copy the image'
+                        : 'Right-click to copy the image'
+                }
+                
+                chartImageOverlay.classList.add('active')
+                setButtonFeedback(button, 'Copy failed', 'btn-error')
+                return
+            }
+        } catch {
+            // If modal fails, fall through to text copy
+        }
+        
+        // Fallback to text copy
         if (!navigator.clipboard?.writeText) {
             setButtonFeedback(button, 'Copy failed', 'btn-error')
             return
@@ -1217,6 +1249,29 @@ export function initTimeDistributionModal() {
 
     _closeButton?.addEventListener('click', () => {
         closeTimeDistributionModal()
+    })
+
+    // Chart image modal close handlers
+    const chartImageClose = document.getElementById('chart-image-close')
+    const chartImageOverlay = document.getElementById('chart-image-overlay')
+    
+    chartImageClose?.addEventListener('click', () => {
+        chartImageOverlay?.classList.remove('active')
+    })
+    
+    chartImageOverlay?.addEventListener('click', (event) => {
+        if (event.target === chartImageOverlay) {
+            chartImageOverlay.classList.remove('active')
+        }
+    })
+    
+    // Escape key handler for chart image modal
+    document.addEventListener('keydown', (event) => {
+        if (event.code !== 'Escape') return
+        if (!chartImageOverlay?.classList.contains('active')) return
+        event.preventDefault()
+        event.stopImmediatePropagation()
+        chartImageOverlay.classList.remove('active')
     })
 
     _copyImageButton?.addEventListener('click', () => {
