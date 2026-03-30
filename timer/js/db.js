@@ -4,6 +4,21 @@ const STORAGE_PREFIX = 'cubetimer_';
 
 let _db = null;
 
+function _sessionOrderValue(session) {
+    return Number.isFinite(session?.order) ? session.order : Number.POSITIVE_INFINITY;
+}
+
+function _compareSessions(a, b) {
+    const orderDiff = _sessionOrderValue(a) - _sessionOrderValue(b);
+    if (orderDiff !== 0) return orderDiff;
+
+    const createdAtA = Number.isFinite(a?.createdAt) ? a.createdAt : Number.POSITIVE_INFINITY;
+    const createdAtB = Number.isFinite(b?.createdAt) ? b.createdAt : Number.POSITIVE_INFINITY;
+    if (createdAtA !== createdAtB) return createdAtA - createdAtB;
+
+    return String(a?.name || '').localeCompare(String(b?.name || ''));
+}
+
 /**
  * Open (or create/upgrade) the IndexedDB database.
  * On first run, migrates data from localStorage if present.
@@ -70,6 +85,7 @@ async function _migrateFromLocalStorage() {
             id: session.id,
             name: session.name,
             createdAt: session.createdAt,
+            order: Number.isFinite(session.order) ? session.order : 0,
         });
 
         // Write individual solves
@@ -94,7 +110,9 @@ async function _migrateFromLocalStorage() {
 
 export async function getAllSessions() {
     const db = await openDB();
-    return _getAll(db, 'sessions');
+    const sessions = await _getAll(db, 'sessions');
+    sessions.sort(_compareSessions);
+    return sessions;
 }
 
 export async function addSession(session) {
@@ -190,6 +208,7 @@ export async function getAllData() {
     const tx = db.transaction(['sessions', 'solves'], 'readonly');
     const sessions = await _getAllFromStore(tx.objectStore('sessions'));
     const solves = await _getAllFromStore(tx.objectStore('solves'));
+    sessions.sort(_compareSessions);
     return { sessions, solves };
 }
 

@@ -101,6 +101,7 @@ export async function importAll(data) {
             id: session.id,
             name: session.name,
             createdAt: session.createdAt,
+            order: Number.isFinite(session.order) ? session.order : dbSessions.length,
         });
 
         if (Array.isArray(session.solves)) {
@@ -248,6 +249,7 @@ export function convertSessionCsv(text) {
                 id: _genId(),
                 name,
                 createdAt: timestamp,
+                order: sessionOrder.length,
                 solves: [],
             };
             sessionsByName.set(name, session);
@@ -328,6 +330,7 @@ export async function importCsTimer(csData) {
             : `Session ${num}`;
 
         const sessionId = _genId() + num;
+        const sessionOrder = dbSessions.length;
         let sessionCreatedAt = Date.now();
         let hasSolves = false;
 
@@ -365,7 +368,7 @@ export async function importCsTimer(csData) {
         }
 
         if (hasSolves) {
-            dbSessions.push({ id: sessionId, name, createdAt: sessionCreatedAt });
+            dbSessions.push({ id: sessionId, name, createdAt: sessionCreatedAt, order: sessionOrder });
         }
     }
 

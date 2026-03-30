@@ -12,6 +12,14 @@ class SessionManager extends EventEmitter {
         this._ready = false;
     }
 
+    _getNextSessionOrder() {
+        if (this._sessions.length === 0) return 0;
+        return this._sessions.reduce((maxOrder, session) => {
+            const order = Number.isFinite(session.order) ? session.order : -1;
+            return Math.max(maxOrder, order);
+        }, -1) + 1;
+    }
+
     /**
      * Initialize the session manager by loading data from IndexedDB.
      * Must be called (and awaited) before any other methods.
@@ -27,6 +35,7 @@ class SessionManager extends EventEmitter {
             id: s.id,
             name: s.name,
             createdAt: s.createdAt,
+            order: Number.isFinite(s.order) ? s.order : 0,
             solves: [],
         }));
 
@@ -56,16 +65,17 @@ class SessionManager extends EventEmitter {
             id: generateId(),
             name: 'Session 1',
             createdAt: Date.now(),
+            order: this._getNextSessionOrder(),
             solves: [],
         };
         this._sessions.push(session);
-        await db.addSession({ id: session.id, name: session.name, createdAt: session.createdAt });
+        await db.addSession({ id: session.id, name: session.name, createdAt: session.createdAt, order: session.order });
     }
 
     // --- Session CRUD ---
 
     getSessions() {
-        return this._sessions.map(s => ({ id: s.id, name: s.name, createdAt: s.createdAt, solveCount: s.solves.length }));
+        return this._sessions.map(s => ({ id: s.id, name: s.name, createdAt: s.createdAt, order: s.order, solveCount: s.solves.length }));
     }
 
     getActiveSession() {
@@ -90,10 +100,11 @@ class SessionManager extends EventEmitter {
             id: generateId(),
             name: name || `Session ${num}`,
             createdAt: Date.now(),
+            order: this._getNextSessionOrder(),
             solves: [],
         };
         this._sessions.push(session);
-        await db.addSession({ id: session.id, name: session.name, createdAt: session.createdAt });
+        await db.addSession({ id: session.id, name: session.name, createdAt: session.createdAt, order: session.order });
         await this.setActiveSession(session.id);
         return session;
     }
@@ -102,7 +113,7 @@ class SessionManager extends EventEmitter {
         const session = this._sessions.find(s => s.id === id);
         if (session) {
             session.name = name;
-            await db.updateSession({ id: session.id, name: session.name, createdAt: session.createdAt });
+            await db.updateSession({ id: session.id, name: session.name, createdAt: session.createdAt, order: session.order });
             this.emit('sessionUpdated', id);
         }
     }
