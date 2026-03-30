@@ -6,7 +6,8 @@ import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } f
 import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, truncateTimeDisplay } from './utils.js';
 import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=13';
 import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=18';
-import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=10';
+import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=11';
+import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, showTimeDistributionModal } from './distribution.js';
 import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer } from './storage.js';
 
 let currentScramble = '';
@@ -197,7 +198,7 @@ const keyboardShortcutGroups = [
         ],
     },
 ];
-const blockingOverlayIds = ['modal-overlay', 'scramble-preview-overlay', 'confirm-overlay', 'prompt-overlay', 'shortcuts-overlay'];
+const blockingOverlayIds = ['modal-overlay', 'distribution-overlay', 'scramble-preview-overlay', 'confirm-overlay', 'prompt-overlay', 'shortcuts-overlay'];
 let settingsOverlayEl = null;
 let shortcutsOverlayEl = null;
 let scramblePreviewOverlayEl = null;
@@ -343,6 +344,11 @@ function handlePopState(event) {
 
     if (scramblePreviewOverlayEl?.classList.contains('active')) {
         closeScramblePreviewModal({ isPopState: true });
+        return;
+    }
+
+    if (isTimeDistributionModalOpen()) {
+        closeTimeDistributionModal({ isPopState: true });
         return;
     }
 
@@ -2324,6 +2330,7 @@ async function init() {
     const shouldLoadInitialScramble = !syncInitialScrambleUI();
     await sessionInitPromise;
     initModal();
+    initTimeDistributionModal();
     setModalStatNavigator(openShortcutStatDetail);
     initShortcutTooltips();
     syncModalStatNavigation();
@@ -2400,6 +2407,7 @@ async function init() {
     initTimerInfoControls();
     initTableSorting();
     initGraphLineToggles();
+    initGraphDistributionButton();
     initMobilePanels();
     initTimerQuickActions();
     syncPersistentManualEntryMode();
@@ -2511,6 +2519,17 @@ function initGraphLineToggles() {
     });
 
     syncGraphLineLabels();
+}
+
+function initGraphDistributionButton() {
+    const button = document.getElementById('btn-graph-distribution');
+    if (!button) return;
+
+    button.addEventListener('click', () => {
+        showTimeDistributionModal(sessionManager.getFilteredSolves(), {
+            sessionName: sessionManager.getActiveSession()?.name || 'Session',
+        });
+    });
 }
 
 // ──── Timer Info Click ────
@@ -4061,6 +4080,7 @@ function initKeyboardShortcuts() {
         if (e.ctrlKey || e.metaKey) return;
 
         const isSolveModalActive = document.getElementById('modal-overlay').classList.contains('active')
+            || document.getElementById('distribution-overlay').classList.contains('active')
             || document.getElementById('scramble-preview-overlay').classList.contains('active');
 
         if (isManualTimeInputFocused() && (e.code === 'Period' || e.code === 'Comma')) return;

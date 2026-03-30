@@ -79,8 +79,10 @@
     position: relative;
 }
 
-
-
+#btn-graph-distribution .icon-mask {
+    width: 14px;
+    height: 14px;
+}
 
 .graph-controls-secondary {
     display: flex;
@@ -218,13 +220,9 @@
         display: none;
     }
 
-    .graph-controls-primary>button[data-action="last25"],
-    .graph-controls-primary>button[data-action="reset"] {
+    .graph-controls-primary.graph-controls-primary-no-last25>#btn-graph-distribution,
+    .graph-controls-primary.graph-controls-primary-no-last25>button[data-action="reset"] {
         grid-column: span 2;
-    }
-
-    .graph-controls-primary.graph-controls-primary-single-action>button[data-action="reset"] {
-        grid-column: 1 / -1;
     }
 
     .graph-controls-sep {
@@ -429,8 +427,9 @@
         grid-column: span 1;
     }
 
-    body.mobile-viewport[data-mobile-panel="trend"] .graph-controls-primary.graph-controls-primary-single-action>button[data-action="reset"] {
-        grid-column: 1 / -1;
+    body.mobile-viewport[data-mobile-panel="trend"] .graph-controls-primary.graph-controls-primary-no-last25>#btn-graph-distribution,
+    body.mobile-viewport[data-mobile-panel="trend"] .graph-controls-primary.graph-controls-primary-no-last25>button[data-action="reset"] {
+        grid-column: span 1;
     }
 
     body.mobile-viewport[data-mobile-panel="trend"] .graph-controls-secondary {

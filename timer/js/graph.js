@@ -546,7 +546,7 @@ export function updateGraph(solves, perSolveStats) {
     if (last25Btn) {
         const showLast25Button = _solves.length > 25;
         last25Btn.style.display = showLast25Button ? '' : 'none';
-        primaryControls?.classList.toggle('graph-controls-primary-single-action', !showLast25Button);
+        primaryControls?.classList.toggle('graph-controls-primary-no-last25', !showLast25Button);
     }
 
     render();
@@ -575,7 +575,7 @@ export function updateGraphData(solves, cache) {
     if (last25Btn) {
         const showLast25Button = _solves.length > 25;
         last25Btn.style.display = showLast25Button ? '' : 'none';
-        primaryControls?.classList.toggle('graph-controls-primary-single-action', !showLast25Button);
+        primaryControls?.classList.toggle('graph-controls-primary-no-last25', !showLast25Button);
     }
 
     render();

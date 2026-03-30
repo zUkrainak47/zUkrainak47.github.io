@@ -30,17 +30,18 @@
   <link rel="preload" href="resources/hashtag.svg" as="image" type="image/svg+xml">
   <link rel="preload" href="resources/hashtag-full.svg" as="image" type="image/svg+xml">
   <link rel="preload" href="resources/settings.svg" as="image" type="image/svg+xml">
+  <link rel="preload" href="resources/distribution.svg" as="image" type="image/svg+xml">
 
   <!-- Styles -->
   <link rel="stylesheet" href="css/variables.css?v=6">
-  <link rel="stylesheet" href="css/base.css?v=16">
+  <link rel="stylesheet" href="css/base.css?v=17">
   <link rel="stylesheet" href="css/layout.css?v=15">
   <link rel="stylesheet" href="css/scramble.css?v=37">
   <link rel="stylesheet" href="css/timer.css?v=30">
   <link rel="stylesheet" href="css/stats.css?v=19">
   <link rel="stylesheet" href="css/cube.css?v=7">
-  <link rel="stylesheet" href="css/graph.css?v=8">
-  <link rel="stylesheet" href="css/modal.css?v=14">
+  <link rel="stylesheet" href="css/graph.css?v=9">
+  <link rel="stylesheet" href="css/modal.css?v=15">
   <link rel="stylesheet" href="css/settings.css?v=10">
 </head>
 
@@ -366,6 +367,10 @@
           </div>
           <div id="graph-controls">
             <div class="graph-controls-primary">
+              <button id="btn-graph-distribution" type="button" title="Open time distribution"
+                aria-label="Open time distribution">
+                <span class="icon-mask icon-mask-distribution" aria-hidden="true"></span>
+              </button>
               <button data-action="last25" data-mobile-label="Last 25" title="Show last 25 solves">25</button>
               <button data-action="reset" data-mobile-label="Reset" title="Reset view" style="font-size:18px">⟲</button>
               <span style="flex:1"></span>
@@ -457,6 +462,71 @@
         </div>
         <div id="modal-mobile-list-panel" class="modal-mobile-list-panel" hidden>
           <div id="modal-mobile-list" class="modal-mobile-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="distribution-overlay" class="modal-overlay">
+    <div class="modal-box distribution-modal-box">
+      <div class="modal-header">
+        <div class="distribution-modal-heading">
+          <h2>Time Distribution</h2>
+          <div id="distribution-session-name" class="distribution-session-name"></div>
+        </div>
+        <div class="distribution-modal-actions">
+          <button id="distribution-copy-image" class="btn-action btn-action-primary" type="button">Copy Image</button>
+          <button id="distribution-copy-text" class="btn-action" type="button">Copy Text</button>
+          <button id="distribution-close" class="modal-close" aria-label="Close time distribution">✕</button>
+        </div>
+      </div>
+      <div class="modal-body distribution-modal-body">
+        <div class="distribution-toolbar">
+          <div class="distribution-toolbar-group">
+            <span class="distribution-control-label">Range</span>
+            <select id="distribution-range-select" class="distribution-select" aria-label="Distribution range">
+              <option value="auto">Auto</option>
+              <option value="30000">0-30s</option>
+              <option value="60000">0-60s</option>
+              <option value="120000">0-120s</option>
+              <option value="300000">0-300s</option>
+              <option value="600000">0-600s</option>
+            </select>
+          </div>
+          <div class="distribution-toolbar-group">
+            <span class="distribution-control-label">Bin Width</span>
+            <button id="distribution-bin-coarser" class="btn-action distribution-zoom-btn" type="button"
+              aria-label="Use wider bins">−</button>
+            <select id="distribution-bin-width-select" class="distribution-select" aria-label="Distribution bin width">
+              <option value="0">1:00</option>
+              <option value="1">30s</option>
+              <option value="2">10s</option>
+              <option value="3">5s</option>
+              <option value="4">2s</option>
+              <option value="5">1s</option>
+              <option value="6">0.5s</option>
+              <option value="7">0.2s</option>
+              <option value="8">0.1s</option>
+            </select>
+            <button id="distribution-bin-finer" class="btn-action distribution-zoom-btn" type="button"
+              aria-label="Use narrower bins">+</button>
+          </div>
+        </div>
+
+        <div id="distribution-chart-shell" class="distribution-chart-shell">
+          <canvas id="distribution-canvas" role="img" aria-label="Time distribution chart"></canvas>
+          <div id="distribution-tooltip" class="distribution-tooltip" hidden>
+            <div id="distribution-tooltip-range" class="distribution-tooltip-range"></div>
+            <div id="distribution-tooltip-count" class="distribution-tooltip-copy"></div>
+            <div id="distribution-tooltip-share" class="distribution-tooltip-copy"></div>
+          </div>
+        </div>
+
+        <div id="distribution-summary-text" class="distribution-summary-text"></div>
+        <div id="distribution-footer" class="distribution-footer"></div>
+
+        <div id="distribution-empty-state" class="distribution-empty-state" hidden>
+          No valid solves are available for a time distribution yet.
         </div>
       </div>
     </div>
@@ -889,7 +959,7 @@
   </script>
 
   <!-- App Script -->
-  <script type="module" src="js/app.js?v=95"></script>
+  <script type="module" src="js/app.js?v=96"></script>
 </body>
 
 </html>

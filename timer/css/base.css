@@ -285,6 +285,13 @@ select {
     mask-image: url('../resources/settings.svg');
 }
 
+.icon-mask-distribution {
+    width: 1em;
+    height: 1em;
+    -webkit-mask-image: url('../resources/distribution.svg');
+    mask-image: url('../resources/distribution.svg');
+}
+
 @media (min-width: 1101px) and (pointer: fine) {
     #btn-settings .icon-mask-settings {
         width: 0.85em;
