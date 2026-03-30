@@ -1025,6 +1025,7 @@ export function isTimeDistributionModalOpen() {
 
 export function closeTimeDistributionModal({ isPopState = false } = {}) {
     if (!_overlay?.classList.contains('active')) return
+    applyRangeInputs()
     if (!isPopState && window.history.state?.isBackIntercepted) {
         window.history.back()
     }
