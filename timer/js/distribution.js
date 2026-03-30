@@ -1029,7 +1029,7 @@ async function copyChartImage(button = _copyImageButton) {
                 }
                 
                 chartImageOverlay.classList.add('active')
-                setButtonFeedback(button, 'Copy failed', 'btn-error')
+                // setButtonFeedback(button, 'Copy failed')
                 return
             }
         } catch {

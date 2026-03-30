@@ -45,6 +45,13 @@ body {
         -webkit-user-select: text !important;
         -webkit-touch-callout: default;
     }
+    
+    #chart-image-overlay,
+    #chart-image-overlay * {
+        user-select: auto !important;
+        -webkit-user-select: auto !important;
+        -webkit-touch-callout: default;
+    }
 
     input:not([type]),
     input[type="text"],
