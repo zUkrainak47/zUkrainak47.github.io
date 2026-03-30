@@ -2,6 +2,7 @@ import * as db from './db.js';
 
 const STORAGE_PREFIX = 'cubetimer_';
 const STORAGE_VERSION = 1;
+const SESSION_CSV_HEADERS = ['Puzzle', 'Category', 'Time(millis)', 'Date(millis)', 'Scramble', 'Penalty', 'Comment'];
 
 /**
  * Load data from localStorage.
@@ -120,6 +121,165 @@ export async function importAll(data) {
         if (key === 'version' || key === 'sessions') continue;
         save(key, value);
     }
+}
+
+function _parseDelimitedRecords(text, delimiter = ';') {
+    const records = [];
+    let currentRecord = [];
+    let currentField = '';
+    let inQuotes = false;
+    let lineNumber = 1;
+
+    const pushRecord = () => {
+        currentRecord.push(currentField);
+        const hasContent = currentRecord.some(field => field.length > 0);
+        if (hasContent) {
+            records.push(currentRecord);
+        }
+        currentRecord = [];
+        currentField = '';
+    };
+
+    for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+
+        if (char === '"') {
+            if (inQuotes && text[i + 1] === '"') {
+                currentField += '"';
+                i += 1;
+            } else {
+                inQuotes = !inQuotes;
+            }
+            continue;
+        }
+
+        if (char === delimiter && !inQuotes) {
+            currentRecord.push(currentField);
+            currentField = '';
+            continue;
+        }
+
+        if (char === '\n' && !inQuotes) {
+            pushRecord();
+            lineNumber += 1;
+            continue;
+        }
+
+        currentField += char;
+
+        if (char === '\n') {
+            lineNumber += 1;
+        }
+    }
+
+    if (inQuotes) {
+        throw new Error(`Unterminated quoted field near line ${lineNumber}.`);
+    }
+
+    if (currentField.length > 0 || currentRecord.length > 0) {
+        pushRecord();
+    }
+
+    return records;
+}
+
+function _normalizeImportText(text) {
+    return String(text || '')
+        .replace(/^\uFEFF/, '')
+        .replace(/\r\n?/g, '\n');
+}
+
+function _isSessionCsvHeader(fields) {
+    return fields.length === SESSION_CSV_HEADERS.length
+        && SESSION_CSV_HEADERS.every((header, index) => fields[index] === header);
+}
+
+function _mapSessionCsvPenalty(value) {
+    if (value === '1') return '+2';
+    if (value === '2') return 'DNF';
+    return null;
+}
+
+export function isSessionCsvFormat(text) {
+    const normalized = _normalizeImportText(text);
+    const [firstRecord] = _parseDelimitedRecords(normalized);
+    if (!firstRecord) return false;
+
+    try {
+        return _isSessionCsvHeader(firstRecord);
+    } catch (_) {
+        return false;
+    }
+}
+
+export function convertSessionCsv(text) {
+    const normalized = _normalizeImportText(text);
+    const records = _parseDelimitedRecords(normalized);
+    if (records.length === 0) {
+        throw new Error('Empty import file.');
+    }
+
+    const header = records[0];
+    if (!_isSessionCsvHeader(header)) {
+        throw new Error(`Unsupported session CSV header. Expected: ${SESSION_CSV_HEADERS.join(' | ')}. Received: ${header.join(' | ')}`);
+    }
+
+    const sessionsByName = new Map();
+    const sessionOrder = [];
+
+    for (let lineIndex = 1; lineIndex < records.length; lineIndex++) {
+        const fields = records[lineIndex];
+        if (fields.length !== SESSION_CSV_HEADERS.length) {
+            throw new Error(`Invalid row at line ${lineIndex + 1}. Expected ${SESSION_CSV_HEADERS.length} fields, received ${fields.length}.`);
+        }
+
+        const [, rawCategory, rawTime, rawDate, rawScramble, rawPenalty, rawComment] = fields;
+        const name = rawCategory.trim() || `Session ${sessionOrder.length + 1}`;
+        const time = Number(rawTime);
+        const timestamp = Number(rawDate);
+
+        if (!Number.isFinite(time) || time < 0 || !Number.isFinite(timestamp) || timestamp < 0) {
+            throw new Error(`Invalid time data at line ${lineIndex + 1}. Time="${rawTime}", Date="${rawDate}"`);
+        }
+
+        let session = sessionsByName.get(name);
+        if (!session) {
+            session = {
+                id: _genId(),
+                name,
+                createdAt: timestamp,
+                solves: [],
+            };
+            sessionsByName.set(name, session);
+            sessionOrder.push(session);
+        } else {
+            session.createdAt = Math.min(session.createdAt, timestamp);
+        }
+
+        session.solves.push({
+            id: _genId(),
+            time: Math.round(time),
+            scramble: rawScramble || '',
+            isManual: false,
+            penalty: _mapSessionCsvPenalty(rawPenalty.trim()),
+            timestamp,
+            comment: rawComment || '',
+        });
+    }
+
+    sessionOrder.forEach(session => {
+        session.solves.sort((a, b) => a.timestamp - b.timestamp);
+    });
+
+    return {
+        version: STORAGE_VERSION,
+        sessions: sessionOrder,
+        activeSessionId: sessionOrder[0]?.id ?? null,
+    };
+}
+
+export async function importSessionCsv(text) {
+    await importAll(convertSessionCsv(text));
 }
 
 // ──── csTimer Format Conversion ────

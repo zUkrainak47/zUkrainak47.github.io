@@ -8,7 +8,7 @@ import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfir
 import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=18';
 import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=11';
 import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, showTimeDistributionModal } from './distribution.js';
-import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer } from './storage.js';
+import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js';
 
 let currentScramble = '';
 let currentSortCol = null;
@@ -5823,15 +5823,18 @@ function initSettingsPanel() {
     // the <input type="file"> change-event bugs entirely. Falls back to
     // a one-shot file input for Firefox/Safari.
     document.getElementById('btn-import').onclick = async () => {
+        let text = '';
         try {
-            let text;
-
             if (window.showOpenFilePicker) {
                 // Promise-based: no change events, no re-firing
                 const [handle] = await window.showOpenFilePicker({
                     types: [{
                         description: 'Timer backup files',
-                        accept: { 'application/json': ['.json', '.txt'] },
+                        accept: {
+                            'application/json': ['.json'],
+                            'text/plain': ['.txt'],
+                            'text/csv': ['.csv'],
+                        },
                     }],
                     multiple: false,
                 });
@@ -5842,7 +5845,7 @@ function initSettingsPanel() {
                 text = await new Promise((resolve, reject) => {
                     const inp = document.createElement('input');
                     inp.type = 'file';
-                    inp.accept = '.json,.txt';
+                    inp.accept = '.json,.txt,.csv';
                     inp.style.position = 'fixed';
                     inp.style.left = '-9999px';
                     document.body.appendChild(inp);
@@ -5863,16 +5866,25 @@ function initSettingsPanel() {
                 });
             }
 
-            const data = JSON.parse(text);
+            let data = null;
+            let isJsonImport = false;
+            try {
+                data = JSON.parse(text);
+                isJsonImport = true;
+            } catch (_) {
+                data = null;
+            }
             // Close UI without popping history to avoid back-navigation race condition
             // and ensure confirmation is visible (history state is reused by customConfirm)
             closeSettingsPanel({ isPopState: true });
 
             if (await customConfirm('This will replace all your current data. Continue?')) {
-                if (isCsTimerFormat(data)) {
+                if (isJsonImport && isCsTimerFormat(data)) {
                     await importCsTimer(data);
-                } else {
+                } else if (isJsonImport && data && typeof data === 'object') {
                     await importAll(data);
+                } else {
+                    await importSessionCsv(text);
                 }
                 location.reload();
             }
@@ -5880,6 +5892,11 @@ function initSettingsPanel() {
             // Silently ignore user-cancelled or AbortError
             if (e.name === 'AbortError') return;
             if (e.message === 'cancelled' || e.message === 'no-file') return;
+            console.error('Import failed:', {
+                message: e?.message || String(e),
+                stack: e?.stack || null,
+                preview: text.slice(0, 500),
+            });
             alert('Invalid file format.');
         }
     };
