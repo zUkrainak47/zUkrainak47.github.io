@@ -72,7 +72,7 @@
     line-height: 1.25;
     border-color: rgba(63, 185, 80, 0.45);
     color: var(--stat-best);
-    background: rgba(13, 17, 23, 0.94);
+    background: var(--new-best-popup-surface);
 }
 
 .timer-popup-danger {
