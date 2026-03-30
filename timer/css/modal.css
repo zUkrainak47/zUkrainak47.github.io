@@ -263,21 +263,66 @@
     width: min(92vw, 900px);
 }
 
+.distribution-modal-box.distribution-empty-only .distribution-modal-header,
+.distribution-modal-box.distribution-empty-only .distribution-toolbar,
+.distribution-modal-box.distribution-empty-only .distribution-chart-shell,
+.distribution-modal-box.distribution-empty-only .distribution-copy-actions {
+    display: none !important;
+}
+
+.distribution-modal-box.distribution-empty-only .distribution-modal-body {
+    padding: 0;
+    gap: 0;
+}
+
+.distribution-modal-box.distribution-empty-only .distribution-empty-state {
+    display: flex !important;
+    min-height: 180px;
+    border-radius: 15px;
+    align-items: center;
+    justify-content: center;
+}
+
 .distribution-modal-heading {
     display: flex;
     flex-direction: column;
     gap: 2px;
+    min-width: 0;
+}
+
+.distribution-modal-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    column-gap: 10px;
+    row-gap: 10px;
 }
 
 .distribution-modal-actions {
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-left: auto;
 }
 
-.distribution-modal-actions .modal-close {
+.distribution-header-toggle {
     margin-left: 0;
+    justify-self: end;
+}
+
+.distribution-icon-toggle {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    color: var(--text-secondary);
+}
+
+.distribution-icon-toggle:hover {
+    color: var(--text-secondary);
+}
+
+.distribution-close-btn {
+    margin-left: 0;
+    justify-self: end;
 }
 
 .distribution-session-name {
@@ -311,17 +356,6 @@
     padding: 14px 16px;
 }
 
-.distribution-summary-text {
-    color: var(--text-primary);
-    font-size: var(--text-base);
-    font-weight: 600;
-}
-
-.distribution-footer {
-    color: var(--text-secondary);
-    font-size: var(--text-sm);
-}
-
 .distribution-control-label {
     color: var(--text-secondary);
     font-size: var(--text-sm);
@@ -331,17 +365,45 @@
 
 .distribution-zoom-btn {
     width: 34px;
+    height: 32px;
     padding: 0;
 }
 
 .distribution-select {
-    min-width: 104px;
+    min-width: 84px;
+    max-width: 120px;
     height: 32px;
     padding: 0 28px 0 10px;
     border-radius: var(--radius-md);
     background-color: var(--surface);
-    border-color: var(--surface-border);
+    border: 1px solid var(--text-muted);
     color: var(--text-primary);
+    font-size: var(--text-sm);
+}
+
+.distribution-range-inputs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1 1 144px;
+}
+
+.distribution-range-input {
+    min-width: 0;
+    width: 100%;
+    max-width: 112px;
+    height: 32px;
+    padding: 0 10px;
+    background-color: var(--surface);
+    border: 1px solid var(--text-muted);
+}
+
+#distribution-range-reset {
+    height: 32px;
+}
+
+.distribution-range-separator {
+    color: var(--text-tertiary);
     font-size: var(--text-sm);
 }
 
@@ -351,12 +413,15 @@
     min-height: 320px;
     height: clamp(280px, 48vh, 420px);
     border: 1px solid var(--surface-border);
-    border-radius: var(--radius-xl);
-    background:
-        radial-gradient(circle at top left, rgba(65, 179, 109, 0.09), transparent 38%),
-        radial-gradient(circle at top right, rgba(240, 161, 28, 0.08), transparent 34%),
-        var(--bg-primary);
+    border-radius: var(--radius-lg);
+    background: var(--bg-primary);
     overflow: hidden;
+}
+
+.distribution-copy-actions {
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: -4px;
 }
 
 #distribution-canvas {
@@ -392,6 +457,18 @@
     font-size: var(--text-xs);
 }
 
+#distribution-legend-toggle[aria-pressed="true"] {
+    background: var(--surface-hover);
+    color: var(--text-secondary);
+    border-color: var(--text-tertiary);
+}
+
+#distribution-legend-toggle[aria-pressed="true"]:hover {
+    background: var(--surface-hover);
+    color: var(--text-secondary);
+    border-color: var(--text-secondary);
+}
+
 .distribution-empty-state {
     border: 1px dashed var(--surface-border);
     border-radius: var(--radius-xl);
@@ -425,12 +502,26 @@
 
     .distribution-select {
         min-width: 0;
-        flex: 1 1 120px;
+        flex: 1 1 84px;
+        max-width: 104px;
+    }
+
+    .distribution-range-inputs {
+        width: 100%;
+        gap: 6px;
+    }
+
+    .distribution-range-input {
+        max-width: 88px;
     }
 
     .distribution-chart-shell {
         min-height: 260px;
         height: min(44vh, 340px);
+    }
+
+    .distribution-modal-box.distribution-empty-only .distribution-empty-state {
+        border-radius: 23px 23px 0 0;
     }
 }
 

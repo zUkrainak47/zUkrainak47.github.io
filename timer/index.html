@@ -27,6 +27,7 @@
   <link rel="preload" href="resources/calendar-date-off.svg" as="image" type="image/svg+xml">
   <link rel="preload" href="resources/calendar-date.svg" as="image" type="image/svg+xml">
   <link rel="preload" href="resources/clock.svg" as="image" type="image/svg+xml">
+  <link rel="preload" href="resources/legend.svg" as="image" type="image/svg+xml">
   <link rel="preload" href="resources/hashtag.svg" as="image" type="image/svg+xml">
   <link rel="preload" href="resources/hashtag-full.svg" as="image" type="image/svg+xml">
   <link rel="preload" href="resources/settings.svg" as="image" type="image/svg+xml">
@@ -469,34 +470,33 @@
 
   <div id="distribution-overlay" class="modal-overlay">
     <div class="modal-box distribution-modal-box">
-      <div class="modal-header">
+      <div class="modal-header distribution-modal-header">
         <div class="distribution-modal-heading">
           <h2>Time Distribution</h2>
           <div id="distribution-session-name" class="distribution-session-name"></div>
         </div>
-        <div class="distribution-modal-actions">
-          <button id="distribution-copy-image" class="btn-action btn-action-primary" type="button">Copy Image</button>
-          <button id="distribution-copy-text" class="btn-action" type="button">Copy Text</button>
-          <button id="distribution-close" class="modal-close" aria-label="Close time distribution">✕</button>
-        </div>
+        <button id="distribution-legend-toggle" class="btn-action distribution-header-toggle distribution-icon-toggle" type="button" aria-pressed="true" aria-label="Toggle legend" title="Toggle legend">
+          <span class="icon-mask icon-mask-legend" aria-hidden="true"></span>
+        </button>
+        <button id="distribution-close" class="modal-close distribution-close-btn" aria-label="Close time distribution">✕</button>
       </div>
       <div class="modal-body distribution-modal-body">
         <div class="distribution-toolbar">
           <div class="distribution-toolbar-group">
             <span class="distribution-control-label">Range</span>
-            <select id="distribution-range-select" class="distribution-select" aria-label="Distribution range">
-              <option value="auto">Auto</option>
-              <option value="30000">0-30s</option>
-              <option value="60000">0-60s</option>
-              <option value="120000">0-120s</option>
-              <option value="300000">0-300s</option>
-              <option value="600000">0-600s</option>
-            </select>
+            <div class="distribution-range-inputs">
+              <input id="distribution-range-min" class="distribution-range-input" type="text" inputmode="decimal"
+                aria-label="Distribution range minimum">
+              <span class="distribution-range-separator" aria-hidden="true">-</span>
+              <input id="distribution-range-max" class="distribution-range-input" type="text" inputmode="decimal"
+                aria-label="Distribution range maximum">
+            </div>
+            <button id="distribution-range-reset" class="btn-action" type="button">Reset</button>
           </div>
           <div class="distribution-toolbar-group">
             <span class="distribution-control-label">Bin Width</span>
             <button id="distribution-bin-coarser" class="btn-action distribution-zoom-btn" type="button"
-              aria-label="Use wider bins">−</button>
+              aria-label="Use narrower bins">−</button>
             <select id="distribution-bin-width-select" class="distribution-select" aria-label="Distribution bin width">
               <option value="0">1:00</option>
               <option value="1">30s</option>
@@ -509,7 +509,7 @@
               <option value="8">0.1s</option>
             </select>
             <button id="distribution-bin-finer" class="btn-action distribution-zoom-btn" type="button"
-              aria-label="Use narrower bins">+</button>
+              aria-label="Use wider bins">+</button>
           </div>
         </div>
 
@@ -522,8 +522,10 @@
           </div>
         </div>
 
-        <div id="distribution-summary-text" class="distribution-summary-text"></div>
-        <div id="distribution-footer" class="distribution-footer"></div>
+        <div id="distribution-copy-actions" class="distribution-modal-actions distribution-copy-actions">
+          <button id="distribution-copy-image" class="btn-action btn-action-primary" type="button">Copy Image</button>
+          <button id="distribution-copy-text" class="btn-action" type="button">Copy Text</button>
+        </div>
 
         <div id="distribution-empty-state" class="distribution-empty-state" hidden>
           No valid solves are available for a time distribution yet.

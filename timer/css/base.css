@@ -292,6 +292,13 @@ select {
     mask-image: url('../resources/distribution.svg');
 }
 
+.icon-mask-legend {
+    width: 1em;
+    height: 1em;
+    -webkit-mask-image: url('../resources/legend.svg');
+    mask-image: url('../resources/legend.svg');
+}
+
 @media (min-width: 1101px) and (pointer: fine) {
     #btn-settings .icon-mask-settings {
         width: 0.85em;
