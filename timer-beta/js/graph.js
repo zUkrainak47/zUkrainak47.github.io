@@ -613,12 +613,12 @@ export function updateGraphData(solves, cache) {
 }
 
 /**
- * Pick nice Y-axis tick increment (whole seconds or 0.5s).
+ * Pick nice Y-axis tick increment, down to tenths of a second.
  */
 function niceTickInterval(range, maxTicks) {
     const rangeS = range / 1000;
     const rough = rangeS / maxTicks;
-    const niceSteps = [0.2, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600];
+    const niceSteps = [0.1, 0.2, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600];
     for (const s of niceSteps) {
         if (s >= rough) return s * 1000;
     }
