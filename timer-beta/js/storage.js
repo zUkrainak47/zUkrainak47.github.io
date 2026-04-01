@@ -3,6 +3,11 @@ import * as db from './db.js';
 const STORAGE_PREFIX = 'cubetimer_';
 const STORAGE_VERSION = 1;
 const SESSION_CSV_HEADERS = ['Puzzle', 'Category', 'Time(millis)', 'Date(millis)', 'Scramble', 'Penalty', 'Comment'];
+const IMPORT_PRESERVED_LOCAL_KEYS = Object.freeze([
+    'scrambleQueues',
+    'scrambleQueue333',
+    'cubingWarmupState',
+]);
 
 /**
  * Load data from localStorage.
@@ -83,6 +88,12 @@ export async function exportAll() {
 export async function importAll(data) {
     if (!data || typeof data !== 'object') return;
 
+    // Preserve device-local scramble caches so imports do not force the
+    // offline warmup/bootstrap path to run again on the same browser.
+    const preservedLocalValues = new Map(
+        IMPORT_PRESERVED_LOCAL_KEYS.map((key) => [key, load(key, null)]),
+    );
+
     // Clear existing localStorage timer data
     const keysToRemove = [];
     for (let i = 0; i < localStorage.length; i++) {
@@ -122,6 +133,15 @@ export async function importAll(data) {
         if (key === 'version' || key === 'sessions') continue;
         save(key, value);
     }
+
+    preservedLocalValues.forEach((value, key) => {
+        if (value === null) {
+            remove(key);
+            return;
+        }
+
+        save(key, value);
+    });
 }
 
 function _parseDelimitedRecords(text, delimiter = ';') {
