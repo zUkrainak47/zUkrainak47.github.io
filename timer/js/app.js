@@ -71,7 +71,9 @@ const buttonShortcutTooltipBindings = [
     { selector: '#btn-copy-scramble', binding: ['C'] },
     { selector: '#btn-prev-scramble', binding: [','] },
     { selector: '#btn-next-scramble', binding: ['.'] },
+    { selector: '#btn-scramble-preview', binding: ['S'] },
     { selector: '#btn-zen', binding: ['Z'] },
+    { selector: '#btn-graph-distribution', binding: ['T'] },
     { selector: 'button[data-action="last25"]', binding: ['Shift', 'Enter'] },
     { selector: 'button[data-action="reset"]', binding: ['Enter'] },
     { selector: 'button[data-action="zoom-x-in"]', binding: ['Shift', 'ArrowLeft'] },
@@ -181,11 +183,11 @@ const keyboardShortcutGroups = [
                 bindings: [['.']],
             },
             {
-                action: 'Toggle scramble preview',
+                action: 'Open scramble preview',
                 bindings: [['S']],
             },
             {
-                action: 'Toggle graph panel',
+                action: 'Open time distribution',
                 bindings: [['T']],
             },
         ],
@@ -2275,6 +2277,7 @@ function openScramblePreviewModal() {
     if (!scramblePreviewOverlayEl || isScramblePreviewModalOpen()) return;
     pushHistoryState();
     scramblePreviewOverlayEl.classList.add('active');
+    blurManualTimeInput();
     scheduleScramblePreviewModalSizeSync();
     renderScramblePreviewDisplays(currentScramble);
 }
@@ -4213,12 +4216,24 @@ function initKeyboardShortcuts() {
                 toggleZenMode();
                 break;
             case 'KeyT':
+                e.preventDefault();
+                if (isTimeDistributionModalOpen()) {
+                    closeTimeDistributionModal();
+                    break;
+                }
                 if (isSolveModalActive) return;
-                document.getElementById('graph-panel').querySelector('.panel-header').click();
+                showTimeDistributionModal(sessionManager.getFilteredSolves(), {
+                    sessionName: sessionManager.getActiveSession()?.name || 'Session',
+                });
                 break;
             case 'KeyS':
+                e.preventDefault();
+                if (isScramblePreviewModalOpen()) {
+                    closeScramblePreviewModal();
+                    break;
+                }
                 if (isSolveModalActive) return;
-                document.getElementById('cube-panel').querySelector('.panel-header').click();
+                openScramblePreviewModal();
                 break;
             case 'Period':
                 if (isSolveModalActive) return;
