@@ -1,6 +1,6 @@
 import * as db from './db.js';
 import { load, save } from './storage.js';
-import { generateId, EventEmitter, getStartOfToday, getStartOfWeek, getStartOfMonth, parseDuration } from './utils.js';
+import { generateId, EventEmitter, getStartOfToday, getStartOfWeek, getStartOfMonth, parseCustomStatsFilter } from './utils.js';
 import { settings } from './settings.js?v=2';
 
 class SessionManager extends EventEmitter {
@@ -219,8 +219,13 @@ class SessionManager extends EventEmitter {
                 cutoff = getStartOfMonth();
                 break;
             case 'custom': {
-                const dur = parseDuration(settings.get('customFilterDuration'));
-                if (dur) cutoff = Date.now() - dur;
+                const customFilter = parseCustomStatsFilter(settings.get('customFilterDuration'));
+                if (customFilter?.mode === 'count') {
+                    return session.solves.slice(-customFilter.solveCount);
+                }
+                if (customFilter?.mode === 'duration') {
+                    cutoff = Date.now() - customFilter.durationMs;
+                }
                 break;
             }
             default: // 'all'

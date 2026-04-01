@@ -3108,7 +3108,7 @@ function initCustomSelectMenus() {
         menuId: 'stats-filter-menu',
         buttonId: 'btn-stats-filter-select',
         dropdownId: 'stats-filter-dropdown',
-        ariaLabel: 'Time filter',
+        ariaLabel: 'Stats filter',
     });
 
     document.addEventListener('pointerdown', (event) => {

@@ -14,7 +14,7 @@ const DEFAULTS = {
     largeScrambleText: false,
     pillSize: 'medium',       // 'small', 'medium', 'large', 'hidden'
     statsFilter: 'all',     // 'all', 'today', 'week', 'month', 'custom'
-    customFilterDuration: '', // e.g. '3d', '2h'
+    customFilterDuration: '', // e.g. '3d', '2h', '100', '100 solves'
     summaryStatsPreset: 'basic', // 'basic', 'extended', 'full', 'custom'
     summaryStatsCustom: 'mo3 ao5 ao12 ao100',
     summaryStatsList: ['mo3', 'ao5', 'ao12', 'ao100'],

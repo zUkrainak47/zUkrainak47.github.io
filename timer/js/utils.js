@@ -156,6 +156,41 @@ export function parseDuration(str) {
 }
 
 /**
+ * Parse a solve count like "100", "100 solve", or "100 solves".
+ * @param {string} str
+ * @returns {number|null} Solve count, or null if invalid
+ */
+export function parseSolveCount(str) {
+  if (!str) return null;
+  const normalized = str.trim().toLowerCase();
+  const match = normalized.match(/^(\d+)\s*(?:solves?)?$/);
+  if (!match) return null;
+
+  const count = Number.parseInt(match[1], 10);
+  if (!Number.isInteger(count) || count <= 0) return null;
+  return count;
+}
+
+/**
+ * Parse a custom stats filter as either a duration or an absolute solve count.
+ * @param {string} str
+ * @returns {{ mode: 'duration', durationMs: number } | { mode: 'count', solveCount: number } | null}
+ */
+export function parseCustomStatsFilter(str) {
+  const durationMs = parseDuration(str);
+  if (durationMs) {
+    return { mode: 'duration', durationMs };
+  }
+
+  const solveCount = parseSolveCount(str);
+  if (solveCount) {
+    return { mode: 'count', solveCount };
+  }
+
+  return null;
+}
+
+/**
  * Get start of today in ms.
  * @returns {number}
  */
