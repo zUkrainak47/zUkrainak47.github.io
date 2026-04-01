@@ -192,7 +192,29 @@ function animateStep() {
 // Holdable button support
 let _holdInterval = null;
 let _holdTimeout = null;
-const solveDateFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
+const solveDateFormatters = Object.freeze({
+    today: new Intl.DateTimeFormat('en-US', {
+        hour: 'numeric',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+    }),
+    thisYear: new Intl.DateTimeFormat('en-US', {
+        month: 'short',
+        day: 'numeric',
+    }),
+    previousYears: new Intl.DateTimeFormat('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+    }),
+});
+
+function isSameLocalDay(left, right) {
+    return left.getFullYear() === right.getFullYear()
+        && left.getMonth() === right.getMonth()
+        && left.getDate() === right.getDate();
+}
 
 function formatSolveDate(timestamp) {
     if (!Number.isFinite(timestamp)) return null;
@@ -200,7 +222,16 @@ function formatSolveDate(timestamp) {
     const date = new Date(timestamp);
     if (Number.isNaN(date.getTime())) return null;
 
-    return solveDateFormatter.format(date);
+    const now = new Date();
+    if (isSameLocalDay(date, now)) {
+        return solveDateFormatters.today.format(date);
+    }
+
+    if (date.getFullYear() === now.getFullYear()) {
+        return solveDateFormatters.thisYear.format(date);
+    }
+
+    return solveDateFormatters.previousYears.format(date);
 }
 
 function getTargetVisibleCount() {
