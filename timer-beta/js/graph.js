@@ -954,7 +954,7 @@ function render() {
     for (let i = ySampleStart; i <= endIdx; i += ySampleStep) {
         if (i < startIdx) continue;
         const t = allTimes[i];
-        if (t !== Infinity) visibleValues.push(t);
+        if (_lineVisibility.time && t !== Infinity) visibleValues.push(t);
         for (const line of lineDefinitions) {
             if (!_lineVisibility[line.id]) continue;
             const value = getLineStatValue(line.statType, i, allTimes);
@@ -964,7 +964,7 @@ function render() {
 
     if (ySampleStep > 1 && endIdx !== startIdx) {
         const t = allTimes[endIdx];
-        if (t !== Infinity) visibleValues.push(t);
+        if (_lineVisibility.time && t !== Infinity) visibleValues.push(t);
         for (const line of lineDefinitions) {
             if (!_lineVisibility[line.id]) continue;
             const value = getLineStatValue(line.statType, endIdx, allTimes);
