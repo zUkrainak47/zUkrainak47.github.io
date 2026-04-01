@@ -1,4 +1,4 @@
-import { settings } from './settings.js?v=2';
+import { settings } from './settings.js?v=4';
 import { EventEmitter, formatTime, truncateTimeDisplay } from './utils.js';
 
 const State = {
@@ -15,6 +15,13 @@ const State = {
 
 const GHOST_CLICK_GUARD_MS = 450;
 const GHOST_CLICK_GUARD_RADIUS_PX = 42;
+const BACKGROUND_POINTER_EXCLUDE_SELECTOR = [
+    '#timer-info',
+    '#inspection-voice-unlock-wrap',
+    '.panel',
+    '.custom-select-dropdown',
+    '.scramble-type-dropdown',
+].join(', ');
 
 class Timer extends EventEmitter {
     constructor() {
@@ -286,10 +293,33 @@ class Timer extends EventEmitter {
     }
 
     _onDocumentPointerDown(e) {
-        if (!this._isTouchPointer(e)) return;
-        if (!this._isMobileTimerViewActive()) return;
         if (this._hasBlockingOverlayOpen()) return;
         if (this._isManualTimeEntryActive()) return;
+        if (this._backgroundSpacebarEnabled() && this._isPrimaryPointerDown(e) && this._isBackgroundPointerTarget(e.target)) {
+            const canUseBackgroundPress = this.state === State.RUNNING
+                || this.state === State.IDLE
+                || this.state === State.STOPPED
+                || this.state === State.INSPECTING;
+            if (!canUseBackgroundPress) return;
+
+            if (this.state === State.RUNNING) {
+                e.preventDefault();
+                this._releaseActivePointer(this._activePointerId);
+                this._armGhostClickGuard(e);
+                this._stopTimer(null, this._getEventTimestamp(e));
+                return;
+            }
+
+            if (this._activePointerId != null) return;
+
+            e.preventDefault();
+            this._claimActivePointer(e);
+            this._handleStartPress();
+            return;
+        }
+
+        if (!this._isTouchPointer(e)) return;
+        if (!this._isMobileTimerViewActive()) return;
         if (this._isInteractivePointerTarget(e.target)) return;
 
         if (this._isInspectionTickingState(this.state)) {
@@ -343,14 +373,14 @@ class Timer extends EventEmitter {
     }
 
     _onPointerUp(e) {
-        if (!this._isTouchPointer(e) || e.pointerId !== this._activePointerId) return;
+        if (e.pointerId !== this._activePointerId) return;
         e.preventDefault();
         this._releaseActivePointer(e.pointerId);
         this._handleStartRelease();
     }
 
     _onPointerCancel(e) {
-        if (!this._isTouchPointer(e) || e.pointerId !== this._activePointerId) return;
+        if (e.pointerId !== this._activePointerId) return;
         this._releaseActivePointer(e.pointerId);
         this._cancelHold();
 
@@ -800,6 +830,29 @@ class Timer extends EventEmitter {
 
     _isTouchPointer(e) {
         return e.pointerType === 'touch' || e.pointerType === 'pen';
+    }
+
+    _isPrimaryPointerDown(e) {
+        if (e.isPrimary === false) return false;
+        if (typeof e.button === 'number' && e.button !== 0) return false;
+        return true;
+    }
+
+    _backgroundSpacebarEnabled() {
+        return settings.get('backgroundSpacebarEnabled') === true
+            && !this._isDesktopTypingEntryMode();
+    }
+
+    _isBackgroundPointerTarget(target) {
+        const targetEl = target instanceof Element
+            ? target
+            : target instanceof Node && target.parentElement instanceof Element
+                ? target.parentElement
+                : null;
+        if (!targetEl) return false;
+        if (this._isInteractivePointerTarget(targetEl)) return false;
+        if (targetEl.closest(BACKGROUND_POINTER_EXCLUDE_SELECTOR)) return false;
+        return targetEl === document.documentElement || document.body.contains(targetEl);
     }
 
     _isInspectionCancelTarget(target) {

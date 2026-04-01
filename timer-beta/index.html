@@ -42,7 +42,7 @@
   <link rel="stylesheet" href="css/base.css?v=17">
   <link rel="stylesheet" href="css/layout.css?v=15">
   <link rel="stylesheet" href="css/scramble.css?v=37">
-  <link rel="stylesheet" href="css/timer.css?v=31">
+  <link rel="stylesheet" href="css/timer.css?v=32">
   <link rel="stylesheet" href="css/stats.css?v=19">
   <link rel="stylesheet" href="css/cube.css?v=7">
   <link rel="stylesheet" href="css/graph.css?v=9">
@@ -646,6 +646,18 @@
               <option value="typing">Typing</option>
             </select>
           </div>
+
+          <div class="setting-row">
+            <div class="setting-label">
+              Start/stop with mouse
+              <small>Keyboard remains available</small>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="setting-background-spacebar">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
           <div class="setting-row">
             <div class="setting-label">
               Show delta
@@ -981,7 +993,7 @@
   </script>
 
   <!-- App Script -->
-  <script type="module" src="js/app.js?v=103"></script>
+  <script type="module" src="js/app.js?v=106"></script>
 </body>
 
 </html>

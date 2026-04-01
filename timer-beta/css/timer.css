@@ -167,6 +167,11 @@ body.high-contrast-mode:not(.mobile-viewport) #timer-delta::before {
     cursor: pointer;
 }
 
+body.background-spacebar-enabled #timer-display[data-timer-state="idle"],
+body.background-spacebar-enabled #timer-display[data-timer-state="stopped"] {
+    cursor: default;
+}
+
 #timer-display[data-timer-state="idle"] {
     color: var(--timer-idle);
 }
@@ -174,6 +179,11 @@ body.high-contrast-mode:not(.mobile-viewport) #timer-delta::before {
 #timer-display[data-timer-state="idle"]:hover,
 #timer-display[data-timer-state="stopped"]:hover {
     transform: translateY(-3px);
+}
+
+body.background-spacebar-enabled #timer-display[data-timer-state="idle"]:hover,
+body.background-spacebar-enabled #timer-display[data-timer-state="stopped"]:hover {
+    transform: none;
 }
 
 #timer-display[data-timer-state="holding"] {

@@ -1,12 +1,12 @@
-import { timer } from './timer.js?v=7';
+import { timer } from './timer.js?v=8';
 import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=16';
-import { sessionManager } from './session.js?v=2';
-import { settings, DEFAULTS } from './settings.js?v=2';
+import { sessionManager } from './session.js?v=3';
+import { settings, DEFAULTS } from './settings.js?v=4';
 import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=2';
 import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, truncateTimeDisplay } from './utils.js';
 import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=13';
 import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=18';
-import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=13';
+import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=14';
 import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, showTimeDistributionModal } from './distribution.js';
 import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js';
 
@@ -264,6 +264,7 @@ const mobileViewportQuery = window.matchMedia('(max-width: 1100px), (pointer: co
 const shortMobileLandscapeQuery = window.matchMedia('(max-width: 1100px) and (orientation: landscape) and (max-height: 650px), (pointer: coarse) and (orientation: landscape) and (max-height: 650px)');
 const mobileLandscapeQuery = window.matchMedia('(max-width: 1100px) and (orientation: landscape), (pointer: coarse) and (orientation: landscape)');
 const touchPrimaryQuery = window.matchMedia('(hover: none) and (pointer: coarse)');
+const finePointerQuery = window.matchMedia('(pointer: fine)');
 const inspectionSpeechUnlockState = {
     required: false,
     unlocked: false,
@@ -2594,6 +2595,7 @@ function initTimerClick() {
 
     timerDisplay.addEventListener('click', () => {
         if (mobileViewportQuery.matches) return;
+        if (settings.get('backgroundSpacebarEnabled')) return;
         const state = timer.getState();
         // Open modal when timer is not actively solving.
         if (state === 'idle' || state === 'stopped') {
@@ -5588,6 +5590,8 @@ function initSettingsPanel() {
     // Hide UI toggle
     const hideUIToggle = document.getElementById('setting-hide-ui');
     const centerTimerToggle = document.getElementById('setting-center-timer');
+    const backgroundSpacebarToggle = document.getElementById('setting-background-spacebar');
+    const backgroundSpacebarRow = backgroundSpacebarToggle?.closest('.setting-row') ?? null;
     const swipeDownGestureToggle = document.getElementById('setting-swipe-down-gesture');
     const swipeDownGestureRow = document.getElementById('setting-swipe-down-gesture-row');
 
@@ -5632,6 +5636,12 @@ function initSettingsPanel() {
         syncSettingsRowSeparators();
     };
 
+    const updateBackgroundSpacebarVisibility = () => {
+        if (!backgroundSpacebarRow) return;
+        backgroundSpacebarRow.style.display = finePointerQuery.matches ? '' : 'none';
+        syncSettingsRowSeparators();
+    };
+
     if (hideUIToggle) {
         hideUIToggle.checked = settings.get('hideUIWhileSolving');
 
@@ -5645,10 +5655,12 @@ function initSettingsPanel() {
     // Initial state sync and responsive listener
     updateCenterTimerState();
     updateSwipeDownGestureVisibility();
+    updateBackgroundSpacebarVisibility();
 
     const handleSettingsViewportChange = () => {
         updateCenterTimerState();
         updateSwipeDownGestureVisibility();
+        updateBackgroundSpacebarVisibility();
         syncSettingsRowSeparators();
     };
 
@@ -5658,10 +5670,24 @@ function initSettingsPanel() {
         mobileViewportQuery.addListener(handleSettingsViewportChange);
     }
 
+    if (typeof finePointerQuery.addEventListener === 'function') {
+        finePointerQuery.addEventListener('change', handleSettingsViewportChange);
+    } else {
+        finePointerQuery.addListener(handleSettingsViewportChange);
+    }
+
     // Center Timer toggle
     if (centerTimerToggle) {
         centerTimerToggle.checked = settings.get('centerTimer');
         centerTimerToggle.onchange = () => settings.set('centerTimer', centerTimerToggle.checked);
+    }
+
+    if (backgroundSpacebarToggle) {
+        backgroundSpacebarToggle.checked = settings.get('backgroundSpacebarEnabled');
+        backgroundSpacebarToggle.onchange = () => {
+            settings.set('backgroundSpacebarEnabled', backgroundSpacebarToggle.checked);
+            backgroundSpacebarToggle.blur();
+        };
     }
 
     if (swipeDownGestureToggle) {

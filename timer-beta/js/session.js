@@ -1,7 +1,7 @@
 import * as db from './db.js';
 import { load, save } from './storage.js';
 import { generateId, EventEmitter, getStartOfToday, getStartOfWeek, getStartOfMonth, parseCustomStatsFilter } from './utils.js';
-import { settings } from './settings.js?v=2';
+import { settings } from './settings.js?v=4';
 
 class SessionManager extends EventEmitter {
     constructor() {
