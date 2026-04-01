@@ -1,7 +1,6 @@
-const APP_CACHE_NAME = 'ukratimer-app-v2';
-const RUNTIME_CACHE_NAME = 'ukratimer-runtime-v2';
+const APP_CACHE_NAME = 'ukratimer-app-v3';
+const RUNTIME_CACHE_NAME = 'ukratimer-runtime-v3';
 
-const GOOGLE_FONTS_STYLESHEET_URL = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Roboto+Mono:wght@400;500;700&display=swap';
 const CUBING_SCRAMBLE_MODULE_URL = 'https://cdn.cubing.net/v0/js/cubing/scramble';
 const SCRAMBOW_SCRIPT_URL = 'https://unpkg.com/scrambow@1.8.1/dist/scrambow.js';
 
@@ -9,6 +8,7 @@ const LOCAL_PRECACHE_PATHS = [
     './',
     './index.html',
     './manifest.webmanifest',
+    './css/fonts.css?v=1',
     './css/variables.css?v=6',
     './css/base.css?v=17',
     './css/layout.css?v=15',
@@ -46,6 +46,25 @@ const LOCAL_PRECACHE_PATHS = [
     './resources/pwa-icon-192.png',
     './resources/pwa-icon-512.png',
     './resources/pwa-icon-180.png',
+    './resources/fonts/L0x5DF4xlVMF-BfR8bXMIjhEq3-cXbKDO1w.woff2',
+    './resources/fonts/L0x5DF4xlVMF-BfR8bXMIjhFq3-cXbKDO1w.woff2',
+    './resources/fonts/L0x5DF4xlVMF-BfR8bXMIjhGq3-cXbKDO1w.woff2',
+    './resources/fonts/L0x5DF4xlVMF-BfR8bXMIjhIq3-cXbKDO1w.woff2',
+    './resources/fonts/L0x5DF4xlVMF-BfR8bXMIjhLq3-cXbKD.woff2',
+    './resources/fonts/L0x5DF4xlVMF-BfR8bXMIjhPq3-cXbKDO1w.woff2',
+    './resources/fonts/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa0ZL7W0Q5n-wU.woff2',
+    './resources/fonts/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7W0Q5nw.woff2',
+    './resources/fonts/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1pL7W0Q5n-wU.woff2',
+    './resources/fonts/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa25L7W0Q5n-wU.woff2',
+    './resources/fonts/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa2JL7W0Q5n-wU.woff2',
+    './resources/fonts/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa2ZL7W0Q5n-wU.woff2',
+    './resources/fonts/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa2pL7W0Q5n-wU.woff2',
+    './resources/fonts/tDbv2o-flEEny0FZhsfKu5WU4zr3E_BX0PnT8RD8yKwBNntkaToggR7BYRbKPx3cwgknk-6nFg.woff2',
+    './resources/fonts/tDbv2o-flEEny0FZhsfKu5WU4zr3E_BX0PnT8RD8yKwBNntkaToggR7BYRbKPx7cwgknk-6nFg.woff2',
+    './resources/fonts/tDbv2o-flEEny0FZhsfKu5WU4zr3E_BX0PnT8RD8yKwBNntkaToggR7BYRbKPxDcwgknk-4.woff2',
+    './resources/fonts/tDbv2o-flEEny0FZhsfKu5WU4zr3E_BX0PnT8RD8yKwBNntkaToggR7BYRbKPxPcwgknk-6nFg.woff2',
+    './resources/fonts/tDbv2o-flEEny0FZhsfKu5WU4zr3E_BX0PnT8RD8yKwBNntkaToggR7BYRbKPxTcwgknk-6nFg.woff2',
+    './resources/fonts/tDbv2o-flEEny0FZhsfKu5WU4zr3E_BX0PnT8RD8yKwBNntkaToggR7BYRbKPx_cwgknk-6nFg.woff2',
 ];
 
 const EXTERNAL_PRECACHE_REQUESTS = [
@@ -54,8 +73,6 @@ const EXTERNAL_PRECACHE_REQUESTS = [
 ];
 
 const EXTERNAL_RUNTIME_HOSTS = new Set([
-    'fonts.googleapis.com',
-    'fonts.gstatic.com',
     'cdn.cubing.net',
     'unpkg.com',
 ]);
@@ -73,33 +90,6 @@ async function addLocalAssetsToCache(cache) {
 }
 
 async function addExternalAssetsToCache(cache) {
-    try {
-        const stylesheetRequest = new Request(GOOGLE_FONTS_STYLESHEET_URL, { mode: 'cors' });
-        const stylesheetResponse = await fetch(stylesheetRequest);
-
-        if (isCacheableResponse(stylesheetResponse)) {
-            await cache.put(stylesheetRequest, stylesheetResponse.clone());
-
-            const stylesheetText = await stylesheetResponse.clone().text();
-            const fontUrls = Array.from(
-                stylesheetText.matchAll(/url\((https:\/\/fonts\.gstatic\.com\/[^)]+)\)/g),
-                (match) => match[1],
-            );
-
-            await Promise.allSettled(
-                fontUrls.map(async (fontUrl) => {
-                    const fontRequest = new Request(fontUrl, { mode: 'cors' });
-                    const fontResponse = await fetch(fontRequest);
-                    if (isCacheableResponse(fontResponse)) {
-                        await cache.put(fontRequest, fontResponse.clone());
-                    }
-                }),
-            );
-        }
-    } catch (_) {
-        // Font caching is optional; the app remains usable with fallback fonts.
-    }
-
     await Promise.allSettled(
         EXTERNAL_PRECACHE_REQUESTS.map(async (request) => {
             const response = await fetch(request);
