@@ -3,11 +3,12 @@ import * as db from './db.js';
 const STORAGE_PREFIX = 'cubetimer_';
 const STORAGE_VERSION = 1;
 const SESSION_CSV_HEADERS = ['Puzzle', 'Category', 'Time(millis)', 'Date(millis)', 'Scramble', 'Penalty', 'Comment'];
-const IMPORT_PRESERVED_LOCAL_KEYS = Object.freeze([
-    'scrambleQueues',
-    'scrambleQueue333',
-    'cubingWarmupState',
+const BACKUP_LOCAL_STORAGE_KEYS = Object.freeze([
+    'settings',
+    'activeSessionId',
+    'scrambleType',
 ]);
+const BACKUP_LOCAL_STORAGE_KEY_SET = new Set(BACKUP_LOCAL_STORAGE_KEYS);
 
 /**
  * Load data from localStorage.
@@ -48,6 +49,14 @@ export function remove(key) {
     localStorage.removeItem(STORAGE_PREFIX + key);
 }
 
+function hasStoredKey(key) {
+    return localStorage.getItem(STORAGE_PREFIX + key) !== null;
+}
+
+function clearBackupLocalStorageKeys() {
+    BACKUP_LOCAL_STORAGE_KEYS.forEach((key) => remove(key));
+}
+
 /**
  * Export all timer data as a single JSON object.
  * Reads sessions + solves from IndexedDB, settings from localStorage.
@@ -67,16 +76,11 @@ export async function exportAll() {
 
     const data = { version: STORAGE_VERSION, sessions: sessionsWithSolves };
 
-    // Include localStorage settings
-    for (let i = 0; i < localStorage.length; i++) {
-        const fullKey = localStorage.key(i);
-        if (fullKey.startsWith(STORAGE_PREFIX)) {
-            const key = fullKey.slice(STORAGE_PREFIX.length);
-            if (key !== 'sessions') { // sessions are in IndexedDB now
-                data[key] = load(key);
-            }
+    BACKUP_LOCAL_STORAGE_KEYS.forEach((key) => {
+        if (hasStoredKey(key)) {
+            data[key] = load(key);
         }
-    }
+    });
 
     return data;
 }
@@ -88,19 +92,7 @@ export async function exportAll() {
 export async function importAll(data) {
     if (!data || typeof data !== 'object') return;
 
-    // Preserve device-local scramble caches so imports do not force the
-    // offline warmup/bootstrap path to run again on the same browser.
-    const preservedLocalValues = new Map(
-        IMPORT_PRESERVED_LOCAL_KEYS.map((key) => [key, load(key, null)]),
-    );
-
-    // Clear existing localStorage timer data
-    const keysToRemove = [];
-    for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i);
-        if (k.startsWith(STORAGE_PREFIX)) keysToRemove.push(k);
-    }
-    keysToRemove.forEach(k => localStorage.removeItem(k));
+    clearBackupLocalStorageKeys();
 
     // Separate sessions from other data
     const sessions = data.sessions || [];
@@ -128,20 +120,12 @@ export async function importAll(data) {
     // Write to IndexedDB
     await db.replaceAllData(dbSessions, dbSolves);
 
-    // Write remaining keys to localStorage (settings, activeSessionId, etc.)
+    // Write remaining import-backed localStorage keys (settings, active session,
+    // selected scramble type). Cache/runtime keys stay device-local.
     for (const [key, value] of Object.entries(data)) {
-        if (key === 'version' || key === 'sessions') continue;
+        if (key === 'version' || key === 'sessions' || !BACKUP_LOCAL_STORAGE_KEY_SET.has(key)) continue;
         save(key, value);
     }
-
-    preservedLocalValues.forEach((value, key) => {
-        if (value === null) {
-            remove(key);
-            return;
-        }
-
-        save(key, value);
-    });
 }
 
 function _parseDelimitedRecords(text, delimiter = ';') {
@@ -402,18 +386,11 @@ export async function importCsTimer(csData) {
     else if (timeU === 'u') timerUpdate = '0.01s';
     else if (timeU === 'i') timerUpdate = 'inspection';
 
-    // Clear existing localStorage data
-    const keysToRemove = [];
-    for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i);
-        if (k.startsWith(STORAGE_PREFIX)) keysToRemove.push(k);
-    }
-
     // Load existing settings to preserve what we can
     const existingSettings = load('settings', {});
     const newSettings = { ...existingSettings, timerUpdate };
 
-    keysToRemove.forEach(k => localStorage.removeItem(k));
+    clearBackupLocalStorageKeys();
 
     // Write to IndexedDB
     await db.replaceAllData(dbSessions, dbSolves);
