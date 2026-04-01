@@ -503,6 +503,8 @@ class SortedWindow {
  */
 export class StatsCache {
     constructor() {
+        /** @type {string[]} */
+        this._solveIds = [];
         /** @type {number[]} effective times */
         this._times = [];
         /** @type {{ ao5: number|null, ao12: number|null, ao100: number|null }[]} */
@@ -531,6 +533,7 @@ export class StatsCache {
     get length() { return this._times.length; }
 
     _reset() {
+        this._solveIds = [];
         this._times = [];
         this._perSolve = [];
         this._bestTime = null;
@@ -555,7 +558,7 @@ export class StatsCache {
     rebuild(solves) {
         this._reset();
         for (const solve of solves) {
-            this._appendTime(getEffectiveTime(solve));
+            this._appendSolve(solve);
         }
     }
 
@@ -564,11 +567,23 @@ export class StatsCache {
      * @param {object} solve
      */
     append(solve) {
-        this._appendTime(getEffectiveTime(solve));
+        this._appendSolve(solve);
     }
 
-    /** Internal: append a time value and update all caches */
-    _appendTime(t) {
+    matchesSolves(solves) {
+        if (this._solveIds.length !== solves.length) return false;
+
+        for (let i = 0; i < solves.length; i++) {
+            if (this._solveIds[i] !== String(solves[i]?.id ?? '')) return false;
+        }
+
+        return true;
+    }
+
+    /** Internal: append a solve and update all caches */
+    _appendSolve(solve) {
+        this._solveIds.push(String(solve?.id ?? ''));
+        const t = getEffectiveTime(solve);
         this._times.push(t);
         const i = this._times.length - 1;
 

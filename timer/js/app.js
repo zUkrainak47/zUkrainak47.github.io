@@ -1039,11 +1039,13 @@ function syncPersistentManualEntryMode() {
 }
 
 async function commitSolve(elapsed, penalty = null, { isManual = false } = {}) {
+    syncStatsCacheWithFilteredSolves();
     const previousStats = statsCache.getStats();
     _skipSolveAddedRefresh = true;
     const solve = sessionManager.addSolve(elapsed, currentScramble, isManual, penalty);
     _skipSolveAddedRefresh = false;
     statsCache.append(solve);
+    syncStatsCacheWithFilteredSolves();
     const currentStats = statsCache.getStats();
     maybeShowNewBestAlert(previousStats, currentStats);
     refreshUI();
@@ -4584,19 +4586,26 @@ function maybeShowNewBestAlert(previousStats, currentStats) {
 }
 
 // ──── UI Refresh ────
+function syncStatsCacheWithFilteredSolves(solves = sessionManager.getFilteredSolves(), { force = false } = {}) {
+    if (force || !statsCache.matchesSolves(solves)) {
+        statsCache.rebuild(solves);
+        summaryRowsCache = { signature: '', rows: [] };
+        rollingStatSummaryCache.clear();
+    }
+
+    return solves;
+}
+
 /**
  * Rebuild the stats cache from scratch for the current filtered solves.
  * Called on session switch, filter change, import, delete, penalty toggle.
  */
 function rebuildStatsCache() {
-    const solves = sessionManager.getFilteredSolves();
-    statsCache.rebuild(solves);
-    summaryRowsCache = { signature: '', rows: [] };
-    rollingStatSummaryCache.clear();
+    syncStatsCacheWithFilteredSolves(undefined, { force: true });
 }
 
 function refreshUI() {
-    const solves = sessionManager.getFilteredSolves();
+    const solves = syncStatsCacheWithFilteredSolves();
     const stats = statsCache.getStats();
 
     renderSummaryStats(stats, solves);
