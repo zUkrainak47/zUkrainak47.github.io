@@ -13,11 +13,14 @@ const _queueFillScheduled = new Set();
 const LEGACY_SCRAMBLE_QUEUE_STORAGE_KEY = 'scrambleQueue333';
 const SCRAMBLE_QUEUES_STORAGE_KEY = 'scrambleQueues';
 const SCRAMBLE_TYPE_STORAGE_KEY = 'scrambleType';
+const CUBING_WARMUP_STATE_STORAGE_KEY = 'cubingWarmupState';
 const SCRAMBLE_QUEUE_TARGET = 6;
 const SCRAMBLE_QUEUE_MAX = 12;
 const SUBSET_REDRAW_LIMIT = 24;
+const CUBING_SCRAMBLE_MODULE_SRC = 'https://cdn.cubing.net/v0/js/cubing/scramble';
 const SCRAMBOW_SCRIPT_SRC = 'https://unpkg.com/scrambow@1.8.1/dist/scrambow.js';
 const SUBSET_BOOTSTRAP_QUEUE_FILL_DELAY_MS = 280;
+const CUBING_WARMUP_VERSION = '2026-04-01';
 
 export const SCRAMBLE_TYPE_OPTIONS = Object.freeze([
     { id: '333', menuLabel: '3x3x3', buttonLabel: '3x3x3', generator: 'cubing', eventId: '333' },
@@ -74,6 +77,7 @@ let _scrambleType = sanitizeScrambleType(load(SCRAMBLE_TYPE_STORAGE_KEY, '333'))
 let _currentScramble = null;
 let _prevScramble = null;
 let _isViewingPrev = false;
+let _cubingWarmupPromise = null;
 
 function sanitizeScrambleQueue(value) {
     if (!Array.isArray(value)) return [];
@@ -159,6 +163,61 @@ function persistScrambleType() {
     save(SCRAMBLE_TYPE_STORAGE_KEY, _scrambleType);
 }
 
+function sanitizeCubingWarmupState(value) {
+    const warmedTypes = Array.isArray(value?.warmedTypes)
+        ? value.warmedTypes.filter((type) => CUBING_SCRAMBLE_EVENTS.has(type))
+        : [];
+
+    if (value?.version !== CUBING_WARMUP_VERSION) {
+        return {
+            version: CUBING_WARMUP_VERSION,
+            warmedTypes: [],
+        };
+    }
+
+    return {
+        version: CUBING_WARMUP_VERSION,
+        warmedTypes: [...new Set(warmedTypes)],
+    };
+}
+
+function loadCubingWarmupState() {
+    return sanitizeCubingWarmupState(load(CUBING_WARMUP_STATE_STORAGE_KEY, null));
+}
+
+function persistCubingWarmupState(state) {
+    save(CUBING_WARMUP_STATE_STORAGE_KEY, sanitizeCubingWarmupState(state));
+}
+
+function markCubingTypeWarmed(type) {
+    const normalizedType = sanitizeScrambleType(type);
+    if (!CUBING_SCRAMBLE_EVENTS.has(normalizedType)) return;
+
+    const state = loadCubingWarmupState();
+    if (state.warmedTypes.includes(normalizedType)) return;
+
+    state.warmedTypes.push(normalizedType);
+    persistCubingWarmupState(state);
+}
+
+function getCubingWarmupTypesRemaining() {
+    const state = loadCubingWarmupState();
+    return [...CUBING_SCRAMBLE_EVENTS.keys()].filter((type) => !state.warmedTypes.includes(type));
+}
+
+function getCubingWarmupSnapshot(status = 'idle', currentType = null) {
+    const remainingTypes = getCubingWarmupTypesRemaining();
+    const total = CUBING_SCRAMBLE_EVENTS.size;
+    return {
+        status,
+        currentType,
+        total,
+        remainingTypes,
+        completed: total - remainingTypes.length,
+        isComplete: remainingTypes.length === 0,
+    };
+}
+
 async function initCubingScrambler() {
     if (randomScrambleForEvent) return randomScrambleForEvent;
     if (_cubingUnavailable) {
@@ -168,7 +227,7 @@ async function initCubingScrambler() {
 
     _cubingInitPromise = (async () => {
         try {
-            const module = await import('https://cdn.cubing.net/v0/js/cubing/scramble');
+            const module = await import(CUBING_SCRAMBLE_MODULE_SRC);
             randomScrambleForEvent = module.randomScrambleForEvent;
             return randomScrambleForEvent;
         } catch (e) {
@@ -276,6 +335,7 @@ async function createCubingScramble(eventId) {
         }
 
         const alg = await randomScrambleForEvent(eventId);
+        markCubingTypeWarmed(type);
         return normalizeScrambleText(alg.toString());
     } catch (error) {
         _cubingUnavailable = true;
@@ -577,6 +637,110 @@ export function setCurrentScramble(scrambleStr) {
 export function isCurrentScrambleManual() {
     const active = getActiveScrambleEntry();
     return active ? active.isManual : false;
+}
+
+export function preloadScrambleEngines() {
+    const preloadTasks = [];
+
+    if (!randomScrambleForEvent && !_cubingUnavailable) {
+        preloadTasks.push(
+            initCubingScrambler().catch((error) => {
+                console.warn('Unable to preload cubing.js scramble module during startup.', error);
+                return null;
+            }),
+        );
+    }
+
+    if (!resolveScrambowCtor()) {
+        preloadTasks.push(
+            initScrambow().catch((error) => {
+                console.warn('Unable to preload Scrambow during startup.', error);
+                return null;
+            }),
+        );
+    }
+
+    return Promise.allSettled(preloadTasks);
+}
+
+function yieldCubingWarmupTurn() {
+    return new Promise((resolve) => {
+        if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+            window.requestAnimationFrame(() => resolve());
+            return;
+        }
+
+        window.setTimeout(resolve, 0);
+    });
+}
+
+async function warmCubingScrambleType(type) {
+    const eventId = CUBING_SCRAMBLE_EVENTS.get(type);
+    if (!eventId) return false;
+    if (isLocalDevelopmentRuntime()) return false;
+
+    try {
+        _cubingUnavailable = false;
+        if (!randomScrambleForEvent) {
+            await initCubingScrambler();
+        }
+
+        await randomScrambleForEvent(eventId);
+        markCubingTypeWarmed(type);
+        return true;
+    } catch (error) {
+        _cubingInitPromise = null;
+        randomScrambleForEvent = null;
+        console.warn(`Unable to warm cubing.js scramble path for ${type}.`, error);
+        return false;
+    }
+}
+
+export function needsCubingWarmup() {
+    if (isLocalDevelopmentRuntime()) return false;
+    return getCubingWarmupTypesRemaining().length > 0;
+}
+
+export async function runCubingWarmup(onProgress = null) {
+    if (_cubingWarmupPromise) return _cubingWarmupPromise;
+
+    const reportProgress = (status, currentType = null) => {
+        const snapshot = getCubingWarmupSnapshot(status, currentType);
+        if (typeof onProgress === 'function') {
+            onProgress(snapshot);
+        }
+        return snapshot;
+    };
+
+    if (!needsCubingWarmup()) {
+        return reportProgress('complete');
+    }
+
+    _cubingWarmupPromise = (async () => {
+        reportProgress('starting');
+        const remainingTypes = getCubingWarmupTypesRemaining();
+
+        for (let index = 0; index < remainingTypes.length; index += 1) {
+            const type = remainingTypes[index];
+            reportProgress('running', type);
+
+            const warmed = await warmCubingScrambleType(type);
+            if (!warmed) {
+                return reportProgress('failed', type);
+            }
+
+            reportProgress('running', type);
+            if (index < remainingTypes.length - 1) {
+                await yieldCubingWarmupTurn();
+            }
+        }
+
+        return reportProgress('complete');
+    })().finally(() => {
+        _cubingWarmupPromise = null;
+    });
+
+    return _cubingWarmupPromise;
 }
 
 function bootstrapInitialScrambleFromCache() {

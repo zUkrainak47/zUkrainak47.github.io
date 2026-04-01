@@ -1,5 +1,5 @@
 import { timer } from './timer.js?v=7';
-import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble } from './scramble.js?v=14';
+import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=16';
 import { sessionManager } from './session.js?v=2';
 import { settings, DEFAULTS } from './settings.js?v=2';
 import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=2';
@@ -15,8 +15,21 @@ let currentSortCol = null;
 let currentSortDir = null; // 'asc' or 'desc'
 let commentsOnlyFilterActive = false;
 let scrambleCopyTimeout = null;
+let cubingWarmupHideTimeout = null;
 const statsCache = new StatsCache();
 let _skipSolveAddedRefresh = false; // set true when commitSolve manages the refresh itself
+
+async function registerServiceWorker() {
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+    if (window.location?.protocol === 'file:') return;
+
+    try {
+        const serviceWorkerUrl = new URL('../sw.js', import.meta.url);
+        await navigator.serviceWorker.register(serviceWorkerUrl);
+    } catch (error) {
+        console.warn('Service worker registration failed:', error);
+    }
+}
 
 // ──── Solves table virtualization state ────
 const TABLE_ROW_HEIGHT = 27; // px per row, matches CSS
@@ -2323,12 +2336,14 @@ function initScramblePreviewModal() {
 // ──── Bootstrap ────
 async function init() {
     initInspectionSpeechUnlockState();
+    void registerServiceWorker();
     const sessionInitPromise = sessionManager.init();
     initCubeDisplay(document.getElementById('cube-canvas'));
     initScramblePreviewModal();
     populateScrambleTypeMenus();
     syncScrambleTypeMenus();
     const shouldLoadInitialScramble = !syncInitialScrambleUI();
+    void preloadScrambleEngines();
     await sessionInitPromise;
     initModal();
     initTimeDistributionModal();
@@ -2428,13 +2443,16 @@ async function init() {
     window.addEventListener('orientationchange', scheduleViewportLayoutSync);
     window.addEventListener('orientationchange', syncMobileSummaryDisplays);
     window.addEventListener('orientationchange', syncDesktopTimerInfoPills);
+    window.addEventListener('online', startCubingWarmupIfNeeded);
     scheduleViewportLayoutSync();
 
     if (shouldLoadInitialScramble) {
         const startInitialScrambleLoad = () => {
             window.requestAnimationFrame(() => {
                 window.requestAnimationFrame(() => {
-                    void loadNewScramble();
+                    void loadNewScramble().finally(() => {
+                        startCubingWarmupIfNeeded();
+                    });
                 });
             });
         };
@@ -2444,6 +2462,10 @@ async function init() {
         } else {
             window.setTimeout(startInitialScrambleLoad, INITIAL_NON_333_STARTUP_SCRAMBLE_DELAY_MS);
         }
+    } else {
+        window.requestAnimationFrame(() => {
+            startCubingWarmupIfNeeded();
+        });
     }
 
     graphEvents.on('nodeClick', (payload) => {
@@ -4268,6 +4290,92 @@ function clearNewBestAlert() {
 
 function clearPenaltyShortcutAlert() {
     clearPopup('penaltyShortcut');
+}
+
+function setCubingWarmupAlert(text, { isSuccess = false, isError = false, autoHideMs = 0 } = {}) {
+    const alertEl = document.getElementById('cubing-warmup-alert');
+    if (!alertEl) return;
+
+    if (cubingWarmupHideTimeout) {
+        clearTimeout(cubingWarmupHideTimeout);
+        cubingWarmupHideTimeout = null;
+    }
+
+    alertEl.classList.toggle('timer-popup-success', isSuccess);
+    alertEl.classList.toggle('timer-popup-danger', isError);
+
+    if (!text) {
+        alertEl.classList.remove('visible');
+        alertEl.textContent = '';
+        alertEl.classList.remove('timer-popup-success', 'timer-popup-danger');
+        return;
+    }
+
+    alertEl.textContent = text;
+    alertEl.classList.add('visible');
+
+    if (autoHideMs > 0) {
+        cubingWarmupHideTimeout = setTimeout(() => {
+            alertEl.classList.remove('visible');
+            cubingWarmupHideTimeout = setTimeout(() => {
+                if (!alertEl.classList.contains('visible')) {
+                    alertEl.textContent = '';
+                    alertEl.classList.remove('timer-popup-success', 'timer-popup-danger');
+                }
+                cubingWarmupHideTimeout = null;
+            }, 220);
+        }, autoHideMs);
+    }
+}
+
+function formatCubingWarmupProgress(snapshot) {
+    if (snapshot.status === 'complete') {
+        return 'Offline scramblers ready';
+    }
+
+    if (snapshot.status === 'failed') {
+        return 'Offline scramble setup paused';
+    }
+
+    const typeMeta = snapshot.currentType
+        ? SCRAMBLE_TYPE_OPTIONS.find((option) => option.id === snapshot.currentType)
+        : null;
+    const completed = Math.max(0, Math.min(snapshot.total, snapshot.completed));
+
+    if (typeMeta) {
+        return `Caching offline scramblers ${completed}/${snapshot.total}: ${typeMeta.menuLabel}`;
+    }
+
+    return `Caching offline scramblers ${completed}/${snapshot.total}`;
+}
+
+function startCubingWarmupIfNeeded() {
+    if (!needsCubingWarmup()) {
+        setCubingWarmupAlert('');
+        return;
+    }
+
+    const totalCubingTypes = SCRAMBLE_TYPE_OPTIONS.filter((option) => option.generator === 'cubing').length;
+    setCubingWarmupAlert(formatCubingWarmupProgress({
+        status: 'starting',
+        completed: 0,
+        total: totalCubingTypes,
+        currentType: null,
+    }));
+
+    void runCubingWarmup((snapshot) => {
+        if (snapshot.status === 'complete') {
+            setCubingWarmupAlert(formatCubingWarmupProgress(snapshot), { isSuccess: true, autoHideMs: 1800 });
+            return;
+        }
+
+        if (snapshot.status === 'failed') {
+            setCubingWarmupAlert(formatCubingWarmupProgress(snapshot), { isError: true, autoHideMs: 2600 });
+            return;
+        }
+
+        setCubingWarmupAlert(formatCubingWarmupProgress(snapshot));
+    });
 }
 
 function clearPopup(kind) {
