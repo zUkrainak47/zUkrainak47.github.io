@@ -382,6 +382,69 @@ body.mobile-viewport #setting-large-scramble-text-row {
     padding: var(--space-sm);
     background: var(--bg-tertiary);
     border: 1px solid var(--surface-border);
+    transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast), opacity var(--transition-fast);
+}
+
+.settings-actions .btn:hover {
+    background: var(--surface-hover);
+    border-color: var(--text-muted);
+}
+
+.settings-actions .btn:active {
+    background: var(--surface-active);
+}
+
+.settings-actions .btn:disabled {
+    opacity: 0.34;
+    cursor: not-allowed;
+    color: var(--text-tertiary);
+    background: var(--surface-ghost-muted);
+    border-color: var(--divider-subtle);
+}
+
+.settings-actions .btn:disabled:hover,
+.settings-actions .btn:disabled:active {
+    background: var(--surface-ghost-muted);
+    border-color: var(--divider-subtle);
+    color: var(--text-tertiary);
+}
+
+body.high-contrast-mode .settings-actions .btn:hover:not(:disabled) {
+    background: #1f1f1f;
+    border-color: var(--text-tertiary);
+    color: #ffffff;
+}
+
+body.high-contrast-mode .settings-actions .btn:active:not(:disabled) {
+    background: #2a2a2a;
+    border-color: var(--text-secondary);
+}
+
+.btn-google-account {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#google-drive-status {
+    word-break: break-word;
+}
+
+#google-drive-status.is-error {
+    color: var(--danger);
+}
+
+#google-drive-status.is-success {
+    color: var(--accent);
+}
+
+.setting-note {
+    color: var(--text-tertiary);
+    margin-top: 4px;
+    display: block;
+    text-align: center;
 }
 
 @media (max-width: 1100px), (pointer: coarse) {

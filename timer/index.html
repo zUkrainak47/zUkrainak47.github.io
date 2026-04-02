@@ -11,6 +11,8 @@
   <meta name="apple-mobile-web-app-title" content="UkraTimer">
   <!-- Paste your Cloudflare Web Analytics site token below to enable usage tracking. -->
   <meta name="cloudflare-analytics-token" content="bd70eee8cd8147ffb55ac22c52351302">
+  <!-- Add your Google OAuth Web Client ID below to enable Drive backups. -->
+  <meta name="google-drive-client-id" content="210179775275-e62l646u4b8157hqs7j2ovt6ap608bjo.apps.googleusercontent.com">
   <title>UkraTimer</title>
 
   <link rel="manifest" href="manifest.webmanifest">
@@ -46,7 +48,7 @@
   <link rel="stylesheet" href="css/cube.css?v=7">
   <link rel="stylesheet" href="css/graph.css?v=9">
   <link rel="stylesheet" href="css/modal.css?v=15">
-  <link rel="stylesheet" href="css/settings.css?v=10">
+  <link rel="stylesheet" href="css/settings.css?v=12">
 </head>
 
 <body>
@@ -936,14 +938,26 @@
 
         <div class="setting-group">
           <h3>Data</h3>
+          <div class="setting-row">
+            <div class="setting-label">
+              Google Drive backup
+              <small id="google-drive-status">Add a Google OAuth client ID in <code>index.html</code> to enable cloud backup.</small>
+            </div>
+          </div>
+          <div class="settings-actions">
+            <button id="btn-google-drive-account" class="btn btn-google-account" type="button">Connect Google Account</button>
+          </div>
+          <div class="settings-actions">
+            <button id="btn-google-drive-export" class="btn" type="button">Export to Google</button>
+            <button id="btn-google-drive-import" class="btn" type="button">Import from Google</button>
+          </div>
+          <small class="setting-note">Export overwrites the previous cloud save.</small>
           <div class="settings-actions">
             <!-- <button id="btn-export" class="btn">📥 Export</button> -->
-            <button id="btn-export-cstimer" class="btn">📥 Export</button>
-          <!-- </div>
-          <div class="settings-actions" style="margin-top: 6px;"> -->
-            <button id="btn-import" class="btn">📤 Import</button>
+            <button id="btn-export-cstimer" class="btn" type="button">Export file</button>
+            <button id="btn-import" class="btn" type="button">Import file</button>
           </div>
-          <small style="color: var(--text-tertiary); margin-top: 4px; display: block; text-align: center;"><u>csTimer</u> and <u>Twisty Timer</u> formats supported</small>
+          <small class="setting-note"><u>csTimer</u> and <u>Twisty Timer</u> formats supported for file import.</small>
         </div>
       </div>
     </div>
@@ -992,7 +1006,7 @@
   </script>
 
   <!-- App Script -->
-  <script type="module" src="js/app.js?v=109"></script>
+  <script type="module" src="js/app.js?v=115"></script>
 </body>
 
 </html>
