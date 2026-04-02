@@ -1,5 +1,5 @@
-import { load, save } from './storage.js';
-import { EventEmitter } from './utils.js';
+import { load, save } from './storage.js?v=2';
+import { EventEmitter } from './utils.js?v=2';
 
 const DEFAULTS = {
     inspectionTime: 'off',  // 'off', '15s'

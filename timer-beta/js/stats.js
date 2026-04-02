@@ -1,4 +1,4 @@
-import { getEffectiveTime } from './utils.js';
+import { getEffectiveTime } from './utils.js?v=2';
 
 const MAX_ROLLING_STAT_WINDOW = 99999;
 
