@@ -105,6 +105,7 @@ export async function importAll(data) {
             name: session.name,
             createdAt: session.createdAt,
             order: Number.isFinite(session.order) ? session.order : dbSessions.length,
+            ...(typeof session.scrambleType === 'string' ? { scrambleType: session.scrambleType } : {}),
         });
 
         if (Array.isArray(session.solves)) {
@@ -332,6 +333,9 @@ export async function importCsTimer(csData) {
         const name = (meta && meta.name && typeof meta.name === 'string')
             ? meta.name
             : `Session ${num}`;
+        const scrambleType = (meta && meta.opt && typeof meta.opt.scrType === 'string')
+            ? meta.opt.scrType
+            : undefined;
 
         const sessionId = _genId() + num;
         const sessionOrder = dbSessions.length;
@@ -372,7 +376,13 @@ export async function importCsTimer(csData) {
         }
 
         if (hasSolves) {
-            dbSessions.push({ id: sessionId, name, createdAt: sessionCreatedAt, order: sessionOrder });
+            dbSessions.push({
+                id: sessionId,
+                name,
+                createdAt: sessionCreatedAt,
+                order: sessionOrder,
+                ...(scrambleType ? { scrambleType } : {}),
+            });
         }
     }
 

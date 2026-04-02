@@ -1,12 +1,26 @@
 import * as db from './db.js';
-import { load, save } from './storage.js?v=2';
+import { load, save } from './storage.js?v=3';
 import { generateId, EventEmitter, getStartOfToday, getStartOfWeek, getStartOfMonth, parseCustomStatsFilter } from './utils.js?v=2';
 import { settings } from './settings.js?v=5';
+import { SCRAMBLE_TYPE_OPTIONS } from './scramble.js?v=17';
+
+const DEFAULT_SCRAMBLE_TYPE = '333';
+const LEGACY_SCRAMBLE_TYPE_STORAGE_KEY = 'scrambleType';
+const SCRAMBLE_TYPE_SET = new Set(SCRAMBLE_TYPE_OPTIONS.map((option) => option.id));
+
+function sanitizeSessionScrambleType(value) {
+    const normalized = typeof value === 'string' ? value.trim().toLowerCase() : '';
+    return SCRAMBLE_TYPE_SET.has(normalized) ? normalized : DEFAULT_SCRAMBLE_TYPE;
+}
+
+function getLegacyScrambleTypeFallback() {
+    return sanitizeSessionScrambleType(load(LEGACY_SCRAMBLE_TYPE_STORAGE_KEY, DEFAULT_SCRAMBLE_TYPE));
+}
 
 class SessionManager extends EventEmitter {
     constructor() {
         super();
-        /** @type {{ id: string, name: string, createdAt: number, order: number, solveCount: number, solves: object[] }[]} */
+        /** @type {{ id: string, name: string, createdAt: number, order: number, scrambleType: string, solveCount: number, solves: object[] }[]} */
         this._sessions = [];
         this._activeId = null;
         this._ready = false;
@@ -29,9 +43,11 @@ class SessionManager extends EventEmitter {
 
         // Load session metadata from IndexedDB
         const dbSessions = await db.getAllSessions();
+        const legacyScrambleType = getLegacyScrambleTypeFallback();
         const solveCounts = await Promise.all(
             dbSessions.map(session => db.getSolveCountBySession(session.id))
         );
+        const sessionsToBackfill = [];
 
         // Build in-memory session objects (metadata + empty solves array)
         this._sessions = dbSessions.map((s, index) => ({
@@ -39,14 +55,31 @@ class SessionManager extends EventEmitter {
             name: s.name,
             createdAt: s.createdAt,
             order: Number.isFinite(s.order) ? s.order : 0,
+            scrambleType: (() => {
+                const nextScrambleType = sanitizeSessionScrambleType(s.scrambleType ?? legacyScrambleType);
+                if (s.scrambleType !== nextScrambleType) {
+                    sessionsToBackfill.push({
+                        id: s.id,
+                        name: s.name,
+                        createdAt: s.createdAt,
+                        order: Number.isFinite(s.order) ? s.order : 0,
+                        scrambleType: nextScrambleType,
+                    });
+                }
+                return nextScrambleType;
+            })(),
             solveCount: solveCounts[index] ?? 0,
             solves: [],
         }));
 
+        if (sessionsToBackfill.length > 0) {
+            await Promise.all(sessionsToBackfill.map((session) => db.updateSession(session)));
+        }
+
         this._activeId = load('activeSessionId', null);
 
         if (this._sessions.length === 0) {
-            await this._createDefault();
+            await this._createDefault({ scrambleType: legacyScrambleType });
         }
         if (!this._activeId || !this._sessions.find(s => s.id === this._activeId)) {
             this._activeId = this._sessions[0].id;
@@ -65,23 +98,41 @@ class SessionManager extends EventEmitter {
         session.solveCount = session.solves.length;
     }
 
-    async _createDefault() {
+    _serializeSession(session) {
+        return {
+            id: session.id,
+            name: session.name,
+            createdAt: session.createdAt,
+            order: session.order,
+            scrambleType: sanitizeSessionScrambleType(session.scrambleType),
+        };
+    }
+
+    async _createDefault({ scrambleType = getLegacyScrambleTypeFallback() } = {}) {
         const session = {
             id: generateId(),
             name: 'Session 1',
             createdAt: Date.now(),
             order: this._getNextSessionOrder(),
+            scrambleType: sanitizeSessionScrambleType(scrambleType),
             solveCount: 0,
             solves: [],
         };
         this._sessions.push(session);
-        await db.addSession({ id: session.id, name: session.name, createdAt: session.createdAt, order: session.order });
+        await db.addSession(this._serializeSession(session));
     }
 
     // --- Session CRUD ---
 
     getSessions() {
-        return this._sessions.map(s => ({ id: s.id, name: s.name, createdAt: s.createdAt, order: s.order, solveCount: s.solveCount }));
+        return this._sessions.map((s) => ({
+            id: s.id,
+            name: s.name,
+            createdAt: s.createdAt,
+            order: s.order,
+            scrambleType: s.scrambleType,
+            solveCount: s.solveCount,
+        }));
     }
 
     getActiveSession() {
@@ -90,6 +141,10 @@ class SessionManager extends EventEmitter {
 
     getActiveSessionId() {
         return this._activeId;
+    }
+
+    getActiveSessionScrambleType() {
+        return this.getActiveSession()?.scrambleType ?? getLegacyScrambleTypeFallback();
     }
 
     async setActiveSession(id) {
@@ -102,16 +157,18 @@ class SessionManager extends EventEmitter {
 
     async createSession(name) {
         const num = this._sessions.length + 1;
+        const activeSession = this.getActiveSession();
         const session = {
             id: generateId(),
             name: name || `Session ${num}`,
             createdAt: Date.now(),
             order: this._getNextSessionOrder(),
+            scrambleType: sanitizeSessionScrambleType(activeSession?.scrambleType ?? getLegacyScrambleTypeFallback()),
             solveCount: 0,
             solves: [],
         };
         this._sessions.push(session);
-        await db.addSession({ id: session.id, name: session.name, createdAt: session.createdAt, order: session.order });
+        await db.addSession(this._serializeSession(session));
         await this.setActiveSession(session.id);
         return session;
     }
@@ -120,9 +177,22 @@ class SessionManager extends EventEmitter {
         const session = this._sessions.find(s => s.id === id);
         if (session) {
             session.name = name;
-            await db.updateSession({ id: session.id, name: session.name, createdAt: session.createdAt, order: session.order });
+            await db.updateSession(this._serializeSession(session));
             this.emit('sessionUpdated', id);
         }
+    }
+
+    async setSessionScrambleType(id, scrambleType) {
+        const session = this._sessions.find((s) => s.id === id);
+        if (!session) return false;
+
+        const nextScrambleType = sanitizeSessionScrambleType(scrambleType);
+        if (session.scrambleType === nextScrambleType) return false;
+
+        session.scrambleType = nextScrambleType;
+        await db.updateSession(this._serializeSession(session));
+        this.emit('sessionUpdated', id);
+        return true;
     }
 
     async deleteSession(id) {

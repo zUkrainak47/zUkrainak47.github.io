@@ -1,4 +1,4 @@
-import { load, save } from './storage.js?v=2';
+import { load, save } from './storage.js?v=3';
 import { EventEmitter } from './utils.js?v=2';
 
 const DEFAULTS = {

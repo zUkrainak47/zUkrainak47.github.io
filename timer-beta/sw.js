@@ -1,5 +1,5 @@
-const APP_CACHE_NAME = 'ukratimer-app-v12';
-const RUNTIME_CACHE_NAME = 'ukratimer-runtime-v12';
+const APP_CACHE_NAME = 'ukratimer-app-v13';
+const RUNTIME_CACHE_NAME = 'ukratimer-runtime-v13';
 
 const CUBING_SCRAMBLE_MODULE_URL = 'https://cdn.cubing.net/v0/js/cubing/scramble';
 const SCRAMBOW_SCRIPT_URL = 'https://unpkg.com/scrambow@1.8.1/dist/scrambow.js';
@@ -19,17 +19,17 @@ const LOCAL_PRECACHE_PATHS = [
     './css/graph.css?v=9',
     './css/modal.css?v=15',
     './css/settings.css?v=12',
-    './js/app.js?v=115',
+    './js/app.js?v=116',
     './js/timer.js?v=9',
     './js/scramble.js?v=17',
-    './js/session.js?v=4',
+    './js/session.js?v=5',
     './js/settings.js?v=5',
     './js/stats.js?v=3',
-    './js/modal.js?v=15',
+    './js/modal.js?v=16',
     './js/cube-display.js?v=18',
     './js/graph.js?v=15',
     './js/utils.js?v=2',
-    './js/storage.js?v=2',
+    './js/storage.js?v=3',
     './js/db.js',
     './js/distribution.js?v=3',
     './js/google-drive-sync.js?v=5',
