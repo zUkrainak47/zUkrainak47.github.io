@@ -265,7 +265,7 @@ body.solving #btn-settings {
         border: 1px solid var(--floating-surface-border);
         box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
         backdrop-filter: blur(18px);
-        z-index: 40;
+        z-index: 9;
     }
 
     .mobile-panel-tab {
@@ -273,18 +273,22 @@ body.solving #btn-settings {
         min-height: calc(var(--mobile-tab-height) - 12px);
         flex: 1;
         padding: 0 14px;
+        border: 1px solid transparent;
+        box-sizing: border-box;
         border-radius: 999px;
+        background: transparent;
         font-size: var(--text-sm);
         font-weight: 700;
         letter-spacing: 0.02em;
         color: var(--text-secondary);
-        transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+        transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
     }
 
     .mobile-panel-tab.active {
-        background: linear-gradient(180deg, rgba(121, 192, 255, 0.18), rgba(121, 192, 255, 0.08));
+        background: #181D23;
+        border-color: var(--floating-surface-border);
         color: var(--text-primary);
-        box-shadow: inset 0 0 0 1px rgba(121, 192, 255, 0.18);
+        box-shadow: none;
     }
 
     .mobile-panel-tab:active {
