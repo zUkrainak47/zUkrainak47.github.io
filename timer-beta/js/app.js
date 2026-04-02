@@ -6157,7 +6157,7 @@ function initSettingsPanel() {
     if (googleDriveAccountBtn) {
         googleDriveAccountBtn.onclick = async () => {
             if (hasGoogleDriveSession()) {
-                const confirmed = await customConfirm('Disconnect Google Drive backup?');
+                const confirmed = await customConfirm('Disconnect Google Drive?');
                 if (!confirmed) return;
 
                 googleDriveBusy = true;
