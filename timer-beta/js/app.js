@@ -4778,6 +4778,8 @@ function syncDesktopTimerInfoPills() {
         maxPillChars = 6;
     } else if (desktopTruncated) {
         maxPillChars = 7;
+    } else if (!isMobile && width < 1250) {
+        maxPillChars = 8;
     }
 
     const infoAo5El = document.getElementById('info-ao5');
