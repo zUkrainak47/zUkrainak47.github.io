@@ -2973,8 +2973,8 @@ function syncZenButtonState() {
 
     const isZen = document.body.classList.contains('zen');
     btn.textContent = isZen ? '✕' : '✦';
-    btn.title = isZen ? 'Exit zen mode' : 'Zen mode (hide panels)';
-    btn.setAttribute('aria-label', btn.title);
+    btn.removeAttribute('title');
+    btn.setAttribute('aria-label', isZen ? 'Exit zen mode' : 'Zen mode (hide panels)');
     btn.classList.toggle('is-active', isZen);
 }
 
