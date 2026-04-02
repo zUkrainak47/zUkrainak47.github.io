@@ -3,12 +3,13 @@ import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScram
 import { sessionManager } from './session.js?v=4';
 import { settings, DEFAULTS } from './settings.js?v=5';
 import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=3';
-import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, truncateTimeDisplay } from './utils.js?v=2';
+import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, truncateTimeDisplay } from './utils.js?v=2';
 import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=15';
 import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=18';
 import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=15';
 import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, showTimeDistributionModal } from './distribution.js?v=3';
 import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=2';
+import { connectGoogleDrive, disconnectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession } from './google-drive-sync.js?v=5';
 
 let currentScramble = '';
 let currentSortCol = null;
@@ -24,7 +25,7 @@ async function registerServiceWorker() {
     if (window.location?.protocol === 'file:') return;
 
     try {
-        const serviceWorkerUrl = new URL('../sw.js?v=5', import.meta.url);
+        const serviceWorkerUrl = new URL('../sw.js?v=12', import.meta.url);
         await navigator.serviceWorker.register(serviceWorkerUrl);
     } catch (error) {
         console.warn('Service worker registration failed:', error);
@@ -6060,6 +6061,196 @@ function initSettingsPanel() {
     setupColorSetting('setting-graph-line3-color', 'btn-reset-line3-color', 'graphColorLine3');
 
     syncSettingsRowSeparators();
+
+    const googleDriveStatus = document.getElementById('google-drive-status');
+    const googleDriveAccountBtn = document.getElementById('btn-google-drive-account');
+    const googleDriveExportBtn = document.getElementById('btn-google-drive-export');
+    const googleDriveImportBtn = document.getElementById('btn-google-drive-import');
+    let googleDriveBusy = false;
+
+    const setGoogleDriveStatus = (message, tone = '') => {
+        if (!googleDriveStatus) return;
+        googleDriveStatus.textContent = message;
+        googleDriveStatus.classList.toggle('is-error', tone === 'error');
+        googleDriveStatus.classList.toggle('is-success', tone === 'success');
+    };
+
+    const reportGoogleDriveError = (message) => {
+        if (settingsOverlayEl?.classList.contains('active')) {
+            setGoogleDriveStatus(message, 'error');
+            return;
+        }
+
+        alert(message);
+    };
+
+    const ensureGoogleDriveSession = async () => {
+        if (hasGoogleDriveSession()) return true;
+
+        const restored = await restoreGoogleDriveSession();
+        if (restored) return true;
+
+        setGoogleDriveStatus('Google Drive needs permission again. Reconnect your account to continue.');
+        return false;
+    };
+
+    const syncGoogleDriveAccountButton = () => {
+        if (!googleDriveAccountBtn) return;
+
+        const configured = isGoogleDriveSyncConfigured();
+        const connected = hasGoogleDriveSession();
+
+        googleDriveAccountBtn.disabled = !configured || googleDriveBusy;
+        googleDriveAccountBtn.textContent = connected
+            ? 'Google Account Connected'
+            : 'Connect Google Account';
+        googleDriveAccountBtn.title = '';
+    };
+
+    const syncGoogleDriveButtons = () => {
+        const configured = isGoogleDriveSyncConfigured();
+        const connected = hasGoogleDriveSession();
+
+        syncGoogleDriveAccountButton();
+
+        if (googleDriveExportBtn) {
+            googleDriveExportBtn.disabled = !configured || googleDriveBusy || !connected;
+        }
+
+        if (googleDriveImportBtn) {
+            googleDriveImportBtn.disabled = !configured || googleDriveBusy || !connected;
+        }
+    };
+
+    const refreshGoogleDriveStatus = async () => {
+        syncGoogleDriveButtons();
+
+        if (!isGoogleDriveSyncConfigured()) {
+            setGoogleDriveStatus('Add a Google OAuth client ID in index.html to enable cloud backup.', 'error');
+            return;
+        }
+
+        if (!hasGoogleDriveSession()) {
+            setGoogleDriveStatus('Connect Google Drive to sync a backup file across your devices.');
+            return;
+        }
+
+        try {
+            const info = await getGoogleDriveBackupInfo();
+            const modifiedAt = info?.file?.modifiedTime ? Date.parse(info.file.modifiedTime) : NaN;
+            const accountPrefix = 'Connected. ';
+
+            if (!info?.file) {
+                setGoogleDriveStatus(`${accountPrefix}No cloud backup found yet.`, 'success');
+            } else if (Number.isFinite(modifiedAt)) {
+                setGoogleDriveStatus(`${accountPrefix}Cloud backup last updated ${formatDateTime(modifiedAt)}.`, 'success');
+            } else {
+                setGoogleDriveStatus(`${accountPrefix}Cloud backup is available.`, 'success');
+            }
+        } catch (error) {
+            setGoogleDriveStatus(error?.message || 'Could not read Google Drive backup status.', 'error');
+        } finally {
+            syncGoogleDriveButtons();
+        }
+    };
+
+    if (googleDriveAccountBtn) {
+        googleDriveAccountBtn.onclick = async () => {
+            if (hasGoogleDriveSession()) {
+                const confirmed = await customConfirm('Disconnect Google Drive backup?');
+                if (!confirmed) return;
+
+                googleDriveBusy = true;
+                syncGoogleDriveButtons();
+                setGoogleDriveStatus('Disconnecting Google Drive...');
+
+                try {
+                    await disconnectGoogleDrive();
+                    setGoogleDriveStatus('Disconnected from Google Drive.');
+                } catch (error) {
+                    setGoogleDriveStatus(error?.message || 'Could not disconnect Google Drive.', 'error');
+                } finally {
+                    googleDriveBusy = false;
+                    syncGoogleDriveButtons();
+                }
+                return;
+            }
+
+            googleDriveBusy = true;
+            syncGoogleDriveButtons();
+            setGoogleDriveStatus('Opening Google sign-in...');
+
+            try {
+                await connectGoogleDrive();
+                await refreshGoogleDriveStatus();
+            } catch (error) {
+                setGoogleDriveStatus(error?.message || 'Google Drive connection failed.', 'error');
+            } finally {
+                googleDriveBusy = false;
+                syncGoogleDriveButtons();
+            }
+        };
+    }
+
+    if (googleDriveExportBtn) {
+        googleDriveExportBtn.onclick = async () => {
+            googleDriveBusy = true;
+            syncGoogleDriveButtons();
+            setGoogleDriveStatus('Exporting backup to Google Drive...');
+
+            try {
+                if (!(await ensureGoogleDriveSession())) return;
+                const data = await exportAll();
+                const savedFile = await exportBackupToGoogleDrive(data);
+                const modifiedAt = savedFile?.modifiedTime ? Date.parse(savedFile.modifiedTime) : Date.now();
+                setGoogleDriveStatus(`Cloud backup updated ${formatDateTime(modifiedAt)}.`, 'success');
+            } catch (error) {
+                setGoogleDriveStatus(error?.message || 'Cloud export failed.', 'error');
+            } finally {
+                googleDriveBusy = false;
+                syncGoogleDriveButtons();
+            }
+        };
+    }
+
+    if (googleDriveImportBtn) {
+        googleDriveImportBtn.onclick = async () => {
+            googleDriveBusy = true;
+            syncGoogleDriveButtons();
+            setGoogleDriveStatus('Checking Google Drive backup...');
+
+            try {
+                if (!(await ensureGoogleDriveSession())) return;
+                const { text } = await importBackupFromGoogleDrive();
+                let data = null;
+
+                try {
+                    data = JSON.parse(text);
+                } catch (_) {
+                    throw new Error('Google Drive backup is not valid JSON.');
+                }
+
+                if (!data || typeof data !== 'object') {
+                    throw new Error('Google Drive backup is missing timer data.');
+                }
+
+                closeSettingsPanel({ isPopState: true });
+
+                if (await customConfirm('This will replace all your current data with the Google Drive backup. Continue?')) {
+                    await importAll(data);
+                    location.reload();
+                    return;
+                }
+            } catch (error) {
+                reportGoogleDriveError(error?.message || 'Cloud import failed.');
+            } finally {
+                googleDriveBusy = false;
+                syncGoogleDriveButtons();
+            }
+        };
+    }
+
+    void refreshGoogleDriveStatus();
 
     // // Export
     // document.getElementById('btn-export').onclick = async () => {
