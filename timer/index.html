@@ -39,10 +39,10 @@
 
   <!-- Styles -->
   <link rel="stylesheet" href="css/variables.css?v=6">
-  <link rel="stylesheet" href="css/base.css?v=17">
+  <link rel="stylesheet" href="css/base.css?v=18">
   <link rel="stylesheet" href="css/layout.css?v=15">
   <link rel="stylesheet" href="css/scramble.css?v=37">
-  <link rel="stylesheet" href="css/timer.css?v=32">
+  <link rel="stylesheet" href="css/timer.css?v=33">
   <link rel="stylesheet" href="css/stats.css?v=19">
   <link rel="stylesheet" href="css/cube.css?v=7">
   <link rel="stylesheet" href="css/graph.css?v=9">
@@ -263,7 +263,7 @@
           <div id="timer-display" data-timer-state="idle">0.00</div>
           <div id="manual-time-entry" hidden>
             <input id="manual-time-hidden-input" type="text" autocomplete="off"
-              spellcheck="false" />
+              spellcheck="false" maxlength="7" inputmode="numeric" />
             <div id="manual-time-entry-display">
               <span id="manual-time-formatted">0.00</span>
               <span class="manual-time-caret" aria-hidden="true"></span>
@@ -993,7 +993,7 @@
   </script>
 
   <!-- App Script -->
-  <script type="module" src="js/app.js?v=107"></script>
+  <script type="module" src="js/app.js?v=108"></script>
 </body>
 
 </html>

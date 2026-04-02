@@ -422,6 +422,16 @@ body:not(.mobile-viewport) #inspection-cancel-wrap {
     display: none !important;
 }
 
+#center-panel:has(.timer-popup:not(:empty)) {
+    z-index: 61;
+    pointer-events: none;
+}
+
+#center-panel:has(.timer-popup:not(:empty)) #timer-display-wrapper,
+#center-panel:has(.timer-popup:not(:empty)) #timer-info {
+    pointer-events: auto;
+}
+
 #timer-display-wrapper:has(.timer-popup:not(:empty)) {
     z-index: 60;
 }

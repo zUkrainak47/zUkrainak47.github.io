@@ -15,11 +15,14 @@ export function formatTime(ms, digits = 2) {
   ms = Math.abs(ms);
 
   const totalSeconds = Math.floor(ms / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
 
   let result = '';
-  if (minutes > 0) {
+  if (hours > 0) {
+    result = `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  } else if (minutes > 0) {
     result = `${minutes}:${String(seconds).padStart(2, '0')}`;
   } else {
     result = `${seconds}`;
@@ -262,16 +265,30 @@ export function truncateTimeDisplay(text, maxChars) {
   const hasPlus = text.endsWith('+');
   let numberPart = hasPlus ? text.slice(0, -1) : text;
   const limit = hasPlus ? maxChars - 1 : maxChars;
-  
+
+  if (numberPart.length > limit && numberPart.includes('.')) {
+    const withoutDecimals = numberPart.replace(/\.\d+$/, '');
+    if (withoutDecimals.length <= limit) {
+      numberPart = withoutDecimals;
+    }
+  }
+
+  if (numberPart.length > limit && numberPart.includes(':')) {
+    const timeParts = numberPart.split(':');
+    while (timeParts.length > 1) {
+      timeParts.pop();
+      const shortened = timeParts.join(':');
+      if (shortened.length <= limit) {
+        numberPart = shortened;
+        break;
+      }
+    }
+  }
+
   if (numberPart.length > limit) {
-    const colonIndex = numberPart.indexOf(':');
-    if (colonIndex !== -1 && colonIndex >= limit - 2) {
-        numberPart = numberPart.substring(0, colonIndex) + 'm';
-    } else {
-        numberPart = numberPart.substring(0, limit);
-        if (numberPart.endsWith('.')) {
-            numberPart = numberPart.substring(0, numberPart.length - 1);
-        }
+    numberPart = numberPart.substring(0, limit);
+    if (numberPart.endsWith('.') || numberPart.endsWith(':')) {
+      numberPart = numberPart.substring(0, numberPart.length - 1);
     }
   }
   

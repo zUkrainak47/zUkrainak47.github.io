@@ -1,14 +1,14 @@
-import { timer } from './timer.js?v=8';
-import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=16';
-import { sessionManager } from './session.js?v=3';
-import { settings, DEFAULTS } from './settings.js?v=4';
-import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=2';
-import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, truncateTimeDisplay } from './utils.js';
-import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=14';
+import { timer } from './timer.js?v=9';
+import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=17';
+import { sessionManager } from './session.js?v=4';
+import { settings, DEFAULTS } from './settings.js?v=5';
+import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=3';
+import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, truncateTimeDisplay } from './utils.js?v=2';
+import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=15';
 import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=18';
-import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=14';
-import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, showTimeDistributionModal } from './distribution.js';
-import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js';
+import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=15';
+import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, showTimeDistributionModal } from './distribution.js?v=3';
+import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=2';
 
 let currentScramble = '';
 let currentSortCol = null;
@@ -24,7 +24,7 @@ async function registerServiceWorker() {
     if (window.location?.protocol === 'file:') return;
 
     try {
-        const serviceWorkerUrl = new URL('../sw.js', import.meta.url);
+        const serviceWorkerUrl = new URL('../sw.js?v=5', import.meta.url);
         await navigator.serviceWorker.register(serviceWorkerUrl);
     } catch (error) {
         console.warn('Service worker registration failed:', error);
@@ -564,44 +564,139 @@ function sanitizeManualDigits(value) {
 
 function getManualTimeParts(digits) {
     const sanitized = sanitizeManualDigits(digits);
-    const integerSource = sanitized.slice(0, -2);
     const fractionSource = sanitized.slice(-2);
+    const fractionText = fractionSource.padStart(2, '0') || '00';
+
+    if (sanitized.length > 6) {
+        const hourSource = sanitized.slice(0, -6);
+        const minuteSource = sanitized.slice(-6, -4);
+        const secondSource = sanitized.slice(-4, -2);
+
+        return {
+            sanitized,
+            hasHours: true,
+            hasMinutes: true,
+            hourText: hourSource,
+            minuteText: minuteSource,
+            secondText: secondSource,
+            fractionText,
+            hourTypedCount: hourSource.length,
+            minuteTypedCount: minuteSource.length,
+            secondTypedCount: secondSource.length,
+            fractionTypedCount: fractionSource.length,
+        };
+    }
+
+    if (sanitized.length > 4) {
+        const minuteSource = sanitized.slice(0, -4);
+        const secondSource = sanitized.slice(-4, -2);
+
+        return {
+            sanitized,
+            hasHours: false,
+            hasMinutes: true,
+            minuteText: minuteSource,
+            secondText: secondSource,
+            fractionText,
+            minuteTypedCount: minuteSource.length,
+            secondTypedCount: secondSource.length,
+            fractionTypedCount: fractionSource.length,
+        };
+    }
+
+    const integerSource = sanitized.slice(0, -2);
 
     return {
         sanitized,
+        hasHours: false,
+        hasMinutes: false,
         integerText: integerSource || '0',
-        fractionText: fractionSource.padStart(2, '0') || '00',
+        fractionText,
         integerTypedCount: integerSource.length,
         fractionTypedCount: fractionSource.length,
     };
 }
 
+function getManualElapsedMs(digits) {
+    const sanitized = sanitizeManualDigits(digits);
+    if (!sanitized) return 0;
+    if (sanitized.length <= 4) return Number(sanitized) * 10;
+    if (sanitized.length <= 6) {
+        const minutes = Number(sanitized.slice(0, -4));
+        const seconds = Number(sanitized.slice(-4, -2));
+        const centiseconds = Number(sanitized.slice(-2));
+
+        return (minutes * 60 * 1000) + (seconds * 1000) + (centiseconds * 10);
+    }
+
+    const hours = Number(sanitized.slice(0, -6));
+    const minutes = Number(sanitized.slice(-6, -4));
+    const seconds = Number(sanitized.slice(-4, -2));
+    const centiseconds = Number(sanitized.slice(-2));
+
+    return (hours * 60 * 60 * 1000)
+        + (minutes * 60 * 1000)
+        + (seconds * 1000)
+        + (centiseconds * 10);
+}
+
 function formatManualTimeDigits(digits) {
-    const { integerText, fractionText } = getManualTimeParts(digits);
-    return `${integerText}.${fractionText}`;
+    const parts = getManualTimeParts(digits);
+
+    if (parts.hasHours) {
+        return `${parts.hourText}:${parts.minuteText}:${parts.secondText}.${parts.fractionText}`;
+    }
+
+    if (parts.hasMinutes) {
+        return `${parts.minuteText}:${parts.secondText}.${parts.fractionText}`;
+    }
+
+    return `${parts.integerText}.${parts.fractionText}`;
 }
 
 function renderManualTimeMarkup(digits) {
-    const {
-        integerText,
-        fractionText,
-        integerTypedCount,
-        fractionTypedCount,
-    } = getManualTimeParts(digits);
-
-    const integerTypedStart = Math.max(0, integerText.length - integerTypedCount);
-    const fractionTypedStart = Math.max(0, fractionText.length - fractionTypedCount);
-
-    const integerMarkup = Array.from(integerText, (char, index) => (
-        `<span class="manual-time-char${index >= integerTypedStart ? ' is-typed' : ''}">${char}</span>`
-    )).join('');
-
-    const dotIsTyped = integerTypedCount > 0 && fractionTypedCount > 0;
-    const dotMarkup = `<span class="manual-time-char${dotIsTyped ? ' is-typed' : ''}">.</span>`;
-
-    const fractionMarkup = Array.from(fractionText, (char, index) => (
+    const parts = getManualTimeParts(digits);
+    const fractionTypedStart = Math.max(0, parts.fractionText.length - parts.fractionTypedCount);
+    const fractionMarkup = Array.from(parts.fractionText, (char, index) => (
         `<span class="manual-time-char${index >= fractionTypedStart ? ' is-typed' : ''}">${char}</span>`
     )).join('');
+
+    if (parts.hasHours) {
+        const hourMarkup = Array.from(parts.hourText, (char) => (
+            '<span class="manual-time-char is-typed">' + char + '</span>'
+        )).join('');
+        const firstColonMarkup = '<span class="manual-time-char is-typed">:</span>';
+        const minuteMarkup = Array.from(parts.minuteText, (char) => (
+            '<span class="manual-time-char is-typed">' + char + '</span>'
+        )).join('');
+        const secondColonMarkup = '<span class="manual-time-char is-typed">:</span>';
+        const secondMarkup = Array.from(parts.secondText, (char) => (
+            '<span class="manual-time-char is-typed">' + char + '</span>'
+        )).join('');
+        const dotMarkup = '<span class="manual-time-char is-typed">.</span>';
+
+        return `${hourMarkup}${firstColonMarkup}${minuteMarkup}${secondColonMarkup}${secondMarkup}${dotMarkup}${fractionMarkup}`;
+    }
+
+    if (parts.hasMinutes) {
+        const minuteMarkup = Array.from(parts.minuteText, (char) => (
+            '<span class="manual-time-char is-typed">' + char + '</span>'
+        )).join('');
+        const colonMarkup = '<span class="manual-time-char is-typed">:</span>';
+        const secondMarkup = Array.from(parts.secondText, (char) => (
+            '<span class="manual-time-char is-typed">' + char + '</span>'
+        )).join('');
+        const dotMarkup = '<span class="manual-time-char is-typed">.</span>';
+
+        return `${minuteMarkup}${colonMarkup}${secondMarkup}${dotMarkup}${fractionMarkup}`;
+    }
+
+    const integerTypedStart = Math.max(0, parts.integerText.length - parts.integerTypedCount);
+    const integerMarkup = Array.from(parts.integerText, (char, index) => (
+        `<span class="manual-time-char${index >= integerTypedStart ? ' is-typed' : ''}">${char}</span>`
+    )).join('');
+    const dotIsTyped = parts.integerTypedCount > 0 && parts.fractionTypedCount > 0;
+    const dotMarkup = `<span class="manual-time-char${dotIsTyped ? ' is-typed' : ''}">.</span>`;
 
     return `${integerMarkup}${dotMarkup}${fractionMarkup}`;
 }
@@ -1060,7 +1155,7 @@ async function submitManualTimeEntry({ closeEntry = false } = {}) {
     if (Number(digits || 0) <= 0) return;
 
     if (isDesktopTypingEntryModeEnabled()) {
-        const elapsed = Number(digits) * 10;
+        const elapsed = getManualElapsedMs(digits);
         quickActionsState.manualDigits = '';
         updateManualTimeEntryUI();
         await commitSolve(elapsed, null, { isManual: true });
@@ -1078,7 +1173,7 @@ async function submitManualTimeEntry({ closeEntry = false } = {}) {
         updateManualTimeEntryUI();
     }
 
-    await commitSolve(Number(digits) * 10, null, { isManual: true });
+    await commitSolve(getManualElapsedMs(digits), null, { isManual: true });
 
     if (isMobileTimerPanelActive() && closeEntry) {
         setQuickActionsVisible(true, { pinned: true });
@@ -4683,6 +4778,8 @@ function syncDesktopTimerInfoPills() {
         maxPillChars = 6;
     } else if (desktopTruncated) {
         maxPillChars = 7;
+    } else if (!isMobile && width < 1250) {
+        maxPillChars = 8;
     }
 
     const infoAo5El = document.getElementById('info-ao5');
