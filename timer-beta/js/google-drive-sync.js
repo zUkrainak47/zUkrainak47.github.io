@@ -156,12 +156,12 @@ function mapDriveError(status, text) {
     return text || `Google Drive request failed (${status}).`;
 }
 
-async function requestGoogleDriveAccessToken({ forcePrompt = false } = {}) {
+async function requestGoogleDriveAccessToken({ selectAccount = false } = {}) {
     if (!isGoogleDriveSyncConfigured()) {
         throw new Error('Google Drive sync is not configured. Add a Google OAuth client ID first.');
     }
 
-    if (!forcePrompt && hasGoogleDriveSession()) {
+    if (!selectAccount && hasGoogleDriveSession()) {
         return accessToken;
     }
 
@@ -189,7 +189,7 @@ async function requestGoogleDriveAccessToken({ forcePrompt = false } = {}) {
         });
 
         tokenClient.requestAccessToken({
-            prompt: forcePrompt ? 'consent' : '',
+            prompt: selectAccount ? 'select_account' : '',
         });
     }).catch((error) => {
         throw new Error(mapGoogleAuthError(error));
@@ -274,25 +274,17 @@ function createMultipartUploadBody(content) {
 }
 
 export async function connectGoogleDrive() {
-    await requestGoogleDriveAccessToken({ forcePrompt: true });
+    await requestGoogleDriveAccessToken({ selectAccount: true });
     return await getGoogleDriveBackupInfo();
 }
 
-export async function disconnectGoogleDrive() {
-    const tokenToRevoke = accessToken;
+export async function signOutOfGoogleDrive() {
+    // Just clear the local session data.
+    // DO NOT call window.google.accounts.oauth2.revoke!
+    // Revoking tells Google to delete the user's consent entirely,
+    // forcing the permission screen to show up again next time.
     clearGoogleDriveSession();
     forgetGoogleDriveAuthorization();
-
-    if (!tokenToRevoke) return;
-
-    try {
-        await loadGoogleIdentityServices();
-        await new Promise((resolve) => {
-            window.google.accounts.oauth2.revoke(tokenToRevoke, () => resolve());
-        });
-    } catch (error) {
-        console.warn('Failed to revoke Google Drive token:', error);
-    }
 }
 
 export async function restoreGoogleDriveSession() {
@@ -301,7 +293,7 @@ export async function restoreGoogleDriveSession() {
     if (!wasGoogleDrivePreviouslyAuthorized()) return false;
 
     try {
-        await requestGoogleDriveAccessToken({ forcePrompt: false });
+        await requestGoogleDriveAccessToken({ selectAccount: false });
         return true;
     } catch (error) {
         const message = String(error?.message || '');

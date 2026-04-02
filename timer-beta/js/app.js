@@ -9,7 +9,7 @@ import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquar
 import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=15';
 import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, showTimeDistributionModal } from './distribution.js?v=3';
 import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=2';
-import { connectGoogleDrive, disconnectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession } from './google-drive-sync.js?v=5';
+import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=5';
 
 let currentScramble = '';
 let currentSortCol = null;
@@ -6157,18 +6157,18 @@ function initSettingsPanel() {
     if (googleDriveAccountBtn) {
         googleDriveAccountBtn.onclick = async () => {
             if (hasGoogleDriveSession()) {
-                const confirmed = await customConfirm('Disconnect Google Drive?');
+                const confirmed = await customConfirm('Sign out of Google Drive?');
                 if (!confirmed) return;
 
                 googleDriveBusy = true;
                 syncGoogleDriveButtons();
-                setGoogleDriveStatus('Disconnecting Google Drive...');
+                setGoogleDriveStatus('Signing out of Google Drive...');
 
                 try {
-                    await disconnectGoogleDrive();
-                    setGoogleDriveStatus('Disconnected from Google Drive.');
+                    await signOutOfGoogleDrive();
+                    setGoogleDriveStatus('Signed out of Google Drive.');
                 } catch (error) {
-                    setGoogleDriveStatus(error?.message || 'Could not disconnect Google Drive.', 'error');
+                    setGoogleDriveStatus(error?.message || 'Could not sign out of Google Drive.', 'error');
                 } finally {
                     googleDriveBusy = false;
                     syncGoogleDriveButtons();
