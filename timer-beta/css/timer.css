@@ -131,20 +131,13 @@ body:not(.mobile-viewport) #timer-delta::before {
     position: absolute;
     inset: -0.2em -0.4em;
     border-radius: 999px;
-    background: radial-gradient(ellipse at center, 
-                rgba(12, 17, 22, 1) 0%, 
-                rgba(12, 17, 22, 0.92) 50%, 
+    background: radial-gradient(ellipse at center,
+                var(--timer-delta-glow-strong) 0%,
+                var(--timer-delta-glow-soft) 50%,
                 rgba(12, 17, 22, 0) 95%);
     filter: blur(10px);
     pointer-events: none;
     z-index: -1;
-}
-
-body.high-contrast-mode:not(.mobile-viewport) #timer-delta::before {
-    background: radial-gradient(ellipse at center,
-                rgba(0, 0, 0, 1) 0%,
-                rgba(0, 0, 0, 0.96) 50%,
-                rgba(0, 0, 0, 0) 95%);
 }
 
 /* Timer display */

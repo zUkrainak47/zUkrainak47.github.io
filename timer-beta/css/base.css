@@ -16,7 +16,11 @@ body {
     font-family: var(--font-sans);
     font-size: var(--text-base);
     color: var(--text-primary);
-    background: var(--bg-primary);
+    background-color: var(--bg-primary);
+    background-image: var(--app-background-overlay-layer), var(--app-background-image);
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;

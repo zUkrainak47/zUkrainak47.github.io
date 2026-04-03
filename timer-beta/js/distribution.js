@@ -115,12 +115,12 @@ function getThemeColors() {
         text: readVar('--text-secondary', '#8b949e'),
         textMuted: readVar('--text-tertiary', '#6e7681'),
         surfaceStrong: readVar('--bg-primary', '#0d1117'),
-        legendBg: 'rgba(13, 17, 23, 0.92)',
-        legendBorder: 'rgba(255, 255, 255, 0.12)',
-        green: '#41b36d',
-        orange: '#f0a11c',
-        red: '#ef4444',
-        selectedStroke: '#ffd580',
+        legendBg: readVar('--distribution-legend-bg', 'rgba(13, 17, 23, 0.92)'),
+        legendBorder: readVar('--distribution-legend-border', 'rgba(255, 255, 255, 0.12)'),
+        green: readVar('--stat-best', '#41b36d'),
+        orange: readVar('--stat-ao5', '#f0a11c'),
+        red: readVar('--stat-worst', '#ef4444'),
+        selectedStroke: readVar('--distribution-selected-stroke', '#ffd580'),
     }
 }
 
