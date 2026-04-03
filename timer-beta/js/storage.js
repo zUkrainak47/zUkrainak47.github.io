@@ -446,6 +446,10 @@ function _mapCsTimerRollingStatToInternal(lengthValue, typeValue) {
 }
 
 function _deriveSummarySettingsFromCsTimerProperties(properties) {
+    const hasStatal = _hasOwn(properties, 'statal');
+    const hasStatalu = _hasOwn(properties, 'statalu');
+    if (!hasStatal && !hasStatalu) return {};
+
     const statal = _normalizeTokenListString(properties?.statal);
     const statalu = _normalizeTokenListString(properties?.statalu);
 
@@ -502,27 +506,67 @@ function _buildCsTimerSummaryProperties(settingsData) {
 
 function _deriveSettingsFromCsTimerProperties(properties) {
     const summarySettings = _deriveSummarySettingsFromCsTimerProperties(properties);
-    const stat1 = _mapCsTimerRollingStatToInternal(properties?.stat1l, properties?.stat1t);
-    const stat2 = _mapCsTimerRollingStatToInternal(properties?.stat2l, properties?.stat2t);
-
-    let timerUpdate = '0.1s';
-    if (properties?.timeU === 'n') timerUpdate = 'none';
-    else if (properties?.timeU === 's') timerUpdate = '1s';
-    else if (properties?.timeU === 'u') timerUpdate = '0.01s';
-    else if (properties?.timeU === 'i') timerUpdate = 'inspection';
-
-    return {
-        inspectionTime: _hasOwn(properties, 'useIns') ? '15s' : 'off',
-        inspectionAlerts: properties?.voiceIns === 'n' ? 'screen' : 'voice',
-        timerUpdate,
-        timeEntryMode: properties?.input === 'i' ? 'typing' : 'timer',
-        hideUIWhileSolving: properties?.ahide === false ? false : true,
-        pillSize: properties?.showAvg === false ? 'hidden' : 'medium',
-        showDelta: properties?.showDiff === 'n' ? false : true,
+    const stat1 = (_hasOwn(properties, 'stat1l') || _hasOwn(properties, 'stat1t'))
+        ? _mapCsTimerRollingStatToInternal(properties?.stat1l, properties?.stat1t)
+        : null;
+    const stat2 = (_hasOwn(properties, 'stat2l') || _hasOwn(properties, 'stat2t'))
+        ? _mapCsTimerRollingStatToInternal(properties?.stat2l, properties?.stat2t)
+        : null;
+    const settingsData = {
         ...summarySettings,
         ...(stat1 ? { solvesTableStat1: stat1 } : {}),
         ...(stat2 ? { solvesTableStat2: stat2 } : {}),
     };
+
+    if (_hasOwn(properties, 'useIns')) {
+        settingsData.inspectionTime = '15s';
+    }
+
+    if (_hasOwn(properties, 'voiceIns')) {
+        settingsData.inspectionAlerts = properties?.voiceIns === 'n' ? 'screen' : 'voice';
+    }
+
+    if (_hasOwn(properties, 'timeU')) {
+        let timerUpdate = '0.1s';
+        if (properties?.timeU === 'n') timerUpdate = 'none';
+        else if (properties?.timeU === 's') timerUpdate = '1s';
+        else if (properties?.timeU === 'u') timerUpdate = '0.01s';
+        else if (properties?.timeU === 'i') timerUpdate = 'inspection';
+        settingsData.timerUpdate = timerUpdate;
+    }
+
+    if (_hasOwn(properties, 'input')) {
+        settingsData.timeEntryMode = properties?.input === 'i' ? 'typing' : 'timer';
+    }
+
+    if (_hasOwn(properties, 'ahide')) {
+        settingsData.hideUIWhileSolving = properties?.ahide === false ? false : true;
+    }
+
+    if (_hasOwn(properties, 'showAvg')) {
+        settingsData.pillSize = properties?.showAvg === false ? 'hidden' : 'medium';
+    }
+
+    if (_hasOwn(properties, 'showDiff')) {
+        settingsData.showDelta = properties?.showDiff === 'n' ? false : true;
+    }
+
+    return settingsData;
+}
+
+function _isMeaningfulCsTimerSessionSlot(slot, meta, rawSolves, { isActiveSlot = false, hasGlobalScrambleType = false } = {}) {
+    if (Array.isArray(rawSolves) && rawSolves.length > 0) return true;
+
+    if (!meta || typeof meta !== 'object') {
+        return isActiveSlot && hasGlobalScrambleType;
+    }
+
+    if (_hasOwn(meta, 'name') && String(meta.name) !== String(slot)) return true;
+
+    const opt = meta.opt && typeof meta.opt === 'object' ? meta.opt : null;
+    if (opt && Object.keys(opt).length > 0) return true;
+
+    return isActiveSlot && hasGlobalScrambleType;
 }
 
 /**
@@ -570,6 +614,7 @@ export async function importCsTimer(csData) {
 
     if (sessionCount <= 0) return;
 
+    const hasGlobalScrambleType = _hasOwn(properties, 'scrType');
     const globalActiveScrambleType = _mapCsTimerScrambleTypeToInternal(properties.scrType);
     const importedSessions = [];
 
@@ -578,6 +623,12 @@ export async function importCsTimer(csData) {
             ? sessionMeta[String(slot)]
             : {};
         const rawSolves = Array.isArray(csData[`session${slot}`]) ? csData[`session${slot}`] : [];
+        if (!_isMeaningfulCsTimerSessionSlot(slot, meta, rawSolves, {
+            isActiveSlot: slot === activeSessionSlot,
+            hasGlobalScrambleType,
+        })) {
+            continue;
+        }
         const sessionId = `${_genId()}${slot}`;
         const name = meta.name != null ? String(meta.name) : `Session ${slot}`;
         const mappedScrambleType = _mapCsTimerScrambleTypeToInternal(meta?.opt?.scrType);
@@ -645,10 +696,14 @@ export async function importCsTimer(csData) {
         });
     });
 
+    if (importedSessions.length === 0) return;
+
     const metadata = _parseUkraTimerCsTimerMeta(properties[UKRA_TIMER_CSTIMER_META_KEY]);
+    const existingSettings = load('settings', {});
     const nativeSettings = _deriveSettingsFromCsTimerProperties(properties);
     const metadataSettings = metadata && typeof metadata.settings === 'object' ? metadata.settings : {};
     const newSettings = {
+        ...existingSettings,
         ...nativeSettings,
         ...metadataSettings,
     };
