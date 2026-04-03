@@ -1,4 +1,4 @@
-import { settings } from './settings.js?v=14';
+import { settings } from './settings.js?v=15';
 import { EventEmitter, formatTime, truncateTimeDisplay } from './utils.js?v=2';
 
 const State = {

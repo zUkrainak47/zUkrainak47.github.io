@@ -1,7 +1,7 @@
 import { timer } from './timer.js?v=14';
 import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=20';
 import { sessionManager } from './session.js?v=10';
-import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=14';
+import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=15';
 import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=3';
 import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, truncateTimeDisplay } from './utils.js?v=2';
 import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=21';
@@ -25,7 +25,7 @@ async function registerServiceWorker() {
     if (window.location?.protocol === 'file:') return;
 
     try {
-        const serviceWorkerUrl = new URL('../sw.js?v=26', import.meta.url);
+        const serviceWorkerUrl = new URL('../sw.js?v=28', import.meta.url);
         await navigator.serviceWorker.register(serviceWorkerUrl);
     } catch (error) {
         console.warn('Service worker registration failed:', error);
@@ -5767,21 +5767,8 @@ function initSettingsPanel() {
     let themeBackgroundOverlayDebounceTimer = 0;
     const THEME_DOCK_TOP_RIGHT = 'top-right';
     const THEME_DOCK_BOTTOM_LEFT = 'bottom-left';
-    const canRequestLandscapeLock = () => Boolean(
-        mobileViewportQuery.matches
-        && typeof screen !== 'undefined'
-        && screen.orientation
-        && typeof screen.orientation.lock === 'function'
-    );
-    const canDockThemeCustomization = () => (
-        !mobileViewportQuery.matches
-        || mobileLandscapeQuery.matches
-    );
-    const canShowThemeDockButtons = () => (
-        !mobileViewportQuery.matches
-        || mobileLandscapeQuery.matches
-        || canRequestLandscapeLock()
-    );
+    const canDockThemeCustomization = () => true;
+    const canShowThemeDockButtons = () => true;
     const syncThemeCustomizationDockButtons = () => {
         const currentPosition = getThemeCustomizationDockPosition();
         const shouldShow = canShowThemeDockButtons();
@@ -5812,25 +5799,6 @@ function initSettingsPanel() {
         document.body.classList.toggle('theme-customization-docked', nextDocked);
         syncThemeCustomizationDockButtons();
     };
-    const ensureThemeCustomizationDockLandscape = async () => {
-        if (!mobileViewportQuery.matches) return true;
-        if (mobileLandscapeQuery.matches) return true;
-        if (!canRequestLandscapeLock()) return false;
-
-        const confirmed = await customConfirm('Docking the theme editor on mobile works best in landscape. Let UkraTimer request landscape mode first?');
-        if (!confirmed) return false;
-
-        try {
-            await screen.orientation.lock('landscape');
-            await new Promise((resolve) => window.setTimeout(resolve, 150));
-        } catch (_) {
-            alert('Landscape mode could not be forced here. Rotate your device to landscape and try again.');
-            return false;
-        }
-
-        return mobileLandscapeQuery.matches || String(screen.orientation?.type || '').startsWith('landscape');
-    };
-
     btn.onclick = () => {
         if (isThemeCustomizationOpen() && isThemeCustomizationDocked()) {
             showSettingsPanelAlongsideThemeCustomization();
@@ -5865,13 +5833,11 @@ function initSettingsPanel() {
     });
     themeCustomizationDockTopRightBtn?.addEventListener('click', async () => {
         const nextPosition = getThemeCustomizationDockPosition() === THEME_DOCK_TOP_RIGHT ? '' : THEME_DOCK_TOP_RIGHT;
-        if (nextPosition && !await ensureThemeCustomizationDockLandscape()) return;
         setThemeCustomizationDockPosition(nextPosition);
         themeCustomizationDockTopRightBtn.blur();
     });
     themeCustomizationDockBottomLeftBtn?.addEventListener('click', async () => {
         const nextPosition = getThemeCustomizationDockPosition() === THEME_DOCK_BOTTOM_LEFT ? '' : THEME_DOCK_BOTTOM_LEFT;
-        if (nextPosition && !await ensureThemeCustomizationDockLandscape()) return;
         setThemeCustomizationDockPosition(nextPosition);
         themeCustomizationDockBottomLeftBtn.blur();
     });

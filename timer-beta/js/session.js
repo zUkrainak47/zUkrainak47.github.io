@@ -1,7 +1,7 @@
 import * as db from './db.js';
 import { load, save } from './storage.js?v=8';
 import { generateId, EventEmitter, getStartOfToday, getStartOfWeek, getStartOfMonth, parseCustomStatsFilter } from './utils.js?v=2';
-import { settings } from './settings.js?v=14';
+import { settings } from './settings.js?v=15';
 import { SCRAMBLE_TYPE_OPTIONS } from './scramble.js?v=20';
 
 const DEFAULT_SCRAMBLE_TYPE = '333';

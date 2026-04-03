@@ -889,6 +889,12 @@ body.mobile-viewport #setting-large-scramble-text-row {
 
 @media (max-width: 1100px) and (orientation: landscape),
 (pointer: coarse) and (orientation: landscape) {
+    #theme-customization-overlay:not(.theme-customization-overlay-docked) .theme-customization-box {
+        width: 86vw;
+        max-width: 86vw;
+        margin-inline: 7vw;
+    }
+
     #theme-customization-overlay:not(.theme-customization-overlay-docked) .theme-customization-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -897,6 +903,12 @@ body.mobile-viewport #setting-large-scramble-text-row {
 @media (max-width: 1100px) and (orientation: landscape) and (max-height: 650px),
 (pointer: coarse) and (orientation: landscape) and (max-height: 650px) {
     .settings-box {
+        width: 86vw;
+        max-width: 86vw;
+        margin-inline: 7vw;
+    }
+
+    #theme-customization-overlay:not(.theme-customization-overlay-docked) .theme-customization-box {
         width: 86vw;
         max-width: 86vw;
         margin-inline: 7vw;
