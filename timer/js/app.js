@@ -1,14 +1,14 @@
 import { timer } from './timer.js?v=9';
 import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=17';
-import { sessionManager } from './session.js?v=4';
+import { sessionManager } from './session.js?v=5';
 import { settings, DEFAULTS } from './settings.js?v=5';
 import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=3';
 import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, truncateTimeDisplay } from './utils.js?v=2';
-import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=15';
+import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=16';
 import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=18';
 import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=15';
 import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, showTimeDistributionModal } from './distribution.js?v=3';
-import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=2';
+import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=4';
 import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=5';
 
 let currentScramble = '';
@@ -25,7 +25,7 @@ async function registerServiceWorker() {
     if (window.location?.protocol === 'file:') return;
 
     try {
-        const serviceWorkerUrl = new URL('../sw.js?v=12', import.meta.url);
+        const serviceWorkerUrl = new URL('../sw.js?v=14', import.meta.url);
         await navigator.serviceWorker.register(serviceWorkerUrl);
     } catch (error) {
         console.warn('Service worker registration failed:', error);
@@ -2443,10 +2443,10 @@ async function init() {
     initCubeDisplay(document.getElementById('cube-canvas'));
     initScramblePreviewModal();
     populateScrambleTypeMenus();
-    syncScrambleTypeMenus();
-    const shouldLoadInitialScramble = !syncInitialScrambleUI();
     void preloadScrambleEngines();
     await sessionInitPromise;
+    await syncScrambleTypeWithActiveSession();
+    const shouldLoadInitialScramble = !syncInitialScrambleUI();
     initModal();
     initTimeDistributionModal();
     setModalStatNavigator(openShortcutStatDetail);
@@ -3247,6 +3247,34 @@ function syncScrambleTypeMenus(type = getSelectedScrambleType()) {
     previewButton?.classList.toggle('megaminx-preview-type', activeType === 'minx');
 }
 
+async function reloadScrambleForSelectedType() {
+    const textEl = document.getElementById('scramble-text');
+    const prevBtn = document.getElementById('btn-prev-scramble');
+
+    currentScramble = '';
+    clearStructuredScrambleLayout(textEl);
+    if (textEl) {
+        textEl.textContent = '';
+        textEl.classList.add('loading');
+    }
+    renderScramblePreviewDisplays('');
+    if (prevBtn) prevBtn.disabled = true;
+    scheduleViewportLayoutSync();
+    await loadNewScramble();
+}
+
+async function syncScrambleTypeWithActiveSession({ loadScramble = false } = {}) {
+    const nextType = sessionManager.getActiveSessionScrambleType();
+    const changed = setScrambleType(nextType);
+    syncScrambleTypeMenus(nextType);
+
+    if (loadScramble && changed) {
+        await reloadScrambleForSelectedType();
+    }
+
+    return changed;
+}
+
 async function loadNewScramble() {
     const el = document.getElementById('scramble-text');
     let loadingTimer = window.setTimeout(() => {
@@ -3446,20 +3474,17 @@ function initScrambleControls() {
 
     async function handleScrambleTypeSelection(nextType) {
         if (textEl.classList.contains('loading')) return;
+        const activeSessionId = sessionManager.getActiveSessionId();
+        if (activeSessionId) {
+            await sessionManager.setSessionScrambleType(activeSessionId, nextType);
+        }
         const changed = setScrambleType(nextType);
         closeScrambleTypeMenus();
         syncScrambleTypeMenus();
         if (!changed) return;
 
         setScrambleActionsVisible(false);
-        currentScramble = '';
-        clearStructuredScrambleLayout(textEl);
-        textEl.textContent = '';
-        textEl.classList.add('loading');
-        renderScramblePreviewDisplays('');
-        prevBtn.disabled = true;
-        scheduleViewportLayoutSync();
-        await loadNewScramble();
+        await reloadScrambleForSelectedType();
     }
 
     // 1. Copy
@@ -5522,11 +5547,14 @@ function onSessionChanged() {
     refreshSessionList();
     rebuildStatsCache();
     refreshUI();
-    // Reload scramble display
-    const scramble = getCurrentScramble();
-    if (scramble) {
-        renderScramblePreviewDisplays(scramble);
-    }
+    void syncScrambleTypeWithActiveSession({ loadScramble: true }).then((didChange) => {
+        if (didChange) return;
+
+        const scramble = getCurrentScramble();
+        if (scramble) {
+            renderScramblePreviewDisplays(scramble);
+        }
+    });
 }
 
 // ──── Filter Controls ────
