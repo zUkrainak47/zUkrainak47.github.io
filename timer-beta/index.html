@@ -278,7 +278,11 @@
             <button id="timer-action-delete" class="timer-action-btn timer-action-danger timer-action-icon"
               type="button" aria-label="Delete last solve">
               <svg class="timer-action-icon-svg" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
-                <path d="M19.78 6.34L17.66 4.22L12 9.88L6.34 4.22L4.22 6.34L9.88 12L4.22 17.66L6.34 19.78L12 14.12L17.66 19.78L19.78 17.66L14.12 12L19.78 6.34Z"></path>
+                <polyline points="3 6 5 6 21 6" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+                  fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                  stroke-linejoin="round"></path>
               </svg>
             </button>
             <span class="timer-action-divider" aria-hidden="true"></span>
@@ -423,7 +427,14 @@
         <div id="modal-actions" style="display:none; gap: 6px; margin-left: 12px; margin-right: auto;">
           <button id="modal-btn-dnf" class="btn-action" title="DNF">DNF</button>
           <button id="modal-btn-plus2" class="btn-action" title="+2">+2</button>
-          <button id="modal-btn-delete" class="btn-action btn-danger" title="Delete">✕</button>
+          <button id="modal-btn-delete" class="btn-action btn-danger" type="button" title="Delete"
+            aria-label="Delete solve">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+          </button>
         </div>
         <span id="modal-date-info"></span>
         <div id="modal-export-options" class="modal-export-options" aria-label="Copy text options">

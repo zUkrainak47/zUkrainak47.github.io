@@ -465,6 +465,15 @@ body:not(.mobile-viewport) #inspection-cancel-wrap {
     color: rgba(248, 81, 73, 0.5);
 }
 
+#timer-action-delete {
+    color: #843231;
+}
+
+#timer-action-delete.is-active,
+#timer-action-delete:not(:disabled):active {
+    color: #ff6b65;
+}
+
 .timer-action-danger.is-active,
 .timer-action-danger:not(:disabled):active {
     color: #ff6b65;
