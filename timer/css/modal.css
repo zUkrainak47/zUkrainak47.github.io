@@ -982,13 +982,13 @@
         order: 2;
     }
 
-    .modal-overlay.mobile-detail-active #modal-stat-nav {
+    .modal-overlay.mobile-detail-active #modal-mobile-list-panel {
         order: 4;
-        margin-top: 0;
     }
 
-    .modal-overlay.mobile-detail-active #modal-mobile-list-panel {
+    .modal-overlay.mobile-detail-active #modal-stat-nav {
         order: 5;
+        margin-top: 0;
     }
 
     .scramble-preview-modal-box {
