@@ -117,9 +117,9 @@ function getThemeColors() {
         surfaceStrong: readVar('--bg-primary', '#0d1117'),
         legendBg: readVar('--distribution-legend-bg', 'rgba(13, 17, 23, 0.92)'),
         legendBorder: readVar('--distribution-legend-border', 'rgba(255, 255, 255, 0.12)'),
-        green: readVar('--stat-best', '#41b36d'),
-        orange: readVar('--stat-ao5', '#f0a11c'),
-        red: readVar('--stat-worst', '#ef4444'),
+        leftBar: readVar('--stat-best', '#41b36d'),
+        rightBar: readVar('--stat-ao5', '#f0a11c'),
+        median: readVar('--stat-worst', '#ef4444'),
         selectedStroke: readVar('--distribution-selected-stroke', '#ffd580'),
     }
 }
@@ -747,7 +747,7 @@ function renderChart(targetCanvas, width, height, { interactive = false, activeI
         const barHeight = bin.count <= 0 ? 0 : Math.max(2, (bin.count / maxCount) * plotHeight)
         const y = plotBottom - barHeight
         const ratio = distribution.bins.length <= 1 ? 0 : index / (distribution.bins.length - 1)
-        const fillColor = interpolateColor(colors.green, colors.orange, ratio)
+        const fillColor = interpolateColor(colors.leftBar, colors.rightBar, ratio)
 
         if (interactive) {
             _binHitAreas.push({
@@ -808,7 +808,7 @@ function renderChart(targetCanvas, width, height, { interactive = false, activeI
     if (activeIndex >= 0 && distribution.bins[activeIndex]) {
         const activeBin = distribution.bins[activeIndex]
         const ratio = distribution.bins.length <= 1 ? 0 : activeIndex / (distribution.bins.length - 1)
-        const fillColor = interpolateColor(colors.green, colors.orange, ratio)
+        const fillColor = interpolateColor(colors.leftBar, colors.rightBar, ratio)
         const outlineX = plotLeft + (activeIndex * stepWidth)
         const outlineHeight = activeBin.count <= 0
             ? 2
@@ -849,7 +849,7 @@ function renderChart(targetCanvas, width, height, { interactive = false, activeI
     if (medianInsideRange) {
         ctx.save()
         ctx.setLineDash([6, 5])
-        ctx.strokeStyle = colors.red
+        ctx.strokeStyle = colors.median
         ctx.lineWidth = 2
         ctx.beginPath()
         ctx.moveTo(medianX, plotTop)
@@ -860,7 +860,7 @@ function renderChart(targetCanvas, width, height, { interactive = false, activeI
         ctx.font = interactive ? '600 12px Inter, system-ui, sans-serif' : '600 17px Inter, system-ui, sans-serif'
         ctx.textAlign = medianX > plotLeft + (plotWidth * 0.62) ? 'right' : 'left'
         ctx.textBaseline = 'top'
-        ctx.fillStyle = colors.red
+        ctx.fillStyle = colors.median
         ctx.fillText(
             `Median ${formatTime(distribution.median)}`,
             medianX > plotLeft + (plotWidth * 0.62) ? medianX - 8 : medianX + 8,
@@ -1063,6 +1063,11 @@ async function copyDistributionText(button = _copyTextButton) {
 
 export function isTimeDistributionModalOpen() {
     return Boolean(_overlay?.classList.contains('active'))
+}
+
+export function refreshTimeDistributionTheme() {
+    if (!isTimeDistributionModalOpen()) return
+    renderDistribution()
 }
 
 export function closeTimeDistributionModal({ isPopState = false } = {}) {

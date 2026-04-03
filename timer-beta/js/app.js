@@ -1,13 +1,13 @@
 import { timer } from './timer.js?v=14';
 import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=20';
 import { sessionManager } from './session.js?v=10';
-import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=12';
+import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=14';
 import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=3';
 import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, truncateTimeDisplay } from './utils.js?v=2';
 import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=21';
 import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=19';
 import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=20';
-import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, showTimeDistributionModal } from './distribution.js?v=4';
+import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=7';
 import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=8';
 import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=5';
 
@@ -25,7 +25,7 @@ async function registerServiceWorker() {
     if (window.location?.protocol === 'file:') return;
 
     try {
-        const serviceWorkerUrl = new URL('../sw.js?v=19', import.meta.url);
+        const serviceWorkerUrl = new URL('../sw.js?v=26', import.meta.url);
         await navigator.serviceWorker.register(serviceWorkerUrl);
     } catch (error) {
         console.warn('Service worker registration failed:', error);
@@ -2767,7 +2767,7 @@ function initTimerQuickActions() {
 
     manualEntryEl.addEventListener('click', (event) => {
         if (!quickActionsState.manualEntryActive) return;
-        if (settingsOverlayEl?.classList.contains('active') || hasBlockingOverlayOpen()) return;
+        if (isSettingsPanelBlocking() || hasBlockingOverlayOpen()) return;
         if (event.target instanceof Element && event.target.closest('button')) return;
         focusManualTimeInput();
     });
@@ -2827,7 +2827,7 @@ function initTimerQuickActions() {
 
     const handleQuickActionsSwipeStart = (event) => {
         if (!isMobileTimerPanelActive()) return;
-        if (hasBlockingOverlayOpen() || settingsOverlayEl?.classList.contains('active')) return;
+        if (hasBlockingOverlayOpen() || isSettingsPanelBlocking()) return;
         if (quickActionsState.manualEntryActive) return;
         if (event.pointerType !== 'touch' && event.pointerType !== 'pen') return;
         if (isQuickActionsSwipeIgnoredTarget(event.target)) return;
@@ -3705,7 +3705,12 @@ function initTableSorting() {
 }
 
 function hasBlockingOverlayOpen() {
-    return blockingOverlayIds.some(id => document.getElementById(id)?.classList.contains('active'));
+    return blockingOverlayIds.some((id) => {
+        if (id === 'theme-customization-overlay' && isThemeCustomizationDocked()) {
+            return false;
+        }
+        return document.getElementById(id)?.classList.contains('active');
+    });
 }
 
 function isSlashShortcut(event) {
@@ -4070,10 +4075,44 @@ function isThemeCustomizationOpen() {
     return themeCustomizationOverlayEl?.classList.contains('active');
 }
 
+function getThemeCustomizationDockPosition() {
+    if (!themeCustomizationOverlayEl?.classList.contains('theme-customization-overlay-docked')) {
+        return '';
+    }
+
+    return themeCustomizationOverlayEl.classList.contains('theme-customization-overlay-docked-bottom-left')
+        ? 'bottom-left'
+        : 'top-right';
+}
+
+function isThemeCustomizationDocked() {
+    return Boolean(getThemeCustomizationDockPosition());
+}
+
+function isSettingsPanelBlocking() {
+    return Boolean(
+        settingsOverlayEl?.classList.contains('active')
+        && (!isThemeCustomizationDocked() || !settingsOverlayEl.classList.contains('theme-customization-host-docked'))
+    );
+}
+
 function closeThemeCustomizationModal() {
     if (!themeCustomizationOverlayEl) return;
+    themeCustomizationOverlayEl.classList.remove('theme-customization-overlay-docked');
+    themeCustomizationOverlayEl.classList.remove('theme-customization-overlay-docked-bottom-left');
+    settingsOverlayEl?.classList.remove('theme-customization-host-docked');
+    document.body.classList.remove('theme-customization-docked');
     themeCustomizationOverlayEl.classList.remove('active');
     if (document.activeElement) document.activeElement.blur();
+}
+
+function showSettingsPanelAlongsideThemeCustomization() {
+    if (!settingsOverlayEl) return false;
+    settingsOverlayEl.classList.add('active');
+    settingsOverlayEl.classList.remove('theme-customization-host-docked');
+    window.requestAnimationFrame(() => syncSettingsRowSeparators());
+    blurManualTimeInput();
+    return true;
 }
 
 function openSettingsPanel({ isSwitching = false } = {}) {
@@ -4091,7 +4130,17 @@ function closeSettingsPanel({ isPopState = false, isSwitching = false } = {}) {
     if (!settingsOverlayEl) return;
     if (!isPopState && !isSwitching) backToDismiss();
 
-    closeThemeCustomizationModal();
+    const shouldKeepDockedThemeOpen = Boolean(
+        isThemeCustomizationOpen()
+        && isThemeCustomizationDocked()
+        && !settingsOverlayEl.classList.contains('theme-customization-host-docked')
+    );
+
+    if (shouldKeepDockedThemeOpen) {
+        settingsOverlayEl.classList.add('theme-customization-host-docked');
+    } else {
+        closeThemeCustomizationModal();
+    }
     settingsOverlayEl.classList.remove('active');
     if (document.activeElement) document.activeElement.blur();
 }
@@ -4166,7 +4215,7 @@ function initKeyboardShortcuts() {
         if (e.defaultPrevented) return;
         if (e.key !== 'Escape') return;
         if (!isDesktopTypingEntryModeEnabled() || isManualTimeInputFocused()) return;
-        if (hasBlockingOverlayOpen() || settingsOverlayEl?.classList.contains('active')) return;
+        if (hasBlockingOverlayOpen() || isSettingsPanelBlocking()) return;
         if (timer.getState() !== 'idle' && timer.getState() !== 'stopped') return;
         if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return;
 
@@ -4197,7 +4246,7 @@ function initKeyboardShortcuts() {
                 document.getElementById('confirm-overlay').classList.contains('active') ||
                 document.getElementById('prompt-overlay').classList.contains('active')) return;
 
-            openKeyboardShortcutsOverlay({ closeSettings: settingsOverlayEl?.classList.contains('active'), isSwitching: settingsOverlayEl?.classList.contains('active') });
+            openKeyboardShortcutsOverlay({ closeSettings: isSettingsPanelBlocking(), isSwitching: isSettingsPanelBlocking() });
 
             e.stopPropagation();
             return;
@@ -4209,7 +4258,7 @@ function initKeyboardShortcuts() {
             const isModalTextarea = e.target.id === 'modal-textarea';
             const isShortcutKey = ['Equal', 'NumpadAdd', 'Minus', 'NumpadSubtract', 'Backspace', 'Delete'].includes(e.code);
             const isShiftStatShortcut = Boolean(getShiftStatShortcutType(e));
-            const isSlashInSettings = slashShortcutPressed && settingsOverlayEl?.classList.contains('active');
+            const isSlashInSettings = slashShortcutPressed && isSettingsPanelBlocking();
             const isGraphShortcut = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Enter'].includes(e.code);
             const isManualInputEditingKey = isManualTimeInput && (
                 /^\d$/.test(e.key)
@@ -4246,8 +4295,12 @@ function initKeyboardShortcuts() {
             if (hasBlockingOverlayOpen()) return;
 
             e.preventDefault();
-            if (settingsOverlayEl?.classList.contains('active')) {
+            if (isSettingsPanelBlocking()) {
                 closeSettingsPanel();
+                return;
+            }
+            if (isThemeCustomizationOpen() && isThemeCustomizationDocked()) {
+                showSettingsPanelAlongsideThemeCustomization();
                 return;
             }
 
@@ -4257,7 +4310,7 @@ function initKeyboardShortcuts() {
 
         // Ignore if confirm or settings modal is active
         if (document.getElementById('confirm-overlay').classList.contains('active') ||
-            settingsOverlayEl?.classList.contains('active') ||
+            isSettingsPanelBlocking() ||
             isShortcutsOverlayOpen()) return;
 
         // Ignore if Ctrl or Cmd is pressed (e.g. browser zoom Ctrl+/-)
@@ -4308,7 +4361,7 @@ function initKeyboardShortcuts() {
         switch (e.code) {
             case 'Tab':
                 e.preventDefault();
-                if (isSolveModalActive || document.getElementById('settings-overlay').classList.contains('active')) return;
+                if (isSolveModalActive || isSettingsPanelBlocking()) return;
 
                 const lastSolve = getMostRecentSummarySolve();
                 if (!lastSolve) break;
@@ -5670,6 +5723,8 @@ function initSettingsPanel() {
     const themeCustomizationTitleEl = document.getElementById('theme-customization-title');
     const themeCustomizationSectionsEl = document.getElementById('theme-customization-sections');
     const themeCustomizationCloseBtn = document.getElementById('theme-customization-close');
+    const themeCustomizationDockTopRightBtn = document.getElementById('theme-customization-dock-top-right');
+    const themeCustomizationDockBottomLeftBtn = document.getElementById('theme-customization-dock-bottom-left');
     const themeCopyDefaultBtn = document.getElementById('btn-theme-copy-default');
     const themeCopyOledBtn = document.getElementById('btn-theme-copy-oled');
     const themeExportFileBtn = document.getElementById('btn-theme-export-file');
@@ -5695,6 +5750,7 @@ function initSettingsPanel() {
     const themeColorKeys = THEME_COLOR_SECTIONS.flatMap((section) => section.items.map(({ key }) => key));
     const THEME_UNDO_LIMIT = 50;
     const THEME_EDIT_COMMIT_DELAY_MS = 220;
+    const THEME_LIVE_EDIT_DEBOUNCE_MS = 42;
     const USER_ASSET_CACHE_NAME = 'ukratimer-user-assets-v1';
     const THEME_BACKGROUND_UPLOAD_PATH_PREFIX = './cached-assets/theme-background-upload-';
     let themeUndoThemeId = null;
@@ -5707,8 +5763,80 @@ function initSettingsPanel() {
     let hasCachedBackgroundUpload = false;
     let liveBackgroundUploadPreviewUrl = '';
     let liveBackgroundUploadPreviewThemeId = '';
+    const themeColorDebounceTimers = new Map();
+    let themeBackgroundOverlayDebounceTimer = 0;
+    const THEME_DOCK_TOP_RIGHT = 'top-right';
+    const THEME_DOCK_BOTTOM_LEFT = 'bottom-left';
+    const canRequestLandscapeLock = () => Boolean(
+        mobileViewportQuery.matches
+        && typeof screen !== 'undefined'
+        && screen.orientation
+        && typeof screen.orientation.lock === 'function'
+    );
+    const canDockThemeCustomization = () => (
+        !mobileViewportQuery.matches
+        || mobileLandscapeQuery.matches
+    );
+    const canShowThemeDockButtons = () => (
+        !mobileViewportQuery.matches
+        || mobileLandscapeQuery.matches
+        || canRequestLandscapeLock()
+    );
+    const syncThemeCustomizationDockButtons = () => {
+        const currentPosition = getThemeCustomizationDockPosition();
+        const shouldShow = canShowThemeDockButtons();
+        [
+            [themeCustomizationDockTopRightBtn, THEME_DOCK_TOP_RIGHT],
+            [themeCustomizationDockBottomLeftBtn, THEME_DOCK_BOTTOM_LEFT],
+        ].forEach(([button, position]) => {
+            if (!button) return;
+            button.hidden = !shouldShow;
+            const isActive = currentPosition === position;
+            button.classList.toggle('active-toggle', isActive);
+            button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+        });
+    };
+    const setThemeCustomizationDockPosition = (position = '') => {
+        const nextPosition = (position === THEME_DOCK_TOP_RIGHT || position === THEME_DOCK_BOTTOM_LEFT)
+            && canDockThemeCustomization()
+            && isThemeCustomizationOpen()
+            ? position
+            : '';
+        const nextDocked = Boolean(nextPosition);
+        themeCustomizationOverlayEl?.classList.toggle('theme-customization-overlay-docked', nextDocked);
+        themeCustomizationOverlayEl?.classList.toggle(
+            'theme-customization-overlay-docked-bottom-left',
+            nextPosition === THEME_DOCK_BOTTOM_LEFT,
+        );
+        settingsOverlayEl?.classList.toggle('theme-customization-host-docked', nextDocked);
+        document.body.classList.toggle('theme-customization-docked', nextDocked);
+        syncThemeCustomizationDockButtons();
+    };
+    const ensureThemeCustomizationDockLandscape = async () => {
+        if (!mobileViewportQuery.matches) return true;
+        if (mobileLandscapeQuery.matches) return true;
+        if (!canRequestLandscapeLock()) return false;
+
+        const confirmed = await customConfirm('Docking the theme editor on mobile works best in landscape. Let UkraTimer request landscape mode first?');
+        if (!confirmed) return false;
+
+        try {
+            await screen.orientation.lock('landscape');
+            await new Promise((resolve) => window.setTimeout(resolve, 150));
+        } catch (_) {
+            alert('Landscape mode could not be forced here. Rotate your device to landscape and try again.');
+            return false;
+        }
+
+        return mobileLandscapeQuery.matches || String(screen.orientation?.type || '').startsWith('landscape');
+    };
 
     btn.onclick = () => {
+        if (isThemeCustomizationOpen() && isThemeCustomizationDocked()) {
+            showSettingsPanelAlongsideThemeCustomization();
+            btn.blur();
+            return;
+        }
         openSettingsPanel();
         btn.blur();
     };
@@ -5719,9 +5847,45 @@ function initSettingsPanel() {
     settingsOverlayEl.addEventListener('click', (e) => {
         if (e.target === settingsOverlayEl) closeSettingsPanel();
     });
-    themeCustomizationCloseBtn?.addEventListener('click', closeThemeCustomizationModal);
+    themeCustomizationCloseBtn?.addEventListener('click', () => {
+        if (isThemeCustomizationDocked()) {
+            const settingsVisibleAlongsideTheme = Boolean(
+                settingsOverlayEl?.classList.contains('active')
+                && !settingsOverlayEl.classList.contains('theme-customization-host-docked')
+            );
+            if (settingsVisibleAlongsideTheme) {
+                closeThemeCustomizationModal();
+                return;
+            }
+            closeThemeCustomizationModal();
+            closeSettingsPanel();
+            return;
+        }
+        closeThemeCustomizationModal();
+    });
+    themeCustomizationDockTopRightBtn?.addEventListener('click', async () => {
+        const nextPosition = getThemeCustomizationDockPosition() === THEME_DOCK_TOP_RIGHT ? '' : THEME_DOCK_TOP_RIGHT;
+        if (nextPosition && !await ensureThemeCustomizationDockLandscape()) return;
+        setThemeCustomizationDockPosition(nextPosition);
+        themeCustomizationDockTopRightBtn.blur();
+    });
+    themeCustomizationDockBottomLeftBtn?.addEventListener('click', async () => {
+        const nextPosition = getThemeCustomizationDockPosition() === THEME_DOCK_BOTTOM_LEFT ? '' : THEME_DOCK_BOTTOM_LEFT;
+        if (nextPosition && !await ensureThemeCustomizationDockLandscape()) return;
+        setThemeCustomizationDockPosition(nextPosition);
+        themeCustomizationDockBottomLeftBtn.blur();
+    });
     themeCustomizationOverlayEl?.addEventListener('click', (e) => {
-        if (e.target === themeCustomizationOverlayEl) closeThemeCustomizationModal();
+        if (e.target === themeCustomizationOverlayEl && !isThemeCustomizationDocked()) {
+            closeThemeCustomizationModal();
+        }
+    });
+    window.addEventListener('resize', () => {
+        if (isThemeCustomizationDocked() && !canDockThemeCustomization()) {
+            setThemeCustomizationDockPosition('');
+            return;
+        }
+        syncThemeCustomizationDockButtons();
     });
 
     // Close on Escape
@@ -5736,10 +5900,17 @@ function initSettingsPanel() {
         const activeElement = document.activeElement;
         const activeTag = activeElement?.tagName?.toLowerCase();
         const activeInputType = activeElement instanceof HTMLInputElement ? activeElement.type : '';
+        const themeCustomizationHasFocus = Boolean(
+            themeCustomizationOverlayEl
+            && (
+                (e.target instanceof Node && themeCustomizationOverlayEl.contains(e.target))
+                || (activeElement instanceof Node && themeCustomizationOverlayEl.contains(activeElement))
+            )
+        );
         const allowNativeTextUndo = activeTag === 'textarea'
             || (activeTag === 'input' && !['color', 'range', 'button', 'submit', 'checkbox'].includes(activeInputType));
 
-        if (isUndoShortcut && isThemeCustomizationOpen() && !allowNativeTextUndo) {
+        if (isUndoShortcut && isThemeCustomizationOpen() && (!isThemeCustomizationDocked() || themeCustomizationHasFocus) && !allowNativeTextUndo) {
             if (undoThemeCustomizationChange()) {
                 e.preventDefault();
                 e.stopImmediatePropagation();
@@ -5747,7 +5918,7 @@ function initSettingsPanel() {
             }
         }
 
-        if (isRedoShortcut && isThemeCustomizationOpen() && !allowNativeTextUndo) {
+        if (isRedoShortcut && isThemeCustomizationOpen() && (!isThemeCustomizationDocked() || themeCustomizationHasFocus) && !allowNativeTextUndo) {
             if (redoThemeCustomizationChange()) {
                 e.preventDefault();
                 e.stopImmediatePropagation();
@@ -5756,6 +5927,19 @@ function initSettingsPanel() {
         }
 
         if (e.code === 'Escape' && settingsOverlayEl.classList.contains('active')) {
+            if (isSettingsPanelBlocking()) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                closeSettingsPanel();
+                return;
+            }
+            if (isThemeCustomizationOpen() && isThemeCustomizationDocked()) {
+                if (themeCustomizationHasFocus) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                }
+                return;
+            }
             e.preventDefault();
             e.stopImmediatePropagation();
             if (isThemeCustomizationOpen()) {
@@ -6162,7 +6346,7 @@ function initSettingsPanel() {
         const currentTheme = settings.get('theme');
         const currentThemeColors = settings.getActiveThemeColors();
 
-        themeCustomizationTitleEl.textContent = `Edit ${THEME_OPTION_LABELS.get(currentTheme) || 'Theme'} Colors`;
+        themeCustomizationTitleEl.textContent = `${THEME_OPTION_LABELS.get(currentTheme) || 'Theme'}`;
         THEME_COLOR_SECTIONS.forEach((section) => {
             section.items.forEach(({ key }) => {
                 syncThemeColorControl(key, currentThemeColors[key]);
@@ -6726,6 +6910,35 @@ function initSettingsPanel() {
         settings.set('customThemes', nextCustomThemes);
     };
 
+    const flushThemeColorSave = (key) => {
+        const controls = themeColorControls.get(key);
+        if (!controls) return;
+
+        const pendingTimer = themeColorDebounceTimers.get(key);
+        if (pendingTimer) {
+            window.clearTimeout(pendingTimer);
+            themeColorDebounceTimers.delete(key);
+        }
+
+        const nextColor = composeThemeColor(
+            controls.colorInput.value,
+            controls.alphaInput ? controls.alphaInput.value : 100,
+        );
+        applyThemeColorChange(key, nextColor);
+    };
+
+    const scheduleThemeColorSave = (key) => {
+        const existingTimer = themeColorDebounceTimers.get(key);
+        if (existingTimer) {
+            window.clearTimeout(existingTimer);
+        }
+
+        themeColorDebounceTimers.set(key, window.setTimeout(() => {
+            themeColorDebounceTimers.delete(key);
+            flushThemeColorSave(key);
+        }, THEME_LIVE_EDIT_DEBOUNCE_MS));
+    };
+
     const applyThemeBackgroundChange = (updater) => {
         const currentTheme = settings.get('theme');
         if (!isCustomThemeId(currentTheme)) return null;
@@ -6747,14 +6960,32 @@ function initSettingsPanel() {
     };
 
     const saveThemeColor = (key) => {
-        const controls = themeColorControls.get(key);
-        if (!controls) return;
+        flushThemeColorSave(key);
+    };
 
-        const nextColor = composeThemeColor(
-            controls.colorInput.value,
-            controls.alphaInput ? controls.alphaInput.value : 100,
-        );
-        applyThemeColorChange(key, nextColor);
+    const flushThemeBackgroundOverlaySave = () => {
+        if (themeBackgroundOverlayDebounceTimer) {
+            window.clearTimeout(themeBackgroundOverlayDebounceTimer);
+            themeBackgroundOverlayDebounceTimer = 0;
+        }
+
+        applyThemeBackgroundChange((background) => ({
+            ...background,
+            overlayColor: composeThemeColor(
+                themeBackgroundOverlayColorInput?.value || '#000000',
+                themeBackgroundOverlayAlphaInput?.value || 100,
+            ),
+        }));
+    };
+
+    const scheduleThemeBackgroundOverlaySave = () => {
+        if (themeBackgroundOverlayDebounceTimer) {
+            window.clearTimeout(themeBackgroundOverlayDebounceTimer);
+        }
+        themeBackgroundOverlayDebounceTimer = window.setTimeout(() => {
+            themeBackgroundOverlayDebounceTimer = 0;
+            flushThemeBackgroundOverlaySave();
+        }, THEME_LIVE_EDIT_DEBOUNCE_MS);
     };
 
     const resetThemeColor = (key) => {
@@ -6772,6 +7003,8 @@ function initSettingsPanel() {
         ensureThemeUndoContext(currentTheme);
         syncThemeCustomizationModal();
         themeCustomizationOverlayEl.classList.add('active');
+        setThemeCustomizationDockPosition('');
+        syncThemeCustomizationDockButtons();
     };
 
     const applyPresetToCurrentCustomTheme = (presetThemeId) => {
@@ -6802,12 +7035,12 @@ function initSettingsPanel() {
     };
 
     themeColorControls.forEach((controls, key) => {
-        controls.colorInput.addEventListener('input', () => saveThemeColor(key));
+        controls.colorInput.addEventListener('input', () => scheduleThemeColorSave(key));
         controls.colorInput.addEventListener('change', () => saveThemeColor(key));
         controls.resetBtn?.addEventListener('click', () => resetThemeColor(key));
 
         if (controls.alphaInput) {
-            controls.alphaInput.addEventListener('input', () => saveThemeColor(key));
+            controls.alphaInput.addEventListener('input', () => scheduleThemeColorSave(key));
             controls.alphaInput.addEventListener('change', () => saveThemeColor(key));
         }
     });
@@ -6959,42 +7192,10 @@ function initSettingsPanel() {
         event.preventDefault();
         themeBackgroundImageApplyLinkBtn?.click();
     });
-    themeBackgroundOverlayColorInput?.addEventListener('input', () => {
-        applyThemeBackgroundChange((background) => ({
-            ...background,
-            overlayColor: composeThemeColor(
-                themeBackgroundOverlayColorInput.value,
-                themeBackgroundOverlayAlphaInput?.value || 100,
-            ),
-        }));
-    });
-    themeBackgroundOverlayColorInput?.addEventListener('change', () => {
-        applyThemeBackgroundChange((background) => ({
-            ...background,
-            overlayColor: composeThemeColor(
-                themeBackgroundOverlayColorInput.value,
-                themeBackgroundOverlayAlphaInput?.value || 100,
-            ),
-        }));
-    });
-    themeBackgroundOverlayAlphaInput?.addEventListener('input', () => {
-        applyThemeBackgroundChange((background) => ({
-            ...background,
-            overlayColor: composeThemeColor(
-                themeBackgroundOverlayColorInput?.value || '#000000',
-                themeBackgroundOverlayAlphaInput.value,
-            ),
-        }));
-    });
-    themeBackgroundOverlayAlphaInput?.addEventListener('change', () => {
-        applyThemeBackgroundChange((background) => ({
-            ...background,
-            overlayColor: composeThemeColor(
-                themeBackgroundOverlayColorInput?.value || '#000000',
-                themeBackgroundOverlayAlphaInput.value,
-            ),
-        }));
-    });
+    themeBackgroundOverlayColorInput?.addEventListener('input', scheduleThemeBackgroundOverlaySave);
+    themeBackgroundOverlayColorInput?.addEventListener('change', flushThemeBackgroundOverlaySave);
+    themeBackgroundOverlayAlphaInput?.addEventListener('input', scheduleThemeBackgroundOverlaySave);
+    themeBackgroundOverlayAlphaInput?.addEventListener('change', flushThemeBackgroundOverlaySave);
     themeBackgroundOverlayResetBtn?.addEventListener('click', () => {
         applyThemeBackgroundChange((background) => ({
             ...background,
@@ -7009,12 +7210,14 @@ function initSettingsPanel() {
         if (key !== 'theme' && key !== 'customThemes' && key !== 'customThemeBases' && key !== 'customThemeBackgrounds') return;
         updateThemeSettingsUI();
         scheduleScramblePreviewThemeRefresh();
+        refreshTimeDistributionTheme();
     });
     settings.on('reset', () => {
         themeBackgroundImageModeOverride = '';
         clearLiveBackgroundUploadPreview();
         void reconcileBackgroundImageState();
         updateThemeSettingsUI();
+        refreshTimeDistributionTheme();
     });
     void reconcileBackgroundImageState();
 
@@ -7390,7 +7593,7 @@ function initSettingsPanel() {
     };
 
     const reportGoogleDriveError = (message) => {
-        if (settingsOverlayEl?.classList.contains('active')) {
+        if (isSettingsPanelBlocking()) {
             setGoogleDriveStatus(message, 'error');
             return;
         }

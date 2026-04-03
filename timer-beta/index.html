@@ -48,7 +48,7 @@
   <link rel="stylesheet" href="css/cube.css?v=7">
   <link rel="stylesheet" href="css/graph.css?v=9">
   <link rel="stylesheet" href="css/modal.css?v=16">
-  <link rel="stylesheet" href="css/settings.css?v=14">
+  <link rel="stylesheet" href="css/settings.css?v=19">
 </head>
 
 <body>
@@ -968,10 +968,22 @@
     <div class="modal-box theme-customization-box">
       <div class="modal-header">
         <h2 id="theme-customization-title">Customize Theme</h2>
-        <button id="theme-customization-close" class="modal-close">✕</button>
+        <div class="theme-customization-header-actions">
+          <button id="theme-customization-dock-bottom-left" class="btn-action modal-option-btn theme-customization-dock-btn" type="button" title="Dock editor to the bottom-left corner" aria-label="Dock editor to the bottom-left corner" aria-pressed="false">BL</button>
+          <button id="theme-customization-dock-top-right" class="btn-action modal-option-btn theme-customization-dock-btn" type="button" title="Dock editor to the top-right corner" aria-label="Dock editor to the top-right corner" aria-pressed="false">TR</button>
+          <button id="theme-customization-close" class="modal-close">✕</button>
+        </div>
       </div>
       <div class="modal-body theme-customization-body">
         <p class="theme-customization-intro">Changes save automatically to the selected custom theme slot.</p>
+        <div class="theme-customization-actions">
+          <button id="btn-theme-copy-default" class="btn-action" type="button">Copy Default</button>
+          <button id="btn-theme-copy-oled" class="btn-action" type="button">Copy OLED</button>
+          <button id="btn-theme-export-file" class="btn-action" type="button">Export File</button>
+          <button id="btn-theme-export-text" class="btn-action" type="button">Export Text</button>
+          <button id="btn-theme-import-file" class="btn-action" type="button">Import File</button>
+          <button id="btn-theme-import-text" class="btn-action" type="button">Import Text</button>
+        </div>
         <div class="theme-background-image-panel">
           <div class="theme-background-image-header">
             <span class="theme-background-image-title">Background Image</span>
@@ -1008,14 +1020,6 @@
             </div>
           </div>
           <div id="theme-background-image-status" class="theme-background-image-status"></div>
-        </div>
-        <div class="theme-customization-actions">
-          <button id="btn-theme-copy-default" class="btn-action" type="button">Copy Default</button>
-          <button id="btn-theme-copy-oled" class="btn-action" type="button">Copy OLED</button>
-          <button id="btn-theme-export-file" class="btn-action" type="button">Export File</button>
-          <button id="btn-theme-export-text" class="btn-action" type="button">Export Text</button>
-          <button id="btn-theme-import-file" class="btn-action" type="button">Import File</button>
-          <button id="btn-theme-import-text" class="btn-action" type="button">Import Text</button>
         </div>
         <div id="theme-customization-sections" class="theme-customization-sections"></div>
       </div>
@@ -1065,7 +1069,7 @@
   </script>
 
   <!-- App Script -->
-  <script type="module" src="js/app.js?v=134"></script>
+  <script type="module" src="js/app.js?v=141"></script>
 </body>
 
 </html>

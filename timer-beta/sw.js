@@ -1,4 +1,4 @@
-const APP_CACHE_NAME = 'ukratimer-app-v19';
+const APP_CACHE_NAME = 'ukratimer-app-v26';
 const RUNTIME_CACHE_NAME = 'ukratimer-runtime-v18';
 const USER_ASSET_CACHE_NAME = 'ukratimer-user-assets-v1';
 const LOCAL_BACKGROUND_UPLOAD_PATH_PREFIX = './cached-assets/theme-background-upload-';
@@ -20,12 +20,12 @@ const LOCAL_PRECACHE_PATHS = [
     './css/cube.css?v=7',
     './css/graph.css?v=9',
     './css/modal.css?v=16',
-    './css/settings.css?v=14',
-    './js/app.js?v=134',
+    './css/settings.css?v=19',
+    './js/app.js?v=141',
     './js/timer.js?v=14',
     './js/scramble.js?v=20',
     './js/session.js?v=10',
-    './js/settings.js?v=12',
+    './js/settings.js?v=14',
     './js/stats.js?v=3',
     './js/modal.js?v=21',
     './js/cube-display.js?v=19',
@@ -33,7 +33,7 @@ const LOCAL_PRECACHE_PATHS = [
     './js/utils.js?v=2',
     './js/storage.js?v=8',
     './js/db.js',
-    './js/distribution.js?v=4',
+    './js/distribution.js?v=7',
     './js/google-drive-sync.js?v=5',
     './resources/comment.svg',
     './resources/comment-off.svg',
