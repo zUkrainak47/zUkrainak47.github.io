@@ -1,5 +1,5 @@
 import * as db from './db.js';
-import { load, save } from './storage.js?v=3';
+import { load, save } from './storage.js?v=4';
 import { generateId, EventEmitter, getStartOfToday, getStartOfWeek, getStartOfMonth, parseCustomStatsFilter } from './utils.js?v=2';
 import { settings } from './settings.js?v=5';
 import { SCRAMBLE_TYPE_OPTIONS } from './scramble.js?v=17';

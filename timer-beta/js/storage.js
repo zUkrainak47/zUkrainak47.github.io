@@ -291,8 +291,238 @@ export async function importSessionCsv(text) {
 
 // ──── csTimer Format Conversion ────
 
+const UKRA_TIMER_CSTIMER_META_KEY = 'ukraTimerMeta';
+const UKRA_TIMER_CSTIMER_META_VERSION = 1;
+const CSTIMER_SCRAMBLE_TYPE_TO_INTERNAL = Object.freeze({
+    '222so': '222',
+    '444wca': '444',
+    '555wca': '555',
+    '666wca': '666',
+    '777wca': '777',
+    sqrs: 'sq1',
+    skbso: 'skewb',
+    pyrso: 'pyram',
+    mgmp: 'minx',
+    clkwca: 'clock',
+    pll: 'pll',
+    oll: 'oll',
+    lsll2: 'lsll',
+    zbll: 'zbll',
+});
+const INTERNAL_SCRAMBLE_TYPE_TO_CSTIMER = Object.freeze({
+    '222': '222so',
+    '333': null,
+    '444': '444wca',
+    '555': '555wca',
+    '666': '666wca',
+    '777': '777wca',
+    sq1: 'sqrs',
+    skewb: 'skbso',
+    pyram: 'pyrso',
+    minx: 'mgmp',
+    clock: 'clkwca',
+    pll: 'pll',
+    oll: 'oll',
+    lsll: 'lsll2',
+    zbll: 'zbll',
+});
+const CSTIMER_TRAINING_FILTER_LENGTHS = Object.freeze({
+    pll: 21,
+    oll: 58,
+    lsll2: 42,
+    zbll: 493,
+});
+const CSTIMER_EXPORT_SETTING_DEFAULTS = Object.freeze({
+    inspectionTime: 'off',
+    inspectionAlerts: 'off',
+    timerUpdate: '0.01s',
+    timeEntryMode: 'timer',
+    summaryStatsPreset: 'basic',
+    summaryStatsCustom: 'mo3 ao5 ao12 ao100',
+    solvesTableStat1: 'ao5',
+    solvesTableStat2: 'ao12',
+    hideUIWhileSolving: true,
+    pillSize: 'medium',
+    showDelta: false,
+});
+const SUMMARY_STATS_PRESET_STRINGS = Object.freeze({
+    extended: 'mo3 ao5 ao12 ao25 ao50 ao100',
+    full: 'mo3 ao5 ao12 ao25 ao50 ao100 ao200 ao500 ao1000 ao2000 ao5000 ao10000',
+});
+
 function _genId() {
     return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+function _hasOwn(obj, key) {
+    return !!obj && Object.prototype.hasOwnProperty.call(obj, key);
+}
+
+function _parsePositiveInteger(value) {
+    const parsed = Number(value);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function _normalizeTokenListString(value) {
+    return String(value ?? '')
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)
+        .join(' ');
+}
+
+function _parseUkraTimerCsTimerMeta(rawValue) {
+    let parsed = rawValue;
+
+    if (typeof parsed === 'string') {
+        try {
+            parsed = JSON.parse(parsed);
+        } catch (_) {
+            return null;
+        }
+    }
+
+    if (!parsed || typeof parsed !== 'object') return null;
+    return parsed;
+}
+
+function _getUkraTimerCsTimerMetaPayload(settingsData) {
+    return JSON.stringify({
+        version: UKRA_TIMER_CSTIMER_META_VERSION,
+        settings: settingsData,
+    });
+}
+
+function _mapCsTimerScrambleTypeToInternal(type) {
+    const normalized = typeof type === 'string' ? type.trim().toLowerCase() : '';
+    if (!normalized) return '333';
+    return CSTIMER_SCRAMBLE_TYPE_TO_INTERNAL[normalized] || '333';
+}
+
+function _mapInternalScrambleTypeToCsTimer(type) {
+    const normalized = typeof type === 'string' ? type.trim().toLowerCase() : '';
+    if (!normalized) return null;
+    return _hasOwn(INTERNAL_SCRAMBLE_TYPE_TO_CSTIMER, normalized)
+        ? INTERNAL_SCRAMBLE_TYPE_TO_CSTIMER[normalized]
+        : null;
+}
+
+function _buildCsTimerScrambleFilter(csType) {
+    if (!csType) return null;
+
+    const caseCount = CSTIMER_TRAINING_FILTER_LENGTHS[csType];
+    if (caseCount) {
+        return [csType, Array(caseCount).fill(1)];
+    }
+
+    return [csType, null];
+}
+
+function _mapRollingStatTokenToCsTimer(token) {
+    const match = String(token ?? '').trim().toLowerCase().match(/^(mo|ao)([1-9]\d*)$/);
+    if (!match) return null;
+
+    const length = Number(match[2]);
+    if (!Number.isInteger(length) || length <= 0) return null;
+
+    return {
+        length,
+        type: match[1] === 'mo' ? '1' : null,
+    };
+}
+
+function _mapCsTimerRollingStatToInternal(lengthValue, typeValue) {
+    const length = _parsePositiveInteger(lengthValue);
+    if (!length) return null;
+
+    const isMean = String(typeValue ?? '') === '1';
+    const token = `${isMean ? 'mo' : 'ao'}${length}`;
+    if (!/^(mo|ao)([1-9]\d*)$/.test(token)) return null;
+
+    if (token.startsWith('mo') && length < 2) return null;
+    if (token.startsWith('ao') && length < 3) return null;
+
+    return token;
+}
+
+function _deriveSummarySettingsFromCsTimerProperties(properties) {
+    const statal = _normalizeTokenListString(properties?.statal);
+    const statalu = _normalizeTokenListString(properties?.statalu);
+
+    if (statal === 'u') {
+        return {
+            summaryStatsPreset: 'custom',
+            summaryStatsCustom: statalu,
+        };
+    }
+
+    if (!statal) {
+        const settingsData = { summaryStatsPreset: 'basic' };
+        if (statalu) settingsData.summaryStatsCustom = statalu;
+        return settingsData;
+    }
+
+    if (statal === SUMMARY_STATS_PRESET_STRINGS.extended) {
+        const settingsData = { summaryStatsPreset: 'extended' };
+        if (statalu) settingsData.summaryStatsCustom = statalu;
+        return settingsData;
+    }
+
+    if (statal === SUMMARY_STATS_PRESET_STRINGS.full) {
+        const settingsData = { summaryStatsPreset: 'full' };
+        if (statalu) settingsData.summaryStatsCustom = statalu;
+        return settingsData;
+    }
+
+    return {
+        summaryStatsPreset: 'custom',
+        summaryStatsCustom: statalu || statal,
+    };
+}
+
+function _buildCsTimerSummaryProperties(settingsData) {
+    const preset = String(settingsData?.summaryStatsPreset || 'basic').toLowerCase();
+    const custom = _normalizeTokenListString(settingsData?.summaryStatsCustom);
+    const result = {};
+
+    if (preset === 'custom') {
+        result.statal = 'u';
+    } else if (preset === 'extended') {
+        result.statal = SUMMARY_STATS_PRESET_STRINGS.extended;
+    } else if (preset === 'full') {
+        result.statal = SUMMARY_STATS_PRESET_STRINGS.full;
+    }
+
+    if (custom) {
+        result.statalu = custom;
+    }
+
+    return result;
+}
+
+function _deriveSettingsFromCsTimerProperties(properties) {
+    const summarySettings = _deriveSummarySettingsFromCsTimerProperties(properties);
+    const stat1 = _mapCsTimerRollingStatToInternal(properties?.stat1l, properties?.stat1t);
+    const stat2 = _mapCsTimerRollingStatToInternal(properties?.stat2l, properties?.stat2t);
+
+    let timerUpdate = '0.1s';
+    if (properties?.timeU === 'n') timerUpdate = 'none';
+    else if (properties?.timeU === 's') timerUpdate = '1s';
+    else if (properties?.timeU === 'u') timerUpdate = '0.01s';
+    else if (properties?.timeU === 'i') timerUpdate = 'inspection';
+
+    return {
+        inspectionTime: _hasOwn(properties, 'useIns') ? '15s' : 'off',
+        inspectionAlerts: properties?.voiceIns === 'n' ? 'screen' : 'voice',
+        timerUpdate,
+        timeEntryMode: properties?.input === 'i' ? 'typing' : 'timer',
+        hideUIWhileSolving: properties?.ahide === false ? false : true,
+        pillSize: properties?.showAvg === false ? 'hidden' : 'medium',
+        showDelta: properties?.showDiff === 'n' ? false : true,
+        ...summarySettings,
+        ...(stat1 ? { solvesTableStat1: stat1 } : {}),
+        ...(stat2 ? { solvesTableStat2: stat2 } : {}),
+    };
 }
 
 /**
@@ -310,95 +540,122 @@ export function isCsTimerFormat(data) {
 export async function importCsTimer(csData) {
     if (!csData || typeof csData !== 'object') return;
 
+    const properties = (csData.properties && typeof csData.properties === 'object')
+        ? csData.properties
+        : {};
+
     // Parse session metadata (names) from properties.sessionData
     let sessionMeta = {};
     try {
-        if (csData.properties && csData.properties.sessionData) {
-            sessionMeta = JSON.parse(csData.properties.sessionData);
+        if (properties.sessionData) {
+            sessionMeta = JSON.parse(properties.sessionData);
         }
     } catch (_) { /* ignore */ }
+
+    const sessionSlots = Object.keys(csData)
+        .map((key) => key.match(/^session(\d+)$/))
+        .filter(Boolean)
+        .map((match) => Number(match[1]));
+    const sessionMetaSlots = Object.keys(sessionMeta)
+        .map((key) => _parsePositiveInteger(key))
+        .filter(Boolean);
+    const activeSessionSlot = _parsePositiveInteger(properties.session) || 1;
+    const declaredSessionCount = _parsePositiveInteger(properties.sessionN);
+    const sessionCount = Math.max(
+        declaredSessionCount || 0,
+        activeSessionSlot,
+        ...sessionSlots,
+        ...sessionMetaSlots,
+    );
+
+    if (sessionCount <= 0) return;
+
+    const globalActiveScrambleType = _mapCsTimerScrambleTypeToInternal(properties.scrType);
+    const importedSessions = [];
+
+    for (let slot = 1; slot <= sessionCount; slot += 1) {
+        const meta = sessionMeta[String(slot)] && typeof sessionMeta[String(slot)] === 'object'
+            ? sessionMeta[String(slot)]
+            : {};
+        const rawSolves = Array.isArray(csData[`session${slot}`]) ? csData[`session${slot}`] : [];
+        const sessionId = `${_genId()}${slot}`;
+        const name = meta.name != null ? String(meta.name) : `Session ${slot}`;
+        const mappedScrambleType = _mapCsTimerScrambleTypeToInternal(meta?.opt?.scrType);
+        const scrambleType = slot === activeSessionSlot && !_hasOwn(meta?.opt || {}, 'scrType')
+            ? globalActiveScrambleType
+            : mappedScrambleType;
+        const rank = Number.isFinite(meta?.rank) ? Number(meta.rank) : slot;
+
+        importedSessions.push({
+            slot,
+            rank,
+            id: sessionId,
+            name,
+            scrambleType,
+            solves: rawSolves,
+        });
+    }
+
+    importedSessions.sort((left, right) => {
+        if (left.rank !== right.rank) return left.rank - right.rank;
+        return left.slot - right.slot;
+    });
 
     const dbSessions = [];
     const dbSolves = [];
 
-    // Iterate session1..sessionN
-    for (const [key, solves] of Object.entries(csData)) {
-        const match = key.match(/^session(\d+)$/);
-        if (!match) continue;
-        const num = match[1];
-        if (!Array.isArray(solves)) continue;
-
-        // Get session name from metadata, fallback to "Session N"
-        const meta = sessionMeta[num];
-        const name = (meta && meta.name && typeof meta.name === 'string')
-            ? meta.name
-            : `Session ${num}`;
-        const scrambleType = (meta && meta.opt && typeof meta.opt.scrType === 'string')
-            ? meta.opt.scrType
-            : undefined;
-
-        const sessionId = _genId() + num;
-        const sessionOrder = dbSessions.length;
+    importedSessions.forEach((session, index) => {
         let sessionCreatedAt = Date.now();
-        let hasSolves = false;
+        let hasTimestamp = false;
 
-        for (const entry of solves) {
-            if (!Array.isArray(entry) || entry.length < 4) continue;
+        session.solves.forEach((entry) => {
+            if (!Array.isArray(entry) || entry.length < 4) return;
             const [penaltyAndTime, scramble, comment, timestampSec] = entry;
-            if (!Array.isArray(penaltyAndTime) || penaltyAndTime.length < 2) continue;
+            if (!Array.isArray(penaltyAndTime) || penaltyAndTime.length < 2) return;
 
             const [penaltyFlag, rawTime] = penaltyAndTime;
-
-            // Map penalty: 0 = none, 2000 = +2, -1 = DNF
             let penalty = null;
             if (penaltyFlag === 2000) penalty = '+2';
             else if (penaltyFlag === -1) penalty = 'DNF';
 
-            let time = rawTime;
-
-            const timestamp = timestampSec * 1000;
+            const timestamp = Number(timestampSec) * 1000;
+            if (Number.isFinite(timestamp) && timestamp >= 0 && !hasTimestamp) {
+                sessionCreatedAt = timestamp;
+                hasTimestamp = true;
+            }
 
             dbSolves.push({
                 id: _genId(),
-                sessionId,
-                time,
+                sessionId: session.id,
+                time: Number(rawTime),
                 scramble: scramble || '',
                 isManual: false,
                 penalty,
-                timestamp,
+                timestamp: Number.isFinite(timestamp) && timestamp >= 0 ? timestamp : Date.now(),
                 comment: (comment && typeof comment === 'string') ? comment : '',
             });
+        });
 
-            if (!hasSolves) {
-                sessionCreatedAt = timestamp;
-                hasSolves = true;
-            }
-        }
+        dbSessions.push({
+            id: session.id,
+            name: session.name,
+            createdAt: sessionCreatedAt,
+            order: index,
+            scrambleType: session.scrambleType,
+        });
+    });
 
-        if (hasSolves) {
-            dbSessions.push({
-                id: sessionId,
-                name,
-                createdAt: sessionCreatedAt,
-                order: sessionOrder,
-                ...(scrambleType ? { scrambleType } : {}),
-            });
-        }
-    }
+    const metadata = _parseUkraTimerCsTimerMeta(properties[UKRA_TIMER_CSTIMER_META_KEY]);
+    const nativeSettings = _deriveSettingsFromCsTimerProperties(properties);
+    const metadataSettings = metadata && typeof metadata.settings === 'object' ? metadata.settings : {};
+    const newSettings = {
+        ...nativeSettings,
+        ...metadataSettings,
+    };
 
-    if (dbSessions.length === 0) return;
-
-    // Map timer update frequency from csTimer
-    const timeU = csData.properties ? csData.properties.timeU : null;
-    let timerUpdate = '0.1s'; // default
-    if (timeU === 'n') timerUpdate = 'none';
-    else if (timeU === 's') timerUpdate = '1s';
-    else if (timeU === 'u') timerUpdate = '0.01s';
-    else if (timeU === 'i') timerUpdate = 'inspection';
-
-    // Load existing settings to preserve what we can
-    const existingSettings = load('settings', {});
-    const newSettings = { ...existingSettings, timerUpdate };
+    const activeImportedSession = importedSessions.find((session) => session.slot === activeSessionSlot) || importedSessions[0];
+    const activeImportedSessionId = activeImportedSession?.id || dbSessions[0]?.id || null;
+    const activeImportedScrambleType = activeImportedSession?.scrambleType || '333';
 
     clearBackupLocalStorageKeys();
 
@@ -406,7 +663,8 @@ export async function importCsTimer(csData) {
     await db.replaceAllData(dbSessions, dbSolves);
 
     // Write settings to localStorage
-    save('activeSessionId', dbSessions[0].id);
+    save('activeSessionId', activeImportedSessionId);
+    save('scrambleType', activeImportedScrambleType);
     save('settings', newSettings);
 }
 
@@ -417,6 +675,15 @@ export async function exportCsTimer() {
     const { sessions, solves } = await db.getAllData();
     const csData = {};
     const sessionMeta = {};
+    const storedSettingsData = load('settings', {});
+    const settingsData = {
+        ...CSTIMER_EXPORT_SETTING_DEFAULTS,
+        ...storedSettingsData,
+    };
+    const activeSessionId = load('activeSessionId', null);
+    const activeSessionIndex = Math.max(0, sessions.findIndex((session) => session.id === activeSessionId));
+    const activeSession = sessions[activeSessionIndex] || sessions[0] || null;
+    const activeCsScrambleType = _mapInternalScrambleTypeToCsTimer(activeSession?.scrambleType || '333');
 
     sessions.forEach((session, i) => {
         const num = i + 1;
@@ -446,29 +713,28 @@ export async function exportCsTimer() {
 
         sessionMeta[String(num)] = {
             name: session.name || `Session ${num}`,
-            opt: {},
-            rank: num - 1,
+            opt: activeCsScrambleType && session.id === activeSession?.id
+                ? { ...(session.scrambleType === '333' ? {} : { scrType: activeCsScrambleType }) }
+                : (() => {
+                    const csScrambleType = _mapInternalScrambleTypeToCsTimer(session.scrambleType || '333');
+                    return csScrambleType ? { scrType: csScrambleType } : {};
+                })(),
+            rank: num,
         };
     });
 
-    // Pad to 15 sessions (csTimer convention)
-    for (let i = sessions.length + 1; i <= 15; i++) {
-        csData[`session${i}`] = [];
-        sessionMeta[String(i)] = {
-            name: i,
-            opt: {},
-            rank: i - 1,
-        };
-    }
-
     // Map timer update frequency to csTimer
-    const settingsData = load('settings', {});
     const timerUpdate = settingsData.timerUpdate || '0.01s';
     let timeU = 'u';
     if (timerUpdate === 'none') timeU = 'n';
     else if (timerUpdate === '1s') timeU = 's';
     else if (timerUpdate === '0.1s') timeU = null; // omitted
     else if (timerUpdate === 'inspection') timeU = 'i';
+
+    const stat1 = _mapRollingStatTokenToCsTimer(settingsData.solvesTableStat1);
+    const stat2 = _mapRollingStatTokenToCsTimer(settingsData.solvesTableStat2);
+    const summaryProps = _buildCsTimerSummaryProperties(storedSettingsData);
+    const activeScrambleFilter = _buildCsTimerScrambleFilter(activeCsScrambleType);
 
     csData.properties = {
         sessionData: JSON.stringify(sessionMeta),
@@ -484,6 +750,30 @@ export async function exportCsTimer() {
         'col-logoback': '#aaaaaa',
         timeU,
         toolsfunc: '["trend","stats","cross","distribution"]',
+        session: activeSessionIndex + 1,
+        ...(sessions.length !== 15 ? { sessionN: sessions.length } : {}),
+        ...(_hasOwn(settingsData, 'inspectionTime') && settingsData.inspectionTime === '15s' ? { useIns: 'ap' } : {}),
+        ...(settingsData.inspectionAlerts === 'screen' ? { voiceIns: 'n' } : {}),
+        ...(settingsData.timeEntryMode === 'typing' ? { input: 'i' } : {}),
+        ...(settingsData.hideUIWhileSolving === false ? { ahide: false } : {}),
+        ...(settingsData.pillSize === 'hidden' ? { showAvg: false } : {}),
+        ...(settingsData.showDelta === false ? { showDiff: 'n' } : {}),
+        ...(stat1 ? { stat1l: stat1.length } : {}),
+        ...(stat1?.type ? { stat1t: stat1.type } : {}),
+        ...(stat2 ? { stat2l: stat2.length } : {}),
+        ...(stat2?.type ? { stat2t: stat2.type } : {}),
+        ...(activeCsScrambleType ? {
+            scrType: activeCsScrambleType,
+            scrFlt: JSON.stringify(activeScrambleFilter),
+            ...(CSTIMER_TRAINING_FILTER_LENGTHS[activeCsScrambleType] ? { isTrainScr: true } : {}),
+        } : {}),
+        ...summaryProps,
+        [UKRA_TIMER_CSTIMER_META_KEY]: _getUkraTimerCsTimerMetaPayload({
+            ...storedSettingsData,
+            ...Object.fromEntries(
+                Object.entries(settingsData).filter(([key]) => _hasOwn(CSTIMER_EXPORT_SETTING_DEFAULTS, key)),
+            ),
+        }),
     };
     if (timeU === null) delete csData.properties.timeU;
 
