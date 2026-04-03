@@ -322,23 +322,23 @@ body.manual-time-entry-active #manual-time-entry {
     pointer-events: auto;
 }
 
-body.mobile-viewport.manual-time-entry-active #timer-display-wrapper {
+body.coarse-pointer.manual-time-entry-active #timer-display-wrapper {
     transition: none !important;
 }
 
-body.mobile-viewport.manual-time-entry-active #timer-delta {
+body.coarse-pointer.manual-time-entry-active #timer-delta {
     display: none;
 }
 
-body.typing-entry-mode:not(.mobile-viewport) #manual-time-submit {
+body.typing-entry-mode:not(.coarse-pointer) #manual-time-submit {
     display: none !important;
 }
 
-body.typing-entry-mode:not(.mobile-viewport) #timer-delta {
+body.typing-entry-mode:not(.coarse-pointer) #timer-delta {
     display: none !important;
 }
 
-body.typing-entry-mode:not(.mobile-viewport) #manual-time-entry {
+body.typing-entry-mode:not(.coarse-pointer) #manual-time-entry {
     pointer-events: auto;
     transform: translate(-50%, -0.5px);
 }
@@ -347,8 +347,13 @@ body.typing-entry-mode:not(.mobile-viewport) #manual-time-entry {
     top: 0.08em;
 } */
 
-body.typing-entry-mode:not(.mobile-viewport) #manual-time-entry-display {
+body.typing-entry-mode:not(.coarse-pointer) #manual-time-entry-display {
     cursor: text;
+}
+
+body:not(.coarse-pointer) #timer-quick-actions,
+body:not(.coarse-pointer) #manual-time-submit {
+    display: none !important;
 }
 
 #timer-quick-actions {

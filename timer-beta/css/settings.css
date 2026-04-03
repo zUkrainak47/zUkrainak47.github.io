@@ -93,7 +93,6 @@
     border-bottom: none;
 }
 
-body.mobile-viewport #setting-shortcut-tooltips-row,
 body.mobile-viewport #setting-hide-ui-row,
 body.mobile-viewport #setting-large-scramble-text-row {
     display: none;
@@ -810,10 +809,6 @@ body.mobile-viewport #setting-large-scramble-text-row {
 
 @media (max-width: 1100px), (pointer: coarse) {
     #setting-pill-size-row {
-        display: none;
-    }
-
-    #setting-time-entry-row {
         display: none;
     }
 

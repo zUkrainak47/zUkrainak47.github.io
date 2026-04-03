@@ -25,7 +25,7 @@ async function registerServiceWorker() {
     if (window.location?.protocol === 'file:') return;
 
     try {
-        const serviceWorkerUrl = new URL('../sw.js?v=28', import.meta.url);
+        const serviceWorkerUrl = new URL('../sw.js?v=29', import.meta.url);
         await navigator.serviceWorker.register(serviceWorkerUrl);
     } catch (error) {
         console.warn('Service worker registration failed:', error);
@@ -268,6 +268,7 @@ const mobileViewportQuery = window.matchMedia('(max-width: 1100px), (pointer: co
 const shortMobileLandscapeQuery = window.matchMedia('(max-width: 1100px) and (orientation: landscape) and (max-height: 650px), (pointer: coarse) and (orientation: landscape) and (max-height: 650px)');
 const mobileLandscapeQuery = window.matchMedia('(max-width: 1100px) and (orientation: landscape), (pointer: coarse) and (orientation: landscape)');
 const touchPrimaryQuery = window.matchMedia('(hover: none) and (pointer: coarse)');
+const coarsePointerQuery = window.matchMedia('(pointer: coarse)');
 const finePointerQuery = window.matchMedia('(pointer: fine)');
 const inspectionSpeechUnlockState = {
     required: false,
@@ -526,7 +527,7 @@ function unlockInspectionSpeechFromGesture() {
 }
 
 function areShortcutTooltipsAvailable() {
-    return !mobileViewportQuery.matches;
+    return !coarsePointerQuery.matches;
 }
 
 function getEl(id) {
@@ -546,7 +547,7 @@ function isQuickActionsSwipeOpenState(state) {
 }
 
 function isDesktopTypingEntryModeEnabled() {
-    return settings.get('timeEntryMode') === 'typing' && !mobileViewportQuery.matches;
+    return settings.get('timeEntryMode') === 'typing' && !coarsePointerQuery.matches;
 }
 
 function isManualTimeEntryActive() {
@@ -1022,8 +1023,11 @@ function syncQuickActionsUI() {
     const quickActionsEl = getEl('timer-quick-actions');
     if (!quickActionsEl) return;
 
-    const shouldShow = quickActionsState.visible && isMobileTimerPanelActive() && !quickActionsState.manualEntryActive;
-    quickActionsEl.hidden = false;
+    const shouldShow = quickActionsState.visible
+        && coarsePointerQuery.matches
+        && isMobileTimerPanelActive()
+        && !quickActionsState.manualEntryActive;
+    quickActionsEl.hidden = !shouldShow;
     quickActionsEl.classList.toggle('is-visible', shouldShow);
     quickActionsEl.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
     document.body.classList.toggle('timer-quick-actions-visible', shouldShow);
@@ -1135,7 +1139,9 @@ function syncPersistentManualEntryMode() {
         return;
     }
 
-    if (!mobileViewportQuery.matches && quickActionsState.manualEntryActive) {
+    // Close the persistent desktop typing UI immediately when typing mode is turned off,
+    // but keep mobile quick-action manual entry flows intact.
+    if (quickActionsState.manualEntryActive && !quickActionsState.manualEntryHistoryManaged) {
         closeManualTimeEntry({ restoreQuickActions: false });
     }
 }
@@ -1728,7 +1734,9 @@ function setActiveMobilePanel(panel) {
 
 function syncMobilePanelState() {
     const isMobileViewport = mobileViewportQuery.matches;
+    const isCoarsePointer = coarsePointerQuery.matches;
     hideShortcutTooltip();
+    document.body.classList.toggle('coarse-pointer', isCoarsePointer);
     document.body.classList.toggle('mobile-viewport', isMobileViewport);
     syncManualTimeInputMode();
 
@@ -1751,7 +1759,12 @@ function syncMobilePanelState() {
     setActiveMobilePanel(activePanel);
     syncInspectionCancelControl();
 
-    if (isMobileViewport && settings.get('timeEntryMode') === 'typing' && quickActionsState.manualEntryActive) {
+    if (!isCoarsePointer && quickActionsState.manualEntryActive && settings.get('timeEntryMode') !== 'typing') {
+        closeManualTimeEntry({ restoreQuickActions: false });
+        return;
+    }
+
+    if (isCoarsePointer && settings.get('timeEntryMode') === 'typing' && quickActionsState.manualEntryActive) {
         closeManualTimeEntry({ restoreQuickActions: false });
     }
 }
@@ -2632,6 +2645,12 @@ function initMobilePanels() {
         mobileViewportQuery.addEventListener('change', handleViewportChange);
     } else {
         mobileViewportQuery.addListener(handleViewportChange);
+    }
+
+    if (typeof coarsePointerQuery.addEventListener === 'function') {
+        coarsePointerQuery.addEventListener('change', handleViewportChange);
+    } else {
+        coarsePointerQuery.addListener(handleViewportChange);
     }
 
     syncMobilePanelState();
@@ -7192,8 +7211,10 @@ function initSettingsPanel() {
     const centerTimerToggle = document.getElementById('setting-center-timer');
     const backgroundSpacebarToggle = document.getElementById('setting-background-spacebar');
     const backgroundSpacebarRow = backgroundSpacebarToggle?.closest('.setting-row') ?? null;
+    const timeEntryRow = document.getElementById('setting-time-entry-row');
     const swipeDownGestureToggle = document.getElementById('setting-swipe-down-gesture');
     const swipeDownGestureRow = document.getElementById('setting-swipe-down-gesture-row');
+    const shortcutTooltipsRow = document.getElementById('setting-shortcut-tooltips-row');
 
     syncSettingsRowSeparators = () => {
         const groups = settingsOverlayEl?.querySelectorAll('.setting-group');
@@ -7232,13 +7253,25 @@ function initSettingsPanel() {
 
     const updateSwipeDownGestureVisibility = () => {
         if (!swipeDownGestureRow) return;
-        swipeDownGestureRow.style.display = mobileViewportQuery.matches ? '' : 'none';
+        swipeDownGestureRow.style.display = coarsePointerQuery.matches ? '' : 'none';
         syncSettingsRowSeparators();
     };
 
     const updateBackgroundSpacebarVisibility = () => {
         if (!backgroundSpacebarRow) return;
         backgroundSpacebarRow.style.display = finePointerQuery.matches ? '' : 'none';
+        syncSettingsRowSeparators();
+    };
+
+    const updateTimeEntryVisibility = () => {
+        if (!timeEntryRow) return;
+        timeEntryRow.style.display = coarsePointerQuery.matches ? 'none' : '';
+        syncSettingsRowSeparators();
+    };
+
+    const updateShortcutTooltipsVisibility = () => {
+        if (!shortcutTooltipsRow) return;
+        shortcutTooltipsRow.style.display = coarsePointerQuery.matches ? 'none' : '';
         syncSettingsRowSeparators();
     };
 
@@ -7256,11 +7289,15 @@ function initSettingsPanel() {
     updateCenterTimerState();
     updateSwipeDownGestureVisibility();
     updateBackgroundSpacebarVisibility();
+    updateTimeEntryVisibility();
+    updateShortcutTooltipsVisibility();
 
     const handleSettingsViewportChange = () => {
         updateCenterTimerState();
         updateSwipeDownGestureVisibility();
         updateBackgroundSpacebarVisibility();
+        updateTimeEntryVisibility();
+        updateShortcutTooltipsVisibility();
         syncSettingsRowSeparators();
     };
 
@@ -7268,6 +7305,12 @@ function initSettingsPanel() {
         mobileViewportQuery.addEventListener('change', handleSettingsViewportChange);
     } else {
         mobileViewportQuery.addListener(handleSettingsViewportChange);
+    }
+
+    if (typeof coarsePointerQuery.addEventListener === 'function') {
+        coarsePointerQuery.addEventListener('change', handleSettingsViewportChange);
+    } else {
+        coarsePointerQuery.addListener(handleSettingsViewportChange);
     }
 
     if (typeof finePointerQuery.addEventListener === 'function') {

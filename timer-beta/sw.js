@@ -1,4 +1,4 @@
-const APP_CACHE_NAME = 'ukratimer-app-v28';
+const APP_CACHE_NAME = 'ukratimer-app-v29';
 const RUNTIME_CACHE_NAME = 'ukratimer-runtime-v18';
 const USER_ASSET_CACHE_NAME = 'ukratimer-user-assets-v1';
 const LOCAL_BACKGROUND_UPLOAD_PATH_PREFIX = './cached-assets/theme-background-upload-';
@@ -9,19 +9,19 @@ const SCRAMBOW_SCRIPT_URL = 'https://unpkg.com/scrambow@1.8.1/dist/scrambow.js';
 const LOCAL_PRECACHE_PATHS = [
     './',
     './index.html',
-    './manifest.webmanifest',
+    './manifest.webmanifest?v=29',
     './css/fonts.css?v=1',
     './css/variables.css?v=8',
     './css/base.css?v=20',
     './css/layout.css?v=15',
     './css/scramble.css?v=37',
-    './css/timer.css?v=34',
+    './css/timer.css?v=35',
     './css/stats.css?v=19',
     './css/cube.css?v=7',
     './css/graph.css?v=9',
     './css/modal.css?v=16',
-    './css/settings.css?v=20',
-    './js/app.js?v=143',
+    './css/settings.css?v=21',
+    './js/app.js?v=144',
     './js/timer.js?v=14',
     './js/scramble.js?v=20',
     './js/session.js?v=10',
