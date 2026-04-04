@@ -1,5 +1,5 @@
-import { load, save } from './storage.js?v=202604047';
-import { EventEmitter } from './utils.js?v=202604047';
+import { load, save } from './storage.js?v=202604048';
+import { EventEmitter } from './utils.js?v=202604048';
 
 export const THEME_DEFAULT_ID = 'default';
 export const THEME_OLED_ID = 'oled';
@@ -357,6 +357,25 @@ function normalizeThemeCustomizationCollapsedSections(value) {
     );
 }
 
+function createDefaultSettingsCollapsedSections() {
+    return Object.freeze({
+        timer: false,
+        inspection: false,
+        interface: false,
+        stats: false,
+        graph: false,
+        data: false,
+    });
+}
+
+function normalizeSettingsCollapsedSections(value) {
+    const source = value && typeof value === 'object' ? value : {};
+    const defaults = createDefaultSettingsCollapsedSections();
+    return Object.fromEntries(
+        Object.entries(defaults).map(([sectionId, defaultValue]) => [sectionId, typeof source[sectionId] === 'boolean' ? source[sectionId] : defaultValue]),
+    );
+}
+
 const DEFAULTS = {
     inspectionTime: 'off',  // 'off', '15s'
     inspectionAlerts: 'off', // 'off', 'voice', 'screen', 'both'
@@ -370,6 +389,7 @@ const DEFAULTS = {
     customThemes: createDefaultCustomThemes(),
     customThemeBases: createDefaultCustomThemeBases(),
     customThemeBackgrounds: createDefaultCustomThemeBackgrounds(),
+    settingsCollapsedSections: createDefaultSettingsCollapsedSections(),
     themeCustomizationMode: 'simple',
     themeCustomizationCollapsedSections: createDefaultThemeCustomizationCollapsedSections(),
     displayFont: 'jetbrains-mono',
@@ -712,6 +732,7 @@ class Settings extends EventEmitter {
             customThemes: createDefaultCustomThemes(),
             customThemeBases: createDefaultCustomThemeBases(),
             customThemeBackgrounds: createDefaultCustomThemeBackgrounds(),
+            settingsCollapsedSections: loaded.settingsCollapsedSections,
             themeCustomizationCollapsedSections: loaded.themeCustomizationCollapsedSections,
         };
 
@@ -736,6 +757,9 @@ class Settings extends EventEmitter {
         this._settings.customThemes = themeState.customThemes;
         this._settings.customThemeBases = themeState.customThemeBases;
         this._settings.customThemeBackgrounds = themeState.customThemeBackgrounds;
+        this._settings.settingsCollapsedSections = normalizeSettingsCollapsedSections(
+            this._settings.settingsCollapsedSections,
+        );
         this._settings.themeCustomizationCollapsedSections = normalizeThemeCustomizationCollapsedSections(
             this._settings.themeCustomizationCollapsedSections,
         );
@@ -785,6 +809,7 @@ class Settings extends EventEmitter {
         this._settings.customThemes = normalizeCustomThemes(this._settings.customThemes);
         this._settings.customThemeBases = normalizeCustomThemeBases(this._settings.customThemeBases);
         this._settings.customThemeBackgrounds = normalizeCustomThemeBackgrounds(this._settings.customThemeBackgrounds);
+        this._settings.settingsCollapsedSections = normalizeSettingsCollapsedSections(this._settings.settingsCollapsedSections);
         this._settings.themeCustomizationCollapsedSections = normalizeThemeCustomizationCollapsedSections(
             this._settings.themeCustomizationCollapsedSections,
         );
@@ -926,6 +951,16 @@ class Settings extends EventEmitter {
             return;
         }
 
+        if (key === 'settingsCollapsedSections') {
+            const nextCollapsedSections = normalizeSettingsCollapsedSections(value);
+            if (deepEqual(this._settings.settingsCollapsedSections, nextCollapsedSections)) return;
+
+            this._settings.settingsCollapsedSections = nextCollapsedSections;
+            this._saveAndApply();
+            this.emit('change', 'settingsCollapsedSections', this.get('settingsCollapsedSections'));
+            return;
+        }
+
         if (key === 'themeCustomizationCollapsedSections') {
             const nextCollapsedSections = normalizeThemeCustomizationCollapsedSections(value);
             if (deepEqual(this._settings.themeCustomizationCollapsedSections, nextCollapsedSections)) return;
@@ -953,6 +988,7 @@ class Settings extends EventEmitter {
             customThemes: createDefaultCustomThemes(),
             customThemeBases: createDefaultCustomThemeBases(),
             customThemeBackgrounds: createDefaultCustomThemeBackgrounds(),
+            settingsCollapsedSections: createDefaultSettingsCollapsedSections(),
             themeCustomizationCollapsedSections: createDefaultThemeCustomizationCollapsedSections(),
         };
         this._syncAnimationSettings();

@@ -15,40 +15,40 @@
   <meta name="google-drive-client-id" content="210179775275-e62l646u4b8157hqs7j2ovt6ap608bjo.apps.googleusercontent.com">
   <title>UkraTimer</title>
 
-  <link rel="manifest" href="manifest.webmanifest?v=202604047">
-  <link rel="apple-touch-icon" href="resources/pwa-icon-180.png?v=202604047">
+  <link rel="manifest" href="manifest.webmanifest?v=202604048">
+  <link rel="apple-touch-icon" href="resources/pwa-icon-180.png?v=202604048">
 
   <!-- Fonts -->
-  <link rel="preload" href="resources/fonts/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7W0Q5nw.woff2?v=202604047" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="resources/fonts/tDbv2o-flEEny0FZhsfKu5WU4zr3E_BX0PnT8RD8yKwBNntkaToggR7BYRbKPxDcwgknk-4.woff2?v=202604047" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="css/fonts.css?v=202604047">
+  <link rel="preload" href="resources/fonts/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7W0Q5nw.woff2?v=202604048" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="resources/fonts/tDbv2o-flEEny0FZhsfKu5WU4zr3E_BX0PnT8RD8yKwBNntkaToggR7BYRbKPxDcwgknk-4.woff2?v=202604048" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="css/fonts.css?v=202604048">
 
   <!-- Favicon -->
-  <link rel="icon" href="resources/pwa-icon.svg?v=202604047" type="image/svg+xml">
+  <link rel="icon" href="resources/pwa-icon.svg?v=202604048" type="image/svg+xml">
 
   <!-- Preload SVG icon assets to avoid first-open lag -->
-  <link rel="preload" href="resources/comment-off.svg?v=202604047" as="image" type="image/svg+xml">
-  <link rel="preload" href="resources/comment.svg?v=202604047" as="image" type="image/svg+xml">
-  <link rel="preload" href="resources/calendar-date-off.svg?v=202604047" as="image" type="image/svg+xml">
-  <link rel="preload" href="resources/calendar-date.svg?v=202604047" as="image" type="image/svg+xml">
-  <link rel="preload" href="resources/clock.svg?v=202604047" as="image" type="image/svg+xml">
-  <link rel="preload" href="resources/legend.svg?v=202604047" as="image" type="image/svg+xml">
-  <link rel="preload" href="resources/hashtag.svg?v=202604047" as="image" type="image/svg+xml">
-  <link rel="preload" href="resources/hashtag-full.svg?v=202604047" as="image" type="image/svg+xml">
-  <link rel="preload" href="resources/settings.svg?v=202604047" as="image" type="image/svg+xml">
-  <link rel="preload" href="resources/distribution.svg?v=202604047" as="image" type="image/svg+xml">
+  <link rel="preload" href="resources/comment-off.svg?v=202604048" as="image" type="image/svg+xml">
+  <link rel="preload" href="resources/comment.svg?v=202604048" as="image" type="image/svg+xml">
+  <link rel="preload" href="resources/calendar-date-off.svg?v=202604048" as="image" type="image/svg+xml">
+  <link rel="preload" href="resources/calendar-date.svg?v=202604048" as="image" type="image/svg+xml">
+  <link rel="preload" href="resources/clock.svg?v=202604048" as="image" type="image/svg+xml">
+  <link rel="preload" href="resources/legend.svg?v=202604048" as="image" type="image/svg+xml">
+  <link rel="preload" href="resources/hashtag.svg?v=202604048" as="image" type="image/svg+xml">
+  <link rel="preload" href="resources/hashtag-full.svg?v=202604048" as="image" type="image/svg+xml">
+  <link rel="preload" href="resources/settings.svg?v=202604048" as="image" type="image/svg+xml">
+  <link rel="preload" href="resources/distribution.svg?v=202604048" as="image" type="image/svg+xml">
 
   <!-- Styles -->
-  <link rel="stylesheet" href="css/variables.css?v=202604047">
-  <link rel="stylesheet" href="css/base.css?v=202604047">
-  <link rel="stylesheet" href="css/layout.css?v=202604047">
-  <link rel="stylesheet" href="css/scramble.css?v=202604047">
-  <link rel="stylesheet" href="css/timer.css?v=202604047">
-  <link rel="stylesheet" href="css/stats.css?v=202604047">
-  <link rel="stylesheet" href="css/cube.css?v=202604047">
-  <link rel="stylesheet" href="css/graph.css?v=202604047">
-  <link rel="stylesheet" href="css/modal.css?v=202604047">
-  <link rel="stylesheet" href="css/settings.css?v=202604047">
+  <link rel="stylesheet" href="css/variables.css?v=202604048">
+  <link rel="stylesheet" href="css/base.css?v=202604048">
+  <link rel="stylesheet" href="css/layout.css?v=202604048">
+  <link rel="stylesheet" href="css/scramble.css?v=202604048">
+  <link rel="stylesheet" href="css/timer.css?v=202604048">
+  <link rel="stylesheet" href="css/stats.css?v=202604048">
+  <link rel="stylesheet" href="css/cube.css?v=202604048">
+  <link rel="stylesheet" href="css/graph.css?v=202604048">
+  <link rel="stylesheet" href="css/modal.css?v=202604048">
+  <link rel="stylesheet" href="css/settings.css?v=202604048">
 </head>
 
 <body>
@@ -633,8 +633,15 @@
       </div>
       <div class="settings-body">
 
-        <div class="setting-group">
-          <h3>Timer</h3>
+        <div class="setting-group" data-settings-section-id="timer">
+          <button class="setting-group-toggle" type="button" aria-expanded="true" data-settings-section-toggle="timer">
+            <span class="setting-group-toggle-inner">
+              <span class="setting-group-chevron" aria-hidden="true"></span>
+              <span class="setting-group-title">Timer</span>
+              <span class="setting-group-chevron-spacer" aria-hidden="true"></span>
+            </span>
+          </button>
+          <div class="setting-group-content">
           <div class="setting-row">
             <div class="setting-label">
               Timer update
@@ -701,10 +708,18 @@
               <span class="toggle-slider"></span>
             </label>
           </div>
+          </div>
         </div>
 
-        <div class="setting-group">
-          <h3>Inspection</h3>
+        <div class="setting-group" data-settings-section-id="inspection">
+          <button class="setting-group-toggle" type="button" aria-expanded="true" data-settings-section-toggle="inspection">
+            <span class="setting-group-toggle-inner">
+              <span class="setting-group-chevron" aria-hidden="true"></span>
+              <span class="setting-group-title">Inspection</span>
+              <span class="setting-group-chevron-spacer" aria-hidden="true"></span>
+            </span>
+          </button>
+          <div class="setting-group-content">
           <div class="setting-row">
             <div class="setting-label">
               WCA inspection
@@ -727,14 +742,22 @@
               <option value="both">Both</option>
             </select>
           </div>
+          </div>
         </div>
 
-        <div class="setting-group">
-          <h3>Interface</h3>
+        <div class="setting-group" data-settings-section-id="interface">
+          <button class="setting-group-toggle" type="button" aria-expanded="true" data-settings-section-toggle="interface">
+            <span class="setting-group-toggle-inner">
+              <span class="setting-group-chevron" aria-hidden="true"></span>
+              <span class="setting-group-title">Interface</span>
+              <span class="setting-group-chevron-spacer" aria-hidden="true"></span>
+            </span>
+          </button>
+          <div class="setting-group-content">
           <div class="setting-row">
             <div class="setting-label">
               Theme
-              <small>Default, OLED, or one of three saved custom themes</small>
+              <small>Default, OLED, custom. Background images and all color customizations live in custom themes</small>
             </div>
             <select id="setting-theme">
               <option value="default">Default</option>
@@ -837,10 +860,18 @@
             </label>
           </div>
 
+          </div>
         </div>
 
-        <div class="setting-group">
-          <h3>Stats</h3>
+        <div class="setting-group" data-settings-section-id="stats">
+          <button class="setting-group-toggle" type="button" aria-expanded="true" data-settings-section-toggle="stats">
+            <span class="setting-group-toggle-inner">
+              <span class="setting-group-chevron" aria-hidden="true"></span>
+              <span class="setting-group-title">Stats</span>
+              <span class="setting-group-chevron-spacer" aria-hidden="true"></span>
+            </span>
+          </button>
+          <div class="setting-group-content">
 
           <div class="setting-row" id="setting-pill-size-row">
             <div class="setting-label">
@@ -895,10 +926,18 @@
             </div>
           </div>
 
+          </div>
         </div>
 
-        <div class="setting-group">
-          <h3>Graph</h3>
+        <div class="setting-group" data-settings-section-id="graph">
+          <button class="setting-group-toggle" type="button" aria-expanded="true" data-settings-section-toggle="graph">
+            <span class="setting-group-toggle-inner">
+              <span class="setting-group-chevron" aria-hidden="true"></span>
+              <span class="setting-group-title">Graph</span>
+              <span class="setting-group-chevron-spacer" aria-hidden="true"></span>
+            </span>
+          </button>
+          <div class="setting-group-content">
           <div class="setting-row">
             <div class="setting-label">
               Show solve date
@@ -936,10 +975,18 @@
               <input type="text" id="setting-graph-line3-stat" class="setting-graph-line-stat" placeholder="ao100" maxlength="7" autocomplete="off" spellcheck="false">
             </div>
           </div>
+          </div>
         </div>
 
-        <div class="setting-group">
-          <h3>Data</h3>
+        <div class="setting-group" data-settings-section-id="data">
+          <button class="setting-group-toggle" type="button" aria-expanded="true" data-settings-section-toggle="data">
+            <span class="setting-group-toggle-inner">
+              <span class="setting-group-chevron" aria-hidden="true"></span>
+              <span class="setting-group-title">Data</span>
+              <span class="setting-group-chevron-spacer" aria-hidden="true"></span>
+            </span>
+          </button>
+          <div class="setting-group-content">
           <div class="setting-row">
             <div class="setting-label">
               Google Drive backup
@@ -960,6 +1007,7 @@
             <button id="btn-import" class="btn" type="button">Import file</button>
           </div>
           <small class="setting-note"><u>csTimer</u> and <u>Twisty Timer</u> formats supported for file import.</small>
+          </div>
         </div>
       </div>
     </div>
@@ -1087,7 +1135,7 @@
   </script>
 
   <!-- App Script -->
-  <script type="module" src="js/app.js?v=202604047"></script>
+  <script type="module" src="js/app.js?v=202604048"></script>
 </body>
 
 </html>

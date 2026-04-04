@@ -1,15 +1,15 @@
-import { timer } from './timer.js?v=202604047';
-import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=202604047';
-import { sessionManager } from './session.js?v=202604047';
-import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=202604047';
-import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=202604047';
-import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, truncateTimeDisplay } from './utils.js?v=202604047';
-import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=202604047';
-import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=202604047';
-import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=202604047';
-import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=202604047';
-import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=202604047';
-import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=202604047';
+import { timer } from './timer.js?v=202604048';
+import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=202604048';
+import { sessionManager } from './session.js?v=202604048';
+import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=202604048';
+import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=202604048';
+import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, truncateTimeDisplay } from './utils.js?v=202604048';
+import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=202604048';
+import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=202604048';
+import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=202604048';
+import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=202604048';
+import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=202604048';
+import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=202604048';
 
 let currentScramble = '';
 let currentSortCol = null;
@@ -168,7 +168,7 @@ async function registerServiceWorker() {
     if (window.location?.protocol === 'file:') return;
 
     try {
-        const serviceWorkerUrl = new URL('../sw.js?v=202604047', import.meta.url);
+        const serviceWorkerUrl = new URL('../sw.js?v=202604048', import.meta.url);
         await navigator.serviceWorker.register(serviceWorkerUrl);
     } catch (error) {
         console.warn('Service worker registration failed:', error);
@@ -7669,6 +7669,15 @@ function initSettingsPanel() {
         updateThemeSettingsUI();
         refreshTimeDistributionTheme();
     });
+    settings.on('change', (key) => {
+        if (key !== 'settingsCollapsedSections') return;
+        syncSettingsGroupCollapseUI();
+        syncSettingsRowSeparators();
+    });
+    settings.on('reset', () => {
+        syncSettingsGroupCollapseUI();
+        syncSettingsRowSeparators();
+    });
     void reconcileBackgroundImageState();
 
     // Hide UI toggle
@@ -7680,6 +7689,41 @@ function initSettingsPanel() {
     const swipeDownGestureToggle = document.getElementById('setting-swipe-down-gesture');
     const swipeDownGestureRow = document.getElementById('setting-swipe-down-gesture-row');
     const shortcutTooltipsRow = document.getElementById('setting-shortcut-tooltips-row');
+    const settingsGroupEls = Array.from(settingsOverlayEl?.querySelectorAll('.setting-group') || []);
+
+    const syncSettingsGroupCollapseUI = () => {
+        const collapsedSections = settings.get('settingsCollapsedSections') || {};
+        settingsGroupEls.forEach((group) => {
+            const sectionId = group.dataset.settingsSectionId;
+            const toggleBtn = group.querySelector('[data-settings-section-toggle]');
+            if (!sectionId || !toggleBtn) return;
+
+            const isCollapsed = Boolean(collapsedSections[sectionId]);
+            group.classList.toggle('collapsed', isCollapsed);
+            toggleBtn.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+        });
+    };
+
+    settingsGroupEls.forEach((group) => {
+        const sectionId = group.dataset.settingsSectionId;
+        const toggleBtn = group.querySelector('[data-settings-section-toggle]');
+        if (!sectionId || !toggleBtn) return;
+
+        toggleBtn.addEventListener('click', () => {
+            const isExpanded = toggleBtn.getAttribute('aria-expanded') !== 'false';
+            const nextCollapsed = isExpanded;
+            group.classList.toggle('collapsed', nextCollapsed);
+            toggleBtn.setAttribute('aria-expanded', nextCollapsed ? 'false' : 'true');
+            settings.set('settingsCollapsedSections', {
+                ...settings.get('settingsCollapsedSections'),
+                [sectionId]: nextCollapsed,
+            });
+            syncSettingsRowSeparators();
+            toggleBtn.blur();
+        });
+    });
+
+    syncSettingsGroupCollapseUI();
 
     syncSettingsRowSeparators = () => {
         const groups = settingsOverlayEl?.querySelectorAll('.setting-group');
@@ -7688,6 +7732,7 @@ function initSettingsPanel() {
         groups.forEach((group) => {
             const rows = Array.from(group.querySelectorAll('.setting-row'));
             rows.forEach((row) => row.classList.remove('setting-row-last-visible'));
+            if (group.classList.contains('collapsed')) return;
 
             const visibleRows = rows.filter((row) => {
                 if (row.hidden) return false;
