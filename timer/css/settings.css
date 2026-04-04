@@ -57,6 +57,7 @@
 .settings-body {
     padding: var(--space-lg);
     overflow-y: auto;
+    overflow-x: hidden;
     flex: 1;
 }
 
@@ -868,7 +869,9 @@ body.mobile-viewport #setting-large-scramble-text-row {
 
     #setting-summary-stats-preset {
         max-width: 100%;
+        min-width: 0;
         flex: 1 1 180px;
+        flex-shrink: 1;
     }
 
     .theme-customization-box {
