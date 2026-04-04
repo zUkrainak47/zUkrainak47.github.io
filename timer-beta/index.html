@@ -968,7 +968,13 @@
   <div id="theme-customization-overlay" class="modal-overlay">
     <div class="modal-box theme-customization-box">
       <div class="modal-header">
-        <h2 id="theme-customization-title">Customize Theme</h2>
+        <div class="theme-customization-title-row">
+          <h2 id="theme-customization-title">Customize Theme</h2>
+          <div class="theme-customization-history-actions">
+            <button id="theme-customization-undo" class="btn-action theme-customization-history-btn" type="button" title="Undo theme change" aria-label="Undo theme change" disabled>↶</button>
+            <button id="theme-customization-redo" class="btn-action theme-customization-history-btn" type="button" title="Redo theme change" aria-label="Redo theme change" disabled>↷</button>
+          </div>
+        </div>
         <div class="theme-customization-header-actions">
           <button id="theme-customization-dock-bottom-left" class="btn-action modal-option-btn theme-customization-dock-btn" type="button" title="Dock editor to the bottom-left corner" aria-label="Dock editor to the bottom-left corner" aria-pressed="false">BL</button>
           <button id="theme-customization-dock-top-right" class="btn-action modal-option-btn theme-customization-dock-btn" type="button" title="Dock editor to the top-right corner" aria-label="Dock editor to the top-right corner" aria-pressed="false">TR</button>

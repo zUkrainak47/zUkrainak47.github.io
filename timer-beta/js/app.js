@@ -5928,6 +5928,8 @@ function initSettingsPanel() {
     const themeCustomizationTitleEl = document.getElementById('theme-customization-title');
     const themeCustomizationSimpleSectionEl = document.getElementById('theme-customization-simple-section');
     const themeCustomizationSectionsEl = document.getElementById('theme-customization-sections');
+    const themeCustomizationUndoBtn = document.getElementById('theme-customization-undo');
+    const themeCustomizationRedoBtn = document.getElementById('theme-customization-redo');
     const themeCustomizationCloseBtn = document.getElementById('theme-customization-close');
     const themeCustomizationDockTopRightBtn = document.getElementById('theme-customization-dock-top-right');
     const themeCustomizationDockBottomLeftBtn = document.getElementById('theme-customization-dock-bottom-left');
@@ -5978,6 +5980,32 @@ function initSettingsPanel() {
     let themeCustomizationColorMode = THEME_EDITOR_MODE_SIMPLE;
     const THEME_DOCK_TOP_RIGHT = 'top-right';
     const THEME_DOCK_BOTTOM_LEFT = 'bottom-left';
+    const getThemeCustomizationHistoryState = (themeId = settings.get('theme')) => {
+        if (!isCustomThemeId(themeId)) {
+            return { canUndo: false, canRedo: false };
+        }
+
+        const canUndoCurrentEdit = Boolean(
+            themeEditTransaction
+            && themeEditTransaction.themeId === themeId
+            && !themeSnapshotsMatch(themeEditTransaction.beforeSnapshot, cloneThemeSnapshot(themeId))
+        );
+
+        return {
+            canUndo: canUndoCurrentEdit || (themeUndoThemeId === themeId && themeUndoStack.length > 0),
+            canRedo: themeUndoThemeId === themeId && themeRedoStack.length > 0,
+        };
+    };
+    const syncThemeCustomizationHistoryButtons = (themeId = settings.get('theme')) => {
+        const { canUndo, canRedo } = getThemeCustomizationHistoryState(themeId);
+
+        if (themeCustomizationUndoBtn) {
+            themeCustomizationUndoBtn.disabled = !canUndo;
+        }
+        if (themeCustomizationRedoBtn) {
+            themeCustomizationRedoBtn.disabled = !canRedo;
+        }
+    };
     const canDockThemeCustomization = () => true;
     const canShowThemeDockButtons = () => true;
     const syncThemeCustomizationDockButtons = () => {
@@ -6646,6 +6674,7 @@ function initSettingsPanel() {
         });
         syncThemeBackgroundImageUI();
         syncThemeCustomizationModeUI();
+        syncThemeCustomizationHistoryButtons(currentTheme);
     };
 
     const setThemeActionFeedback = (button, label) => {
@@ -6689,16 +6718,21 @@ function initSettingsPanel() {
             themeRedoStack = [];
             themeEditTransaction = null;
             clearThemeEditCommitTimer();
+            syncThemeCustomizationHistoryButtons(themeId);
             return;
         }
 
-        if (themeUndoThemeId === themeId) return;
+        if (themeUndoThemeId === themeId) {
+            syncThemeCustomizationHistoryButtons(themeId);
+            return;
+        }
 
         themeUndoThemeId = themeId;
         themeUndoStack = [];
         themeRedoStack = [];
         themeEditTransaction = null;
         clearThemeEditCommitTimer();
+        syncThemeCustomizationHistoryButtons(themeId);
     };
 
     const pushThemeHistorySnapshot = (historyStack, themeId, snapshot) => {
@@ -6727,10 +6761,14 @@ function initSettingsPanel() {
         if (!isCustomThemeId(themeId)) return;
         ensureThemeUndoContext(themeId);
         themeRedoStack = [];
+        syncThemeCustomizationHistoryButtons(themeId);
     };
 
     const flushThemeEditTransaction = () => {
-        if (!themeEditTransaction) return;
+        if (!themeEditTransaction) {
+            syncThemeCustomizationHistoryButtons();
+            return;
+        }
 
         clearThemeEditCommitTimer();
         const { themeId, beforeSnapshot } = themeEditTransaction;
@@ -6740,6 +6778,7 @@ function initSettingsPanel() {
         if (!themeSnapshotsMatch(beforeSnapshot, currentSnapshot)) {
             pushThemeUndoSnapshot(themeId, beforeSnapshot);
         }
+        syncThemeCustomizationHistoryButtons(themeId);
     };
 
     const beginThemeEditTransaction = (themeId) => {
@@ -6758,6 +6797,7 @@ function initSettingsPanel() {
         themeEditCommitTimer = window.setTimeout(() => {
             flushThemeEditTransaction();
         }, THEME_EDIT_COMMIT_DELAY_MS);
+        syncThemeCustomizationHistoryButtons(themeId);
     };
 
     const applyThemeSnapshot = (themeId, snapshot) => {
@@ -6779,6 +6819,7 @@ function initSettingsPanel() {
         settings.set('customThemeBases', nextCustomThemeBases);
         settings.set('customThemeBackgrounds', nextCustomThemeBackgrounds);
         isApplyingThemeUndo = false;
+        syncThemeCustomizationHistoryButtons(themeId);
         return true;
     };
 
@@ -6794,6 +6835,7 @@ function initSettingsPanel() {
             if (themeSnapshotsMatch(beforeSnapshot, cloneThemeSnapshot(currentTheme))) {
                 themeEditTransaction = null;
                 clearThemeEditCommitTimer();
+                syncThemeCustomizationHistoryButtons(currentTheme);
                 return false;
             }
             pushThemeRedoSnapshot(currentTheme, currentSnapshot);
@@ -7385,6 +7427,18 @@ function initSettingsPanel() {
         setThemeCustomizationColorMode(THEME_EDITOR_MODE_FULL);
         themeModeFullBtn.blur();
     });
+    themeCustomizationUndoBtn?.addEventListener('click', () => {
+        if (themeCustomizationUndoBtn.disabled) return;
+        undoThemeCustomizationChange();
+        themeCustomizationUndoBtn.blur();
+    });
+    themeCustomizationRedoBtn?.addEventListener('click', () => {
+        if (themeCustomizationRedoBtn.disabled) return;
+        redoThemeCustomizationChange();
+        themeCustomizationRedoBtn.blur();
+    });
+    registerShortcutTooltip(themeCustomizationUndoBtn, ['Ctrl', 'Z'], 'bottom');
+    registerShortcutTooltip(themeCustomizationRedoBtn, ['Ctrl', 'Shift', 'Z'], 'bottom');
     syncThemeCustomizationModeUI();
 
     if (themeSelect) {
