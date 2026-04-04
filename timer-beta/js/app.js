@@ -5667,7 +5667,6 @@ function renderSolvesTable(solves, stats) {
         return;
     }
 
-    const container = document.getElementById('solves-container');
     const tbody = document.getElementById('solves-tbody');
     const configuredColumns = getConfiguredSolvesTableStatTokens();
     const visibleColumnCount = 2 + configuredColumns.length;
@@ -5725,15 +5724,14 @@ function renderSolvesTable(solves, stats) {
 
     // Remove old scroll listener
     if (_tableScrollHandler) {
-        container.removeEventListener('scroll', _tableScrollHandler);
+        tbody.removeEventListener('scroll', _tableScrollHandler);
     }
 
     function renderVisibleRows() {
-        const scrollTop = container.scrollTop;
-        const viewportHeight = container.clientHeight;
-        const headerHeight = 28; // approximate sticky header height
+        const scrollTop = tbody.scrollTop;
+        const viewportHeight = tbody.clientHeight;
 
-        const startRow = Math.max(0, Math.floor((scrollTop - headerHeight) / TABLE_ROW_HEIGHT) - 5);
+        const startRow = Math.max(0, Math.floor(scrollTop / TABLE_ROW_HEIGHT) - 5);
         const visibleRows = Math.ceil(viewportHeight / TABLE_ROW_HEIGHT) + 15;
         const endRow = Math.min(totalRows, startRow + visibleRows);
 
@@ -5793,7 +5791,7 @@ function renderSolvesTable(solves, stats) {
             });
         }
     };
-    container.addEventListener('scroll', _tableScrollHandler, { passive: true });
+    tbody.addEventListener('scroll', _tableScrollHandler, { passive: true });
 
     // Click delegation on tbody for all cell types
     tbody.onclick = (e) => {
