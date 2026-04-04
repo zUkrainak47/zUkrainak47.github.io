@@ -733,6 +733,28 @@
           <h3>Interface</h3>
           <div class="setting-row">
             <div class="setting-label">
+              Theme
+              <small>Default, OLED, or one of three saved custom themes</small>
+            </div>
+            <select id="setting-theme">
+              <option value="default">Default</option>
+              <option value="oled">OLED</option>
+              <option value="custom1">Custom 1</option>
+              <option value="custom2">Custom 2</option>
+              <option value="custom3">Custom 3</option>
+            </select>
+          </div>
+
+          <div class="setting-row" id="setting-theme-customize-row" style="display:none;">
+            <div class="setting-label">
+              Custom theme colors
+              <!-- <small>Saved with export and import backups</small> -->
+            </div>
+            <button id="btn-customize-theme" class="btn settings-action-btn" type="button">Customize Theme</button>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-label">
               Animations
               <small>Auto follows your device motion preference</small>
             </div>
@@ -764,27 +786,6 @@
             </label>
           </div>
 
-          <div class="setting-row">
-            <div class="setting-label">
-              Theme
-              <small>Default, OLED, or one of three saved custom themes</small>
-            </div>
-            <select id="setting-theme">
-              <option value="default">Default</option>
-              <option value="oled">OLED</option>
-              <option value="custom1">Custom 1</option>
-              <option value="custom2">Custom 2</option>
-              <option value="custom3">Custom 3</option>
-            </select>
-          </div>
-
-          <div class="setting-row" id="setting-theme-customize-row" style="display:none;">
-            <div class="setting-label">
-              Custom theme colors
-              <!-- <small>Saved with export and import backups</small> -->
-            </div>
-            <button id="btn-customize-theme" class="btn settings-action-btn" type="button">Customize Theme</button>
-          </div>
 
           <div class="setting-row" id="setting-large-scramble-text-row">
             <div class="setting-label">
