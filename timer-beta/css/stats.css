@@ -113,7 +113,7 @@
     min-height: 0;
     padding: 0 var(--space-xs);
     position: relative;
-    background: var(--surface);
+    /* background: var(--surface); */
 }
 
 /* Desktop override: 14px border-radius for stats panel */
@@ -139,7 +139,7 @@
 #solves-table thead {
     position: sticky;
     top: 0;
-    background: var(--surface);
+    /* background: var(--surface); */
     z-index: 10;
 }
 
@@ -150,7 +150,7 @@
     left: 0;
     right: 0;
     height: 1px;
-    background: var(--surface);
+    /* background: var(--surface); */
 }
 
 #solves-table th {
@@ -164,7 +164,7 @@
     font-size: var(--solves-table-header-font-size);
     text-transform: uppercase;
     letter-spacing: 1px;
-    background: var(--surface);
+    /* background: var(--surface); */
     border-bottom: 1px solid var(--surface-border);
     user-select: none;
     -webkit-user-select: none;
