@@ -285,7 +285,7 @@ body.solving #btn-settings {
     }
 
     .mobile-panel-tab.active {
-        background: #181D23;
+        background: var(--floating-surface);
         border-color: var(--floating-surface-border);
         color: var(--text-primary);
         box-shadow: none;
