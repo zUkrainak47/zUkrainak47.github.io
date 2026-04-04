@@ -15,40 +15,40 @@
   <meta name="google-drive-client-id" content="210179775275-e62l646u4b8157hqs7j2ovt6ap608bjo.apps.googleusercontent.com">
   <title>UkraTimer</title>
 
-  <link rel="manifest" href="manifest.webmanifest?v=20260404">
-  <link rel="apple-touch-icon" href="resources/pwa-icon-180.png?v=20260404">
+  <link rel="manifest" href="manifest.webmanifest?v=202604047">
+  <link rel="apple-touch-icon" href="resources/pwa-icon-180.png?v=202604047">
 
   <!-- Fonts -->
-  <link rel="preload" href="resources/fonts/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7W0Q5nw.woff2?v=20260404" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="resources/fonts/tDbv2o-flEEny0FZhsfKu5WU4zr3E_BX0PnT8RD8yKwBNntkaToggR7BYRbKPxDcwgknk-4.woff2?v=20260404" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="css/fonts.css?v=20260404">
+  <link rel="preload" href="resources/fonts/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7W0Q5nw.woff2?v=202604047" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="resources/fonts/tDbv2o-flEEny0FZhsfKu5WU4zr3E_BX0PnT8RD8yKwBNntkaToggR7BYRbKPxDcwgknk-4.woff2?v=202604047" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="css/fonts.css?v=202604047">
 
   <!-- Favicon -->
-  <link rel="icon" href="resources/pwa-icon.svg?v=20260404" type="image/svg+xml">
+  <link rel="icon" href="resources/pwa-icon.svg?v=202604047" type="image/svg+xml">
 
   <!-- Preload SVG icon assets to avoid first-open lag -->
-  <link rel="preload" href="resources/comment-off.svg?v=20260404" as="image" type="image/svg+xml">
-  <link rel="preload" href="resources/comment.svg?v=20260404" as="image" type="image/svg+xml">
-  <link rel="preload" href="resources/calendar-date-off.svg?v=20260404" as="image" type="image/svg+xml">
-  <link rel="preload" href="resources/calendar-date.svg?v=20260404" as="image" type="image/svg+xml">
-  <link rel="preload" href="resources/clock.svg?v=20260404" as="image" type="image/svg+xml">
-  <link rel="preload" href="resources/legend.svg?v=20260404" as="image" type="image/svg+xml">
-  <link rel="preload" href="resources/hashtag.svg?v=20260404" as="image" type="image/svg+xml">
-  <link rel="preload" href="resources/hashtag-full.svg?v=20260404" as="image" type="image/svg+xml">
-  <link rel="preload" href="resources/settings.svg?v=20260404" as="image" type="image/svg+xml">
-  <link rel="preload" href="resources/distribution.svg?v=20260404" as="image" type="image/svg+xml">
+  <link rel="preload" href="resources/comment-off.svg?v=202604047" as="image" type="image/svg+xml">
+  <link rel="preload" href="resources/comment.svg?v=202604047" as="image" type="image/svg+xml">
+  <link rel="preload" href="resources/calendar-date-off.svg?v=202604047" as="image" type="image/svg+xml">
+  <link rel="preload" href="resources/calendar-date.svg?v=202604047" as="image" type="image/svg+xml">
+  <link rel="preload" href="resources/clock.svg?v=202604047" as="image" type="image/svg+xml">
+  <link rel="preload" href="resources/legend.svg?v=202604047" as="image" type="image/svg+xml">
+  <link rel="preload" href="resources/hashtag.svg?v=202604047" as="image" type="image/svg+xml">
+  <link rel="preload" href="resources/hashtag-full.svg?v=202604047" as="image" type="image/svg+xml">
+  <link rel="preload" href="resources/settings.svg?v=202604047" as="image" type="image/svg+xml">
+  <link rel="preload" href="resources/distribution.svg?v=202604047" as="image" type="image/svg+xml">
 
   <!-- Styles -->
-  <link rel="stylesheet" href="css/variables.css?v=20260404">
-  <link rel="stylesheet" href="css/base.css?v=20260404">
-  <link rel="stylesheet" href="css/layout.css?v=20260404">
-  <link rel="stylesheet" href="css/scramble.css?v=20260404">
-  <link rel="stylesheet" href="css/timer.css?v=20260404">
-  <link rel="stylesheet" href="css/stats.css?v=20260404">
-  <link rel="stylesheet" href="css/cube.css?v=20260404">
-  <link rel="stylesheet" href="css/graph.css?v=20260404">
-  <link rel="stylesheet" href="css/modal.css?v=20260404">
-  <link rel="stylesheet" href="css/settings.css?v=20260404">
+  <link rel="stylesheet" href="css/variables.css?v=202604047">
+  <link rel="stylesheet" href="css/base.css?v=202604047">
+  <link rel="stylesheet" href="css/layout.css?v=202604047">
+  <link rel="stylesheet" href="css/scramble.css?v=202604047">
+  <link rel="stylesheet" href="css/timer.css?v=202604047">
+  <link rel="stylesheet" href="css/stats.css?v=202604047">
+  <link rel="stylesheet" href="css/cube.css?v=202604047">
+  <link rel="stylesheet" href="css/graph.css?v=202604047">
+  <link rel="stylesheet" href="css/modal.css?v=202604047">
+  <link rel="stylesheet" href="css/settings.css?v=202604047">
 </head>
 
 <body>
@@ -983,6 +983,14 @@
       </div>
       <div class="modal-body theme-customization-body">
         <!-- <p class="theme-customization-intro">Changes save automatically to the selected custom theme slot.</p> -->
+        <div class="theme-customization-actions">
+          <button id="btn-theme-copy-default" class="btn-action" type="button">Copy Default</button>
+          <button id="btn-theme-copy-oled" class="btn-action" type="button">Copy OLED</button>
+          <button id="btn-theme-export-file" class="btn-action" type="button">Export File</button>
+          <button id="btn-theme-export-text" class="btn-action" type="button">Export Text</button>
+          <button id="btn-theme-import-file" class="btn-action" type="button">Import File</button>
+          <button id="btn-theme-import-text" class="btn-action" type="button">Import Text</button>
+        </div>
         <div class="theme-customization-mode-bar">
           <div class="theme-customization-mode-copy">
             <span class="theme-customization-mode-title">Color options</span>
@@ -993,48 +1001,42 @@
             <button id="btn-theme-mode-full" class="btn-action theme-customization-mode-btn" type="button" aria-pressed="false">Full</button>
           </div>
         </div>
-        <div class="theme-customization-actions">
-          <button id="btn-theme-copy-default" class="btn-action" type="button">Copy Default</button>
-          <button id="btn-theme-copy-oled" class="btn-action" type="button">Copy OLED</button>
-          <button id="btn-theme-export-file" class="btn-action" type="button">Export File</button>
-          <button id="btn-theme-export-text" class="btn-action" type="button">Export Text</button>
-          <button id="btn-theme-import-file" class="btn-action" type="button">Import File</button>
-          <button id="btn-theme-import-text" class="btn-action" type="button">Import Text</button>
-        </div>
-        <div class="theme-background-image-panel">
-          <div class="theme-background-image-header">
-            <span class="theme-background-image-title">Background Image</span>
-            <!-- <span class="theme-background-image-note">Uploads stay cached on this device for offline use. Image links are saved and exported.</span> -->
-          </div>
-          <div class="theme-background-image-controls">
-            <select id="theme-background-image-mode">
-              <option value="none">None</option>
-              <option value="link">Image Link</option>
-              <option value="upload">Upload</option>
-            </select>
-          </div>
-          <div id="theme-background-image-link-row" class="theme-background-image-row" style="display:none;">
-            <input id="theme-background-image-url" type="url" placeholder="https://example.com/background.jpg" autocomplete="off" spellcheck="false">
-          </div>
-          <div id="theme-background-image-upload-row" class="theme-background-image-row" style="display:none;">
-            <button id="btn-theme-background-upload" class="btn-action" type="button">Upload Image</button>
-            <button id="btn-theme-background-clear-upload" class="btn-action" type="button">Clear Upload</button>
-          </div>
-          <div id="theme-background-image-overlay-row" class="theme-background-image-overlay" style="display:none;">
-            <div class="theme-background-image-subheader">
-              <span class="theme-background-image-title">Background Overlay</span>
-              <span id="theme-background-overlay-value" class="theme-color-value">rgba(0, 0, 0, 0.9)</span>
+        <div class="theme-customization-section" data-theme-section-id="background-image">
+          <button id="theme-background-image-toggle" class="theme-customization-section-toggle" type="button" aria-expanded="true">
+            <span class="theme-customization-section-chevron" aria-hidden="true"></span>
+            <span class="theme-customization-section-title">Background Image</span>
+          </button>
+          <div class="theme-background-image-panel theme-customization-section-content">
+            <div class="theme-background-image-controls">
+              <select id="theme-background-image-mode">
+                <option value="none">None</option>
+                <option value="link">Image Link</option>
+                <option value="upload">Upload</option>
+              </select>
             </div>
-            <div class="theme-color-controls">
-              <input id="theme-background-overlay-color" type="color" value="#000000">
-              <button id="btn-theme-background-overlay-reset" class="btn-action theme-color-reset" type="button">Reset</button>
+            <div id="theme-background-image-link-row" class="theme-background-image-row" style="display:none;">
+              <input id="theme-background-image-url" type="url" placeholder="https://example.com/background.jpg" autocomplete="off" spellcheck="false">
             </div>
-            <div class="theme-color-alpha">
-              <input id="theme-background-overlay-alpha" type="range" min="0" max="100" step="1" value="90">
-              <span id="theme-background-overlay-alpha-value" class="theme-color-alpha-value">90%</span>
+            <div id="theme-background-image-upload-row" class="theme-background-image-row" style="display:none;">
+              <button id="btn-theme-background-upload" class="btn-action" type="button">Upload Image</button>
+              <button id="btn-theme-background-clear-upload" class="btn-action" type="button">Clear Upload</button>
             </div>
+            <div id="theme-background-image-overlay-row" class="theme-background-image-overlay" style="display:none;">
+              <div class="theme-background-image-subheader">
+                <span class="theme-background-image-title">Background Overlay</span>
+                <span id="theme-background-overlay-value" class="theme-color-value">rgba(0, 0, 0, 0.9)</span>
+              </div>
+              <div class="theme-color-controls">
+                <input id="theme-background-overlay-color" type="color" value="#000000">
+                <button id="btn-theme-background-overlay-reset" class="btn-action theme-color-reset" type="button">Reset</button>
+              </div>
+              <div class="theme-color-alpha">
+                <input id="theme-background-overlay-alpha" type="range" min="0" max="100" step="1" value="90">
+                <span id="theme-background-overlay-alpha-value" class="theme-color-alpha-value">90%</span>
+              </div>
+            </div>
+            <div id="theme-background-image-status" class="theme-background-image-status"></div>
           </div>
-          <div id="theme-background-image-status" class="theme-background-image-status"></div>
         </div>
         <div id="theme-customization-simple-section" class="theme-customization-sections"></div>
         <div id="theme-customization-sections" class="theme-customization-sections"></div>
@@ -1085,7 +1087,7 @@
   </script>
 
   <!-- App Script -->
-  <script type="module" src="js/app.js?v=20260404"></script>
+  <script type="module" src="js/app.js?v=202604047"></script>
 </body>
 
 </html>

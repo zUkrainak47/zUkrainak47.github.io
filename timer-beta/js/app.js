@@ -1,15 +1,15 @@
-import { timer } from './timer.js?v=20260404';
-import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=20260404';
-import { sessionManager } from './session.js?v=20260404';
-import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=20260404';
-import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=20260404';
-import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, truncateTimeDisplay } from './utils.js?v=20260404';
-import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=20260404';
-import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=20260404';
-import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=20260404';
-import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=20260404';
-import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=20260404';
-import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=20260404';
+import { timer } from './timer.js?v=202604047';
+import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=202604047';
+import { sessionManager } from './session.js?v=202604047';
+import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=202604047';
+import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=202604047';
+import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, truncateTimeDisplay } from './utils.js?v=202604047';
+import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=202604047';
+import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=202604047';
+import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=202604047';
+import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=202604047';
+import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=202604047';
+import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=202604047';
 
 let currentScramble = '';
 let currentSortCol = null;
@@ -48,6 +48,7 @@ const SIMPLE_THEME_SHARED_SECTION_IDS = new Set([
     'scramble-preview-square1',
     'scramble-preview-clock',
 ]);
+const THEME_BACKGROUND_IMAGE_SECTION_ID = 'background-image';
 
 function clampThemeChannel(value) {
     return Math.max(0, Math.min(255, Math.round(Number(value) || 0)));
@@ -167,7 +168,7 @@ async function registerServiceWorker() {
     if (window.location?.protocol === 'file:') return;
 
     try {
-        const serviceWorkerUrl = new URL('../sw.js?v=20260404', import.meta.url);
+        const serviceWorkerUrl = new URL('../sw.js?v=202604047', import.meta.url);
         await navigator.serviceWorker.register(serviceWorkerUrl);
     } catch (error) {
         console.warn('Service worker registration failed:', error);
@@ -5944,6 +5945,7 @@ function initSettingsPanel() {
     const themeExportTextBtn = document.getElementById('btn-theme-export-text');
     const themeImportFileBtn = document.getElementById('btn-theme-import-file');
     const themeImportTextBtn = document.getElementById('btn-theme-import-text');
+    const themeBackgroundImageToggleBtn = document.getElementById('theme-background-image-toggle');
     const themeBackgroundImageModeSelect = document.getElementById('theme-background-image-mode');
     const themeBackgroundImageLinkRow = document.getElementById('theme-background-image-link-row');
     const themeBackgroundImageUploadRow = document.getElementById('theme-background-image-upload-row');
@@ -5978,7 +5980,9 @@ function initSettingsPanel() {
     const themeColorDebounceTimers = new Map();
     const simpleThemeColorDebounceTimers = new Map();
     let themeBackgroundOverlayDebounceTimer = 0;
-    let themeCustomizationColorMode = THEME_EDITOR_MODE_SIMPLE;
+    let themeCustomizationColorMode = settings.get('themeCustomizationMode') === THEME_EDITOR_MODE_FULL
+        ? THEME_EDITOR_MODE_FULL
+        : THEME_EDITOR_MODE_SIMPLE;
     const THEME_DOCK_TOP_RIGHT = 'top-right';
     const THEME_DOCK_BOTTOM_LEFT = 'bottom-left';
     const getThemeCustomizationHistoryState = (themeId = settings.get('theme')) => {
@@ -6213,10 +6217,23 @@ function initSettingsPanel() {
     const renderThemeColorSections = (container, sections, controlMap, { includeAlpha = true } = {}) => {
         if (!container) return;
 
+        const collapsedSections = settings.get('themeCustomizationCollapsedSections') || {};
         container.innerHTML = sections.map((section) => `
-            <section class="theme-customization-section">
-              <h3 class="theme-customization-section-title">${section.title}</h3>
-              <div class="theme-customization-grid">
+            <section
+              class="theme-customization-section${collapsedSections[section.id] ? ' collapsed' : ''}"
+              data-theme-section-id="${section.id}"
+            >
+              <button
+                class="theme-customization-section-toggle"
+                type="button"
+                aria-expanded="${collapsedSections[section.id] ? 'false' : 'true'}"
+                data-theme-section-toggle="${section.id}"
+              >
+                <span class="theme-customization-section-chevron" aria-hidden="true"></span>
+                <span class="theme-customization-section-title">${section.title}</span>
+              </button>
+              <div class="theme-customization-section-content" data-theme-section-content="${section.id}">
+                <div class="theme-customization-grid">
                 ${section.items.filter((item) => !item.hidden).map((item) => `
                   <div class="theme-color-card" data-theme-color-key="${item.key}">
                     <div class="theme-color-header">
@@ -6236,9 +6253,12 @@ function initSettingsPanel() {
                     <div class="theme-color-value" data-theme-color-value="${item.key}"></div>
                   </div>
                 `).join('')}
+                </div>
               </div>
             </section>
         `).join('');
+
+        attachThemeSectionToggleHandlers(container);
 
         container.querySelectorAll('[data-theme-color-key]').forEach((card) => {
             const key = card.getAttribute('data-theme-color-key');
@@ -6254,10 +6274,41 @@ function initSettingsPanel() {
         });
     };
 
+    const attachThemeSectionToggleHandlers = (root) => {
+        if (!root) return;
+
+        root.querySelectorAll('[data-theme-section-toggle], #theme-background-image-toggle').forEach((toggleBtn) => {
+            if (toggleBtn.dataset.toggleBound === 'true') return;
+            toggleBtn.dataset.toggleBound = 'true';
+            toggleBtn.addEventListener('click', () => {
+                const sectionEl = toggleBtn.closest('.theme-customization-section');
+                if (!sectionEl) return;
+                const sectionId = sectionEl.dataset.themeSectionId || THEME_BACKGROUND_IMAGE_SECTION_ID;
+
+                const isExpanded = toggleBtn.getAttribute('aria-expanded') !== 'false';
+                const nextExpanded = !isExpanded;
+                toggleBtn.setAttribute('aria-expanded', nextExpanded ? 'true' : 'false');
+                sectionEl.classList.toggle('collapsed', !nextExpanded);
+                settings.set('themeCustomizationCollapsedSections', {
+                    ...settings.get('themeCustomizationCollapsedSections'),
+                    [sectionId]: !nextExpanded,
+                });
+            });
+        });
+    };
+
     renderThemeColorSections(themeCustomizationSimpleSectionEl, simpleModeSections, simpleThemeColorControls, {
         includeAlpha: false,
     });
     renderThemeColorSections(themeCustomizationSectionsEl, THEME_COLOR_SECTIONS, themeColorControls);
+    attachThemeSectionToggleHandlers(themeBackgroundImageToggleBtn?.parentElement);
+    const backgroundImageSectionCollapsed = Boolean(
+        settings.get('themeCustomizationCollapsedSections')?.[THEME_BACKGROUND_IMAGE_SECTION_ID],
+    );
+    if (themeBackgroundImageToggleBtn) {
+        themeBackgroundImageToggleBtn.setAttribute('aria-expanded', backgroundImageSectionCollapsed ? 'false' : 'true');
+        themeBackgroundImageToggleBtn.closest('.theme-customization-section')?.classList.toggle('collapsed', backgroundImageSectionCollapsed);
+    }
 
     const syncThemeCustomizationModeButtons = () => {
         [
@@ -6285,6 +6336,7 @@ function initSettingsPanel() {
 
     const setThemeCustomizationColorMode = (mode) => {
         themeCustomizationColorMode = mode === THEME_EDITOR_MODE_FULL ? THEME_EDITOR_MODE_FULL : THEME_EDITOR_MODE_SIMPLE;
+        settings.set('themeCustomizationMode', themeCustomizationColorMode);
         syncThemeCustomizationModeUI();
     };
 

@@ -461,10 +461,10 @@ body.mobile-viewport #setting-large-scramble-text-row {
     background: var(--bg-secondary);
 }
 
-.theme-background-image-header {
+.theme-background-image-panel.theme-customization-section-content {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: var(--space-sm);
 }
 
 .theme-background-image-title {
@@ -519,6 +519,47 @@ body.mobile-viewport #setting-large-scramble-text-row {
     gap: var(--space-sm);
 }
 
+.theme-customization-section-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 0 4px;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    text-align: left;
+}
+
+.theme-customization-section-toggle:hover .theme-customization-section-title,
+.theme-customization-section-toggle:focus-visible .theme-customization-section-title {
+    color: var(--text-primary);
+}
+
+.theme-customization-section-toggle:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 4px;
+    border-radius: var(--radius-sm);
+}
+
+.theme-customization-section-chevron {
+    width: 0;
+    height: 0;
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    border-left: 7px solid var(--text-tertiary);
+    transform: rotate(90deg);
+    transform-origin: 35% 50%;
+    transition: transform var(--transition-fast), border-left-color var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.theme-customization-section-toggle:hover .theme-customization-section-chevron,
+.theme-customization-section-toggle:focus-visible .theme-customization-section-chevron {
+    border-left-color: var(--text-primary);
+}
+
 .theme-customization-section-title {
     margin: 0;
     color: var(--text-secondary);
@@ -526,6 +567,18 @@ body.mobile-viewport #setting-large-scramble-text-row {
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
+}
+
+.theme-customization-section-content {
+    display: block;
+}
+
+.theme-customization-section.collapsed .theme-customization-section-chevron {
+    transform: rotate(0deg);
+}
+
+.theme-customization-section.collapsed .theme-customization-section-content {
+    display: none;
 }
 
 .theme-customization-grid {

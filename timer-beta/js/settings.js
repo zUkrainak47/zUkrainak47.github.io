@@ -1,5 +1,5 @@
-import { load, save } from './storage.js?v=20260404';
-import { EventEmitter } from './utils.js?v=20260404';
+import { load, save } from './storage.js?v=202604047';
+import { EventEmitter } from './utils.js?v=202604047';
 
 export const THEME_DEFAULT_ID = 'default';
 export const THEME_OLED_ID = 'oled';
@@ -97,7 +97,7 @@ export const THEME_COLOR_SECTIONS = Object.freeze([
     }),
     Object.freeze({
         id: 'scramble-preview-cube',
-        title: 'Scramble Preview: NxN Cubes',
+        title: 'NxN Cubes',
         items: Object.freeze([
             Object.freeze({ key: 'previewCubeWhite', variable: '--preview-cube-white', label: 'White face' }),
             Object.freeze({ key: 'previewCubeRed', variable: '--preview-cube-red', label: 'Red face' }),
@@ -110,7 +110,7 @@ export const THEME_COLOR_SECTIONS = Object.freeze([
     }),
     Object.freeze({
         id: 'scramble-preview-skewb',
-        title: 'Scramble Preview: Skewb',
+        title: 'Skewb',
         items: Object.freeze([
             Object.freeze({ key: 'previewSkewbWhite', variable: '--preview-skewb-white', label: 'White face' }),
             Object.freeze({ key: 'previewSkewbRed', variable: '--preview-skewb-red', label: 'Red face' }),
@@ -123,7 +123,7 @@ export const THEME_COLOR_SECTIONS = Object.freeze([
     }),
     Object.freeze({
         id: 'scramble-preview-pyraminx',
-        title: 'Scramble Preview: Pyraminx',
+        title: 'Pyraminx',
         items: Object.freeze([
             Object.freeze({ key: 'previewPyraminxYellow', variable: '--preview-pyraminx-yellow', label: 'Yellow face' }),
             Object.freeze({ key: 'previewPyraminxGreen', variable: '--preview-pyraminx-green', label: 'Green face' }),
@@ -134,7 +134,7 @@ export const THEME_COLOR_SECTIONS = Object.freeze([
     }),
     Object.freeze({
         id: 'scramble-preview-megaminx',
-        title: 'Scramble Preview: Megaminx',
+        title: 'Megaminx',
         items: Object.freeze([
             Object.freeze({ key: 'previewMegaminxFace1', variable: '--preview-megaminx-face-1', label: 'White face' }),
             Object.freeze({ key: 'previewMegaminxFace2', variable: '--preview-megaminx-face-2', label: 'Yellow face' }),
@@ -153,7 +153,7 @@ export const THEME_COLOR_SECTIONS = Object.freeze([
     }),
     Object.freeze({
         id: 'scramble-preview-square1',
-        title: 'Scramble Preview: Square-1',
+        title: 'Square-1',
         items: Object.freeze([
             Object.freeze({ key: 'previewSquare1Up', variable: '--preview-square1-up', label: 'Up face' }),
             Object.freeze({ key: 'previewSquare1Down', variable: '--preview-square1-down', label: 'Down face' }),
@@ -166,7 +166,7 @@ export const THEME_COLOR_SECTIONS = Object.freeze([
     }),
     Object.freeze({
         id: 'scramble-preview-clock',
-        title: 'Scramble Preview: Clock',
+        title: 'Clock',
         items: Object.freeze([
             Object.freeze({ key: 'previewClockBody', variable: '--preview-clock-body', label: 'Body' }),
             Object.freeze({ key: 'previewClockFrontFace', variable: '--preview-clock-front-face', label: 'Front face' }),
@@ -341,6 +341,22 @@ const DEFAULT_THEME_BACKGROUND = Object.freeze({
     overlayColor: DEFAULT_BACKGROUND_IMAGE_OVERLAY_COLOR,
 });
 
+function createDefaultThemeCustomizationCollapsedSections() {
+    return Object.fromEntries([
+        ['simple-core', false],
+        ...THEME_COLOR_SECTIONS.map((section) => [section.id, section.id.startsWith('scramble-preview')]),
+        ['background-image', false],
+    ]);
+}
+
+function normalizeThemeCustomizationCollapsedSections(value) {
+    const source = value && typeof value === 'object' ? value : {};
+    const defaults = createDefaultThemeCustomizationCollapsedSections();
+    return Object.fromEntries(
+        Object.entries(defaults).map(([sectionId, defaultValue]) => [sectionId, typeof source[sectionId] === 'boolean' ? source[sectionId] : defaultValue]),
+    );
+}
+
 const DEFAULTS = {
     inspectionTime: 'off',  // 'off', '15s'
     inspectionAlerts: 'off', // 'off', 'voice', 'screen', 'both'
@@ -354,6 +370,8 @@ const DEFAULTS = {
     customThemes: createDefaultCustomThemes(),
     customThemeBases: createDefaultCustomThemeBases(),
     customThemeBackgrounds: createDefaultCustomThemeBackgrounds(),
+    themeCustomizationMode: 'simple',
+    themeCustomizationCollapsedSections: createDefaultThemeCustomizationCollapsedSections(),
     displayFont: 'jetbrains-mono',
     largeScrambleText: false,
     pillSize: 'medium',       // 'small', 'medium', 'large', 'hidden'
@@ -694,6 +712,7 @@ class Settings extends EventEmitter {
             customThemes: createDefaultCustomThemes(),
             customThemeBases: createDefaultCustomThemeBases(),
             customThemeBackgrounds: createDefaultCustomThemeBackgrounds(),
+            themeCustomizationCollapsedSections: loaded.themeCustomizationCollapsedSections,
         };
 
         if (!ANIMATION_MODES.has(this._settings.animationMode)) {
@@ -717,6 +736,9 @@ class Settings extends EventEmitter {
         this._settings.customThemes = themeState.customThemes;
         this._settings.customThemeBases = themeState.customThemeBases;
         this._settings.customThemeBackgrounds = themeState.customThemeBackgrounds;
+        this._settings.themeCustomizationCollapsedSections = normalizeThemeCustomizationCollapsedSections(
+            this._settings.themeCustomizationCollapsedSections,
+        );
 
         this._syncAnimationSettings();
         this._syncThemeSettings();
@@ -763,6 +785,9 @@ class Settings extends EventEmitter {
         this._settings.customThemes = normalizeCustomThemes(this._settings.customThemes);
         this._settings.customThemeBases = normalizeCustomThemeBases(this._settings.customThemeBases);
         this._settings.customThemeBackgrounds = normalizeCustomThemeBackgrounds(this._settings.customThemeBackgrounds);
+        this._settings.themeCustomizationCollapsedSections = normalizeThemeCustomizationCollapsedSections(
+            this._settings.themeCustomizationCollapsedSections,
+        );
 
         const activeTheme = this._getActiveThemeColors();
         this._settings.highContrastMode = this._settings.theme === THEME_OLED_ID;
@@ -901,6 +926,16 @@ class Settings extends EventEmitter {
             return;
         }
 
+        if (key === 'themeCustomizationCollapsedSections') {
+            const nextCollapsedSections = normalizeThemeCustomizationCollapsedSections(value);
+            if (deepEqual(this._settings.themeCustomizationCollapsedSections, nextCollapsedSections)) return;
+
+            this._settings.themeCustomizationCollapsedSections = nextCollapsedSections;
+            this._saveAndApply();
+            this.emit('change', 'themeCustomizationCollapsedSections', this.get('themeCustomizationCollapsedSections'));
+            return;
+        }
+
         const isObj = typeof value === 'object' && value !== null;
         const nextVal = isObj ? JSON.parse(JSON.stringify(value)) : value;
         if (!isObj && this._settings[key] === nextVal) return;
@@ -918,6 +953,7 @@ class Settings extends EventEmitter {
             customThemes: createDefaultCustomThemes(),
             customThemeBases: createDefaultCustomThemeBases(),
             customThemeBackgrounds: createDefaultCustomThemeBackgrounds(),
+            themeCustomizationCollapsedSections: createDefaultThemeCustomizationCollapsedSections(),
         };
         this._syncAnimationSettings();
         this._syncThemeSettings();
