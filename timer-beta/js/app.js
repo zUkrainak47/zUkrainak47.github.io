@@ -1,15 +1,15 @@
-import { timer } from './timer.js?v=202604051';
-import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=202604051';
-import { sessionManager } from './session.js?v=202604051';
-import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=202604051';
-import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=202604051';
-import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, truncateTimeDisplay } from './utils.js?v=202604051';
-import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=202604051';
-import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=202604051';
-import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=202604051';
-import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=202604051';
-import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=202604051';
-import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=202604051';
+import { timer } from './timer.js?v=202604052';
+import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=202604052';
+import { sessionManager } from './session.js?v=202604052';
+import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=202604052';
+import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=202604052';
+import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, truncateTimeDisplay } from './utils.js?v=202604052';
+import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=202604052';
+import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=202604052';
+import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=202604052';
+import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=202604052';
+import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=202604052';
+import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=202604052';
 
 let currentScramble = '';
 let currentSortCol = null;
@@ -112,14 +112,21 @@ function deriveSimpleThemeColors(seedColors) {
     const bgRgb = parseThemeHexToRgb(background, '#0d1117');
     const surfaceRgb = parseThemeHexToRgb(surface, background);
     const textRgb = parseThemeHexToRgb(text, '#e6edf3');
+    const scrambleTopTextRgb = parseThemeHexToRgb(scrambleTopText, text);
     const isDarkTheme = getThemeLuminance(bgRgb) < 0.32;
     const black = { r: 0, g: 0, b: 0 };
-    const blendSurfaceToText = (amount) => rgbToThemeHex(mixThemeRgb(surfaceRgb, textRgb, amount));
+    const blendSurfaceToText = (amount) => rgbToThemeHex(mixThemeRgb(surfaceRgb, scrambleTopTextRgb, amount));
     const blendBackgroundToSurface = (amount) => rgbToThemeHex(mixThemeRgb(bgRgb, surfaceRgb, amount));
     const dimBackground = (amount) => rgbToThemeHex(mixThemeRgb(bgRgb, black, amount));
     const toneTextToBackground = (amount) => rgbToThemeHex(mixThemeRgb(textRgb, bgRgb, amount));
     const surfaceBorder = blendSurfaceToText(isDarkTheme ? 0.18 : 0.24);
     const textSecondary = toneTextToBackground(isDarkTheme ? 0.38 : 0.5);
+    const floatingBorder = withThemeAlpha(scrambleTopText, isDarkTheme ? 0.08 : 0.14);
+    const floatingBorderStrong = withThemeAlpha(scrambleTopText, isDarkTheme ? 0.14 : 0.22);
+    const surfaceGhost = withThemeAlpha(scrambleTopText, isDarkTheme ? 0.05 : 0.08);
+    const surfaceGhostHover = withThemeAlpha(scrambleTopText, isDarkTheme ? 0.08 : 0.12);
+    const surfaceGhostActive = withThemeAlpha(scrambleTopText, isDarkTheme ? 0.12 : 0.18);
+    const surfaceGhostMuted = withThemeAlpha(scrambleTopText, isDarkTheme ? 0.025 : 0.04);
 
     return {
         bgPrimary: background,
@@ -135,12 +142,12 @@ function deriveSimpleThemeColors(seedColors) {
         surfaceElevated: withThemeAlpha(surface, isDarkTheme ? 0.9 : 0.96),
         floatingSurface: withThemeAlpha(blendSurfaceToText(isDarkTheme ? 0.04 : 0.08), 0.98),
         floatingSurfaceHover: withThemeAlpha(blendSurfaceToText(isDarkTheme ? 0.12 : 0.16), 0.99),
-        floatingSurfaceBorder: withThemeAlpha(text, isDarkTheme ? 0.08 : 0.14),
-        floatingSurfaceBorderStrong: withThemeAlpha(text, isDarkTheme ? 0.14 : 0.22),
-        surfaceGhost: withThemeAlpha(text, isDarkTheme ? 0.05 : 0.08),
-        surfaceGhostHover: withThemeAlpha(text, isDarkTheme ? 0.08 : 0.12),
-        surfaceGhostActive: withThemeAlpha(text, isDarkTheme ? 0.12 : 0.18),
-        surfaceGhostMuted: withThemeAlpha(text, isDarkTheme ? 0.025 : 0.04),
+        floatingSurfaceBorder: floatingBorder,
+        floatingSurfaceBorderStrong: floatingBorderStrong,
+        surfaceGhost,
+        surfaceGhostHover,
+        surfaceGhostActive,
+        surfaceGhostMuted,
         pillBorder: surfaceBorder,
         pillBorderHover: blendSurfaceToText(isDarkTheme ? 0.28 : 0.34),
         tooltipSurface: withThemeAlpha(surface, isDarkTheme ? 0.96 : 0.94),
@@ -168,7 +175,7 @@ async function registerServiceWorker() {
     if (window.location?.protocol === 'file:') return;
 
     try {
-        const serviceWorkerUrl = new URL('../sw.js?v=202604051', import.meta.url);
+        const serviceWorkerUrl = new URL('../sw.js?v=202604052', import.meta.url);
         await navigator.serviceWorker.register(serviceWorkerUrl);
     } catch (error) {
         console.warn('Service worker registration failed:', error);
