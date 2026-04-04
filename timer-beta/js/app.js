@@ -1,15 +1,15 @@
-import { timer } from './timer.js?v=202604056';
-import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=202604056';
-import { sessionManager } from './session.js?v=202604056';
-import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=202604056';
-import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=202604056';
-import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, truncateTimeDisplay } from './utils.js?v=202604056';
-import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=202604056';
-import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=202604056';
-import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=202604056';
-import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=202604056';
-import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=202604056';
-import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=202604056';
+import { timer } from './timer.js?v=2026040567';
+import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=2026040567';
+import { sessionManager } from './session.js?v=2026040567';
+import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=2026040567';
+import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=2026040567';
+import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, truncateTimeDisplay } from './utils.js?v=2026040567';
+import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=2026040567';
+import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=2026040567';
+import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=2026040567';
+import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=2026040567';
+import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=2026040567';
+import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=2026040567';
 
 let currentScramble = '';
 let currentSortCol = null;
@@ -195,7 +195,7 @@ async function registerServiceWorker() {
     if (window.location?.protocol === 'file:') return;
 
     try {
-        const serviceWorkerUrl = new URL('../sw.js?v=202604056', import.meta.url);
+        const serviceWorkerUrl = new URL('../sw.js?v=2026040567', import.meta.url);
         await navigator.serviceWorker.register(serviceWorkerUrl);
     } catch (error) {
         console.warn('Service worker registration failed:', error);
@@ -8380,6 +8380,9 @@ function initSettingsPanel() {
 
     if (googleDriveExportBtn) {
         googleDriveExportBtn.onclick = async () => {
+            const confirmed = await customConfirm('This will overwrite the existing Google Drive cloud save. Continue?');
+            if (!confirmed) return;
+
             googleDriveBusy = true;
             syncGoogleDriveButtons();
             setGoogleDriveStatus('Exporting backup to Google Drive...');
