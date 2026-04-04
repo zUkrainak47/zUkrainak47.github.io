@@ -75,7 +75,6 @@ export const THEME_COLOR_SECTIONS = Object.freeze([
             Object.freeze({ key: 'timerHolding', variable: '--timer-holding', label: 'Timer holding' }),
             Object.freeze({ key: 'timerReady', variable: '--timer-ready', label: 'Timer ready' }),
             Object.freeze({ key: 'timerRunning', variable: '--timer-running', label: 'Timer running' }),
-            Object.freeze({ key: 'timerStopped', variable: '--timer-stopped', label: 'Timer stopped', hidden: true }),
             Object.freeze({ key: 'statNewBest', variable: '--stat-new-best', label: 'New best highlight' }),
         ]),
     }),
@@ -235,7 +234,6 @@ const DEFAULT_THEME_COLORS = Object.freeze({
     timerHolding: '#f85149',
     timerReady: '#3fb950',
     timerRunning: '#e6edf3',
-    timerStopped: '#e6edf3',
     statBest: '#3fb950',
     statWorst: '#f85149',
     statAo5: '#f0883e',
@@ -558,8 +556,6 @@ function normalizeThemeColors(themeColors, fallback = DEFAULT_THEME_COLORS) {
     THEME_COLOR_KEYS.forEach((key) => {
         normalized[key] = normalizeThemeColorValue(source[key], fallback[key]);
     });
-
-    normalized.timerStopped = normalized.timerIdle;
 
     return normalized;
 }
@@ -949,7 +945,6 @@ class Settings extends EventEmitter {
         THEME_COLOR_ITEMS.forEach(({ key, variable }) => {
             document.documentElement.style.setProperty(variable, themeColors[key]);
         });
-        document.documentElement.style.setProperty('--timer-stopped', themeColors.timerIdle);
 
         document.documentElement.style.setProperty('--graph-color-ao5', themeColors.graphColorLine1);
         document.documentElement.style.setProperty('--graph-color-ao12', themeColors.graphColorLine2);

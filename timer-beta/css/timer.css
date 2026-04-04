@@ -165,7 +165,8 @@ body.background-spacebar-enabled #timer-display[data-timer-state="stopped"] {
     cursor: default;
 }
 
-#timer-display[data-timer-state="idle"] {
+#timer-display[data-timer-state="idle"],
+#timer-display[data-timer-state="stopped"] {
     color: var(--timer-idle);
 }
 
@@ -202,10 +203,6 @@ body.background-spacebar-enabled #timer-display[data-timer-state="stopped"]:hove
 
 #timer-display[data-timer-state="running"] {
     color: var(--timer-running);
-}
-
-#timer-display[data-timer-state="stopped"] {
-    color: var(--timer-stopped);
 }
 
 #manual-time-entry[hidden],
