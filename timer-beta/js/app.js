@@ -5949,8 +5949,6 @@ function initSettingsPanel() {
     const themeBackgroundImageUploadRow = document.getElementById('theme-background-image-upload-row');
     const themeBackgroundImageUrlInput = document.getElementById('theme-background-image-url');
     const themeBackgroundImageStatusEl = document.getElementById('theme-background-image-status');
-    const themeBackgroundImageApplyLinkBtn = document.getElementById('btn-theme-background-apply-link');
-    const themeBackgroundImageClearLinkBtn = document.getElementById('btn-theme-background-clear-link');
     const themeBackgroundImageUploadBtn = document.getElementById('btn-theme-background-upload');
     const themeBackgroundImageClearUploadBtn = document.getElementById('btn-theme-background-clear-upload');
     const themeBackgroundImageOverlayRow = document.getElementById('theme-background-image-overlay-row');
@@ -6426,14 +6424,7 @@ function initSettingsPanel() {
 
     const syncBackgroundImageOverlayUI = () => {
         const currentTheme = settings.get('theme');
-        const source = getBackgroundImageSource(currentTheme);
-        const mode = themeBackgroundImageModeOverride
-            || (source === 'upload'
-                ? 'upload'
-                : source === 'link' && getSavedBackgroundImageUrl(currentTheme)
-                    ? 'link'
-                    : 'none');
-        const shouldShow = mode !== 'none';
+        const shouldShow = Boolean(getEffectiveBackgroundImageUrl(currentTheme));
         const { hex, alpha, css } = decomposeThemeColor(
             getBackgroundImageOverlayColor(currentTheme),
             DEFAULTS.backgroundImageOverlayColor,
@@ -7305,6 +7296,41 @@ function initSettingsPanel() {
         return nextBackground;
     };
 
+    const commitThemeBackgroundImageLink = async () => {
+        const currentTheme = settings.get('theme');
+        if (!isCustomThemeId(currentTheme)) return false;
+
+        const nextUrl = String(themeBackgroundImageUrlInput?.value || '').trim();
+        const currentBackground = getThemeBackgroundSettings(currentTheme);
+        const nextBackground = normalizeThemeBackgroundSettings({
+            ...currentBackground,
+            source: nextUrl ? 'link' : 'none',
+            url: nextUrl,
+        });
+        const hasChanged = JSON.stringify(currentBackground) !== JSON.stringify(nextBackground);
+
+        themeBackgroundImageModeOverride = nextUrl ? 'link' : '';
+        await clearCachedBackgroundUpload(currentTheme);
+
+        if (hasChanged) {
+            applyThemeBackgroundChange(nextBackground);
+        } else {
+            applyBackgroundImage();
+            syncThemeBackgroundImageUI();
+        }
+
+        if (nextUrl) {
+            try {
+                await cacheLinkedBackgroundImage(nextUrl);
+            } catch (error) {
+                console.warn('Could not pre-cache background image link:', error);
+                alert('The image link was saved, but offline caching failed for that URL.');
+            }
+        }
+
+        return hasChanged;
+    };
+
     const saveThemeColor = (key) => {
         flushThemeColorSave(key);
     };
@@ -7519,36 +7545,6 @@ function initSettingsPanel() {
         syncThemeBackgroundImageUI();
         themeBackgroundImageModeSelect.blur();
     });
-    themeBackgroundImageApplyLinkBtn?.addEventListener('click', async () => {
-        const currentTheme = settings.get('theme');
-        if (!isCustomThemeId(currentTheme)) return;
-        const nextUrl = String(themeBackgroundImageUrlInput?.value || '').trim();
-        themeBackgroundImageModeOverride = nextUrl ? 'link' : '';
-        await clearCachedBackgroundUpload(currentTheme);
-        applyThemeBackgroundChange((background) => ({
-            ...background,
-            source: nextUrl ? 'link' : 'none',
-            url: nextUrl,
-        }));
-        if (nextUrl) {
-            try {
-                await cacheLinkedBackgroundImage(nextUrl);
-            } catch (error) {
-                console.warn('Could not pre-cache background image link:', error);
-                alert('The image link was applied, but offline caching failed for that URL.');
-            }
-        }
-        if (nextUrl) {
-            setThemeActionFeedback(themeBackgroundImageApplyLinkBtn, 'Applied');
-        }
-    });
-    themeBackgroundImageClearLinkBtn?.addEventListener('click', async () => {
-        const currentTheme = settings.get('theme');
-        if (!isCustomThemeId(currentTheme)) return;
-        themeBackgroundImageModeOverride = '';
-        await clearCachedBackgroundUpload(currentTheme);
-        applyThemeBackgroundChange((background) => ({ ...background, source: 'none', url: '' }));
-    });
     themeBackgroundImageUploadBtn?.addEventListener('click', async () => {
         try {
             const currentTheme = settings.get('theme');
@@ -7586,10 +7582,13 @@ function initSettingsPanel() {
         applyBackgroundImage();
         syncThemeBackgroundImageUI();
     });
+    themeBackgroundImageUrlInput?.addEventListener('blur', () => {
+        void commitThemeBackgroundImageLink();
+    });
     themeBackgroundImageUrlInput?.addEventListener('keydown', (event) => {
         if (event.key !== 'Enter') return;
         event.preventDefault();
-        themeBackgroundImageApplyLinkBtn?.click();
+        themeBackgroundImageUrlInput.blur();
     });
     themeBackgroundOverlayColorInput?.addEventListener('input', scheduleThemeBackgroundOverlaySave);
     themeBackgroundOverlayColorInput?.addEventListener('change', flushThemeBackgroundOverlaySave);
