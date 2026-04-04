@@ -1,4 +1,4 @@
-const APP_CACHE_NAME = 'ukratimer-app-v32';
+const APP_CACHE_NAME = 'ukratimer-app-v35';
 const RUNTIME_CACHE_NAME = 'ukratimer-runtime-v18';
 const USER_ASSET_CACHE_NAME = 'ukratimer-user-assets-v1';
 const LOCAL_BACKGROUND_UPLOAD_PATH_PREFIX = './cached-assets/theme-background-upload-';
@@ -20,8 +20,8 @@ const LOCAL_PRECACHE_PATHS = [
     './css/cube.css?v=7',
     './css/graph.css?v=9',
     './css/modal.css?v=16',
-    './css/settings.css?v=21',
-    './js/app.js?v=147',
+    './css/settings.css?v=22',
+    './js/app.js?v=150',
     './js/timer.js?v=14',
     './js/scramble.js?v=20',
     './js/session.js?v=10',

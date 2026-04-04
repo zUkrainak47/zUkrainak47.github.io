@@ -25,7 +25,7 @@ async function registerServiceWorker() {
     if (window.location?.protocol === 'file:') return;
 
     try {
-        const serviceWorkerUrl = new URL('../sw.js?v=29', import.meta.url);
+        const serviceWorkerUrl = new URL('../sw.js?v=35', import.meta.url);
         await navigator.serviceWorker.register(serviceWorkerUrl);
     } catch (error) {
         console.warn('Service worker registration failed:', error);
@@ -224,6 +224,7 @@ let scramblePreviewOverlayEl = null;
 let scramblePreviewModalCanvas = null;
 let scramblePreviewModalSizeFrame = 0;
 let scramblePreviewThemeRefreshTimeout = 0;
+let themeCustomizationCloseCleanupTimer = 0;
 let syncSettingsRowSeparators = () => { };
 let shortcutTooltipEl = null;
 let viewportLayoutFrame = null;
@@ -3459,7 +3460,7 @@ function copyCurrentScrambleToClipboard() {
     if (!textEl || textEl.classList.contains('loading')) return;
 
     navigator.clipboard.writeText(currentScramble);
-    textEl.style.color = 'var(--stat-best)';
+    textEl.style.color = '#3fb950';
     if (scrambleCopyTimeout) clearTimeout(scrambleCopyTimeout);
     scrambleCopyTimeout = setTimeout(() => {
         textEl.style.color = '';
@@ -4148,11 +4149,26 @@ function isSettingsPanelBlocking() {
 
 function closeThemeCustomizationModal() {
     if (!themeCustomizationOverlayEl) return;
-    themeCustomizationOverlayEl.classList.remove('theme-customization-overlay-docked');
-    themeCustomizationOverlayEl.classList.remove('theme-customization-overlay-docked-bottom-left');
-    settingsOverlayEl?.classList.remove('theme-customization-host-docked');
-    document.body.classList.remove('theme-customization-docked');
+    const wasDocked = isThemeCustomizationDocked();
+    if (themeCustomizationCloseCleanupTimer) {
+        window.clearTimeout(themeCustomizationCloseCleanupTimer);
+        themeCustomizationCloseCleanupTimer = 0;
+    }
     themeCustomizationOverlayEl.classList.remove('active');
+    if (wasDocked) {
+        themeCustomizationCloseCleanupTimer = window.setTimeout(() => {
+            themeCustomizationOverlayEl?.classList.remove('theme-customization-overlay-docked');
+            themeCustomizationOverlayEl?.classList.remove('theme-customization-overlay-docked-bottom-left');
+            settingsOverlayEl?.classList.remove('theme-customization-host-docked');
+            document.body.classList.remove('theme-customization-docked');
+            themeCustomizationCloseCleanupTimer = 0;
+        }, 220);
+    } else {
+        themeCustomizationOverlayEl.classList.remove('theme-customization-overlay-docked');
+        themeCustomizationOverlayEl.classList.remove('theme-customization-overlay-docked-bottom-left');
+        settingsOverlayEl?.classList.remove('theme-customization-host-docked');
+        document.body.classList.remove('theme-customization-docked');
+    }
     if (document.activeElement) document.activeElement.blur();
 }
 
@@ -4187,11 +4203,11 @@ function closeSettingsPanel({ isPopState = false, isSwitching = false } = {}) {
     );
 
     if (shouldKeepDockedThemeOpen) {
-        settingsOverlayEl.classList.add('theme-customization-host-docked');
+        settingsOverlayEl.classList.remove('active');
     } else {
         closeThemeCustomizationModal();
+        settingsOverlayEl.classList.remove('active');
     }
-    settingsOverlayEl.classList.remove('active');
     if (document.activeElement) document.activeElement.blur();
 }
 
@@ -5876,7 +5892,9 @@ function initSettingsPanel() {
                 return;
             }
             closeThemeCustomizationModal();
-            closeSettingsPanel();
+            if (window.history.state?.isBackIntercepted) {
+                backToDismiss();
+            }
             return;
         }
         closeThemeCustomizationModal();
@@ -5942,7 +5960,7 @@ function initSettingsPanel() {
             }
         }
 
-        if (e.code === 'Escape' && settingsOverlayEl.classList.contains('active')) {
+        if (e.code === 'Escape' && (settingsOverlayEl.classList.contains('active') || isThemeCustomizationOpen())) {
             if (isSettingsPanelBlocking()) {
                 e.preventDefault();
                 e.stopImmediatePropagation();
@@ -7016,11 +7034,21 @@ function initSettingsPanel() {
         const currentTheme = settings.get('theme');
         if (!themeCustomizationOverlayEl || !isCustomThemeId(currentTheme)) return;
 
+        if (themeCustomizationCloseCleanupTimer) {
+            window.clearTimeout(themeCustomizationCloseCleanupTimer);
+            themeCustomizationCloseCleanupTimer = 0;
+        }
+        themeCustomizationOverlayEl.classList.remove('theme-customization-overlay-docked');
+        themeCustomizationOverlayEl.classList.remove('theme-customization-overlay-docked-bottom-left');
+        settingsOverlayEl?.classList.remove('theme-customization-host-docked');
+        document.body.classList.remove('theme-customization-docked');
         ensureThemeUndoContext(currentTheme);
         syncThemeCustomizationModal();
         themeCustomizationOverlayEl.classList.add('active');
         setThemeCustomizationDockPosition('');
         syncThemeCustomizationDockButtons();
+        settingsOverlayEl?.classList.remove('theme-customization-host-docked');
+        settingsOverlayEl?.classList.remove('active');
     };
 
     const applyPresetToCurrentCustomTheme = (presetThemeId) => {
