@@ -19,6 +19,145 @@ let scrambleCopyTimeout = null;
 let cubingWarmupHideTimeout = null;
 const statsCache = new StatsCache();
 let _skipSolveAddedRefresh = false; // set true when commitSolve manages the refresh itself
+const THEME_EDITOR_MODE_SIMPLE = 'simple';
+const THEME_EDITOR_MODE_FULL = 'full';
+const SIMPLE_THEME_COLOR_SECTIONS = Object.freeze([
+    Object.freeze({
+        id: 'simple-core',
+        title: 'Core Colors',
+        items: Object.freeze([
+            Object.freeze({ key: 'bgPrimary', label: 'Page background' }),
+            Object.freeze({ key: 'surface', label: 'Panel surface' }),
+            Object.freeze({ key: 'textPrimary', label: 'Text' }),
+            Object.freeze({ key: 'accent', label: 'Accent' }),
+            Object.freeze({ key: 'timerReady', label: 'Success / ready' }),
+            Object.freeze({ key: 'timerHolding', label: 'Warning / hold' }),
+        ]),
+    }),
+]);
+const SIMPLE_THEME_SEED_KEYS = Object.freeze(
+    SIMPLE_THEME_COLOR_SECTIONS.flatMap((section) => section.items.map(({ key }) => key)),
+);
+const SIMPLE_THEME_SHARED_SECTION_IDS = new Set([
+    'graph',
+    'scramble-preview-cube',
+    'scramble-preview-skewb',
+    'scramble-preview-pyraminx',
+    'scramble-preview-megaminx',
+    'scramble-preview-square1',
+    'scramble-preview-clock',
+]);
+
+function clampThemeChannel(value) {
+    return Math.max(0, Math.min(255, Math.round(Number(value) || 0)));
+}
+
+function parseThemeHexToRgb(value, fallback = '#000000') {
+    const { hex } = decomposeThemeColor(value, fallback);
+    return {
+        r: parseInt(hex.slice(1, 3), 16),
+        g: parseInt(hex.slice(3, 5), 16),
+        b: parseInt(hex.slice(5, 7), 16),
+    };
+}
+
+function rgbToThemeHex({ r, g, b }) {
+    return `#${[r, g, b].map((channel) => clampThemeChannel(channel).toString(16).padStart(2, '0')).join('')}`;
+}
+
+function mixThemeRgb(a, b, amount) {
+    const weight = Math.max(0, Math.min(1, Number(amount) || 0));
+    return {
+        r: clampThemeChannel(a.r + ((b.r - a.r) * weight)),
+        g: clampThemeChannel(a.g + ((b.g - a.g) * weight)),
+        b: clampThemeChannel(a.b + ((b.b - a.b) * weight)),
+    };
+}
+
+function mixThemeColor(colorA, colorB, amount) {
+    return rgbToThemeHex(mixThemeRgb(
+        parseThemeHexToRgb(colorA, '#000000'),
+        parseThemeHexToRgb(colorB, '#ffffff'),
+        amount,
+    ));
+}
+
+function withThemeAlpha(value, alpha) {
+    const { hex } = decomposeThemeColor(value, '#000000');
+    return composeThemeColor(hex, Math.max(0, Math.min(100, Math.round((Number(alpha) || 0) * 100))));
+}
+
+function getThemeLuminance(value) {
+    const { r, g, b } = typeof value === 'string' ? parseThemeHexToRgb(value) : value;
+    const channels = [r, g, b].map((channel) => {
+        const normalized = channel / 255;
+        return normalized <= 0.03928
+            ? normalized / 12.92
+            : ((normalized + 0.055) / 1.055) ** 2.4;
+    });
+
+    return (0.2126 * channels[0]) + (0.7152 * channels[1]) + (0.0722 * channels[2]);
+}
+
+function deriveSimpleThemeColors(seedColors) {
+    const background = decomposeThemeColor(seedColors.bgPrimary, '#0d1117').css;
+    const surface = decomposeThemeColor(seedColors.surface, background).css;
+    const text = decomposeThemeColor(seedColors.textPrimary, '#e6edf3').css;
+    const accent = decomposeThemeColor(seedColors.accent, '#58a6ff').css;
+    const success = decomposeThemeColor(seedColors.timerReady, '#3fb950').css;
+    const danger = decomposeThemeColor(seedColors.timerHolding, '#f85149').css;
+    const bgRgb = parseThemeHexToRgb(background, '#0d1117');
+    const surfaceRgb = parseThemeHexToRgb(surface, background);
+    const textRgb = parseThemeHexToRgb(text, '#e6edf3');
+    const isDarkTheme = getThemeLuminance(bgRgb) < 0.32;
+    const black = { r: 0, g: 0, b: 0 };
+    const blendSurfaceToText = (amount) => rgbToThemeHex(mixThemeRgb(surfaceRgb, textRgb, amount));
+    const blendBackgroundToSurface = (amount) => rgbToThemeHex(mixThemeRgb(bgRgb, surfaceRgb, amount));
+    const dimBackground = (amount) => rgbToThemeHex(mixThemeRgb(bgRgb, black, amount));
+    const toneTextToBackground = (amount) => rgbToThemeHex(mixThemeRgb(textRgb, bgRgb, amount));
+    const surfaceBorder = blendSurfaceToText(isDarkTheme ? 0.18 : 0.24);
+    const textSecondary = toneTextToBackground(isDarkTheme ? 0.38 : 0.5);
+
+    return {
+        bgPrimary: background,
+        bgSecondary: blendBackgroundToSurface(isDarkTheme ? 0.42 : 0.14),
+        bgTertiary: blendBackgroundToSurface(isDarkTheme ? 0.7 : 0.24),
+        bgOverlay: withThemeAlpha(dimBackground(isDarkTheme ? 0.78 : 0.55), isDarkTheme ? 0.68 : 0.5),
+        panelSheen: withThemeAlpha(text, isDarkTheme ? 0.03 : 0.05),
+        panelSheenFade: withThemeAlpha(text, 0),
+        surface,
+        surfaceHover: blendSurfaceToText(isDarkTheme ? 0.08 : 0.12),
+        surfaceActive: blendSurfaceToText(isDarkTheme ? 0.15 : 0.2),
+        surfaceBorder,
+        surfaceElevated: withThemeAlpha(surface, isDarkTheme ? 0.9 : 0.96),
+        floatingSurface: withThemeAlpha(blendSurfaceToText(isDarkTheme ? 0.04 : 0.08), 0.98),
+        floatingSurfaceHover: withThemeAlpha(blendSurfaceToText(isDarkTheme ? 0.12 : 0.16), 0.99),
+        floatingSurfaceBorder: withThemeAlpha(text, isDarkTheme ? 0.08 : 0.14),
+        floatingSurfaceBorderStrong: withThemeAlpha(text, isDarkTheme ? 0.14 : 0.22),
+        surfaceGhost: withThemeAlpha(text, isDarkTheme ? 0.05 : 0.08),
+        surfaceGhostHover: withThemeAlpha(text, isDarkTheme ? 0.08 : 0.12),
+        surfaceGhostActive: withThemeAlpha(text, isDarkTheme ? 0.12 : 0.18),
+        surfaceGhostMuted: withThemeAlpha(text, isDarkTheme ? 0.025 : 0.04),
+        pillBorder: surfaceBorder,
+        pillBorderHover: blendSurfaceToText(isDarkTheme ? 0.28 : 0.34),
+        tooltipSurface: withThemeAlpha(surface, isDarkTheme ? 0.96 : 0.94),
+        mobileTabsSurface: withThemeAlpha(blendBackgroundToSurface(isDarkTheme ? 0.42 : 0.14), isDarkTheme ? 0.86 : 0.93),
+        newBestPopupSurface: withThemeAlpha(background, isDarkTheme ? 0.94 : 0.9),
+        dividerSubtle: withThemeAlpha(text, isDarkTheme ? 0.08 : 0.12),
+        textPrimary: text,
+        textSecondary,
+        textTertiary: toneTextToBackground(isDarkTheme ? 0.56 : 0.68),
+        textMuted: toneTextToBackground(isDarkTheme ? 0.72 : 0.82),
+        accent,
+        accentHover: mixThemeColor(accent, text, 0.16),
+        accentSubtle: withThemeAlpha(accent, isDarkTheme ? 0.15 : 0.22),
+        timerIdle: text,
+        timerHolding: danger,
+        timerReady: success,
+        timerRunning: text,
+        statNewBest: mixThemeColor(success, text, 0.18),
+    };
+}
 
 async function registerServiceWorker() {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
@@ -5787,10 +5926,13 @@ function initSettingsPanel() {
     themeCustomizationOverlayEl = document.getElementById('theme-customization-overlay');
     const btn = document.getElementById('btn-settings');
     const themeCustomizationTitleEl = document.getElementById('theme-customization-title');
+    const themeCustomizationSimpleSectionEl = document.getElementById('theme-customization-simple-section');
     const themeCustomizationSectionsEl = document.getElementById('theme-customization-sections');
     const themeCustomizationCloseBtn = document.getElementById('theme-customization-close');
     const themeCustomizationDockTopRightBtn = document.getElementById('theme-customization-dock-top-right');
     const themeCustomizationDockBottomLeftBtn = document.getElementById('theme-customization-dock-bottom-left');
+    const themeModeSimpleBtn = document.getElementById('btn-theme-mode-simple');
+    const themeModeFullBtn = document.getElementById('btn-theme-mode-full');
     const themeCopyDefaultBtn = document.getElementById('btn-theme-copy-default');
     const themeCopyOledBtn = document.getElementById('btn-theme-copy-oled');
     const themeExportFileBtn = document.getElementById('btn-theme-export-file');
@@ -5813,6 +5955,7 @@ function initSettingsPanel() {
     const themeBackgroundOverlayValue = document.getElementById('theme-background-overlay-value');
     const themeBackgroundOverlayResetBtn = document.getElementById('btn-theme-background-overlay-reset');
     const themeColorControls = new Map();
+    const simpleThemeColorControls = new Map();
     const themeColorKeys = THEME_COLOR_SECTIONS.flatMap((section) => section.items.map(({ key }) => key));
     const THEME_UNDO_LIMIT = 50;
     const THEME_EDIT_COMMIT_DELAY_MS = 220;
@@ -5830,7 +5973,9 @@ function initSettingsPanel() {
     let liveBackgroundUploadPreviewUrl = '';
     let liveBackgroundUploadPreviewThemeId = '';
     const themeColorDebounceTimers = new Map();
+    const simpleThemeColorDebounceTimers = new Map();
     let themeBackgroundOverlayDebounceTimer = 0;
+    let themeCustomizationColorMode = THEME_EDITOR_MODE_SIMPLE;
     const THEME_DOCK_TOP_RIGHT = 'top-right';
     const THEME_DOCK_BOTTOM_LEFT = 'bottom-left';
     const canDockThemeCustomization = () => true;
@@ -6031,9 +6176,15 @@ function initSettingsPanel() {
     const themeSelect = document.getElementById('setting-theme');
     const themeCustomizeRow = document.getElementById('setting-theme-customize-row');
     const customizeThemeBtn = document.getElementById('btn-customize-theme');
+    const simpleModeSections = [
+        ...SIMPLE_THEME_COLOR_SECTIONS,
+        ...THEME_COLOR_SECTIONS.filter((section) => SIMPLE_THEME_SHARED_SECTION_IDS.has(section.id)),
+    ];
 
-    if (themeCustomizationSectionsEl) {
-        themeCustomizationSectionsEl.innerHTML = THEME_COLOR_SECTIONS.map((section) => `
+    const renderThemeColorSections = (container, sections, controlMap, { includeAlpha = true } = {}) => {
+        if (!container) return;
+
+        container.innerHTML = sections.map((section) => `
             <section class="theme-customization-section">
               <h3 class="theme-customization-section-title">${section.title}</h3>
               <div class="theme-customization-grid">
@@ -6047,10 +6198,12 @@ function initSettingsPanel() {
                       <input type="color" data-theme-color-input="${item.key}">
                       <button class="btn-action theme-color-reset" type="button" data-theme-color-reset="${item.key}">Reset</button>
                     </div>
-                    <div class="theme-color-alpha">
-                      <input type="range" min="0" max="100" step="1" value="100" data-theme-color-alpha="${item.key}">
-                      <span class="theme-color-alpha-value" data-theme-color-alpha-value="${item.key}">100%</span>
-                    </div>
+                    ${includeAlpha ? `
+                      <div class="theme-color-alpha">
+                        <input type="range" min="0" max="100" step="1" value="100" data-theme-color-alpha="${item.key}">
+                        <span class="theme-color-alpha-value" data-theme-color-alpha-value="${item.key}">100%</span>
+                      </div>
+                    ` : ''}
                     <div class="theme-color-value" data-theme-color-value="${item.key}"></div>
                   </div>
                 `).join('')}
@@ -6058,7 +6211,7 @@ function initSettingsPanel() {
             </section>
         `).join('');
 
-        themeCustomizationSectionsEl.querySelectorAll('[data-theme-color-key]').forEach((card) => {
+        container.querySelectorAll('[data-theme-color-key]').forEach((card) => {
             const key = card.getAttribute('data-theme-color-key');
             const colorInput = card.querySelector(`[data-theme-color-input="${key}"]`);
             const alphaInput = card.querySelector(`[data-theme-color-alpha="${key}"]`);
@@ -6068,9 +6221,43 @@ function initSettingsPanel() {
             const resetBtn = card.querySelector(`[data-theme-color-reset="${key}"]`);
             if (!key || !colorInput || !preview || !valueLabel) return;
 
-            themeColorControls.set(key, { colorInput, alphaInput, alphaValue, preview, valueLabel, resetBtn });
+            controlMap.set(key, { colorInput, alphaInput, alphaValue, preview, valueLabel, resetBtn });
         });
-    }
+    };
+
+    renderThemeColorSections(themeCustomizationSimpleSectionEl, simpleModeSections, simpleThemeColorControls, {
+        includeAlpha: false,
+    });
+    renderThemeColorSections(themeCustomizationSectionsEl, THEME_COLOR_SECTIONS, themeColorControls);
+
+    const syncThemeCustomizationModeButtons = () => {
+        [
+            [themeModeSimpleBtn, THEME_EDITOR_MODE_SIMPLE],
+            [themeModeFullBtn, THEME_EDITOR_MODE_FULL],
+        ].forEach(([button, mode]) => {
+            if (!button) return;
+            const isActive = themeCustomizationColorMode === mode;
+            button.classList.toggle('active-toggle', isActive);
+            button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+        });
+    };
+
+    const syncThemeCustomizationModeUI = () => {
+        if (themeCustomizationSimpleSectionEl) {
+            themeCustomizationSimpleSectionEl.hidden = themeCustomizationColorMode !== THEME_EDITOR_MODE_SIMPLE;
+            themeCustomizationSimpleSectionEl.style.display = themeCustomizationColorMode === THEME_EDITOR_MODE_SIMPLE ? '' : 'none';
+        }
+        if (themeCustomizationSectionsEl) {
+            themeCustomizationSectionsEl.hidden = themeCustomizationColorMode !== THEME_EDITOR_MODE_FULL;
+            themeCustomizationSectionsEl.style.display = themeCustomizationColorMode === THEME_EDITOR_MODE_FULL ? '' : 'none';
+        }
+        syncThemeCustomizationModeButtons();
+    };
+
+    const setThemeCustomizationColorMode = (mode) => {
+        themeCustomizationColorMode = mode === THEME_EDITOR_MODE_FULL ? THEME_EDITOR_MODE_FULL : THEME_EDITOR_MODE_SIMPLE;
+        syncThemeCustomizationModeUI();
+    };
 
     const getCustomThemeBaseId = (themeId = settings.get('theme')) => {
         if (!isCustomThemeId(themeId)) return THEME_DEFAULT_ID;
@@ -6267,11 +6454,11 @@ function initSettingsPanel() {
         syncBackgroundImageOverlayUI();
         if (themeBackgroundImageStatusEl) {
             themeBackgroundImageStatusEl.textContent = source === 'upload' && hasCachedBackgroundUpload
-                ? 'Cached uploaded image is active and available offline on this device.'
+                ? 'Uploaded image is active.'
                 : mode === 'upload'
-                    ? 'Choose an image to cache it locally for offline use on this device.'
+                    ? 'Choose an image.'
                 : source === 'link' && savedUrl
-                    ? 'Saved image link is active and cached for offline use on this device.'
+                    ? 'Linked image is active.'
                     : 'No custom background image is active.';
         }
     };
@@ -6356,8 +6543,72 @@ function initSettingsPanel() {
         });
     };
 
-    const syncThemeColorControl = (key, value) => {
-        const controls = themeColorControls.get(key);
+    const getSimpleThemeSeedColors = (themeColors = settings.getActiveThemeColors()) => (
+        Object.fromEntries(SIMPLE_THEME_SEED_KEYS.map((key) => [key, themeColors[key]]))
+    );
+
+    const applySimpleThemeSeedChange = (seedChanges) => {
+        const currentTheme = settings.get('theme');
+        if (!isCustomThemeId(currentTheme)) return;
+
+        const currentThemeColors = settings.getActiveThemeColors();
+        const nextSeedColors = {
+            ...getSimpleThemeSeedColors(currentThemeColors),
+            ...Object.fromEntries(Object.entries(seedChanges || {}).filter(([, value]) => Boolean(value))),
+        };
+        const derivedColors = deriveSimpleThemeColors(nextSeedColors);
+        const nextCustomThemes = settings.get('customThemes');
+        const nextThemeColors = {
+            ...nextCustomThemes[currentTheme],
+            ...derivedColors,
+        };
+
+        if (JSON.stringify(nextCustomThemes[currentTheme]) === JSON.stringify(nextThemeColors)) {
+            return;
+        }
+
+        beginThemeEditTransaction(currentTheme);
+        nextCustomThemes[currentTheme] = nextThemeColors;
+        settings.set('customThemes', nextCustomThemes);
+    };
+
+    const flushSimpleThemeColorSave = (key) => {
+        const controls = simpleThemeColorControls.get(key);
+        if (!controls) return;
+
+        const pendingTimer = simpleThemeColorDebounceTimers.get(key);
+        if (pendingTimer) {
+            window.clearTimeout(pendingTimer);
+            simpleThemeColorDebounceTimers.delete(key);
+        }
+
+        applySimpleThemeSeedChange({
+            [key]: composeThemeColor(controls.colorInput.value, 100),
+        });
+    };
+
+    const scheduleSimpleThemeColorSave = (key) => {
+        const existingTimer = simpleThemeColorDebounceTimers.get(key);
+        if (existingTimer) {
+            window.clearTimeout(existingTimer);
+        }
+
+        simpleThemeColorDebounceTimers.set(key, window.setTimeout(() => {
+            simpleThemeColorDebounceTimers.delete(key);
+            flushSimpleThemeColorSave(key);
+        }, THEME_LIVE_EDIT_DEBOUNCE_MS));
+    };
+
+    const resetSimpleThemeColor = (key) => {
+        const currentTheme = settings.get('theme');
+        if (!isCustomThemeId(currentTheme)) return;
+
+        const baseThemeColors = getThemePresetColors(getCustomThemeBaseId(currentTheme));
+        applySimpleThemeSeedChange({ [key]: baseThemeColors[key] });
+    };
+
+    const syncColorControl = (controlMap, key, value) => {
+        const controls = controlMap.get(key);
         if (!controls) return;
 
         const { hex, alpha, css } = decomposeThemeColor(value);
@@ -6376,17 +6627,25 @@ function initSettingsPanel() {
         }
     };
 
+    const syncThemeColorControl = (key, value) => {
+        syncColorControl(themeColorControls, key, value);
+    };
+
     const syncThemeCustomizationModal = () => {
         const currentTheme = settings.get('theme');
         const currentThemeColors = settings.getActiveThemeColors();
 
         themeCustomizationTitleEl.textContent = `${THEME_OPTION_LABELS.get(currentTheme) || 'Theme'}`;
+        simpleThemeColorControls.forEach((_, key) => {
+            syncColorControl(simpleThemeColorControls, key, currentThemeColors[key]);
+        });
         THEME_COLOR_SECTIONS.forEach((section) => {
             section.items.forEach(({ key }) => {
                 syncThemeColorControl(key, currentThemeColors[key]);
             });
         });
         syncThemeBackgroundImageUI();
+        syncThemeCustomizationModeUI();
     };
 
     const setThemeActionFeedback = (button, label) => {
@@ -6944,14 +7203,14 @@ function initSettingsPanel() {
         settings.set('customThemes', nextCustomThemes);
     };
 
-    const flushThemeColorSave = (key) => {
-        const controls = themeColorControls.get(key);
+    const flushDirectThemeColorSave = (key, controlMap = themeColorControls, debounceTimers = themeColorDebounceTimers) => {
+        const controls = controlMap.get(key);
         if (!controls) return;
 
-        const pendingTimer = themeColorDebounceTimers.get(key);
+        const pendingTimer = debounceTimers.get(key);
         if (pendingTimer) {
             window.clearTimeout(pendingTimer);
-            themeColorDebounceTimers.delete(key);
+            debounceTimers.delete(key);
         }
 
         const nextColor = composeThemeColor(
@@ -6961,16 +7220,24 @@ function initSettingsPanel() {
         applyThemeColorChange(key, nextColor);
     };
 
-    const scheduleThemeColorSave = (key) => {
-        const existingTimer = themeColorDebounceTimers.get(key);
+    const scheduleDirectThemeColorSave = (key, controlMap = themeColorControls, debounceTimers = themeColorDebounceTimers) => {
+        const existingTimer = debounceTimers.get(key);
         if (existingTimer) {
             window.clearTimeout(existingTimer);
         }
 
-        themeColorDebounceTimers.set(key, window.setTimeout(() => {
-            themeColorDebounceTimers.delete(key);
-            flushThemeColorSave(key);
+        debounceTimers.set(key, window.setTimeout(() => {
+            debounceTimers.delete(key);
+            flushDirectThemeColorSave(key, controlMap, debounceTimers);
         }, THEME_LIVE_EDIT_DEBOUNCE_MS));
+    };
+
+    const flushThemeColorSave = (key) => {
+        flushDirectThemeColorSave(key, themeColorControls, themeColorDebounceTimers);
+    };
+
+    const scheduleThemeColorSave = (key) => {
+        scheduleDirectThemeColorSave(key, themeColorControls, themeColorDebounceTimers);
     };
 
     const applyThemeBackgroundChange = (updater) => {
@@ -7088,6 +7355,37 @@ function initSettingsPanel() {
             controls.alphaInput.addEventListener('change', () => saveThemeColor(key));
         }
     });
+
+    simpleThemeColorControls.forEach((controls, key) => {
+        if (SIMPLE_THEME_SEED_KEYS.includes(key)) {
+            controls.colorInput.addEventListener('input', () => scheduleSimpleThemeColorSave(key));
+            controls.colorInput.addEventListener('change', () => flushSimpleThemeColorSave(key));
+            controls.resetBtn?.addEventListener('click', () => resetSimpleThemeColor(key));
+            return;
+        }
+
+        controls.colorInput.addEventListener('input', () => scheduleDirectThemeColorSave(
+            key,
+            simpleThemeColorControls,
+            simpleThemeColorDebounceTimers,
+        ));
+        controls.colorInput.addEventListener('change', () => flushDirectThemeColorSave(
+            key,
+            simpleThemeColorControls,
+            simpleThemeColorDebounceTimers,
+        ));
+        controls.resetBtn?.addEventListener('click', () => resetThemeColor(key));
+    });
+
+    themeModeSimpleBtn?.addEventListener('click', () => {
+        setThemeCustomizationColorMode(THEME_EDITOR_MODE_SIMPLE);
+        themeModeSimpleBtn.blur();
+    });
+    themeModeFullBtn?.addEventListener('click', () => {
+        setThemeCustomizationColorMode(THEME_EDITOR_MODE_FULL);
+        themeModeFullBtn.blur();
+    });
+    syncThemeCustomizationModeUI();
 
     if (themeSelect) {
         themeSelect.value = settings.get('theme');

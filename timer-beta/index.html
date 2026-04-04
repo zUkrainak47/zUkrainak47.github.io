@@ -977,6 +977,16 @@
       </div>
       <div class="modal-body theme-customization-body">
         <!-- <p class="theme-customization-intro">Changes save automatically to the selected custom theme slot.</p> -->
+        <div class="theme-customization-mode-bar">
+          <div class="theme-customization-mode-copy">
+            <span class="theme-customization-mode-title">Color options</span>
+            <span class="theme-customization-mode-note">Simple derives the rest. Full exposes every color.</span>
+          </div>
+          <div class="theme-customization-mode-toggle" role="group" aria-label="Theme color editor mode">
+            <button id="btn-theme-mode-simple" class="btn-action theme-customization-mode-btn" type="button" aria-pressed="true">Simple</button>
+            <button id="btn-theme-mode-full" class="btn-action theme-customization-mode-btn" type="button" aria-pressed="false">Full</button>
+          </div>
+        </div>
         <div class="theme-customization-actions">
           <button id="btn-theme-copy-default" class="btn-action" type="button">Copy Default</button>
           <button id="btn-theme-copy-oled" class="btn-action" type="button">Copy OLED</button>
@@ -1022,6 +1032,7 @@
           </div>
           <div id="theme-background-image-status" class="theme-background-image-status"></div>
         </div>
+        <div id="theme-customization-simple-section" class="theme-customization-sections"></div>
         <div id="theme-customization-sections" class="theme-customization-sections"></div>
       </div>
     </div>
