@@ -27,6 +27,7 @@
   --surface-ghost-active: rgba(255, 255, 255, 0.08);
   --surface-ghost-muted: rgba(255, 255, 255, 0.025);
   --pill-border: #3a4048;
+  --pill-background-hover: #21262d;
   --pill-border-hover: #505863;
   --tooltip-surface: rgba(28, 33, 40, 0.96);
   --mobile-tabs-surface: rgba(13, 17, 23, 0.86);

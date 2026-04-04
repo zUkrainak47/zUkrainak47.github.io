@@ -89,6 +89,12 @@ function withThemeAlpha(value, alpha) {
     return composeThemeColor(hex, Math.max(0, Math.min(100, Math.round((Number(alpha) || 0) * 100))));
 }
 
+function scaleThemeAlpha(value, alphaMultiplier = 1, fallback = '#000000') {
+    const { hex, alpha } = decomposeThemeColor(value, fallback);
+    const multiplier = Math.max(0, Math.min(1, Number(alphaMultiplier) || 0));
+    return composeThemeColor(hex, alpha * multiplier);
+}
+
 function getThemeLuminance(value) {
     const { r, g, b } = typeof value === 'string' ? parseThemeHexToRgb(value) : value;
     const channels = [r, g, b].map((channel) => {
@@ -102,13 +108,25 @@ function getThemeLuminance(value) {
 }
 
 function deriveSimpleThemeColors(seedColors) {
-    const background = decomposeThemeColor(seedColors.bgPrimary, '#0d1117').css;
-    const surface = decomposeThemeColor(seedColors.surface, background).css;
-    const text = decomposeThemeColor(seedColors.textPrimary, '#e6edf3').css;
-    const scrambleTopText = decomposeThemeColor(seedColors.scrambleTopText, text).css;
-    const accent = decomposeThemeColor(seedColors.accent, '#58a6ff').css;
-    const success = decomposeThemeColor(seedColors.timerReady, '#3fb950').css;
-    const danger = decomposeThemeColor(seedColors.timerHolding, '#f85149').css;
+    const backgroundSeed = decomposeThemeColor(seedColors.bgPrimary, '#0d1117');
+    const surfaceSeed = decomposeThemeColor(seedColors.surface, backgroundSeed.css);
+    const textSeed = decomposeThemeColor(seedColors.textPrimary, '#e6edf3');
+    const scrambleTopTextSeed = decomposeThemeColor(seedColors.scrambleTopText, textSeed.css);
+    const accentSeed = decomposeThemeColor(seedColors.accent, '#58a6ff');
+    const successSeed = decomposeThemeColor(seedColors.timerReady, '#3fb950');
+    const dangerSeed = decomposeThemeColor(seedColors.timerHolding, '#f85149');
+    const background = backgroundSeed.css;
+    const surface = surfaceSeed.css;
+    const text = textSeed.css;
+    const scrambleTopText = scrambleTopTextSeed.css;
+    const accent = accentSeed.css;
+    const success = successSeed.css;
+    const danger = dangerSeed.css;
+    const backgroundAlpha = backgroundSeed.alpha / 100;
+    const surfaceAlpha = surfaceSeed.alpha / 100;
+    const textAlpha = textSeed.alpha / 100;
+    const accentAlpha = accentSeed.alpha / 100;
+    const successAlpha = successSeed.alpha / 100;
     const bgRgb = parseThemeHexToRgb(background, '#0d1117');
     const surfaceRgb = parseThemeHexToRgb(surface, background);
     const textRgb = parseThemeHexToRgb(text, '#e6edf3');
@@ -127,46 +145,48 @@ function deriveSimpleThemeColors(seedColors) {
     const surfaceGhostHover = withThemeAlpha(scrambleTopText, isDarkTheme ? 0.08 : 0.12);
     const surfaceGhostActive = withThemeAlpha(scrambleTopText, isDarkTheme ? 0.12 : 0.18);
     const surfaceGhostMuted = withThemeAlpha(scrambleTopText, isDarkTheme ? 0.025 : 0.04);
+    const pillBackgroundHover = blendBackgroundToSurface(isDarkTheme ? 0.7 : 0.24);
 
     return {
         bgPrimary: background,
-        bgSecondary: blendBackgroundToSurface(isDarkTheme ? 0.42 : 0.14),
-        bgTertiary: blendBackgroundToSurface(isDarkTheme ? 0.7 : 0.24),
-        bgOverlay: withThemeAlpha(dimBackground(isDarkTheme ? 0.78 : 0.55), isDarkTheme ? 0.68 : 0.5),
-        panelSheen: withThemeAlpha(text, isDarkTheme ? 0.03 : 0.05),
-        panelSheenFade: withThemeAlpha(text, 0),
+        bgSecondary: scaleThemeAlpha(blendBackgroundToSurface(isDarkTheme ? 0.42 : 0.14), backgroundAlpha),
+        bgTertiary: scaleThemeAlpha(blendBackgroundToSurface(isDarkTheme ? 0.7 : 0.24), backgroundAlpha),
+        bgOverlay: scaleThemeAlpha(withThemeAlpha(dimBackground(isDarkTheme ? 0.78 : 0.55), isDarkTheme ? 0.68 : 0.5), backgroundAlpha),
+        panelSheen: scaleThemeAlpha(withThemeAlpha(text, isDarkTheme ? 0.03 : 0.05), backgroundAlpha),
+        panelSheenFade: scaleThemeAlpha(withThemeAlpha(text, 0), backgroundAlpha),
         surface,
-        surfaceHover: blendSurfaceToText(isDarkTheme ? 0.08 : 0.12),
-        surfaceActive: blendSurfaceToText(isDarkTheme ? 0.15 : 0.2),
-        surfaceBorder,
-        surfaceElevated: withThemeAlpha(surface, isDarkTheme ? 0.9 : 0.96),
-        floatingSurface: withThemeAlpha(blendSurfaceToText(isDarkTheme ? 0.04 : 0.08), 0.98),
-        floatingSurfaceHover: withThemeAlpha(blendSurfaceToText(isDarkTheme ? 0.12 : 0.16), 0.99),
-        floatingSurfaceBorder: floatingBorder,
-        floatingSurfaceBorderStrong: floatingBorderStrong,
-        surfaceGhost,
-        surfaceGhostHover,
-        surfaceGhostActive,
-        surfaceGhostMuted,
-        pillBorder: surfaceBorder,
-        pillBorderHover: blendSurfaceToText(isDarkTheme ? 0.28 : 0.34),
-        tooltipSurface: withThemeAlpha(surface, isDarkTheme ? 0.96 : 0.94),
-        mobileTabsSurface: withThemeAlpha(blendBackgroundToSurface(isDarkTheme ? 0.42 : 0.14), isDarkTheme ? 0.86 : 0.93),
-        newBestPopupSurface: withThemeAlpha(background, isDarkTheme ? 0.94 : 0.9),
-        dividerSubtle: withThemeAlpha(text, isDarkTheme ? 0.08 : 0.12),
+        surfaceHover: scaleThemeAlpha(blendSurfaceToText(isDarkTheme ? 0.08 : 0.12), surfaceAlpha),
+        surfaceActive: scaleThemeAlpha(blendSurfaceToText(isDarkTheme ? 0.15 : 0.2), surfaceAlpha),
+        surfaceBorder: scaleThemeAlpha(surfaceBorder, surfaceAlpha),
+        surfaceElevated: scaleThemeAlpha(withThemeAlpha(surface, isDarkTheme ? 0.9 : 0.96), surfaceAlpha),
+        floatingSurface: scaleThemeAlpha(withThemeAlpha(blendSurfaceToText(isDarkTheme ? 0.04 : 0.08), 0.98), surfaceAlpha),
+        floatingSurfaceHover: scaleThemeAlpha(withThemeAlpha(blendSurfaceToText(isDarkTheme ? 0.12 : 0.16), 0.99), surfaceAlpha),
+        floatingSurfaceBorder: scaleThemeAlpha(floatingBorder, surfaceAlpha),
+        floatingSurfaceBorderStrong: scaleThemeAlpha(floatingBorderStrong, surfaceAlpha),
+        surfaceGhost: scaleThemeAlpha(surfaceGhost, surfaceAlpha),
+        surfaceGhostHover: scaleThemeAlpha(surfaceGhostHover, surfaceAlpha),
+        surfaceGhostActive: scaleThemeAlpha(surfaceGhostActive, surfaceAlpha),
+        surfaceGhostMuted: scaleThemeAlpha(surfaceGhostMuted, surfaceAlpha),
+        pillBorder: scaleThemeAlpha(surfaceBorder, surfaceAlpha),
+        pillBackgroundHover: scaleThemeAlpha(pillBackgroundHover, surfaceAlpha),
+        pillBorderHover: scaleThemeAlpha(blendSurfaceToText(isDarkTheme ? 0.28 : 0.34), surfaceAlpha),
+        tooltipSurface: scaleThemeAlpha(withThemeAlpha(surface, isDarkTheme ? 0.96 : 0.94), surfaceAlpha),
+        mobileTabsSurface: scaleThemeAlpha(withThemeAlpha(blendBackgroundToSurface(isDarkTheme ? 0.42 : 0.14), isDarkTheme ? 0.86 : 0.93), surfaceAlpha),
+        newBestPopupSurface: scaleThemeAlpha(withThemeAlpha(background, isDarkTheme ? 0.94 : 0.9), backgroundAlpha),
+        dividerSubtle: scaleThemeAlpha(withThemeAlpha(text, isDarkTheme ? 0.08 : 0.12), textAlpha),
         textPrimary: text,
         scrambleTopText,
-        textSecondary,
-        textTertiary: toneTextToBackground(isDarkTheme ? 0.56 : 0.68),
-        textMuted: toneTextToBackground(isDarkTheme ? 0.72 : 0.82),
+        textSecondary: scaleThemeAlpha(textSecondary, textAlpha),
+        textTertiary: scaleThemeAlpha(toneTextToBackground(isDarkTheme ? 0.56 : 0.68), textAlpha),
+        textMuted: scaleThemeAlpha(toneTextToBackground(isDarkTheme ? 0.72 : 0.82), textAlpha),
         accent,
-        accentHover: mixThemeColor(accent, text, 0.16),
-        accentSubtle: withThemeAlpha(accent, isDarkTheme ? 0.15 : 0.22),
+        accentHover: scaleThemeAlpha(mixThemeColor(accent, text, 0.16), accentAlpha),
+        accentSubtle: scaleThemeAlpha(withThemeAlpha(accent, isDarkTheme ? 0.15 : 0.22), accentAlpha),
         timerIdle: scrambleTopText,
         timerHolding: danger,
         timerReady: success,
         timerRunning: text,
-        statNewBest: mixThemeColor(success, text, 0.18),
+        statNewBest: scaleThemeAlpha(mixThemeColor(success, text, 0.18), successAlpha),
     };
 }
 
@@ -6304,9 +6324,7 @@ function initSettingsPanel() {
         });
     };
 
-    renderThemeColorSections(themeCustomizationSimpleSectionEl, simpleModeSections, simpleThemeColorControls, {
-        includeAlpha: false,
-    });
+    renderThemeColorSections(themeCustomizationSimpleSectionEl, simpleModeSections, simpleThemeColorControls);
     renderThemeColorSections(themeCustomizationSectionsEl, THEME_COLOR_SECTIONS, themeColorControls);
     attachThemeSectionToggleHandlers(themeBackgroundImageToggleBtn?.parentElement);
     const backgroundImageSectionCollapsed = Boolean(
@@ -6697,7 +6715,10 @@ function initSettingsPanel() {
         }
 
         applySimpleThemeSeedChange({
-            [key]: composeThemeColor(controls.colorInput.value, 100),
+            [key]: composeThemeColor(
+                controls.colorInput.value,
+                controls.alphaInput ? controls.alphaInput.value : 100,
+            ),
         });
     };
 
@@ -7522,6 +7543,8 @@ function initSettingsPanel() {
         if (SIMPLE_THEME_SEED_KEYS.includes(key)) {
             controls.colorInput.addEventListener('input', () => scheduleSimpleThemeColorSave(key));
             controls.colorInput.addEventListener('change', () => flushSimpleThemeColorSave(key));
+            controls.alphaInput?.addEventListener('input', () => scheduleSimpleThemeColorSave(key));
+            controls.alphaInput?.addEventListener('change', () => flushSimpleThemeColorSave(key));
             controls.resetBtn?.addEventListener('click', () => resetSimpleThemeColor(key));
             return;
         }
