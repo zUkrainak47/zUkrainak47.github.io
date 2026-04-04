@@ -59,6 +59,7 @@ export const THEME_COLOR_SECTIONS = Object.freeze([
         title: 'Text And Accent',
         items: Object.freeze([
             Object.freeze({ key: 'textPrimary', variable: '--text-primary', label: 'Primary text' }),
+            Object.freeze({ key: 'scrambleTopText', variable: '--scramble-top-text', label: 'Text #2' }),
             Object.freeze({ key: 'textSecondary', variable: '--text-secondary', label: 'Secondary text' }),
             Object.freeze({ key: 'textTertiary', variable: '--text-tertiary', label: 'Tertiary text' }),
             Object.freeze({ key: 'textMuted', variable: '--text-muted', label: 'Muted text' }),
@@ -224,6 +225,7 @@ const DEFAULT_THEME_COLORS = Object.freeze({
     newBestPopupSurface: 'rgba(13, 17, 23, 0.94)',
     dividerSubtle: 'rgba(255, 255, 255, 0.08)',
     textPrimary: '#e6edf3',
+    scrambleTopText: '#e6edf3',
     textSecondary: '#8b949e',
     textTertiary: '#6e7681',
     textMuted: '#484f58',

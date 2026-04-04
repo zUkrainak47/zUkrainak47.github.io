@@ -29,6 +29,7 @@ const SIMPLE_THEME_COLOR_SECTIONS = Object.freeze([
             Object.freeze({ key: 'bgPrimary', label: 'Page background' }),
             Object.freeze({ key: 'surface', label: 'Panel surface' }),
             Object.freeze({ key: 'textPrimary', label: 'Text' }),
+            Object.freeze({ key: 'scrambleTopText', label: 'Text #2' }),
             Object.freeze({ key: 'accent', label: 'Accent' }),
             Object.freeze({ key: 'timerReady', label: 'Success / ready' }),
             Object.freeze({ key: 'timerHolding', label: 'Warning / hold' }),
@@ -103,6 +104,7 @@ function deriveSimpleThemeColors(seedColors) {
     const background = decomposeThemeColor(seedColors.bgPrimary, '#0d1117').css;
     const surface = decomposeThemeColor(seedColors.surface, background).css;
     const text = decomposeThemeColor(seedColors.textPrimary, '#e6edf3').css;
+    const scrambleTopText = decomposeThemeColor(seedColors.scrambleTopText, text).css;
     const accent = decomposeThemeColor(seedColors.accent, '#58a6ff').css;
     const success = decomposeThemeColor(seedColors.timerReady, '#3fb950').css;
     const danger = decomposeThemeColor(seedColors.timerHolding, '#f85149').css;
@@ -145,13 +147,14 @@ function deriveSimpleThemeColors(seedColors) {
         newBestPopupSurface: withThemeAlpha(background, isDarkTheme ? 0.94 : 0.9),
         dividerSubtle: withThemeAlpha(text, isDarkTheme ? 0.08 : 0.12),
         textPrimary: text,
+        scrambleTopText,
         textSecondary,
         textTertiary: toneTextToBackground(isDarkTheme ? 0.56 : 0.68),
         textMuted: toneTextToBackground(isDarkTheme ? 0.72 : 0.82),
         accent,
         accentHover: mixThemeColor(accent, text, 0.16),
         accentSubtle: withThemeAlpha(accent, isDarkTheme ? 0.15 : 0.22),
-        timerIdle: text,
+        timerIdle: scrambleTopText,
         timerHolding: danger,
         timerReady: success,
         timerRunning: text,
