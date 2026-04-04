@@ -1,15 +1,15 @@
-import { timer } from './timer.js?v=202604049';
-import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=202604049';
-import { sessionManager } from './session.js?v=202604049';
-import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=202604049';
-import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=202604049';
-import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, truncateTimeDisplay } from './utils.js?v=202604049';
-import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=202604049';
-import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=202604049';
-import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=202604049';
-import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=202604049';
-import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=202604049';
-import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=202604049';
+import { timer } from './timer.js?v=202604051';
+import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=202604051';
+import { sessionManager } from './session.js?v=202604051';
+import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=202604051';
+import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=202604051';
+import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, truncateTimeDisplay } from './utils.js?v=202604051';
+import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=202604051';
+import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=202604051';
+import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=202604051';
+import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=202604051';
+import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=202604051';
+import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=202604051';
 
 let currentScramble = '';
 let currentSortCol = null;
@@ -168,7 +168,7 @@ async function registerServiceWorker() {
     if (window.location?.protocol === 'file:') return;
 
     try {
-        const serviceWorkerUrl = new URL('../sw.js?v=202604049', import.meta.url);
+        const serviceWorkerUrl = new URL('../sw.js?v=202604051', import.meta.url);
         await navigator.serviceWorker.register(serviceWorkerUrl);
     } catch (error) {
         console.warn('Service worker registration failed:', error);
@@ -6122,7 +6122,7 @@ function initSettingsPanel() {
         const allowNativeTextUndo = activeTag === 'textarea'
             || (activeTag === 'input' && !['color', 'range', 'button', 'submit', 'checkbox'].includes(activeInputType));
 
-        if (isUndoShortcut && isThemeCustomizationOpen() && (!isThemeCustomizationDocked() || themeCustomizationHasFocus) && !allowNativeTextUndo) {
+        if (isUndoShortcut && isThemeCustomizationOpen() && !allowNativeTextUndo) {
             if (undoThemeCustomizationChange()) {
                 e.preventDefault();
                 e.stopImmediatePropagation();
@@ -6130,7 +6130,7 @@ function initSettingsPanel() {
             }
         }
 
-        if (isRedoShortcut && isThemeCustomizationOpen() && (!isThemeCustomizationDocked() || themeCustomizationHasFocus) && !allowNativeTextUndo) {
+        if (isRedoShortcut && isThemeCustomizationOpen() && !allowNativeTextUndo) {
             if (redoThemeCustomizationChange()) {
                 e.preventDefault();
                 e.stopImmediatePropagation();
@@ -6440,6 +6440,26 @@ function initSettingsPanel() {
         return true;
     };
 
+    const restoreCachedBackgroundUploadPreview = async (themeId) => {
+        const cache = await openUserAssetCache();
+        if (!cache || !isCustomThemeId(themeId)) return false;
+
+        const response = await cache.match(getThemeUploadCacheUrl(themeId));
+        if (!response) return false;
+
+        const blob = await response.blob();
+        if (!blob || !blob.size) return false;
+
+        if (liveBackgroundUploadPreviewThemeId === themeId && liveBackgroundUploadPreviewUrl) {
+            return true;
+        }
+
+        clearLiveBackgroundUploadPreview();
+        liveBackgroundUploadPreviewUrl = URL.createObjectURL(blob);
+        liveBackgroundUploadPreviewThemeId = themeId;
+        return true;
+    };
+
     const cacheLinkedBackgroundImage = async (url) => {
         const cache = await openUserAssetCache();
         if (!cache) return false;
@@ -6569,6 +6589,10 @@ function initSettingsPanel() {
             };
             settings.set('customThemeBackgrounds', nextCustomThemeBackgrounds);
             return;
+        }
+
+        if (backgroundSettings.source === 'upload' && hasCachedBackgroundUpload) {
+            await restoreCachedBackgroundUploadPreview(currentTheme);
         }
 
         if (backgroundSettings.source === 'link' && !backgroundSettings.url) {
@@ -7370,7 +7394,7 @@ function initSettingsPanel() {
         });
         const hasChanged = JSON.stringify(currentBackground) !== JSON.stringify(nextBackground);
 
-        themeBackgroundImageModeOverride = nextUrl ? 'link' : '';
+        themeBackgroundImageModeOverride = 'link';
 
         if (hasChanged) {
             applyThemeBackgroundChange(nextBackground);
@@ -7588,7 +7612,7 @@ function initSettingsPanel() {
         if (!isCustomThemeId(currentTheme)) return;
         const nextMode = themeBackgroundImageModeSelect.value;
         if (nextMode === 'none') {
-            themeBackgroundImageModeOverride = '';
+            themeBackgroundImageModeOverride = 'none';
             applyThemeBackgroundChange((background) => ({ ...background, source: 'none' }));
         } else if (nextMode === 'link') {
             themeBackgroundImageModeOverride = 'link';
@@ -7597,14 +7621,12 @@ function initSettingsPanel() {
                 source: background.url ? 'link' : 'none',
             }));
         } else if (nextMode === 'upload') {
+            themeBackgroundImageModeOverride = 'upload';
             if (hasAvailableBackgroundUpload(currentTheme)) {
-                themeBackgroundImageModeOverride = '';
                 applyThemeBackgroundChange((background) => ({
                     ...background,
                     source: 'upload',
                 }));
-            } else {
-                themeBackgroundImageModeOverride = 'upload';
             }
         }
         applyBackgroundImage();
@@ -7621,7 +7643,7 @@ function initSettingsPanel() {
             }
             liveBackgroundUploadPreviewUrl = URL.createObjectURL(file);
             liveBackgroundUploadPreviewThemeId = currentTheme;
-            themeBackgroundImageModeOverride = '';
+            themeBackgroundImageModeOverride = 'upload';
             applyThemeBackgroundChange((background) => ({
                 ...background,
                 source: 'upload',
@@ -7641,7 +7663,7 @@ function initSettingsPanel() {
     themeBackgroundImageClearUploadBtn?.addEventListener('click', async () => {
         const currentTheme = settings.get('theme');
         if (!isCustomThemeId(currentTheme)) return;
-        themeBackgroundImageModeOverride = '';
+        themeBackgroundImageModeOverride = 'upload';
         await clearCachedBackgroundUpload(currentTheme);
         applyThemeBackgroundChange((background) => ({ ...background, source: 'none' }));
         applyBackgroundImage();
@@ -7666,8 +7688,11 @@ function initSettingsPanel() {
         }));
     });
     settings.on('change', (key) => {
-        if (key === 'theme' || key === 'customThemeBackgrounds') {
+        if (key === 'theme') {
             themeBackgroundImageModeOverride = '';
+            void reconcileBackgroundImageState();
+        }
+        if (key === 'customThemeBackgrounds') {
             void reconcileBackgroundImageState();
         }
         if (key !== 'theme' && key !== 'customThemes' && key !== 'customThemeBases' && key !== 'customThemeBackgrounds') return;
