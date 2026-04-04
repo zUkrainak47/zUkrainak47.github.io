@@ -846,6 +846,14 @@ body.mobile-viewport #setting-large-scramble-text-row {
         justify-content: flex-start;
         max-width: 100%;
     }
+
+    .theme-customization-mode-toggle {
+        border-radius: var(--radius-md);
+    }
+
+    .theme-customization-mode-btn {
+        border-radius: var(--radius-sm);
+    }
 }
 
 /* Toggle switch */

@@ -1,4 +1,4 @@
-import * as db from './db.js?v=202604053';
+import * as db from './db.js?v=202604054';
 
 const STORAGE_PREFIX = 'cubetimer_';
 const STORAGE_VERSION = 1;
