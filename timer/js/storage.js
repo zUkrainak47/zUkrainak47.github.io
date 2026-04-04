@@ -344,6 +344,10 @@ const CSTIMER_EXPORT_SETTING_DEFAULTS = Object.freeze({
     hideUIWhileSolving: true,
     pillSize: 'medium',
     showDelta: false,
+    theme: 'default',
+    backgroundImageSource: 'none',
+    backgroundImageUrl: '',
+    backgroundImageOverlayColor: 'rgba(0, 0, 0, 0.9)',
 });
 const SUMMARY_STATS_PRESET_STRINGS = Object.freeze({
     extended: 'mo3 ao5 ao12 ao25 ao50 ao100',
@@ -551,6 +555,11 @@ function _deriveSettingsFromCsTimerProperties(properties) {
         settingsData.showDelta = properties?.showDiff === 'n' ? false : true;
     }
 
+    if (properties?.bgImgS === 'u' && typeof properties?.bgImgSrc === 'string') {
+        settingsData.backgroundImageSource = 'link';
+        settingsData.backgroundImageUrl = String(properties.bgImgSrc).trim();
+    }
+
     return settingsData;
 }
 
@@ -735,6 +744,16 @@ export async function exportCsTimer() {
         ...CSTIMER_EXPORT_SETTING_DEFAULTS,
         ...storedSettingsData,
     };
+    const activeThemeId = typeof settingsData.theme === 'string' ? settingsData.theme : 'default';
+    const activeCustomThemeBackground = storedSettingsData.customThemeBackgrounds
+        && typeof storedSettingsData.customThemeBackgrounds === 'object'
+        ? storedSettingsData.customThemeBackgrounds[activeThemeId]
+        : null;
+    const activeBackgroundUrl = typeof activeCustomThemeBackground?.url === 'string'
+        ? activeCustomThemeBackground.url.trim()
+        : '';
+    settingsData.backgroundImageSource = activeCustomThemeBackground?.source === 'link' && activeBackgroundUrl ? 'link' : 'none';
+    settingsData.backgroundImageUrl = settingsData.backgroundImageSource === 'link' ? activeBackgroundUrl : '';
     const activeSessionId = load('activeSessionId', null);
     const activeSessionIndex = Math.max(0, sessions.findIndex((session) => session.id === activeSessionId));
     const activeSession = sessions[activeSessionIndex] || sessions[0] || null;
@@ -813,6 +832,11 @@ export async function exportCsTimer() {
         ...(settingsData.hideUIWhileSolving === false ? { ahide: false } : {}),
         ...(settingsData.pillSize === 'hidden' ? { showAvg: false } : {}),
         ...(settingsData.showDelta === false ? { showDiff: 'n' } : {}),
+        ...(settingsData.backgroundImageSource === 'link'
+            && typeof settingsData.backgroundImageUrl === 'string'
+            && settingsData.backgroundImageUrl.trim()
+            ? { bgImgS: 'u', bgImgSrc: settingsData.backgroundImageUrl.trim() }
+            : {}),
         ...(stat1 ? { stat1l: stat1.length } : {}),
         ...(stat1?.type ? { stat1t: stat1.type } : {}),
         ...(stat2 ? { stat2l: stat2.length } : {}),

@@ -9,6 +9,8 @@
   --bg-glow-3: rgba(63, 185, 80, 0.12);
   --panel-sheen: rgba(255, 255, 255, 0.02);
   --panel-sheen-fade: rgba(255, 255, 255, 0);
+  --app-background-image: none;
+  --app-background-overlay-layer: none;
 
   /* Surface / panels */
   --surface: #1c2128;
@@ -47,7 +49,6 @@
   --timer-holding: #f85149;
   --timer-ready: #3fb950;
   --timer-running: #e6edf3;
-  --timer-stopped: #e6edf3;
 
   /* Statistics */
   --stat-best: #3fb950;
@@ -55,6 +56,9 @@
   --stat-ao5: #f0883e;
   --stat-ao12: #a371f7;
   --stat-ao100: #58a6ff;
+  --stat-new-best: #fe2b2b;
+  --danger: var(--stat-worst);
+  --success: var(--stat-best);
 
   /* Graph */
   --graph-color-time: #8b949e;
@@ -65,6 +69,11 @@
   --graph-color-ao12: #2b91ff;
   --graph-color-ao100: #a371f7;
   --graph-grid: #3c4552;
+  --distribution-legend-bg: rgba(13, 17, 23, 0.92);
+  --distribution-legend-border: rgba(255, 255, 255, 0.12);
+  --distribution-selected-stroke: #79c0ff;
+  --timer-delta-glow-strong: rgba(12, 17, 22, 1);
+  --timer-delta-glow-soft: rgba(12, 17, 22, 0.92);
 
   /* Cube face colors */
   --cube-white: #FFF;
@@ -74,6 +83,54 @@
   --cube-blue: #00F;
   --cube-green: #33CD32;
   --cube-bg: #333333;
+  --preview-cube-white: #ffffff;
+  --preview-cube-red: #ff0000;
+  --preview-cube-green: #33cd32;
+  --preview-cube-yellow: #ffff05;
+  --preview-cube-orange: #ffa503;
+  --preview-cube-blue: #0000ff;
+  --preview-cube-outline: rgba(0, 0, 0, 0.4);
+  --preview-skewb-white: #ffffff;
+  --preview-skewb-red: #ff0000;
+  --preview-skewb-green: #33cd32;
+  --preview-skewb-yellow: #ffff05;
+  --preview-skewb-orange: #ffa503;
+  --preview-skewb-blue: #0000ff;
+  --preview-skewb-outline: rgba(0, 0, 0, 0.4);
+  --preview-pyraminx-yellow: #ffff05;
+  --preview-pyraminx-green: #33cd32;
+  --preview-pyraminx-red: #ff0000;
+  --preview-pyraminx-blue: #0000ff;
+  --preview-pyraminx-outline: rgba(0, 0, 0, 0.4);
+  --preview-megaminx-face-1: #f8f8f5;
+  --preview-megaminx-face-2: #f9c91c;
+  --preview-megaminx-face-3: #fff6b4;
+  --preview-megaminx-face-4: #9c9c9c;
+  --preview-megaminx-face-5: #ec1111;
+  --preview-megaminx-face-6: #0a7f12;
+  --preview-megaminx-face-7: #74fb00;
+  --preview-megaminx-face-8: #ff9136;
+  --preview-megaminx-face-9: #1223c8;
+  --preview-megaminx-face-10: #8a28ff;
+  --preview-megaminx-face-11: #e28dee;
+  --preview-megaminx-face-12: #8bd6f8;
+  --preview-megaminx-outline: rgba(0, 0, 0, 0.45);
+  --preview-square1-up: #ffff00;
+  --preview-square1-down: #ffffff;
+  --preview-square1-front: #ff0000;
+  --preview-square1-back: #ff8800;
+  --preview-square1-left: #0000ff;
+  --preview-square1-right: #00ff00;
+  --preview-square1-outline: #000000;
+  --preview-clock-body: #000000;
+  --preview-clock-front-face: #57c5f8;
+  --preview-clock-back-face: #315f9b;
+  --preview-clock-front-dial: #315f9b;
+  --preview-clock-back-dial: #57c5f8;
+  --preview-clock-hand-fill: #ffd700;
+  --preview-clock-hand-stroke: #ff0000;
+  --preview-clock-pin-up: #ffeb3b;
+  --preview-clock-pin-down: #7b4c20;
 
   /* Spacing */
   --space-xs: 4px;
@@ -135,34 +192,6 @@ body.no-animations * {
 }
 
 body.high-contrast-mode {
-  --bg-primary: #000000;
-  --bg-secondary: #0a0a0a;
-  --bg-tertiary: #0a0a0a;
-  --bg-overlay: rgba(0, 0, 0, 0.78);
-  --panel-sheen: rgba(255, 255, 255, 0);
-  --panel-sheen-fade: rgba(255, 255, 255, 0);
-  --pill-border: var(--text-muted);
-  --pill-border-hover: var(--text-tertiary);
-  --surface: #0a0a0a;
-  --surface-hover: #1b1b1b;
-  --surface-active: #232323;
-  --surface-border: var(--text-muted);
-  --surface-elevated: rgba(10, 10, 10, 0.96);
-  --floating-surface: rgba(10, 10, 10, 0.98);
-  --floating-surface-hover: rgba(10, 10, 10, 0.98);
-  --floating-surface-border: var(--text-muted);
-  --floating-surface-border-strong: var(--text-tertiary);
-  --surface-ghost: #0a0a0a;
-  --surface-ghost-hover: #0d0d0d;
-  --surface-ghost-active: #141414;
-  --surface-ghost-muted: #0a0a0a;
-  --tooltip-surface: rgba(10, 10, 10, 0.96);
-  --mobile-tabs-surface: rgba(10, 10, 10, 0.96);
-  --new-best-popup-surface: rgba(0, 0, 0, 0.94);
-  --divider-subtle: rgba(255, 255, 255, 0.06);
-  --text-secondary: #a2abb5;
-  --text-tertiary: #78818b;
-  --text-muted: #3d434b;
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.52);
   --shadow-card: 0 20px 50px rgba(0, 0, 0, 0.52);
 }

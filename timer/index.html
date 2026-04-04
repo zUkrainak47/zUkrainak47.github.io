@@ -15,7 +15,7 @@
   <meta name="google-drive-client-id" content="210179775275-e62l646u4b8157hqs7j2ovt6ap608bjo.apps.googleusercontent.com">
   <title>UkraTimer</title>
 
-  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="manifest" href="manifest.webmanifest?v=29">
   <link rel="apple-touch-icon" href="resources/pwa-icon-180.png">
 
   <!-- Fonts -->
@@ -39,16 +39,16 @@
   <link rel="preload" href="resources/distribution.svg" as="image" type="image/svg+xml">
 
   <!-- Styles -->
-  <link rel="stylesheet" href="css/variables.css?v=6">
-  <link rel="stylesheet" href="css/base.css?v=18">
+  <link rel="stylesheet" href="css/variables.css?v=8">
+  <link rel="stylesheet" href="css/base.css?v=23">
   <link rel="stylesheet" href="css/layout.css?v=15">
   <link rel="stylesheet" href="css/scramble.css?v=37">
-  <link rel="stylesheet" href="css/timer.css?v=34">
+  <link rel="stylesheet" href="css/timer.css?v=36">
   <link rel="stylesheet" href="css/stats.css?v=19">
   <link rel="stylesheet" href="css/cube.css?v=7">
   <link rel="stylesheet" href="css/graph.css?v=9">
   <link rel="stylesheet" href="css/modal.css?v=16">
-  <link rel="stylesheet" href="css/settings.css?v=12">
+  <link rel="stylesheet" href="css/settings.css?v=22">
 </head>
 
 <body>
@@ -659,6 +659,17 @@
             </select>
           </div>
 
+          <div class="setting-row" id="setting-swipe-down-gesture-row">
+            <div class="setting-label">
+              Swipe down to open quick actions
+              <small>Allow downward swipe in Timer tab</small>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="setting-swipe-down-gesture">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
           <div class="setting-row">
             <div class="setting-label">
               Start/stop with mouse
@@ -755,13 +766,24 @@
 
           <div class="setting-row">
             <div class="setting-label">
-              High contrast mode
-              <small>OLED theme</small>
+              Theme
+              <small>Default, OLED, or one of three saved custom themes</small>
             </div>
-            <label class="toggle">
-              <input type="checkbox" id="setting-high-contrast">
-              <span class="toggle-slider"></span>
-            </label>
+            <select id="setting-theme">
+              <option value="default">Default</option>
+              <option value="oled">OLED</option>
+              <option value="custom1">Custom 1</option>
+              <option value="custom2">Custom 2</option>
+              <option value="custom3">Custom 3</option>
+            </select>
+          </div>
+
+          <div class="setting-row" id="setting-theme-customize-row" style="display:none;">
+            <div class="setting-label">
+              Custom theme colors
+              <!-- <small>Saved with export and import backups</small> -->
+            </div>
+            <button id="btn-customize-theme" class="btn settings-action-btn" type="button">Customize Theme</button>
           </div>
 
           <div class="setting-row" id="setting-large-scramble-text-row">
@@ -801,17 +823,6 @@
                 </span>
               </span>
             </button>
-          </div>
-
-          <div class="setting-row" id="setting-swipe-down-gesture-row">
-            <div class="setting-label">
-              Swipe down to open quick actions
-              <small>Allow downward swipe in Timer tab</small>
-            </div>
-            <label class="toggle">
-              <input type="checkbox" id="setting-swipe-down-gesture">
-              <span class="toggle-slider"></span>
-            </label>
           </div>
 
           <div class="setting-row" id="setting-shortcut-tooltips-row">
@@ -883,14 +894,6 @@
             </div>
           </div>
 
-          <div class="setting-row setting-row-color-only">
-            <div class="setting-label" style="flex:1">New best color</div>
-            <div class="setting-color-controls">
-              <input type="color" id="setting-new-best-color">
-              <button id="btn-reset-best-color" class="btn-icon-small" title="Reset color">⟲</button>
-            </div>
-          </div>
-
         </div>
 
         <div class="setting-group">
@@ -905,13 +908,6 @@
               <span class="toggle-slider"></span>
             </label>
           </div>
-          <div class="setting-row setting-row-color-only">
-            <div class="setting-label" style="flex:1">Time line</div>
-            <div class="setting-color-controls">
-              <input type="color" id="setting-graph-time-color">
-              <button id="btn-reset-time-color" class="btn-icon-small" title="Reset color">⟲</button>
-            </div>
-          </div>
           <div class="setting-row">
             <div class="setting-label" style="flex:1">
               Line 1
@@ -919,8 +915,6 @@
             </div>
             <div class="setting-graph-line-controls">
               <input type="text" id="setting-graph-line1-stat" class="setting-graph-line-stat" placeholder="ao5" maxlength="7" autocomplete="off" spellcheck="false">
-              <input type="color" id="setting-graph-line1-color">
-              <button id="btn-reset-line1-color" class="btn-icon-small" title="Reset color">⟲</button>
             </div>
           </div>
           <div class="setting-row">
@@ -930,8 +924,6 @@
             </div>
             <div class="setting-graph-line-controls">
               <input type="text" id="setting-graph-line2-stat" class="setting-graph-line-stat" placeholder="ao12" maxlength="7" autocomplete="off" spellcheck="false">
-              <input type="color" id="setting-graph-line2-color">
-              <button id="btn-reset-line2-color" class="btn-icon-small" title="Reset color">⟲</button>
             </div>
           </div>
           <div class="setting-row">
@@ -941,8 +933,6 @@
             </div>
             <div class="setting-graph-line-controls">
               <input type="text" id="setting-graph-line3-stat" class="setting-graph-line-stat" placeholder="ao100" maxlength="7" autocomplete="off" spellcheck="false">
-              <input type="color" id="setting-graph-line3-color">
-              <button id="btn-reset-line3-color" class="btn-icon-small" title="Reset color">⟲</button>
             </div>
           </div>
         </div>
@@ -970,6 +960,68 @@
           </div>
           <small class="setting-note"><u>csTimer</u> and <u>Twisty Timer</u> formats supported for file import.</small>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="theme-customization-overlay" class="modal-overlay">
+    <div class="modal-box theme-customization-box">
+      <div class="modal-header">
+        <h2 id="theme-customization-title">Customize Theme</h2>
+        <div class="theme-customization-header-actions">
+          <button id="theme-customization-dock-bottom-left" class="btn-action modal-option-btn theme-customization-dock-btn" type="button" title="Dock editor to the bottom-left corner" aria-label="Dock editor to the bottom-left corner" aria-pressed="false">BL</button>
+          <button id="theme-customization-dock-top-right" class="btn-action modal-option-btn theme-customization-dock-btn" type="button" title="Dock editor to the top-right corner" aria-label="Dock editor to the top-right corner" aria-pressed="false">TR</button>
+          <button id="theme-customization-close" class="modal-close">✕</button>
+        </div>
+      </div>
+      <div class="modal-body theme-customization-body">
+        <!-- <p class="theme-customization-intro">Changes save automatically to the selected custom theme slot.</p> -->
+        <div class="theme-customization-actions">
+          <button id="btn-theme-copy-default" class="btn-action" type="button">Copy Default</button>
+          <button id="btn-theme-copy-oled" class="btn-action" type="button">Copy OLED</button>
+          <button id="btn-theme-export-file" class="btn-action" type="button">Export File</button>
+          <button id="btn-theme-export-text" class="btn-action" type="button">Export Text</button>
+          <button id="btn-theme-import-file" class="btn-action" type="button">Import File</button>
+          <button id="btn-theme-import-text" class="btn-action" type="button">Import Text</button>
+        </div>
+        <div class="theme-background-image-panel">
+          <div class="theme-background-image-header">
+            <span class="theme-background-image-title">Background Image</span>
+            <!-- <span class="theme-background-image-note">Uploads stay cached on this device for offline use. Image links are saved and exported.</span> -->
+          </div>
+          <div class="theme-background-image-controls">
+            <select id="theme-background-image-mode">
+              <option value="none">None</option>
+              <option value="link">Image Link</option>
+              <option value="upload">Upload</option>
+            </select>
+          </div>
+          <div id="theme-background-image-link-row" class="theme-background-image-row" style="display:none;">
+            <input id="theme-background-image-url" type="url" placeholder="https://example.com/background.jpg" autocomplete="off" spellcheck="false">
+            <button id="btn-theme-background-apply-link" class="btn-action" type="button">Apply Link</button>
+            <button id="btn-theme-background-clear-link" class="btn-action" type="button">Clear Link</button>
+          </div>
+          <div id="theme-background-image-upload-row" class="theme-background-image-row" style="display:none;">
+            <button id="btn-theme-background-upload" class="btn-action" type="button">Upload Image</button>
+            <button id="btn-theme-background-clear-upload" class="btn-action" type="button">Clear Upload</button>
+          </div>
+          <div id="theme-background-image-overlay-row" class="theme-background-image-overlay" style="display:none;">
+            <div class="theme-background-image-subheader">
+              <span class="theme-background-image-title">Background Overlay</span>
+              <span id="theme-background-overlay-value" class="theme-color-value">rgba(0, 0, 0, 0.9)</span>
+            </div>
+            <div class="theme-color-controls">
+              <input id="theme-background-overlay-color" type="color" value="#000000">
+              <button id="btn-theme-background-overlay-reset" class="btn-action theme-color-reset" type="button">Reset</button>
+            </div>
+            <div class="theme-color-alpha">
+              <input id="theme-background-overlay-alpha" type="range" min="0" max="100" step="1" value="90">
+              <span id="theme-background-overlay-alpha-value" class="theme-color-alpha-value">90%</span>
+            </div>
+          </div>
+          <div id="theme-background-image-status" class="theme-background-image-status"></div>
+        </div>
+        <div id="theme-customization-sections" class="theme-customization-sections"></div>
       </div>
     </div>
   </div>
@@ -1017,7 +1069,7 @@
   </script>
 
   <!-- App Script -->
-  <script type="module" src="js/app.js?v=118"></script>
+  <script type="module" src="js/app.js?v=150"></script>
 </body>
 
 </html>

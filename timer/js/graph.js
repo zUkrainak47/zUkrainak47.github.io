@@ -1,5 +1,5 @@
 import { formatTime, getEffectiveTime, EventEmitter } from './utils.js?v=2';
-import { settings } from './settings.js?v=5';
+import { settings } from './settings.js?v=15';
 import { parseGraphStatType } from './stats.js?v=3';
 
 /**
@@ -37,10 +37,10 @@ function getColors() {
     const readVar = (name, fallback) => styles.getPropertyValue(name).trim() || fallback;
 
     return {
-        time: settings.get('graphColorTime') || '#8b949e',
-        line1: settings.get('graphColorLine1') || settings.get('graphColorAo5') || readVar('--graph-color-line1', '#ff2020'),
-        line2: settings.get('graphColorLine2') || settings.get('graphColorAo12') || readVar('--graph-color-line2', '#2b91ff'),
-        line3: settings.get('graphColorLine3') || settings.get('graphColorAo100') || readVar('--graph-color-line3', '#a371f7'),
+        time: readVar('--graph-color-time', '#8b949e'),
+        line1: readVar('--graph-color-line1', '#ff2020'),
+        line2: readVar('--graph-color-line2', '#2b91ff'),
+        line3: readVar('--graph-color-line3', '#a371f7'),
         grid: readVar('--graph-grid', '#21262d'),
         axis: readVar('--surface-border', '#30363d'),
         text: readVar('--text-tertiary', '#6e7681'),

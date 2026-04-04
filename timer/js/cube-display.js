@@ -6,7 +6,7 @@
 // Face indices: U=0, R=1, F=2, D=3, L=4, B=5
 const U = 0, R = 1, F = 2, D = 3, L = 4, B = 5;
 
-const COLORS = ['#FFF', '#F00', '#33CD32', '#FFFF05', '#FFA503', '#00F'];
+const DEFAULT_CUBE_COLORS = Object.freeze(['#FFF', '#F00', '#33CD32', '#FFFF05', '#FFA503', '#00F']);
 const AXIS_INDEX = Object.freeze({ x: 0, y: 1, z: 2 });
 const STICKER_GAP_TO_CELL_RATIO = 1 / 38;
 
@@ -49,11 +49,11 @@ const FACE_POSITIONS = Object.freeze({
 
 // Pyraminx preview face order: left, front, right, bottom.
 const PYRAMINX_FACE_SIZE = 3;
-const PYRAMINX_COLORS = ['#FFFF05', '#33CD32', '#F00', '#00F'];
+const DEFAULT_PYRAMINX_COLORS = Object.freeze(['#FFFF05', '#33CD32', '#F00', '#00F']);
 const PYRAMINX_TRIANGLE_HEIGHT_RATIO = Math.sqrt(3) / 2;
 const PYRAMINX_FACE_HORIZONTAL_STEP_RATIO = 0.58;
 const PYRAMINX_FACE_VERTICAL_GAP_RATIO = 0.08;
-const PYRAMINX_STICKER_OUTLINE = 'rgba(0, 0, 0, 0.4)';
+const DEFAULT_PYRAMINX_STICKER_OUTLINE = 'rgba(0, 0, 0, 0.4)';
 const PYRAMINX_VERTICES = Object.freeze({
     U: Object.freeze([1, 1, 1]),
     L: Object.freeze([-1, -1, 1]),
@@ -74,7 +74,7 @@ const PYRAMINX_FACE_DRAW_CONFIGS = Object.freeze([
 ]);
 
 const MEGAMINX_FACE_SIZE = 11;
-const MEGAMINX_COLORS = [
+const DEFAULT_MEGAMINX_COLORS = Object.freeze([
     '#F8F8F5',
     '#F9C91C',
     '#FFF6B4',
@@ -87,7 +87,7 @@ const MEGAMINX_COLORS = [
     '#8A28FF',
     '#E28DEE',
     '#8BD6F8',
-];
+]);
 const MEGAMINX_FACE_NORMALS = Object.freeze([
     Object.freeze([0, 0.5257311121191336, 0.85065080835204]),
     Object.freeze([0, -0.5257311121191336, 0.85065080835204]),
@@ -124,7 +124,7 @@ const MEGAMINX_RIGHT_AXIS_FACE = 10;
 const MEGAMINX_CENTER_WEIGHT = 3;
 const MEGAMINX_LAYER_THRESHOLD = 0.58;
 const MEGAMINX_FIFTH_TURN_RAD = (2 * Math.PI) / 5;
-const MEGAMINX_STICKER_OUTLINE = 'rgba(0, 0, 0, 0.45)';
+const DEFAULT_MEGAMINX_STICKER_OUTLINE = 'rgba(0, 0, 0, 0.45)';
 const MEGAMINX_INNER_PENTAGON_SCALE = 0.54;
 const MEGAMINX_EDGE_SPLIT_RATIO = 0.33;
 const MEGAMINX_FACE_LAYOUT_SCALE = 0.96;
@@ -138,7 +138,7 @@ const MEGAMINX_LABEL_STYLE = Object.freeze({
     fill: 'rgba(42, 24, 18, 0.9)',
     stroke: 'rgba(255, 255, 255, 0.88)',
 });
-const SQUARE1_COLORS = Object.freeze({
+const DEFAULT_SQUARE1_COLORS = Object.freeze({
     U: '#ffff00',
     D: '#ffffff',
     F: '#ff0000',
@@ -146,23 +146,23 @@ const SQUARE1_COLORS = Object.freeze({
     L: '#0000ff',
     R: '#00ff00',
 });
-const SQUARE1_PIECES = Object.freeze([
-    Object.freeze({ type: 'edge', colors: Object.freeze([SQUARE1_COLORS.U, SQUARE1_COLORS.B]) }),
-    Object.freeze({ type: 'corner', colors: Object.freeze([SQUARE1_COLORS.U, SQUARE1_COLORS.B, SQUARE1_COLORS.R]) }),
-    Object.freeze({ type: 'edge', colors: Object.freeze([SQUARE1_COLORS.U, SQUARE1_COLORS.R]) }),
-    Object.freeze({ type: 'corner', colors: Object.freeze([SQUARE1_COLORS.U, SQUARE1_COLORS.R, SQUARE1_COLORS.F]) }),
-    Object.freeze({ type: 'edge', colors: Object.freeze([SQUARE1_COLORS.U, SQUARE1_COLORS.F]) }),
-    Object.freeze({ type: 'corner', colors: Object.freeze([SQUARE1_COLORS.U, SQUARE1_COLORS.F, SQUARE1_COLORS.L]) }),
-    Object.freeze({ type: 'edge', colors: Object.freeze([SQUARE1_COLORS.U, SQUARE1_COLORS.L]) }),
-    Object.freeze({ type: 'corner', colors: Object.freeze([SQUARE1_COLORS.U, SQUARE1_COLORS.L, SQUARE1_COLORS.B]) }),
-    Object.freeze({ type: 'corner', colors: Object.freeze([SQUARE1_COLORS.D, SQUARE1_COLORS.F, SQUARE1_COLORS.R]) }),
-    Object.freeze({ type: 'edge', colors: Object.freeze([SQUARE1_COLORS.D, SQUARE1_COLORS.R]) }),
-    Object.freeze({ type: 'corner', colors: Object.freeze([SQUARE1_COLORS.D, SQUARE1_COLORS.R, SQUARE1_COLORS.B]) }),
-    Object.freeze({ type: 'edge', colors: Object.freeze([SQUARE1_COLORS.D, SQUARE1_COLORS.B]) }),
-    Object.freeze({ type: 'corner', colors: Object.freeze([SQUARE1_COLORS.D, SQUARE1_COLORS.B, SQUARE1_COLORS.L]) }),
-    Object.freeze({ type: 'edge', colors: Object.freeze([SQUARE1_COLORS.D, SQUARE1_COLORS.L]) }),
-    Object.freeze({ type: 'corner', colors: Object.freeze([SQUARE1_COLORS.D, SQUARE1_COLORS.L, SQUARE1_COLORS.F]) }),
-    Object.freeze({ type: 'edge', colors: Object.freeze([SQUARE1_COLORS.D, SQUARE1_COLORS.F]) }),
+const SQUARE1_PIECE_LAYOUTS = Object.freeze([
+    Object.freeze({ type: 'edge', faces: Object.freeze(['U', 'B']) }),
+    Object.freeze({ type: 'corner', faces: Object.freeze(['U', 'B', 'R']) }),
+    Object.freeze({ type: 'edge', faces: Object.freeze(['U', 'R']) }),
+    Object.freeze({ type: 'corner', faces: Object.freeze(['U', 'R', 'F']) }),
+    Object.freeze({ type: 'edge', faces: Object.freeze(['U', 'F']) }),
+    Object.freeze({ type: 'corner', faces: Object.freeze(['U', 'F', 'L']) }),
+    Object.freeze({ type: 'edge', faces: Object.freeze(['U', 'L']) }),
+    Object.freeze({ type: 'corner', faces: Object.freeze(['U', 'L', 'B']) }),
+    Object.freeze({ type: 'corner', faces: Object.freeze(['D', 'F', 'R']) }),
+    Object.freeze({ type: 'edge', faces: Object.freeze(['D', 'R']) }),
+    Object.freeze({ type: 'corner', faces: Object.freeze(['D', 'R', 'B']) }),
+    Object.freeze({ type: 'edge', faces: Object.freeze(['D', 'B']) }),
+    Object.freeze({ type: 'corner', faces: Object.freeze(['D', 'B', 'L']) }),
+    Object.freeze({ type: 'edge', faces: Object.freeze(['D', 'L']) }),
+    Object.freeze({ type: 'corner', faces: Object.freeze(['D', 'L', 'F']) }),
+    Object.freeze({ type: 'edge', faces: Object.freeze(['D', 'F']) }),
 ]);
 const SQUARE1_SOLVED_TOP = Object.freeze([1, 1, 2, 3, 3, 4, 5, 5, 6, 7, 7, 0]);
 // Shifted by one bottom turn so imported Square-1 scrambles line up with the
@@ -172,7 +172,7 @@ const SQUARE1_TAN15 = 0.267949;
 const SQUARE1_INNER_RADIUS = 0.65;
 const SQUARE1_TOP_START_ANGLE = 75;
 const SQUARE1_BOTTOM_START_ANGLE = 105;
-const SQUARE1_OUTLINE_COLOR = '#000000';
+const DEFAULT_SQUARE1_OUTLINE_COLOR = '#000000';
 const SQUARE1_OUTLINE_WIDTH = 0.026;
 const SQUARE1_MIDDLE_LAYER_WIDTH = 2.0;
 const SQUARE1_MIDDLE_LAYER_HEIGHT = 0.3;
@@ -218,6 +218,110 @@ const SQUARE1_CORNER_BASE_POLYGONS = Object.freeze([
 
 function getCanvasPixelRatio() {
     return window.devicePixelRatio || 1;
+}
+
+function getPreviewThemeStyles() {
+    return window.getComputedStyle(document.documentElement);
+}
+
+function readPreviewThemeColor(styles, variableName, fallback) {
+    const value = styles.getPropertyValue(variableName).trim();
+    return value || fallback;
+}
+
+function getCubePreviewTheme(styles = getPreviewThemeStyles()) {
+    return {
+        colors: [
+            readPreviewThemeColor(styles, '--preview-cube-white', DEFAULT_CUBE_COLORS[0]),
+            readPreviewThemeColor(styles, '--preview-cube-red', DEFAULT_CUBE_COLORS[1]),
+            readPreviewThemeColor(styles, '--preview-cube-green', DEFAULT_CUBE_COLORS[2]),
+            readPreviewThemeColor(styles, '--preview-cube-yellow', DEFAULT_CUBE_COLORS[3]),
+            readPreviewThemeColor(styles, '--preview-cube-orange', DEFAULT_CUBE_COLORS[4]),
+            readPreviewThemeColor(styles, '--preview-cube-blue', DEFAULT_CUBE_COLORS[5]),
+        ],
+        outline: readPreviewThemeColor(styles, '--preview-cube-outline', 'rgba(0, 0, 0, 0.4)'),
+    };
+}
+
+function getSkewbPreviewTheme(styles = getPreviewThemeStyles()) {
+    return {
+        colors: [
+            readPreviewThemeColor(styles, '--preview-skewb-white', DEFAULT_CUBE_COLORS[0]),
+            readPreviewThemeColor(styles, '--preview-skewb-red', DEFAULT_CUBE_COLORS[1]),
+            readPreviewThemeColor(styles, '--preview-skewb-green', DEFAULT_CUBE_COLORS[2]),
+            readPreviewThemeColor(styles, '--preview-skewb-yellow', DEFAULT_CUBE_COLORS[3]),
+            readPreviewThemeColor(styles, '--preview-skewb-orange', DEFAULT_CUBE_COLORS[4]),
+            readPreviewThemeColor(styles, '--preview-skewb-blue', DEFAULT_CUBE_COLORS[5]),
+        ],
+        outline: readPreviewThemeColor(styles, '--preview-skewb-outline', '#000000'),
+    };
+}
+
+function getPyraminxPreviewTheme(styles = getPreviewThemeStyles()) {
+    return {
+        colors: [
+            readPreviewThemeColor(styles, '--preview-pyraminx-yellow', DEFAULT_PYRAMINX_COLORS[0]),
+            readPreviewThemeColor(styles, '--preview-pyraminx-green', DEFAULT_PYRAMINX_COLORS[1]),
+            readPreviewThemeColor(styles, '--preview-pyraminx-red', DEFAULT_PYRAMINX_COLORS[2]),
+            readPreviewThemeColor(styles, '--preview-pyraminx-blue', DEFAULT_PYRAMINX_COLORS[3]),
+        ],
+        outline: readPreviewThemeColor(styles, '--preview-pyraminx-outline', DEFAULT_PYRAMINX_STICKER_OUTLINE),
+    };
+}
+
+function getMegaminxPreviewTheme(styles = getPreviewThemeStyles()) {
+    return {
+        colors: [
+            readPreviewThemeColor(styles, '--preview-megaminx-face-1', DEFAULT_MEGAMINX_COLORS[0]),
+            readPreviewThemeColor(styles, '--preview-megaminx-face-2', DEFAULT_MEGAMINX_COLORS[1]),
+            readPreviewThemeColor(styles, '--preview-megaminx-face-3', DEFAULT_MEGAMINX_COLORS[2]),
+            readPreviewThemeColor(styles, '--preview-megaminx-face-4', DEFAULT_MEGAMINX_COLORS[3]),
+            readPreviewThemeColor(styles, '--preview-megaminx-face-5', DEFAULT_MEGAMINX_COLORS[4]),
+            readPreviewThemeColor(styles, '--preview-megaminx-face-6', DEFAULT_MEGAMINX_COLORS[5]),
+            readPreviewThemeColor(styles, '--preview-megaminx-face-7', DEFAULT_MEGAMINX_COLORS[6]),
+            readPreviewThemeColor(styles, '--preview-megaminx-face-8', DEFAULT_MEGAMINX_COLORS[7]),
+            readPreviewThemeColor(styles, '--preview-megaminx-face-9', DEFAULT_MEGAMINX_COLORS[8]),
+            readPreviewThemeColor(styles, '--preview-megaminx-face-10', DEFAULT_MEGAMINX_COLORS[9]),
+            readPreviewThemeColor(styles, '--preview-megaminx-face-11', DEFAULT_MEGAMINX_COLORS[10]),
+            readPreviewThemeColor(styles, '--preview-megaminx-face-12', DEFAULT_MEGAMINX_COLORS[11]),
+        ],
+        outline: readPreviewThemeColor(styles, '--preview-megaminx-outline', DEFAULT_MEGAMINX_STICKER_OUTLINE),
+    };
+}
+
+function getSquare1PreviewTheme(styles = getPreviewThemeStyles()) {
+    return {
+        colors: {
+            U: readPreviewThemeColor(styles, '--preview-square1-up', DEFAULT_SQUARE1_COLORS.U),
+            D: readPreviewThemeColor(styles, '--preview-square1-down', DEFAULT_SQUARE1_COLORS.D),
+            F: readPreviewThemeColor(styles, '--preview-square1-front', DEFAULT_SQUARE1_COLORS.F),
+            B: readPreviewThemeColor(styles, '--preview-square1-back', DEFAULT_SQUARE1_COLORS.B),
+            L: readPreviewThemeColor(styles, '--preview-square1-left', DEFAULT_SQUARE1_COLORS.L),
+            R: readPreviewThemeColor(styles, '--preview-square1-right', DEFAULT_SQUARE1_COLORS.R),
+        },
+        outline: readPreviewThemeColor(styles, '--preview-square1-outline', DEFAULT_SQUARE1_OUTLINE_COLOR),
+    };
+}
+
+function createSquare1Pieces(colors) {
+    return SQUARE1_PIECE_LAYOUTS.map((piece) => ({
+        type: piece.type,
+        colors: piece.faces.map((face) => colors[face]),
+    }));
+}
+
+function getClockPreviewTheme(styles = getPreviewThemeStyles()) {
+    return {
+        body: readPreviewThemeColor(styles, '--preview-clock-body', '#000000'),
+        frontFace: readPreviewThemeColor(styles, '--preview-clock-front-face', '#57c5f8'),
+        backFace: readPreviewThemeColor(styles, '--preview-clock-back-face', '#315f9b'),
+        frontDial: readPreviewThemeColor(styles, '--preview-clock-front-dial', '#315f9b'),
+        backDial: readPreviewThemeColor(styles, '--preview-clock-back-dial', '#57c5f8'),
+        handFill: readPreviewThemeColor(styles, '--preview-clock-hand-fill', '#FFD700'),
+        handStroke: readPreviewThemeColor(styles, '--preview-clock-hand-stroke', '#FF0000'),
+        pinUp: readPreviewThemeColor(styles, '--preview-clock-pin-up', '#FFEB3B'),
+        pinDown: readPreviewThemeColor(styles, '--preview-clock-pin-down', '#7b4c20'),
+    };
 }
 
 function getCanvasLogicalSize(canvas) {
@@ -978,8 +1082,6 @@ export function applySquare1Scramble(scramble) {
 //   DFR: D[2], F[3], R[4]       DFL: D[1], F[4], L[3]
 //   DBR: D[3], B[4], R[3]       DBL: D[4], B[3], L[4]
 
-const SKEWB_COLORS = COLORS;
-const SKEWB_STICKER_OUTLINE = '#000000';
 const SKEWB_OUTLINE_RATIO = 0.025;
 
 // Each move is a set of 3-cycles. Cycle [a, b, c]: new[a]=old[c], new[b]=old[a], new[c]=old[b].
@@ -1093,17 +1195,17 @@ export function applySkewbScramble(scramble) {
 
 const SKEWB_ISO_ANGLE = Math.PI / 6;
 
-function drawSkewbRhombus(ctx, points, color, outlineWidth) {
+function drawSkewbRhombus(ctx, points, color, outlineWidth, outlineColor) {
     ctx.fillStyle = color;
     tracePolygon(ctx, points);
     ctx.fill();
 
-    ctx.strokeStyle = SKEWB_STICKER_OUTLINE;
+    ctx.strokeStyle = outlineColor;
     ctx.lineWidth = outlineWidth;
     ctx.stroke();
 }
 
-function drawSkewbFace(ctx, face, faceVertices, centerVertex, outlineWidth) {
+function drawSkewbFace(ctx, face, faceVertices, centerVertex, outlineWidth, theme) {
     if (!Array.isArray(face) || face.length < 5) return;
 
     const [tl, tr, br, bl] = faceVertices;
@@ -1113,20 +1215,21 @@ function drawSkewbFace(ctx, face, faceVertices, centerVertex, outlineWidth) {
     const midLeft = [(bl[0] + tl[0]) / 2, (bl[1] + tl[1]) / 2];
 
     drawSkewbRhombus(ctx, [tl, midTop, centerVertex, midLeft],
-        SKEWB_COLORS[face[1]] || SKEWB_COLORS[0], outlineWidth);
+        theme.colors[face[1]] || theme.colors[0], outlineWidth, theme.outline);
     drawSkewbRhombus(ctx, [tr, midRight, centerVertex, midTop],
-        SKEWB_COLORS[face[2]] || SKEWB_COLORS[0], outlineWidth);
+        theme.colors[face[2]] || theme.colors[0], outlineWidth, theme.outline);
     drawSkewbRhombus(ctx, [br, midBottom, centerVertex, midRight],
-        SKEWB_COLORS[face[3]] || SKEWB_COLORS[0], outlineWidth);
+        theme.colors[face[3]] || theme.colors[0], outlineWidth, theme.outline);
     drawSkewbRhombus(ctx, [bl, midLeft, centerVertex, midBottom],
-        SKEWB_COLORS[face[4]] || SKEWB_COLORS[0], outlineWidth);
+        theme.colors[face[4]] || theme.colors[0], outlineWidth, theme.outline);
     drawSkewbRhombus(ctx, [midTop, midRight, midBottom, midLeft],
-        SKEWB_COLORS[face[0]] || SKEWB_COLORS[0], outlineWidth);
+        theme.colors[face[0]] || theme.colors[0], outlineWidth, theme.outline);
 }
 
 export function drawSkewb(canvas, skewb) {
     const ctx = canvas.getContext('2d');
     const { width: w, height: h } = getCanvasLogicalSize(canvas);
+    const theme = getSkewbPreviewTheme();
 
     ctx.clearRect(0, 0, w, h);
 
@@ -1168,22 +1271,22 @@ export function drawSkewb(canvas, skewb) {
     ctx.lineCap = 'round';
 
     const lFaceVerts = [lFaceTopLeft, topLeft, botLeft, lFaceBotLeft];
-    drawSkewbFace(ctx, skewb[4], lFaceVerts, averagePoints(lFaceVerts), outlineWidth);
+    drawSkewbFace(ctx, skewb[4], lFaceVerts, averagePoints(lFaceVerts), outlineWidth, theme);
 
     const bFaceVerts = [topRight, bFaceTopRight, bFaceBotRight, botRight];
-    drawSkewbFace(ctx, skewb[5], bFaceVerts, averagePoints(bFaceVerts), outlineWidth);
+    drawSkewbFace(ctx, skewb[5], bFaceVerts, averagePoints(bFaceVerts), outlineWidth, theme);
 
     const dFaceVerts = [botLeft, bottom, dFaceBottom, dFaceBotLeft];
-    drawSkewbFace(ctx, skewb[3], dFaceVerts, averagePoints(dFaceVerts), outlineWidth);
+    drawSkewbFace(ctx, skewb[3], dFaceVerts, averagePoints(dFaceVerts), outlineWidth, theme);
 
     const uFaceVerts = [top, topRight, center, topLeft];
-    drawSkewbFace(ctx, skewb[0], uFaceVerts, averagePoints(uFaceVerts), outlineWidth);
+    drawSkewbFace(ctx, skewb[0], uFaceVerts, averagePoints(uFaceVerts), outlineWidth, theme);
 
     const fFaceVerts = [topLeft, center, bottom, botLeft];
-    drawSkewbFace(ctx, skewb[2], fFaceVerts, averagePoints(fFaceVerts), outlineWidth);
+    drawSkewbFace(ctx, skewb[2], fFaceVerts, averagePoints(fFaceVerts), outlineWidth, theme);
 
     const rFaceVerts = [center, topRight, botRight, bottom];
-    drawSkewbFace(ctx, skewb[1], rFaceVerts, averagePoints(rFaceVerts), outlineWidth);
+    drawSkewbFace(ctx, skewb[1], rFaceVerts, averagePoints(rFaceVerts), outlineWidth, theme);
 
     ctx.restore();
 }
@@ -1192,6 +1295,7 @@ export function drawCube(canvas, cube) {
     const ctx = canvas.getContext('2d');
     const { width: w, height: h } = getCanvasLogicalSize(canvas);
     const cubeSize = getFaceSize(cube?.[0]);
+    const theme = getCubePreviewTheme();
 
     const faceGap = Math.max(2, Math.min(w, h) * 0.02);
     const availW = w - (faceGap * 3);
@@ -1219,7 +1323,7 @@ export function drawCube(canvas, cube) {
                 const sizePx = cellSize - (stickerGap * 2);
                 const sticker = cube[face][(row * cubeSize) + col];
 
-                ctx.fillStyle = COLORS[sticker] || '#FFF';
+                ctx.fillStyle = theme.colors[sticker] || theme.colors[0];
                 ctx.beginPath();
                 const radius = Math.max(0.6, sizePx * 0.08);
                 ctx.moveTo(x + radius, y);
@@ -1230,7 +1334,7 @@ export function drawCube(canvas, cube) {
                 ctx.closePath();
                 ctx.fill();
 
-                ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+                ctx.strokeStyle = theme.outline;
                 ctx.lineWidth = Math.max(0.45, Math.min(1, cellSize * 0.06));
                 ctx.stroke();
             }
@@ -1393,7 +1497,7 @@ function getPyraminxScreenTriangleVertices(x, y, sideLength, triangleHeight, ori
     ];
 }
 
-function drawPyraminxFace(ctx, face, vertices, sideLength) {
+function drawPyraminxFace(ctx, face, vertices, sideLength, theme) {
     const smallSide = sideLength / PYRAMINX_FACE_SIZE;
     const stickerGap = smallSide * STICKER_GAP_TO_CELL_RATIO * 1/2;
     const outlineWidth = Math.max(0.45, Math.min(1, smallSide * 0.06));
@@ -1406,11 +1510,11 @@ function drawPyraminxFace(ctx, face, vertices, sideLength) {
         );
         const stickerColor = face[index];
 
-        ctx.fillStyle = PYRAMINX_COLORS[stickerColor] || PYRAMINX_COLORS[0];
+        ctx.fillStyle = theme.colors[stickerColor] || theme.colors[0];
         tracePolygon(ctx, stickerPoints);
         ctx.fill();
 
-        ctx.strokeStyle = PYRAMINX_STICKER_OUTLINE;
+        ctx.strokeStyle = theme.outline;
         ctx.lineWidth = outlineWidth;
         ctx.stroke();
     });
@@ -1419,6 +1523,7 @@ function drawPyraminxFace(ctx, face, vertices, sideLength) {
 export function drawPyraminx(canvas, pyraminx) {
     const ctx = canvas.getContext('2d');
     const { width: w, height: h } = getCanvasLogicalSize(canvas);
+    const theme = getPyraminxPreviewTheme();
 
     ctx.clearRect(0, 0, w, h);
 
@@ -1464,6 +1569,7 @@ export function drawPyraminx(canvas, pyraminx) {
             pyraminx[faceIndex] || [],
             faceVertices,
             sideLength,
+            theme,
         );
     });
 
@@ -1576,18 +1682,18 @@ const MEGAMINX_PREVIEW_FACE_EDGE_NEIGHBOR_START = MEGAMINX_LAYOUT_TEMPLATE.faces
     ({ faceId }) => faceId === MEGAMINX_U_FACE,
 )?.edgeNeighborStart ?? 0;
 
-function drawMegaminxSticker(ctx, polygon, color, insetDistance, outlineWidth) {
+function drawMegaminxSticker(ctx, polygon, color, insetDistance, outlineWidth, outlineColor) {
     const insetPolygon = createInsetPolygon(polygon, insetDistance);
     ctx.fillStyle = color;
     tracePolygon(ctx, insetPolygon);
     ctx.fill();
 
-    ctx.strokeStyle = MEGAMINX_STICKER_OUTLINE;
+    ctx.strokeStyle = outlineColor;
     ctx.lineWidth = outlineWidth;
     ctx.stroke();
 }
 
-function drawMegaminxFace(ctx, face, polygon, edgeNeighborStart = 0, edgeNeighborStep = 1) {
+function drawMegaminxFace(ctx, face, polygon, edgeNeighborStart = 0, edgeNeighborStep = 1, theme) {
     const centroid = averagePoints(polygon);
     const innerPolygon = polygon.map(([x, y]) => [
         centroid[0] + ((x - centroid[0]) * MEGAMINX_INNER_PENTAGON_SCALE),
@@ -1612,8 +1718,8 @@ function drawMegaminxFace(ctx, face, polygon, edgeNeighborStart = 0, edgeNeighbo
         const edgeSlot = getMegaminxEdgeSlotIndex(neighborIndex);
         const nextIndex = (edgeIndex + 1) % 5;
         const previousIndex = positiveModulo(edgeIndex - 1, 5);
-        const cornerColor = MEGAMINX_COLORS[face?.[cornerSlot]] || MEGAMINX_COLORS[0];
-        const edgeColor = MEGAMINX_COLORS[face?.[edgeSlot]] || MEGAMINX_COLORS[0];
+        const cornerColor = theme.colors[face?.[cornerSlot]] || theme.colors[0];
+        const edgeColor = theme.colors[face?.[edgeSlot]] || theme.colors[0];
 
         drawMegaminxSticker(
             ctx,
@@ -1626,6 +1732,7 @@ function drawMegaminxFace(ctx, face, polygon, edgeNeighborStart = 0, edgeNeighbo
             cornerColor,
             insetDistance,
             outlineWidth,
+            theme.outline,
         );
         drawMegaminxSticker(
             ctx,
@@ -1638,15 +1745,17 @@ function drawMegaminxFace(ctx, face, polygon, edgeNeighborStart = 0, edgeNeighbo
             edgeColor,
             insetDistance,
             outlineWidth,
+            theme.outline,
         );
     }
 
     drawMegaminxSticker(
         ctx,
         innerPolygon,
-        MEGAMINX_COLORS[face?.[0]] || MEGAMINX_COLORS[0],
+        theme.colors[face?.[0]] || theme.colors[0],
         insetDistance * 0.72,
         outlineWidth,
+        theme.outline,
     );
 }
 
@@ -1667,7 +1776,7 @@ function drawMegaminxFaceLabel(ctx, polygon, label) {
     ctx.fillText(label, centroid[0], centroid[1] + (fontSize * 0.02));
 }
 
-function drawMegaminxLayout(ctx, megaminx, layoutFaces, scale, offsetX, offsetY, { showLabels = true } = {}) {
+function drawMegaminxLayout(ctx, megaminx, layoutFaces, scale, offsetX, offsetY, theme, { showLabels = true } = {}) {
     layoutFaces.forEach(({ faceId, polygon, edgeNeighborStart, edgeNeighborStep = 1 }) => {
         const transformedPolygon = scaleAndTranslatePolygon(polygon, scale, offsetX, offsetY);
         drawMegaminxFace(
@@ -1676,6 +1785,7 @@ function drawMegaminxLayout(ctx, megaminx, layoutFaces, scale, offsetX, offsetY,
             transformedPolygon,
             edgeNeighborStart,
             edgeNeighborStep,
+            theme,
         );
     });
 
@@ -1691,6 +1801,7 @@ function drawMegaminxLayout(ctx, megaminx, layoutFaces, scale, offsetX, offsetY,
 export function drawMegaminx(canvas, megaminx) {
     const ctx = canvas.getContext('2d');
     const { width: w, height: h } = getCanvasLogicalSize(canvas);
+    const theme = getMegaminxPreviewTheme();
 
     ctx.clearRect(0, 0, w, h);
 
@@ -1718,6 +1829,7 @@ export function drawMegaminx(canvas, megaminx) {
         scale,
         offsetX,
         offsetY,
+        theme,
         { showLabels: true },
     );
     ctx.restore();
@@ -1726,6 +1838,7 @@ export function drawMegaminx(canvas, megaminx) {
 export function drawMegaminxFacePreview(canvas, face, { label = '' } = {}) {
     const ctx = canvas.getContext('2d');
     const { width: w, height: h } = getCanvasLogicalSize(canvas);
+    const theme = getMegaminxPreviewTheme();
     const margin = Math.max(1.4, Math.min(w, h) * 0.08);
     const radius = Math.max(0, Math.min(w, h) - (margin * 2)) / 2;
     const polygon = createRegularPentagonVertices(w / 2, h / 2, radius, MEGAMINX_U_STAR_ROTATION);
@@ -1734,7 +1847,7 @@ export function drawMegaminxFacePreview(canvas, face, { label = '' } = {}) {
     ctx.save();
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
-    drawMegaminxFace(ctx, face, polygon, MEGAMINX_PREVIEW_FACE_EDGE_NEIGHBOR_START, 1);
+    drawMegaminxFace(ctx, face, polygon, MEGAMINX_PREVIEW_FACE_EDGE_NEIGHBOR_START, 1, theme);
     if (label) drawMegaminxFaceLabel(ctx, polygon, label);
     ctx.restore();
 }
@@ -1784,7 +1897,7 @@ function getSquare1FacePolygons(slots, startAngleDeg, centerX = 0, centerY = 0) 
         const pieceId = slots[index];
         if (slots[positiveModulo(index - 1, 12)] === pieceId) continue;
 
-        const piece = SQUARE1_PIECES[pieceId];
+        const piece = SQUARE1_PIECE_LAYOUTS[pieceId];
         if (!piece) continue;
 
         const angleDeg = startAngleDeg - (index * 30);
@@ -1823,7 +1936,7 @@ function getSquare1MiddleLayerPolygons(mlFlipped, centerX = 0, centerY = 0) {
 
 function getSquare1ReferenceFacePolygons(startAngleDeg, centerX = 0, centerY = 0) {
     const polygons = [];
-    const referencePieces = [SQUARE1_PIECES[0], SQUARE1_PIECES[1]];
+    const referencePieces = [SQUARE1_PIECE_LAYOUTS[0], SQUARE1_PIECE_LAYOUTS[1]];
 
     for (let index = 0; index < 12; index += 1) {
         const angleDeg = startAngleDeg - (index * 30);
@@ -1855,21 +1968,21 @@ function drawSquare1Piece(ctx, piece, angleDeg) {
     ctx.restore();
 }
 
-function drawSquare1Face(ctx, slots, startAngleDeg) {
+function drawSquare1Face(ctx, slots, startAngleDeg, pieces) {
     if (!Array.isArray(slots) || slots.length !== 12) return;
 
     for (let index = 0; index < 12; index += 1) {
         const pieceId = slots[index];
         if (slots[positiveModulo(index - 1, 12)] === pieceId) continue;
 
-        const piece = SQUARE1_PIECES[pieceId];
+        const piece = pieces[pieceId];
         if (!piece) continue;
 
         drawSquare1Piece(ctx, piece, startAngleDeg - (index * 30));
     }
 }
 
-function drawSquare1MiddleLayer(ctx, mlFlipped) {
+function drawSquare1MiddleLayer(ctx, mlFlipped, colors) {
     const leftRatio = SQUARE1_MIDDLE_LAYER_LEFT_RATIO;
     const leftWidth = SQUARE1_MIDDLE_LAYER_WIDTH * leftRatio;
     const rightWidth = mlFlipped
@@ -1878,11 +1991,11 @@ function drawSquare1MiddleLayer(ctx, mlFlipped) {
     const startX = -(SQUARE1_MIDDLE_LAYER_WIDTH / 2);
     const startY = SQUARE1_MIDDLE_LAYER_Y_OFFSET - (SQUARE1_MIDDLE_LAYER_HEIGHT / 2);
 
-    ctx.fillStyle = SQUARE1_COLORS.F;
+    ctx.fillStyle = colors.F;
     ctx.fillRect(startX, startY, leftWidth, SQUARE1_MIDDLE_LAYER_HEIGHT);
     ctx.strokeRect(startX, startY, leftWidth, SQUARE1_MIDDLE_LAYER_HEIGHT);
 
-    ctx.fillStyle = mlFlipped ? SQUARE1_COLORS.B : SQUARE1_COLORS.F;
+    ctx.fillStyle = mlFlipped ? colors.B : colors.F;
     ctx.fillRect(startX + leftWidth, startY, rightWidth, SQUARE1_MIDDLE_LAYER_HEIGHT);
     ctx.strokeRect(startX + leftWidth, startY, rightWidth, SQUARE1_MIDDLE_LAYER_HEIGHT);
 }
@@ -1930,6 +2043,8 @@ export function drawSquare1(canvas, square1, { topOnly = false } = {}) {
     const { width: w, height: h } = getCanvasLogicalSize(canvas);
     const state = isSquare1State(square1) ? square1 : createSolvedSquare1State();
     const { topFaceCenter, bottomFaceCenter } = getSquare1LayoutCenters({ topOnly });
+    const theme = getSquare1PreviewTheme();
+    const pieces = createSquare1Pieces(theme.colors);
 
     ctx.clearRect(0, 0, w, h);
 
@@ -1947,21 +2062,21 @@ export function drawSquare1(canvas, square1, { topOnly = false } = {}) {
     ctx.translate(w / 2, h / 2);
     ctx.scale(scale, -scale);
     ctx.translate(-centerX, -centerY);
-    ctx.strokeStyle = SQUARE1_OUTLINE_COLOR;
+    ctx.strokeStyle = theme.outline;
     ctx.lineWidth = SQUARE1_OUTLINE_WIDTH;
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
 
     ctx.save();
     ctx.translate(topFaceCenter[0], topFaceCenter[1]);
-    drawSquare1MiddleLayer(ctx, state.mlFlipped);
-    drawSquare1Face(ctx, state.top, SQUARE1_TOP_START_ANGLE);
+    drawSquare1MiddleLayer(ctx, state.mlFlipped, theme.colors);
+    drawSquare1Face(ctx, state.top, SQUARE1_TOP_START_ANGLE, pieces);
     ctx.restore();
 
     if (bottomFaceCenter) {
         ctx.save();
         ctx.translate(bottomFaceCenter[0], bottomFaceCenter[1]);
-        drawSquare1Face(ctx, state.bottom, SQUARE1_BOTTOM_START_ANGLE);
+        drawSquare1Face(ctx, state.bottom, SQUARE1_BOTTOM_START_ANGLE, pieces);
         ctx.restore();
     }
 
@@ -2152,7 +2267,7 @@ export function applyClockScramble(scrambleStr) {
     return { front, back, pins };
 }
 
-function drawClockFace(ctx, dials, pinsState, isBackFace) {
+function drawClockFace(ctx, dials, pinsState, isBackFace, theme) {
     const S = 1;
     const R_dial = 0.36;
     const R_main = S + R_dial + 0.32; 
@@ -2160,7 +2275,7 @@ function drawClockFace(ctx, dials, pinsState, isBackFace) {
     const R_pin = 0.12;
     const strokeW = 0.05;
 
-    ctx.fillStyle = '#000';
+    ctx.fillStyle = theme.body;
     ctx.beginPath();
     ctx.arc(0, 0, R_main + strokeW, 0, Math.PI*2);
     ctx.fill();
@@ -2172,7 +2287,7 @@ function drawClockFace(ctx, dials, pinsState, isBackFace) {
         }
     }
 
-    ctx.fillStyle = isBackFace ? '#315f9b' : '#57c5f8';
+    ctx.fillStyle = isBackFace ? theme.backFace : theme.frontFace;
     ctx.beginPath();
     ctx.arc(0, 0, R_main, 0, Math.PI*2);
     ctx.fill();
@@ -2190,10 +2305,10 @@ function drawClockFace(ctx, dials, pinsState, isBackFace) {
         const cx = col * S;
         const cy = row * S;
 
-        ctx.fillStyle = '#000';
+        ctx.fillStyle = theme.body;
         ctx.beginPath(); ctx.arc(cx, cy, R_dial + strokeW*0.6, 0, Math.PI*2); ctx.fill();
         
-        ctx.fillStyle = isBackFace ? '#57c5f8' : '#315f9b';
+        ctx.fillStyle = isBackFace ? theme.backDial : theme.frontDial;
         ctx.beginPath(); ctx.arc(cx, cy, R_dial, 0, Math.PI*2); ctx.fill();
 
         const angle = dials[i] * (Math.PI / 6);
@@ -2201,8 +2316,8 @@ function drawClockFace(ctx, dials, pinsState, isBackFace) {
         ctx.translate(cx, cy);
         ctx.rotate(angle);
         
-        ctx.fillStyle = '#FFD700';
-        ctx.strokeStyle = '#FF0000';
+        ctx.fillStyle = theme.handFill;
+        ctx.strokeStyle = theme.handStroke;
         ctx.lineWidth = strokeW * 0.4;
         ctx.lineJoin = 'round';
         
@@ -2237,10 +2352,10 @@ function drawClockFace(ctx, dials, pinsState, isBackFace) {
             else if (i === 3) isUp = !pinsState.DL;
         }
 
-        ctx.fillStyle = '#000';
+        ctx.fillStyle = theme.body;
         ctx.beginPath(); ctx.arc(px, py, R_pin + strokeW*0.6, 0, Math.PI*2); ctx.fill();
         
-        ctx.fillStyle = isUp ? '#FFEB3B' : '#7b4c20';
+        ctx.fillStyle = isUp ? theme.pinUp : theme.pinDown;
         ctx.beginPath(); ctx.arc(px, py, R_pin, 0, Math.PI*2); ctx.fill();
     }
 }
@@ -2248,6 +2363,7 @@ function drawClockFace(ctx, dials, pinsState, isBackFace) {
 export function drawClock(canvas, clock, { previewOnly = false } = {}) {
     const ctx = canvas.getContext('2d');
     const { width: w, height: h } = getCanvasLogicalSize(canvas);
+    const theme = getClockPreviewTheme();
     ctx.clearRect(0, 0, w, h);
 
     const state = clock || {
@@ -2272,17 +2388,17 @@ export function drawClock(canvas, clock, { previewOnly = false } = {}) {
     ctx.scale(scale, scale);
 
     if (previewOnly) {
-        drawClockFace(ctx, state.front, state.pins, false);
+        drawClockFace(ctx, state.front, state.pins, false, theme);
     } else {
         const offset = bodyR + gap / 2;
         ctx.save();
         ctx.translate(-offset, 0);
-        drawClockFace(ctx, state.front, state.pins, false);
+        drawClockFace(ctx, state.front, state.pins, false, theme);
         ctx.restore();
 
         ctx.save();
         ctx.translate(offset, 0);
-        drawClockFace(ctx, state.back, state.pins, true);
+        drawClockFace(ctx, state.back, state.pins, true, theme);
         ctx.restore();
     }
 

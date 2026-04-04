@@ -1,5 +1,7 @@
-const APP_CACHE_NAME = 'ukratimer-app-v15';
-const RUNTIME_CACHE_NAME = 'ukratimer-runtime-v15';
+const APP_CACHE_NAME = 'ukratimer-app-v35';
+const RUNTIME_CACHE_NAME = 'ukratimer-runtime-v18';
+const USER_ASSET_CACHE_NAME = 'ukratimer-user-assets-v1';
+const LOCAL_BACKGROUND_UPLOAD_PATH_PREFIX = './cached-assets/theme-background-upload-';
 
 const CUBING_SCRAMBLE_MODULE_URL = 'https://cdn.cubing.net/v0/js/cubing/scramble';
 const SCRAMBOW_SCRIPT_URL = 'https://unpkg.com/scrambow@1.8.1/dist/scrambow.js';
@@ -7,31 +9,31 @@ const SCRAMBOW_SCRIPT_URL = 'https://unpkg.com/scrambow@1.8.1/dist/scrambow.js';
 const LOCAL_PRECACHE_PATHS = [
     './',
     './index.html',
-    './manifest.webmanifest',
+    './manifest.webmanifest?v=29',
     './css/fonts.css?v=1',
-    './css/variables.css?v=6',
-    './css/base.css?v=18',
+    './css/variables.css?v=8',
+    './css/base.css?v=23',
     './css/layout.css?v=15',
     './css/scramble.css?v=37',
-    './css/timer.css?v=34',
+    './css/timer.css?v=36',
     './css/stats.css?v=19',
     './css/cube.css?v=7',
     './css/graph.css?v=9',
     './css/modal.css?v=16',
-    './css/settings.css?v=12',
-    './js/app.js?v=118',
-    './js/timer.js?v=9',
-    './js/scramble.js?v=17',
-    './js/session.js?v=5',
-    './js/settings.js?v=5',
+    './css/settings.css?v=22',
+    './js/app.js?v=150',
+    './js/timer.js?v=14',
+    './js/scramble.js?v=20',
+    './js/session.js?v=10',
+    './js/settings.js?v=15',
     './js/stats.js?v=3',
-    './js/modal.js?v=16',
-    './js/cube-display.js?v=18',
-    './js/graph.js?v=15',
+    './js/modal.js?v=21',
+    './js/cube-display.js?v=19',
+    './js/graph.js?v=20',
     './js/utils.js?v=2',
-    './js/storage.js?v=4',
+    './js/storage.js?v=8',
     './js/db.js',
-    './js/distribution.js?v=3',
+    './js/distribution.js?v=7',
     './js/google-drive-sync.js?v=5',
     './resources/comment.svg',
     './resources/comment-off.svg',
@@ -134,12 +136,12 @@ async function cacheFirst(request, cacheName) {
 }
 
 async function staleWhileRevalidate(request, cacheName) {
-    const cache = await caches.open(cacheName);
-    const cached = await cache.match(request);
+    const cached = await caches.match(request);
 
     const networkPromise = fetch(request)
         .then(async (response) => {
             if (isCacheableResponse(response)) {
+                const cache = await caches.open(cacheName);
                 await cache.put(request, response.clone());
             }
             return response;
@@ -157,6 +159,13 @@ async function staleWhileRevalidate(request, cacheName) {
     throw new Error(`Unable to satisfy request for ${request.url}`);
 }
 
+async function serveCachedUpload(request) {
+    return (
+        await caches.match(request)
+        || new Response('', { status: 404, statusText: 'Not Found' })
+    );
+}
+
 self.addEventListener('install', (event) => {
     event.waitUntil((async () => {
         const cache = await caches.open(APP_CACHE_NAME);
@@ -171,7 +180,7 @@ self.addEventListener('activate', (event) => {
         const cacheNames = await caches.keys();
         await Promise.all(
             cacheNames
-                .filter((name) => name !== APP_CACHE_NAME && name !== RUNTIME_CACHE_NAME)
+                .filter((name) => name !== APP_CACHE_NAME && name !== RUNTIME_CACHE_NAME && name !== USER_ASSET_CACHE_NAME)
                 .map((name) => caches.delete(name)),
         );
         await self.clients.claim();
@@ -195,8 +204,18 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
+    if (request.url.startsWith(resolveLocalUrl(LOCAL_BACKGROUND_UPLOAD_PATH_PREFIX))) {
+        event.respondWith(serveCachedUpload(request));
+        return;
+    }
+
     if (url.origin === self.location.origin) {
         event.respondWith(cacheFirst(request, APP_CACHE_NAME));
+        return;
+    }
+
+    if (request.destination === 'image') {
+        event.respondWith(staleWhileRevalidate(request, USER_ASSET_CACHE_NAME));
         return;
     }
 
