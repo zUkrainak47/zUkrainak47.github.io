@@ -1,4 +1,4 @@
-import { formatReadableDate, formatTime, getEffectiveTime } from './utils.js?v=202604055'
+import { formatReadableDate, formatTime, getEffectiveTime } from './utils.js?v=202604056'
 
 const BIN_WIDTH_OPTIONS = Object.freeze([
     { label: '1:00', ms: 60000 },

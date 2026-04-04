@@ -1,15 +1,15 @@
-import { timer } from './timer.js?v=202604055';
-import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=202604055';
-import { sessionManager } from './session.js?v=202604055';
-import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=202604055';
-import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=202604055';
-import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, truncateTimeDisplay } from './utils.js?v=202604055';
-import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=202604055';
-import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=202604055';
-import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=202604055';
-import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=202604055';
-import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=202604055';
-import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=202604055';
+import { timer } from './timer.js?v=202604056';
+import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=202604056';
+import { sessionManager } from './session.js?v=202604056';
+import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=202604056';
+import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=202604056';
+import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, truncateTimeDisplay } from './utils.js?v=202604056';
+import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=202604056';
+import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=202604056';
+import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=202604056';
+import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=202604056';
+import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=202604056';
+import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=202604056';
 
 let currentScramble = '';
 let currentSortCol = null;
@@ -195,7 +195,7 @@ async function registerServiceWorker() {
     if (window.location?.protocol === 'file:') return;
 
     try {
-        const serviceWorkerUrl = new URL('../sw.js?v=202604055', import.meta.url);
+        const serviceWorkerUrl = new URL('../sw.js?v=202604056', import.meta.url);
         await navigator.serviceWorker.register(serviceWorkerUrl);
     } catch (error) {
         console.warn('Service worker registration failed:', error);
@@ -7080,33 +7080,99 @@ function initSettingsPanel() {
         };
     };
 
-    const getThemeTransferPayload = () => {
+    const getSingleThemeTransferPayload = (themeId = settings.get('theme')) => {
+        if (!isCustomThemeId(themeId)) return '';
+
         const customThemes = settings.get('customThemes');
-        const customThemeBases = settings.get('customThemeBases');
         const customThemeBackgrounds = settings.get('customThemeBackgrounds');
-        const slots = THEME_CUSTOM_IDS.map((themeId) => (
+        const payloadParts = [
             buildCompactThemeSlot(
                 customThemes[themeId] || getThemePresetColors(THEME_DEFAULT_ID),
-                customThemeBases[themeId],
-            )
-        ));
-        const backgroundParts = THEME_CUSTOM_IDS.flatMap((themeId, index) => {
-            const background = normalizeThemeBackgroundSettings(customThemeBackgrounds[themeId]);
-            const slotIndex = index + 1;
-            const parts = [];
-            if (background.source === 'link' && background.url) {
-                parts.push(`bg${slotIndex}:${encodeURIComponent(background.url)}`);
+                getCustomThemeBaseId(themeId),
+            ),
+        ];
+        const background = normalizeThemeBackgroundSettings(customThemeBackgrounds[themeId]);
+        if (background.source === 'link' && background.url) {
+            payloadParts.push(`bg:${encodeURIComponent(background.url)}`);
+        }
+        if (background.overlayColor !== DEFAULTS.backgroundImageOverlayColor) {
+            payloadParts.push(`bgo:${encodeCompactThemeColor(background.overlayColor)}`);
+        }
+        return `ut3:${payloadParts.join('|')}`;
+    };
+
+    const applyImportedThemeToSelectedSlot = async (slotText, extraParts = []) => {
+        const currentTheme = settings.get('theme');
+        if (!isCustomThemeId(currentTheme)) {
+            alert('Select a custom theme slot before importing theme text.');
+            return false;
+        }
+
+        const decodedSlot = decodeCompactThemeSlot(slotText);
+        const nextBackground = createDefaultThemeBackgroundSettings();
+        extraParts.forEach((extraPart) => {
+            if (String(extraPart).startsWith('bg:')) {
+                try {
+                    nextBackground.source = 'link';
+                    nextBackground.url = decodeURIComponent(String(extraPart).slice(3));
+                } catch (_) {
+                }
+                return;
             }
-            if (background.overlayColor !== DEFAULTS.backgroundImageOverlayColor) {
-                parts.push(`bgo${slotIndex}:${encodeCompactThemeColor(background.overlayColor)}`);
+            if (String(extraPart).startsWith('bgo:')) {
+                nextBackground.overlayColor = decodeCompactThemeColor(
+                    String(extraPart).slice(4),
+                    DEFAULTS.backgroundImageOverlayColor,
+                );
             }
-            return parts;
         });
-        return `ut2:${slots.join('|')}${backgroundParts.length ? `|${backgroundParts.join('|')}` : ''}`;
+
+        flushThemeEditTransaction();
+        const previousSnapshot = cloneThemeSnapshot(currentTheme);
+        const nextCustomThemes = settings.get('customThemes');
+        const nextCustomThemeBases = settings.get('customThemeBases');
+        const nextCustomThemeBackgrounds = settings.get('customThemeBackgrounds');
+        const normalizedBackground = normalizeThemeBackgroundSettings(nextBackground);
+        nextCustomThemes[currentTheme] = decodedSlot.colors;
+        nextCustomThemeBases[currentTheme] = decodedSlot.baseThemeId;
+        nextCustomThemeBackgrounds[currentTheme] = normalizedBackground;
+
+        const nextSnapshot = {
+            baseThemeId: decodedSlot.baseThemeId,
+            colors: decodedSlot.colors,
+            background: normalizedBackground,
+        };
+        if (!themeSnapshotsMatch(previousSnapshot, nextSnapshot)) {
+            pushThemeUndoSnapshot(currentTheme, previousSnapshot);
+            clearThemeRedoStack(currentTheme);
+        }
+
+        settings.set('customThemes', nextCustomThemes);
+        settings.set('customThemeBases', nextCustomThemeBases);
+        settings.set('customThemeBackgrounds', nextCustomThemeBackgrounds);
+
+        if (normalizedBackground.source === 'link' && normalizedBackground.url) {
+            try {
+                await cacheLinkedBackgroundImage(normalizedBackground.url);
+            } catch (error) {
+                console.warn('Could not pre-cache imported background image link:', error);
+            }
+        }
+        return true;
     };
 
     const applyImportedThemes = async (text) => {
         const compactText = String(text ?? '').trim();
+        if (compactText.startsWith('ut3:')) {
+            const payloadParts = compactText.slice(4).split('|').filter(Boolean);
+            const [slotText = '', ...extraParts] = payloadParts;
+            if (!slotText) {
+                alert('Theme import is missing theme data.');
+                return false;
+            }
+            return applyImportedThemeToSelectedSlot(slotText, extraParts);
+        }
+
         if (compactText.startsWith('ut2:')) {
             flushThemeEditTransaction();
 
@@ -7618,10 +7684,13 @@ function initSettingsPanel() {
     themeCopyDefaultBtn?.addEventListener('click', () => applyPresetToCurrentCustomTheme(THEME_DEFAULT_ID));
     themeCopyOledBtn?.addEventListener('click', () => applyPresetToCurrentCustomTheme(THEME_OLED_ID));
     themeExportFileBtn?.addEventListener('click', () => {
-        downloadThemeText(getThemeTransferPayload(), `ukratimer-themes-${formatDate(Date.now())}.txt`);
+        const text = getSingleThemeTransferPayload();
+        if (!text) return;
+        downloadThemeText(text, `ukratimer-theme-${formatDate(Date.now())}.txt`);
     });
     themeExportTextBtn?.addEventListener('click', async () => {
-        const text = getThemeTransferPayload();
+        const text = getSingleThemeTransferPayload();
+        if (!text) return;
         let copied = false;
         try {
             await navigator.clipboard.writeText(text);
@@ -7634,7 +7703,7 @@ function initSettingsPanel() {
             return;
         }
 
-        await customPrompt('Clipboard copy was blocked. Copy the compact theme text below.', text, 1000000, 'Export Themes As Text');
+        await customPrompt('Clipboard copy was blocked. Copy the selected theme text below.', text, 1000000, 'Export Theme As Text');
     });
     themeImportFileBtn?.addEventListener('click', async () => {
         try {
@@ -7646,7 +7715,7 @@ function initSettingsPanel() {
         }
     });
     themeImportTextBtn?.addEventListener('click', async () => {
-        const text = await customPrompt('Paste exported theme text or JSON.', '', 1000000, 'Import Themes From Text', 'ut2:d|d|d');
+        const text = await customPrompt('Paste exported theme text or JSON for the currently selected custom slot.', '', 1000000, 'Import Theme From Text', 'ut3:d');
         if (!text || !text.trim()) return;
         await applyImportedThemes(text);
     });
