@@ -8456,8 +8456,13 @@ function initSettingsPanel() {
         const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const secondsPassedToday = (now.getHours() * 3600) + (now.getMinutes() * 60) + now.getSeconds();
         a.href = url;
-        a.download = `cstimer-export-${formatDate(Date.now())}.txt`;
+        a.download = `ukratimer-${year}-${month}-${day}_${secondsPassedToday}-cstimer-format.txt`;
         a.click();
         URL.revokeObjectURL(url);
     };
