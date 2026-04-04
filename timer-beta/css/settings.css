@@ -343,7 +343,7 @@ body.mobile-viewport #setting-large-scramble-text-row {
 }
 
 #theme-customization-overlay.theme-customization-overlay-docked .theme-customization-body {
-    gap: var(--space-sm);
+    gap: var(--space-lg);
 }
 
 #theme-customization-overlay.theme-customization-overlay-docked .theme-customization-actions {

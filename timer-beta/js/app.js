@@ -1,15 +1,15 @@
-import { timer } from './timer.js?v=202604048';
-import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=202604048';
-import { sessionManager } from './session.js?v=202604048';
-import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=202604048';
-import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=202604048';
-import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, truncateTimeDisplay } from './utils.js?v=202604048';
-import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=202604048';
-import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=202604048';
-import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=202604048';
-import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=202604048';
-import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=202604048';
-import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=202604048';
+import { timer } from './timer.js?v=202604049';
+import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=202604049';
+import { sessionManager } from './session.js?v=202604049';
+import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=202604049';
+import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=202604049';
+import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, truncateTimeDisplay } from './utils.js?v=202604049';
+import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=202604049';
+import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=202604049';
+import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=202604049';
+import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=202604049';
+import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=202604049';
+import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=202604049';
 
 let currentScramble = '';
 let currentSortCol = null;
@@ -168,7 +168,7 @@ async function registerServiceWorker() {
     if (window.location?.protocol === 'file:') return;
 
     try {
-        const serviceWorkerUrl = new URL('../sw.js?v=202604048', import.meta.url);
+        const serviceWorkerUrl = new URL('../sw.js?v=202604049', import.meta.url);
         await navigator.serviceWorker.register(serviceWorkerUrl);
     } catch (error) {
         console.warn('Service worker registration failed:', error);
@@ -6380,6 +6380,11 @@ function initSettingsPanel() {
 
     const getBackgroundImageOverlayColor = (themeId = settings.get('theme')) => getThemeBackgroundSettings(themeId).overlayColor;
 
+    const hasAvailableBackgroundUpload = (themeId = settings.get('theme')) => (
+        (liveBackgroundUploadPreviewThemeId === themeId && Boolean(liveBackgroundUploadPreviewUrl))
+        || hasCachedBackgroundUpload
+    );
+
     const openUserAssetCache = async () => {
         if (!('caches' in window)) return null;
         try {
@@ -6508,6 +6513,7 @@ function initSettingsPanel() {
         const currentTheme = settings.get('theme');
         const savedUrl = getSavedBackgroundImageUrl(currentTheme);
         const source = getBackgroundImageSource(currentTheme);
+        const hasUpload = hasAvailableBackgroundUpload(currentTheme);
         const mode = themeBackgroundImageModeOverride
             || (source === 'upload'
                 ? 'upload'
@@ -6529,10 +6535,14 @@ function initSettingsPanel() {
         if (themeBackgroundImageStatusEl) {
             themeBackgroundImageStatusEl.textContent = source === 'upload' && hasCachedBackgroundUpload
                 ? 'Uploaded image is active.'
-                : mode === 'upload'
+                : mode === 'upload' && hasUpload
+                    ? 'Uploaded image is saved on this device.'
+                    : mode === 'upload'
                     ? 'Choose an image.'
                 : source === 'link' && savedUrl
                     ? 'Linked image is active.'
+                    : mode === 'link' && savedUrl
+                        ? 'Image link is saved.'
                     : 'No custom background image is active.';
         }
     };
@@ -6556,7 +6566,6 @@ function initSettingsPanel() {
             nextCustomThemeBackgrounds[currentTheme] = {
                 ...backgroundSettings,
                 source: 'none',
-                url: '',
             };
             settings.set('customThemeBackgrounds', nextCustomThemeBackgrounds);
             return;
@@ -7362,7 +7371,6 @@ function initSettingsPanel() {
         const hasChanged = JSON.stringify(currentBackground) !== JSON.stringify(nextBackground);
 
         themeBackgroundImageModeOverride = nextUrl ? 'link' : '';
-        await clearCachedBackgroundUpload(currentTheme);
 
         if (hasChanged) {
             applyThemeBackgroundChange(nextBackground);
@@ -7581,17 +7589,23 @@ function initSettingsPanel() {
         const nextMode = themeBackgroundImageModeSelect.value;
         if (nextMode === 'none') {
             themeBackgroundImageModeOverride = '';
-            await clearCachedBackgroundUpload(currentTheme);
-            applyThemeBackgroundChange((background) => ({ ...background, source: 'none', url: '' }));
+            applyThemeBackgroundChange((background) => ({ ...background, source: 'none' }));
         } else if (nextMode === 'link') {
             themeBackgroundImageModeOverride = 'link';
-            await clearCachedBackgroundUpload(currentTheme);
             applyThemeBackgroundChange((background) => ({
                 ...background,
                 source: background.url ? 'link' : 'none',
             }));
         } else if (nextMode === 'upload') {
-            themeBackgroundImageModeOverride = 'upload';
+            if (hasAvailableBackgroundUpload(currentTheme)) {
+                themeBackgroundImageModeOverride = '';
+                applyThemeBackgroundChange((background) => ({
+                    ...background,
+                    source: 'upload',
+                }));
+            } else {
+                themeBackgroundImageModeOverride = 'upload';
+            }
         }
         applyBackgroundImage();
         syncThemeBackgroundImageUI();
@@ -7611,7 +7625,6 @@ function initSettingsPanel() {
             applyThemeBackgroundChange((background) => ({
                 ...background,
                 source: 'upload',
-                url: '',
             }));
             applyBackgroundImage();
             syncThemeBackgroundImageUI();
@@ -7630,7 +7643,7 @@ function initSettingsPanel() {
         if (!isCustomThemeId(currentTheme)) return;
         themeBackgroundImageModeOverride = '';
         await clearCachedBackgroundUpload(currentTheme);
-        applyThemeBackgroundChange((background) => ({ ...background, source: 'none', url: '' }));
+        applyThemeBackgroundChange((background) => ({ ...background, source: 'none' }));
         applyBackgroundImage();
         syncThemeBackgroundImageUI();
     });
