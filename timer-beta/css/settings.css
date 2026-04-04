@@ -70,7 +70,10 @@
 }
 
 .setting-group-toggle {
-    width: 100%;
+    display: block;
+    width: fit-content;
+    max-width: 100%;
+    margin: 0 auto;
     padding: 0;
     border: 0;
     background: transparent;
@@ -586,7 +589,8 @@ body.mobile-viewport #setting-large-scramble-text-row {
     display: inline-flex;
     align-items: center;
     gap: 12px;
-    width: 100%;
+    width: fit-content;
+    max-width: 100%;
     padding: 0 4px;
     border: 0;
     background: transparent;
