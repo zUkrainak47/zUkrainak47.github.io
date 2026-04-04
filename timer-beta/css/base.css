@@ -331,7 +331,7 @@ select {
     position: fixed;
     left: 0;
     top: 0;
-    z-index: 55;
+    z-index: 2000;
     padding: 5px 8px;
     border-radius: var(--radius-md);
     border: 1px solid var(--surface-border);
@@ -358,6 +358,10 @@ select {
     transform: translate(4px, -50%);
 }
 
+#shortcut-tooltip[data-placement="top"] {
+    transform: translate(-50%, -4px);
+}
+
 #shortcut-tooltip::before {
     content: '';
     position: absolute;
@@ -380,6 +384,17 @@ select {
     border-bottom: 1px solid var(--surface-border);
 }
 
+#shortcut-tooltip[data-placement="top"]::before {
+    left: 50%;
+    top: auto;
+    bottom: -5px;
+    transform: translateX(-50%) rotate(45deg);
+    border-left: 0;
+    border-top: 0;
+    border-right: 1px solid var(--surface-border);
+    border-bottom: 1px solid var(--surface-border);
+}
+
 #shortcut-tooltip.active {
     opacity: 1;
     visibility: visible;
@@ -390,8 +405,12 @@ select {
     transform: translate(0, -50%);
 }
 
+#shortcut-tooltip[data-placement="top"].active {
+    transform: translate(-50%, 0);
+}
+
 body.shortcut-tooltips-disabled #shortcut-tooltip,
-body.mobile-viewport #shortcut-tooltip {
+body.coarse-pointer #shortcut-tooltip {
     display: none;
 }
 

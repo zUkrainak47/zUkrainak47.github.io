@@ -351,7 +351,6 @@ body.typing-entry-mode:not(.coarse-pointer) #manual-time-entry-display {
     cursor: text;
 }
 
-body:not(.coarse-pointer) #timer-quick-actions,
 body:not(.coarse-pointer) #manual-time-submit {
     display: none !important;
 }

@@ -1023,11 +1023,12 @@ function syncQuickActionsUI() {
     const quickActionsEl = getEl('timer-quick-actions');
     if (!quickActionsEl) return;
 
+    const shouldReserveMobileQuickActionsSpace = isMobileTimerPanelActive();
     const shouldShow = quickActionsState.visible
         && coarsePointerQuery.matches
-        && isMobileTimerPanelActive()
+        && shouldReserveMobileQuickActionsSpace
         && !quickActionsState.manualEntryActive;
-    quickActionsEl.hidden = !shouldShow;
+    quickActionsEl.hidden = !shouldReserveMobileQuickActionsSpace;
     quickActionsEl.classList.toggle('is-visible', shouldShow);
     quickActionsEl.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
     document.body.classList.toggle('timer-quick-actions-visible', shouldShow);
@@ -3760,13 +3761,26 @@ function formatShortcutTooltip(binding) {
     return binding.map(token => tokenMap[token] || token).join('');
 }
 
+function isNarrowFinePointerLayout() {
+    return mobileViewportQuery.matches && !coarsePointerQuery.matches;
+}
+
+function getShortcutTooltipPlacement(target) {
+    if (isNarrowFinePointerLayout()) {
+        if (target?.id === 'btn-settings') return 'top';
+        if (target instanceof Element && target.matches('#modal-stat-nav button[data-stat-type]')) return 'top';
+    }
+
+    return target?.dataset.shortcutTooltipPlacement || 'bottom';
+}
+
 function positionShortcutTooltip(target) {
     if (!shortcutTooltipEl) return;
 
     const rect = target.getBoundingClientRect();
     const gap = 10;
     const margin = 8;
-    const placement = target.dataset.shortcutTooltipPlacement || 'bottom';
+    const placement = getShortcutTooltipPlacement(target);
 
     if (placement === 'right') {
         shortcutTooltipEl.style.left = `${rect.right + gap}px`;
@@ -3784,6 +3798,23 @@ function positionShortcutTooltip(target) {
 
         shortcutTooltipEl.style.left = `${clampedLeft}px`;
         shortcutTooltipEl.style.top = `${clampedTop}px`;
+        return;
+    }
+
+    if (placement === 'top') {
+        shortcutTooltipEl.style.left = `${rect.left + rect.width / 2}px`;
+        shortcutTooltipEl.style.top = `${rect.top - gap}px`;
+
+        const tooltipRect = shortcutTooltipEl.getBoundingClientRect();
+        const minLeft = margin + tooltipRect.width / 2;
+        const maxLeft = window.innerWidth - margin - tooltipRect.width / 2;
+        const centeredLeft = rect.left + rect.width / 2;
+        const clampedLeft = Math.min(Math.max(centeredLeft, minLeft), maxLeft);
+        const minTop = margin;
+        const preferredTop = rect.top - gap - tooltipRect.height;
+
+        shortcutTooltipEl.style.left = `${clampedLeft}px`;
+        shortcutTooltipEl.style.top = `${Math.max(preferredTop, minTop)}px`;
         return;
     }
 
@@ -3807,7 +3838,7 @@ function showShortcutTooltip(target) {
     if (!shortcutTooltipEl || !target?.dataset.shortcutTooltip) return;
 
     const wasActive = shortcutTooltipEl.classList.contains('active');
-    shortcutTooltipEl.dataset.placement = target.dataset.shortcutTooltipPlacement || 'bottom';
+    shortcutTooltipEl.dataset.placement = getShortcutTooltipPlacement(target);
     shortcutTooltipEl.textContent = target.dataset.shortcutTooltip;
 
     if (!wasActive) {
