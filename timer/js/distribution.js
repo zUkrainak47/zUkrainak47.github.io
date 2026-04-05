@@ -1,4 +1,4 @@
-import { formatReadableDate, formatTime, getEffectiveTime } from './utils.js?v=2026040568'
+import { formatReadableDate, formatTime, getEffectiveTime } from './utils.js?v=2026040569'
 
 const BIN_WIDTH_OPTIONS = Object.freeze([
     { label: '1:00', ms: 60000 },
@@ -92,10 +92,10 @@ function loadPreferences() {
 
 function savePreferences() {
     const nextPrefs = {
-        binWidthIndex: _state?.binWidthIndex ?? _prefs.binWidthIndex,
-        customMin: _state?.customMin ?? _prefs.customMin,
-        customMax: _state?.customMax ?? _prefs.customMax,
-        legendVisible: _state?.legendVisible ?? _prefs.legendVisible,
+        binWidthIndex: _state ? _state.binWidthIndex : _prefs.binWidthIndex,
+        customMin: _state ? _state.customMin : _prefs.customMin,
+        customMax: _state ? _state.customMax : _prefs.customMax,
+        legendVisible: _state ? _state.legendVisible : _prefs.legendVisible,
     }
     _prefs = nextPrefs
 

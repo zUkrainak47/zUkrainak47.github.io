@@ -1,4 +1,4 @@
-import { load, save } from './storage.js?v=2026040568';
+import { load, save } from './storage.js?v=2026040569';
 
 let randomScrambleForEvent;
 let _cubingInitPromise = null;
