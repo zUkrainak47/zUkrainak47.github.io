@@ -244,6 +244,8 @@
     cursor: default;
     font-size: var(--text-sm);
     white-space: nowrap;
+    position: relative;
+    z-index: 2;
 }
 
 #solves-table td:nth-child(2) {
@@ -275,6 +277,7 @@
 .solve-time-cell {
     position: relative;
     font-weight: 500;
+    z-index: 1;
 }
 
 .solve-actions {
@@ -746,7 +749,7 @@ tr:hover .solve-actions {
     body[data-mobile-panel="stats"] #solves-container {
         flex: 1;
         min-height: 0;
-        padding: 0 var(--space-xs) var(--space-lg);
+        padding: 0 var(--space-xs) 0;
         max-height: none;
     }
 
