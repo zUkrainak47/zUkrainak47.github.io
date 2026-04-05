@@ -416,17 +416,13 @@ body:not(.mobile-viewport) #inspection-cancel-wrap {
     display: none !important;
 }
 
-#center-panel:has(.timer-popup:not(:empty)) {
+#center-panel:has(.timer-popup.visible),
+#center-panel.timer-popup-active {
     z-index: 61;
-    pointer-events: none;
 }
 
-#center-panel:has(.timer-popup:not(:empty)) #timer-display-wrapper,
-#center-panel:has(.timer-popup:not(:empty)) #timer-info {
-    pointer-events: auto;
-}
-
-#timer-display-wrapper:has(.timer-popup:not(:empty)) {
+#timer-display-wrapper:has(.timer-popup.visible),
+#timer-display-wrapper.timer-popup-active {
     z-index: 60;
 }
 
