@@ -24,6 +24,7 @@
 #btn-scramble-preview {
     font-size: 18px;
     opacity: 0.5;
+    color: var(--scramble-top-text);
     transition: opacity var(--transition-fast), background var(--transition-fast), color var(--transition-fast);
     outline: none;
     box-shadow: none;
@@ -76,12 +77,14 @@
     font-weight: 700;
     letter-spacing: 0.08em;
     opacity: 0.55;
+    color: var(--scramble-top-text);
     -webkit-tap-highlight-color: transparent;
     transition: opacity var(--transition-fast), background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
 }
 
 .scramble-type-btn:hover,
 .scramble-type-menu.open .scramble-type-btn {
+    color: var(--scramble-top-text);
     opacity: 1;
 }
 
@@ -224,7 +227,7 @@
     font-family: var(--font-mono);
     font-size: var(--text-lg);
     font-weight: 500;
-    color: var(--text-primary);
+    color: var(--scramble-top-text);
     text-align: center;
     letter-spacing: 0.5px;
     line-height: 1.6;
@@ -298,7 +301,7 @@
     line-height: 1.6;
     background: var(--surface);
     border: 1px solid var(--accent);
-    color: var(--text-primary);
+    color: var(--scramble-top-text);
     padding: 3px;
     resize: none;
     overflow: hidden;
@@ -314,6 +317,7 @@
 #btn-next-scramble,
 #btn-edit-scramble {
     opacity: 0.5;
+    color: var(--scramble-top-text);
     transition: opacity var(--transition-fast);
     font-size: 16px;
     width: 32px;
@@ -346,7 +350,7 @@
     min-width: 84px;
     background: var(--surface-ghost);
     border: 1px solid var(--floating-surface-border);
-    color: var(--text-primary);
+    color: var(--scramble-top-text);
 }
 
 #btn-copy-scramble:hover,
@@ -581,7 +585,7 @@
         border-radius: 999px;
         background: var(--surface-ghost);
         border: 1px solid var(--floating-surface-border);
-        color: var(--text-primary);
+        color: var(--scramble-top-text);
         font-size: var(--text-base);
         font-weight: 600;
         box-shadow: var(--shadow-sm);
@@ -673,6 +677,7 @@
         height: 40px;
         padding-inline: 12px;
         font-size: 0.82rem;
+        color: var(--scramble-top-text);
     }
 
     #scramble-container {
@@ -817,6 +822,7 @@
         min-width: 92px;
         padding-inline: 14px;
         font-size: 0.88rem;
+        color: var(--scramble-top-text);
     }
 
     #btn-scramble-preview {

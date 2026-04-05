@@ -107,13 +107,11 @@
 /* Solves table */
 #solves-container {
     flex: 1;
-    overflow-y: scroll;
-    overflow-x: hidden;
-    scrollbar-gutter: stable;
+    display: flex;
+    flex-direction: column;
     min-height: 0;
     padding: 0 var(--space-xs);
     position: relative;
-    background: var(--surface);
 }
 
 /* Desktop override: 14px border-radius for stats panel */
@@ -125,9 +123,10 @@
 
 #solves-table {
     width: 100%;
-    table-layout: fixed;
-    border-collapse: separate;
-    border-spacing: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    flex: 1;
     font-size: var(--text-base);
     font-family: var(--font-mono);
     --solves-table-index-width: 20%;
@@ -136,27 +135,46 @@
     --solves-table-header-font-size: var(--text-xs);
 }
 
-#solves-table thead {
-    position: sticky;
-    top: 0;
-    background: var(--surface);
-    z-index: 10;
+#solves-table thead,
+#solves-table tbody {
+    display: block;
 }
 
-#solves-table thead::before {
-    content: '';
-    position: absolute;
-    top: -1px;
-    left: 0;
-    right: 0;
-    height: 1px;
-    background: var(--surface);
+#solves-table thead tr,
+#solves-table tbody tr {
+    display: table;
+    table-layout: fixed;
+    border-collapse: collapse;
+    width: 100%;
+}
+
+#solves-table tbody {
+    flex: 1;
+    overflow-y: scroll;
+    overflow-x: hidden;
+    scrollbar-gutter: stable;
+    min-height: 0;
+}
+
+#solves-table thead {
+    flex-shrink: 0;
+    overflow-y: scroll;
+    scrollbar-gutter: stable;
+}
+
+#solves-table thead::-webkit-scrollbar,
+#solves-table thead::-webkit-scrollbar-thumb,
+#solves-table thead::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+@supports not selector(::-webkit-scrollbar) {
+    #solves-table thead {
+        scrollbar-color: transparent transparent;
+    }
 }
 
 #solves-table th {
-    position: sticky;
-    top: 0;
-    z-index: 11;
     color: var(--text-tertiary);
     font-weight: 600;
     padding: 6px var(--space-sm);
@@ -164,7 +182,6 @@
     font-size: var(--solves-table-header-font-size);
     text-transform: uppercase;
     letter-spacing: 1px;
-    background: var(--surface);
     border-bottom: 1px solid var(--surface-border);
     user-select: none;
     -webkit-user-select: none;
@@ -221,11 +238,16 @@
 }
 
 #solves-table td:first-child {
+    width: var(--solves-table-index-width);
     text-align: left;
     color: var(--text-tertiary);
     cursor: default;
     font-size: var(--text-sm);
     white-space: nowrap;
+}
+
+#solves-table td:nth-child(2) {
+    width: var(--solves-table-time-width);
 }
 
 .solve-index-indicator {
@@ -289,9 +311,9 @@ tr:hover .solve-actions {
 }
 
 .solve-actions button.active-penalty {
-    color: var(--stat-worst);
-    border-color: rgba(248, 81, 73, 0.5);
-    background: rgba(248, 81, 73, 0.1);
+    color: var(--danger);
+    border-color: var(--danger-border);
+    background: var(--danger-bg-soft);
 }
 
 .best-time,
@@ -590,9 +612,9 @@ tr:hover .solve-actions {
 }
 
 .btn-icon-small.btn-danger:hover {
-    background: rgba(248, 81, 73, 0.1);
-    color: var(--stat-worst);
-    border-color: rgba(248, 81, 73, 0.5);
+    background: var(--danger-bg-soft);
+    color: var(--danger);
+    border-color: var(--danger-border);
 }
 
 @media (max-width: 1100px), (pointer: coarse) {
@@ -632,6 +654,9 @@ tr:hover .solve-actions {
     #solves-container {
         padding: 0 var(--space-sm) var(--space-sm);
         max-height: min(54vh, 460px);
+    }
+
+    #solves-table tbody {
         overscroll-behavior: contain;
     }
 
@@ -723,6 +748,9 @@ tr:hover .solve-actions {
         min-height: 0;
         padding: 0 var(--space-xs) var(--space-lg);
         max-height: none;
+    }
+
+    body[data-mobile-panel="stats"] #solves-table tbody {
         overflow-x: hidden;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
@@ -741,14 +769,18 @@ tr:hover .solve-actions {
         overflow: hidden;
     }
 
-    body[data-mobile-panel="stats"] #stats-sidebar,
-    body[data-mobile-panel="stats"] #solves-container {
+    body[data-mobile-panel="stats"] #stats-sidebar {
         min-height: 0;
         height: 100%;
         overflow-x: hidden;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
         overscroll-behavior: contain;
+    }
+
+    body[data-mobile-panel="stats"] #solves-container {
+        min-height: 0;
+        height: 100%;
     }
 
     body[data-mobile-panel="stats"] #stats-sidebar {
@@ -762,7 +794,6 @@ tr:hover .solve-actions {
         grid-row: 1;
         border-left: 1px solid var(--surface-border);
         padding: 0 var(--space-sm) var(--space-md);
-        scrollbar-gutter: stable;
     }
 
 }

@@ -1,5 +1,5 @@
-import { load, save } from './storage.js?v=8';
-import { EventEmitter } from './utils.js?v=2';
+import { load, save } from './storage.js?v=2026040568';
+import { EventEmitter } from './utils.js?v=2026040568';
 
 export const THEME_DEFAULT_ID = 'default';
 export const THEME_OLED_ID = 'oled';
@@ -47,6 +47,7 @@ export const THEME_COLOR_SECTIONS = Object.freeze([
             Object.freeze({ key: 'surfaceGhostActive', variable: '--surface-ghost-active', label: 'Ghost active', alpha: true }),
             Object.freeze({ key: 'surfaceGhostMuted', variable: '--surface-ghost-muted', label: 'Ghost muted', alpha: true }),
             Object.freeze({ key: 'pillBorder', variable: '--pill-border', label: 'Pill border' }),
+            Object.freeze({ key: 'pillBackgroundHover', variable: '--pill-background-hover', label: 'Pill background hover', alpha: true }),
             Object.freeze({ key: 'pillBorderHover', variable: '--pill-border-hover', label: 'Pill border hover' }),
             Object.freeze({ key: 'tooltipSurface', variable: '--tooltip-surface', label: 'Tooltip surface', alpha: true }),
             Object.freeze({ key: 'mobileTabsSurface', variable: '--mobile-tabs-surface', label: 'Mobile tabs surface', alpha: true }),
@@ -59,12 +60,14 @@ export const THEME_COLOR_SECTIONS = Object.freeze([
         title: 'Text And Accent',
         items: Object.freeze([
             Object.freeze({ key: 'textPrimary', variable: '--text-primary', label: 'Primary text' }),
+            Object.freeze({ key: 'scrambleTopText', variable: '--scramble-top-text', label: 'Text #2' }),
             Object.freeze({ key: 'textSecondary', variable: '--text-secondary', label: 'Secondary text' }),
             Object.freeze({ key: 'textTertiary', variable: '--text-tertiary', label: 'Tertiary text' }),
             Object.freeze({ key: 'textMuted', variable: '--text-muted', label: 'Muted text' }),
             Object.freeze({ key: 'accent', variable: '--accent', label: 'Accent' }),
             Object.freeze({ key: 'accentHover', variable: '--accent-hover', label: 'Accent hover' }),
             Object.freeze({ key: 'accentSubtle', variable: '--accent-subtle', label: 'Accent subtle', alpha: true }),
+            Object.freeze({ key: 'dangerPenalty', variable: '--danger-penalty', label: 'Danger / penalty' }),
         ]),
     }),
     Object.freeze({
@@ -75,6 +78,7 @@ export const THEME_COLOR_SECTIONS = Object.freeze([
             Object.freeze({ key: 'timerHolding', variable: '--timer-holding', label: 'Timer holding' }),
             Object.freeze({ key: 'timerReady', variable: '--timer-ready', label: 'Timer ready' }),
             Object.freeze({ key: 'timerRunning', variable: '--timer-running', label: 'Timer running' }),
+            Object.freeze({ key: 'newBestPopup', variable: '--new-best-popup-color', label: 'New best popup' }),
             Object.freeze({ key: 'statNewBest', variable: '--stat-new-best', label: 'New best highlight' }),
         ]),
     }),
@@ -89,14 +93,14 @@ export const THEME_COLOR_SECTIONS = Object.freeze([
             Object.freeze({ key: 'graphGrid', variable: '--graph-grid', label: 'Grid' }),
             Object.freeze({ key: 'statBest', variable: '--stat-best', label: 'Distribution left bars' }),
             Object.freeze({ key: 'statAo5', variable: '--stat-ao5', label: 'Distribution right bars' }),
-            Object.freeze({ key: 'statWorst', variable: '--stat-worst', label: 'Distribution median line' }),
+            Object.freeze({ key: 'distributionMedian', variable: '--distribution-median', label: 'Distribution median line' }),
             Object.freeze({ key: 'statAo12', variable: '--stat-ao12', label: 'Distribution accent 1', hidden: true }),
             Object.freeze({ key: 'statAo100', variable: '--stat-ao100', label: 'Distribution accent 2', hidden: true }),
         ]),
     }),
     Object.freeze({
         id: 'scramble-preview-cube',
-        title: 'Scramble Preview: NxN Cubes',
+        title: 'NxN Cubes',
         items: Object.freeze([
             Object.freeze({ key: 'previewCubeWhite', variable: '--preview-cube-white', label: 'White face' }),
             Object.freeze({ key: 'previewCubeRed', variable: '--preview-cube-red', label: 'Red face' }),
@@ -109,7 +113,7 @@ export const THEME_COLOR_SECTIONS = Object.freeze([
     }),
     Object.freeze({
         id: 'scramble-preview-skewb',
-        title: 'Scramble Preview: Skewb',
+        title: 'Skewb',
         items: Object.freeze([
             Object.freeze({ key: 'previewSkewbWhite', variable: '--preview-skewb-white', label: 'White face' }),
             Object.freeze({ key: 'previewSkewbRed', variable: '--preview-skewb-red', label: 'Red face' }),
@@ -122,7 +126,7 @@ export const THEME_COLOR_SECTIONS = Object.freeze([
     }),
     Object.freeze({
         id: 'scramble-preview-pyraminx',
-        title: 'Scramble Preview: Pyraminx',
+        title: 'Pyraminx',
         items: Object.freeze([
             Object.freeze({ key: 'previewPyraminxYellow', variable: '--preview-pyraminx-yellow', label: 'Yellow face' }),
             Object.freeze({ key: 'previewPyraminxGreen', variable: '--preview-pyraminx-green', label: 'Green face' }),
@@ -133,7 +137,7 @@ export const THEME_COLOR_SECTIONS = Object.freeze([
     }),
     Object.freeze({
         id: 'scramble-preview-megaminx',
-        title: 'Scramble Preview: Megaminx',
+        title: 'Megaminx',
         items: Object.freeze([
             Object.freeze({ key: 'previewMegaminxFace1', variable: '--preview-megaminx-face-1', label: 'White face' }),
             Object.freeze({ key: 'previewMegaminxFace2', variable: '--preview-megaminx-face-2', label: 'Yellow face' }),
@@ -152,7 +156,7 @@ export const THEME_COLOR_SECTIONS = Object.freeze([
     }),
     Object.freeze({
         id: 'scramble-preview-square1',
-        title: 'Scramble Preview: Square-1',
+        title: 'Square-1',
         items: Object.freeze([
             Object.freeze({ key: 'previewSquare1Up', variable: '--preview-square1-up', label: 'Up face' }),
             Object.freeze({ key: 'previewSquare1Down', variable: '--preview-square1-down', label: 'Down face' }),
@@ -165,7 +169,7 @@ export const THEME_COLOR_SECTIONS = Object.freeze([
     }),
     Object.freeze({
         id: 'scramble-preview-clock',
-        title: 'Scramble Preview: Clock',
+        title: 'Clock',
         items: Object.freeze([
             Object.freeze({ key: 'previewClockBody', variable: '--preview-clock-body', label: 'Body' }),
             Object.freeze({ key: 'previewClockFrontFace', variable: '--preview-clock-front-face', label: 'Front face' }),
@@ -184,7 +188,7 @@ const THEME_COLOR_ITEMS = Object.freeze(THEME_COLOR_SECTIONS.flatMap((section) =
 const THEME_COLOR_KEYS = Object.freeze(THEME_COLOR_ITEMS.map((item) => item.key));
 
 const LEGACY_THEME_FIELD_TO_TOKEN = Object.freeze({
-    newBestColor: 'statNewBest',
+    newBestColor: 'newBestPopup',
     graphColorTime: 'graphColorTime',
     graphColorLine1: 'graphColorLine1',
     graphColorLine2: 'graphColorLine2',
@@ -192,6 +196,13 @@ const LEGACY_THEME_FIELD_TO_TOKEN = Object.freeze({
     graphColorAo5: 'graphColorLine1',
     graphColorAo12: 'graphColorLine2',
     graphColorAo100: 'graphColorLine3',
+});
+
+const LEGACY_THEME_COLOR_KEY_FALLBACKS = Object.freeze({
+    newBestPopup: ['newBestPopup', 'statBest'],
+    statNewBest: ['statNewBest'],
+    distributionMedian: ['distributionMedian', 'statWorst'],
+    dangerPenalty: ['dangerPenalty', 'statWorst'],
 });
 
 const DEFAULT_THEME_COLORS = Object.freeze({
@@ -218,12 +229,14 @@ const DEFAULT_THEME_COLORS = Object.freeze({
     surfaceGhostActive: 'rgba(255, 255, 255, 0.08)',
     surfaceGhostMuted: 'rgba(255, 255, 255, 0.025)',
     pillBorder: '#3a4048',
+    pillBackgroundHover: '#21262d',
     pillBorderHover: '#505863',
     tooltipSurface: 'rgba(28, 33, 40, 0.96)',
     mobileTabsSurface: 'rgba(13, 17, 23, 0.86)',
     newBestPopupSurface: 'rgba(13, 17, 23, 0.94)',
     dividerSubtle: 'rgba(255, 255, 255, 0.08)',
     textPrimary: '#e6edf3',
+    scrambleTopText: '#e6edf3',
     textSecondary: '#8b949e',
     textTertiary: '#6e7681',
     textMuted: '#484f58',
@@ -235,10 +248,12 @@ const DEFAULT_THEME_COLORS = Object.freeze({
     timerReady: '#3fb950',
     timerRunning: '#e6edf3',
     statBest: '#3fb950',
-    statWorst: '#f85149',
     statAo5: '#f0883e',
+    distributionMedian: '#f85149',
+    dangerPenalty: '#f85149',
     statAo12: '#a371f7',
     statAo100: '#58a6ff',
+    newBestPopup: '#3fb950',
     statNewBest: '#fe2b2b',
     graphColorTime: '#8b949e',
     graphColorLine1: '#ff2020',
@@ -258,12 +273,12 @@ const DEFAULT_THEME_COLORS = Object.freeze({
     previewSkewbYellow: '#ffff05',
     previewSkewbOrange: '#ffa503',
     previewSkewbBlue: '#0000ff',
-    previewSkewbOutline: 'rgba(0, 0, 0, 0.4)',
+    previewSkewbOutline: '#000000',
     previewPyraminxYellow: '#ffff05',
     previewPyraminxGreen: '#33cd32',
     previewPyraminxRed: '#ff0000',
     previewPyraminxBlue: '#0000ff',
-    previewPyraminxOutline: 'rgba(0, 0, 0, 0.4)',
+    previewPyraminxOutline: '#000000',
     previewMegaminxFace1: '#f8f8f5',
     previewMegaminxFace2: '#f9c91c',
     previewMegaminxFace3: '#fff6b4',
@@ -317,6 +332,7 @@ const OLED_THEME_COLORS = Object.freeze({
     surfaceGhostActive: '#141414',
     surfaceGhostMuted: '#0a0a0a',
     pillBorder: '#3d434b',
+    pillBackgroundHover: '#0a0a0a',
     pillBorderHover: '#78818b',
     tooltipSurface: 'rgba(10, 10, 10, 0.96)',
     mobileTabsSurface: 'rgba(10, 10, 10, 0.96)',
@@ -339,6 +355,41 @@ const DEFAULT_THEME_BACKGROUND = Object.freeze({
     overlayColor: DEFAULT_BACKGROUND_IMAGE_OVERLAY_COLOR,
 });
 
+function createDefaultThemeCustomizationCollapsedSections() {
+    return Object.fromEntries([
+        ['simple-core', false],
+        ...THEME_COLOR_SECTIONS.map((section) => [section.id, section.id.startsWith('scramble-preview')]),
+        ['background-image', false],
+    ]);
+}
+
+function normalizeThemeCustomizationCollapsedSections(value) {
+    const source = value && typeof value === 'object' ? value : {};
+    const defaults = createDefaultThemeCustomizationCollapsedSections();
+    return Object.fromEntries(
+        Object.entries(defaults).map(([sectionId, defaultValue]) => [sectionId, typeof source[sectionId] === 'boolean' ? source[sectionId] : defaultValue]),
+    );
+}
+
+function createDefaultSettingsCollapsedSections() {
+    return Object.freeze({
+        timer: false,
+        inspection: false,
+        interface: false,
+        stats: false,
+        graph: false,
+        data: false,
+    });
+}
+
+function normalizeSettingsCollapsedSections(value) {
+    const source = value && typeof value === 'object' ? value : {};
+    const defaults = createDefaultSettingsCollapsedSections();
+    return Object.fromEntries(
+        Object.entries(defaults).map(([sectionId, defaultValue]) => [sectionId, typeof source[sectionId] === 'boolean' ? source[sectionId] : defaultValue]),
+    );
+}
+
 const DEFAULTS = {
     inspectionTime: 'off',  // 'off', '15s'
     inspectionAlerts: 'off', // 'off', 'voice', 'screen', 'both'
@@ -352,6 +403,9 @@ const DEFAULTS = {
     customThemes: createDefaultCustomThemes(),
     customThemeBases: createDefaultCustomThemeBases(),
     customThemeBackgrounds: createDefaultCustomThemeBackgrounds(),
+    settingsCollapsedSections: createDefaultSettingsCollapsedSections(),
+    themeCustomizationMode: 'simple',
+    themeCustomizationCollapsedSections: createDefaultThemeCustomizationCollapsedSections(),
     displayFont: 'jetbrains-mono',
     largeScrambleText: false,
     pillSize: 'medium',       // 'small', 'medium', 'large', 'hidden'
@@ -368,7 +422,7 @@ const DEFAULTS = {
     graphView: { visibleCount: 0, yZoom: 1, xPan: 1, yPan: 0 },
     showDelta: false,
     newBestPopupEnabled: true,
-    newBestColor: DEFAULT_THEME_COLORS.statNewBest,
+    newBestColor: DEFAULT_THEME_COLORS.newBestPopup,
     graphColorTime: DEFAULT_THEME_COLORS.graphColorTime,
     graphLine1Stat: 'ao5',
     graphLine2Stat: 'ao12',
@@ -554,7 +608,10 @@ function normalizeThemeColors(themeColors, fallback = DEFAULT_THEME_COLORS) {
     const normalized = {};
 
     THEME_COLOR_KEYS.forEach((key) => {
-        normalized[key] = normalizeThemeColorValue(source[key], fallback[key]);
+        const candidateKeys = LEGACY_THEME_COLOR_KEY_FALLBACKS[key] || [key];
+        const matchedKey = candidateKeys.find((candidateKey) => source[candidateKey] != null && source[candidateKey] !== '');
+        const sourceValue = matchedKey ? source[matchedKey] : undefined;
+        normalized[key] = normalizeThemeColorValue(sourceValue, fallback[key]);
     });
 
     return normalized;
@@ -641,7 +698,7 @@ function buildThemeStateFromLoadedSettings(loaded) {
         }
     });
 
-    ['statNewBest', 'graphColorTime', 'graphColorLine1', 'graphColorLine2', 'graphColorLine3'].forEach((key) => {
+    ['newBestPopup', 'statNewBest', 'graphColorTime', 'graphColorLine1', 'graphColorLine2', 'graphColorLine3'].forEach((key) => {
         if (migratedCustomTheme[key] !== baseThemeColors[key]) {
             hasLegacyColorOverride = true;
         }
@@ -692,6 +749,8 @@ class Settings extends EventEmitter {
             customThemes: createDefaultCustomThemes(),
             customThemeBases: createDefaultCustomThemeBases(),
             customThemeBackgrounds: createDefaultCustomThemeBackgrounds(),
+            settingsCollapsedSections: loaded.settingsCollapsedSections,
+            themeCustomizationCollapsedSections: loaded.themeCustomizationCollapsedSections,
         };
 
         if (!ANIMATION_MODES.has(this._settings.animationMode)) {
@@ -715,6 +774,12 @@ class Settings extends EventEmitter {
         this._settings.customThemes = themeState.customThemes;
         this._settings.customThemeBases = themeState.customThemeBases;
         this._settings.customThemeBackgrounds = themeState.customThemeBackgrounds;
+        this._settings.settingsCollapsedSections = normalizeSettingsCollapsedSections(
+            this._settings.settingsCollapsedSections,
+        );
+        this._settings.themeCustomizationCollapsedSections = normalizeThemeCustomizationCollapsedSections(
+            this._settings.themeCustomizationCollapsedSections,
+        );
 
         this._syncAnimationSettings();
         this._syncThemeSettings();
@@ -761,10 +826,14 @@ class Settings extends EventEmitter {
         this._settings.customThemes = normalizeCustomThemes(this._settings.customThemes);
         this._settings.customThemeBases = normalizeCustomThemeBases(this._settings.customThemeBases);
         this._settings.customThemeBackgrounds = normalizeCustomThemeBackgrounds(this._settings.customThemeBackgrounds);
+        this._settings.settingsCollapsedSections = normalizeSettingsCollapsedSections(this._settings.settingsCollapsedSections);
+        this._settings.themeCustomizationCollapsedSections = normalizeThemeCustomizationCollapsedSections(
+            this._settings.themeCustomizationCollapsedSections,
+        );
 
         const activeTheme = this._getActiveThemeColors();
         this._settings.highContrastMode = this._settings.theme === THEME_OLED_ID;
-        this._settings.newBestColor = activeTheme.statNewBest;
+        this._settings.newBestColor = activeTheme.newBestPopup;
         this._settings.graphColorTime = activeTheme.graphColorTime;
         this._settings.graphColorLine1 = activeTheme.graphColorLine1;
         this._settings.graphColorLine2 = activeTheme.graphColorLine2;
@@ -899,6 +968,26 @@ class Settings extends EventEmitter {
             return;
         }
 
+        if (key === 'settingsCollapsedSections') {
+            const nextCollapsedSections = normalizeSettingsCollapsedSections(value);
+            if (deepEqual(this._settings.settingsCollapsedSections, nextCollapsedSections)) return;
+
+            this._settings.settingsCollapsedSections = nextCollapsedSections;
+            this._saveAndApply();
+            this.emit('change', 'settingsCollapsedSections', this.get('settingsCollapsedSections'));
+            return;
+        }
+
+        if (key === 'themeCustomizationCollapsedSections') {
+            const nextCollapsedSections = normalizeThemeCustomizationCollapsedSections(value);
+            if (deepEqual(this._settings.themeCustomizationCollapsedSections, nextCollapsedSections)) return;
+
+            this._settings.themeCustomizationCollapsedSections = nextCollapsedSections;
+            this._saveAndApply();
+            this.emit('change', 'themeCustomizationCollapsedSections', this.get('themeCustomizationCollapsedSections'));
+            return;
+        }
+
         const isObj = typeof value === 'object' && value !== null;
         const nextVal = isObj ? JSON.parse(JSON.stringify(value)) : value;
         if (!isObj && this._settings[key] === nextVal) return;
@@ -916,6 +1005,8 @@ class Settings extends EventEmitter {
             customThemes: createDefaultCustomThemes(),
             customThemeBases: createDefaultCustomThemeBases(),
             customThemeBackgrounds: createDefaultCustomThemeBackgrounds(),
+            settingsCollapsedSections: createDefaultSettingsCollapsedSections(),
+            themeCustomizationCollapsedSections: createDefaultThemeCustomizationCollapsedSections(),
         };
         this._syncAnimationSettings();
         this._syncThemeSettings();
@@ -949,8 +1040,14 @@ class Settings extends EventEmitter {
         document.documentElement.style.setProperty('--graph-color-ao5', themeColors.graphColorLine1);
         document.documentElement.style.setProperty('--graph-color-ao12', themeColors.graphColorLine2);
         document.documentElement.style.setProperty('--graph-color-ao100', themeColors.graphColorLine3);
-        document.documentElement.style.setProperty('--danger', themeColors.statWorst);
+        document.documentElement.style.setProperty('--danger', themeColors.dangerPenalty);
         document.documentElement.style.setProperty('--success', themeColors.statBest);
+        document.documentElement.style.setProperty('--new-best-popup-border', withAlpha(themeColors.newBestPopup, 0.45, 'rgba(63, 185, 80, 0.45)'));
+        document.documentElement.style.setProperty('--danger-bg-soft', withAlpha(themeColors.dangerPenalty, 0.1, 'rgba(248, 81, 73, 0.1)'));
+        document.documentElement.style.setProperty('--danger-bg-strong', withAlpha(themeColors.dangerPenalty, 0.15, 'rgba(248, 81, 73, 0.15)'));
+        document.documentElement.style.setProperty('--danger-bg-hover', withAlpha(themeColors.dangerPenalty, 0.2, 'rgba(248, 81, 73, 0.2)'));
+        document.documentElement.style.setProperty('--danger-border', withAlpha(themeColors.dangerPenalty, 0.5, 'rgba(248, 81, 73, 0.5)'));
+        document.documentElement.style.setProperty('--danger-border-strong', withAlpha(themeColors.dangerPenalty, 0.6, 'rgba(248, 81, 73, 0.6)'));
         document.documentElement.style.setProperty('--timer-delta-glow-strong', withAlpha(themeColors.bgPrimary, 1, 'rgba(12, 17, 22, 1)'));
         document.documentElement.style.setProperty('--timer-delta-glow-soft', withAlpha(themeColors.bgPrimary, 0.92, 'rgba(12, 17, 22, 0.92)'));
         document.documentElement.style.setProperty('--distribution-legend-bg', withAlpha(themeColors.floatingSurface, 0.92, 'rgba(13, 17, 23, 0.92)'));

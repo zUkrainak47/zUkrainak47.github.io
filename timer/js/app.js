@@ -1,15 +1,15 @@
-import { timer } from './timer.js?v=14';
-import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=20';
-import { sessionManager } from './session.js?v=10';
-import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=15';
-import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=3';
-import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, truncateTimeDisplay } from './utils.js?v=2';
-import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=21';
-import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=19';
-import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=20';
-import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=7';
-import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=8';
-import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=5';
+import { timer } from './timer.js?v=2026040568';
+import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=2026040568';
+import { sessionManager } from './session.js?v=2026040568';
+import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=2026040568';
+import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=2026040568';
+import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, truncateTimeDisplay } from './utils.js?v=2026040568';
+import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=2026040568';
+import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=2026040568';
+import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=2026040568';
+import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=2026040568';
+import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=2026040568';
+import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=2026040568';
 
 let currentScramble = '';
 let currentSortCol = null;
@@ -19,13 +19,191 @@ let scrambleCopyTimeout = null;
 let cubingWarmupHideTimeout = null;
 const statsCache = new StatsCache();
 let _skipSolveAddedRefresh = false; // set true when commitSolve manages the refresh itself
+const THEME_EDITOR_MODE_SIMPLE = 'simple';
+const THEME_EDITOR_MODE_FULL = 'full';
+const SIMPLE_THEME_COLOR_SECTIONS = Object.freeze([
+    Object.freeze({
+        id: 'simple-core',
+        title: 'Core Colors',
+        items: Object.freeze([
+            Object.freeze({ key: 'bgPrimary', label: 'Page background' }),
+            Object.freeze({ key: 'surface', label: 'Panel surface' }),
+            Object.freeze({ key: 'textPrimary', label: 'Text' }),
+            Object.freeze({ key: 'scrambleTopText', label: 'Text #2' }),
+            Object.freeze({ key: 'accent', label: 'Accent' }),
+            Object.freeze({ key: 'statNewBest', label: 'New best highlight' }),
+            Object.freeze({ key: 'timerReady', label: 'Timer ready' }),
+            Object.freeze({ key: 'timerHolding', label: 'Timer hold' }),
+        ]),
+    }),
+]);
+const SIMPLE_THEME_SEED_KEYS = Object.freeze([
+    'bgPrimary',
+    'surface',
+    'textPrimary',
+    'scrambleTopText',
+    'accent',
+    'timerReady',
+    'timerHolding',
+]);
+const SIMPLE_THEME_SHARED_SECTION_IDS = new Set([
+    'graph',
+    'scramble-preview-cube',
+    'scramble-preview-skewb',
+    'scramble-preview-pyraminx',
+    'scramble-preview-megaminx',
+    'scramble-preview-square1',
+    'scramble-preview-clock',
+]);
+const THEME_BACKGROUND_IMAGE_SECTION_ID = 'background-image';
+
+function clampThemeChannel(value) {
+    return Math.max(0, Math.min(255, Math.round(Number(value) || 0)));
+}
+
+function parseThemeHexToRgb(value, fallback = '#000000') {
+    const { hex } = decomposeThemeColor(value, fallback);
+    return {
+        r: parseInt(hex.slice(1, 3), 16),
+        g: parseInt(hex.slice(3, 5), 16),
+        b: parseInt(hex.slice(5, 7), 16),
+    };
+}
+
+function rgbToThemeHex({ r, g, b }) {
+    return `#${[r, g, b].map((channel) => clampThemeChannel(channel).toString(16).padStart(2, '0')).join('')}`;
+}
+
+function mixThemeRgb(a, b, amount) {
+    const weight = Math.max(0, Math.min(1, Number(amount) || 0));
+    return {
+        r: clampThemeChannel(a.r + ((b.r - a.r) * weight)),
+        g: clampThemeChannel(a.g + ((b.g - a.g) * weight)),
+        b: clampThemeChannel(a.b + ((b.b - a.b) * weight)),
+    };
+}
+
+function mixThemeColor(colorA, colorB, amount) {
+    return rgbToThemeHex(mixThemeRgb(
+        parseThemeHexToRgb(colorA, '#000000'),
+        parseThemeHexToRgb(colorB, '#ffffff'),
+        amount,
+    ));
+}
+
+function withThemeAlpha(value, alpha) {
+    const { hex } = decomposeThemeColor(value, '#000000');
+    return composeThemeColor(hex, Math.max(0, Math.min(100, Math.round((Number(alpha) || 0) * 100))));
+}
+
+function scaleThemeAlpha(value, alphaMultiplier = 1, fallback = '#000000') {
+    const { hex, alpha } = decomposeThemeColor(value, fallback);
+    const multiplier = Math.max(0, Math.min(1, Number(alphaMultiplier) || 0));
+    return composeThemeColor(hex, alpha * multiplier);
+}
+
+function getThemeLuminance(value) {
+    const { r, g, b } = typeof value === 'string' ? parseThemeHexToRgb(value) : value;
+    const channels = [r, g, b].map((channel) => {
+        const normalized = channel / 255;
+        return normalized <= 0.03928
+            ? normalized / 12.92
+            : ((normalized + 0.055) / 1.055) ** 2.4;
+    });
+
+    return (0.2126 * channels[0]) + (0.7152 * channels[1]) + (0.0722 * channels[2]);
+}
+
+function deriveSimpleThemeColors(seedColors) {
+    const backgroundSeed = decomposeThemeColor(seedColors.bgPrimary, '#0d1117');
+    const surfaceSeed = decomposeThemeColor(seedColors.surface, backgroundSeed.css);
+    const textSeed = decomposeThemeColor(seedColors.textPrimary, '#e6edf3');
+    const scrambleTopTextSeed = decomposeThemeColor(seedColors.scrambleTopText, textSeed.css);
+    const accentSeed = decomposeThemeColor(seedColors.accent, '#58a6ff');
+    const successSeed = decomposeThemeColor(seedColors.timerReady, '#3fb950');
+    const dangerSeed = decomposeThemeColor(seedColors.timerHolding, '#f85149');
+    const background = backgroundSeed.css;
+    const surface = surfaceSeed.css;
+    const text = textSeed.css;
+    const scrambleTopText = scrambleTopTextSeed.css;
+    const accent = accentSeed.css;
+    const success = successSeed.css;
+    const danger = dangerSeed.css;
+    const simpleDangerPenalty = '#f85149';
+    const backgroundAlpha = backgroundSeed.alpha / 100;
+    const surfaceAlpha = surfaceSeed.alpha / 100;
+    const textAlpha = textSeed.alpha / 100;
+    const accentAlpha = accentSeed.alpha / 100;
+    const bgRgb = parseThemeHexToRgb(background, '#0d1117');
+    const surfaceRgb = parseThemeHexToRgb(surface, background);
+    const textRgb = parseThemeHexToRgb(text, '#e6edf3');
+    const scrambleTopTextRgb = parseThemeHexToRgb(scrambleTopText, text);
+    const isDarkTheme = getThemeLuminance(bgRgb) < 0.32;
+    const black = { r: 0, g: 0, b: 0 };
+    const blendSurfaceToText = (amount) => rgbToThemeHex(mixThemeRgb(surfaceRgb, scrambleTopTextRgb, amount));
+    const blendBackgroundToSurface = (amount) => rgbToThemeHex(mixThemeRgb(bgRgb, surfaceRgb, amount));
+    const dimBackground = (amount) => rgbToThemeHex(mixThemeRgb(bgRgb, black, amount));
+    const toneTextToBackground = (amount) => rgbToThemeHex(mixThemeRgb(textRgb, bgRgb, amount));
+    const surfaceBorder = blendSurfaceToText(isDarkTheme ? 0.18 : 0.24);
+    const textSecondary = toneTextToBackground(isDarkTheme ? 0.38 : 0.5);
+    const floatingBorder = withThemeAlpha(scrambleTopText, isDarkTheme ? 0.08 : 0.14);
+    const floatingBorderStrong = withThemeAlpha(scrambleTopText, isDarkTheme ? 0.14 : 0.22);
+    const surfaceGhost = withThemeAlpha(scrambleTopText, isDarkTheme ? 0.05 : 0.08);
+    const surfaceGhostHover = withThemeAlpha(scrambleTopText, isDarkTheme ? 0.08 : 0.12);
+    const surfaceGhostActive = withThemeAlpha(scrambleTopText, isDarkTheme ? 0.12 : 0.18);
+    const surfaceGhostMuted = withThemeAlpha(scrambleTopText, isDarkTheme ? 0.025 : 0.04);
+    const pillBackgroundHover = blendBackgroundToSurface(isDarkTheme ? 0.7 : 0.24);
+
+    return {
+        bgPrimary: background,
+        bgSecondary: scaleThemeAlpha(blendBackgroundToSurface(isDarkTheme ? 0.42 : 0.14), backgroundAlpha),
+        bgTertiary: scaleThemeAlpha(blendBackgroundToSurface(isDarkTheme ? 0.7 : 0.24), backgroundAlpha),
+        bgOverlay: scaleThemeAlpha(withThemeAlpha(dimBackground(isDarkTheme ? 0.78 : 0.55), isDarkTheme ? 0.68 : 0.5), backgroundAlpha),
+        panelSheen: scaleThemeAlpha(withThemeAlpha(text, isDarkTheme ? 0.03 : 0.05), backgroundAlpha),
+        panelSheenFade: scaleThemeAlpha(withThemeAlpha(text, 0), backgroundAlpha),
+        surface,
+        surfaceHover: scaleThemeAlpha(blendSurfaceToText(isDarkTheme ? 0.08 : 0.12), surfaceAlpha),
+        surfaceActive: scaleThemeAlpha(blendSurfaceToText(isDarkTheme ? 0.15 : 0.2), surfaceAlpha),
+        surfaceBorder: scaleThemeAlpha(surfaceBorder, surfaceAlpha),
+        surfaceElevated: scaleThemeAlpha(withThemeAlpha(surface, isDarkTheme ? 0.9 : 0.96), surfaceAlpha),
+        floatingSurface: scaleThemeAlpha(withThemeAlpha(blendSurfaceToText(isDarkTheme ? 0.04 : 0.08), 0.98), surfaceAlpha),
+        floatingSurfaceHover: scaleThemeAlpha(withThemeAlpha(blendSurfaceToText(isDarkTheme ? 0.12 : 0.16), 0.99), surfaceAlpha),
+        floatingSurfaceBorder: scaleThemeAlpha(floatingBorder, surfaceAlpha),
+        floatingSurfaceBorderStrong: scaleThemeAlpha(floatingBorderStrong, surfaceAlpha),
+        surfaceGhost: scaleThemeAlpha(surfaceGhost, surfaceAlpha),
+        surfaceGhostHover: scaleThemeAlpha(surfaceGhostHover, surfaceAlpha),
+        surfaceGhostActive: scaleThemeAlpha(surfaceGhostActive, surfaceAlpha),
+        surfaceGhostMuted: scaleThemeAlpha(surfaceGhostMuted, surfaceAlpha),
+        pillBorder: scaleThemeAlpha(surfaceBorder, surfaceAlpha),
+        pillBackgroundHover: scaleThemeAlpha(pillBackgroundHover, surfaceAlpha),
+        pillBorderHover: scaleThemeAlpha(blendSurfaceToText(isDarkTheme ? 0.28 : 0.34), surfaceAlpha),
+        tooltipSurface: scaleThemeAlpha(withThemeAlpha(surface, isDarkTheme ? 0.96 : 0.94), surfaceAlpha),
+        mobileTabsSurface: scaleThemeAlpha(withThemeAlpha(blendBackgroundToSurface(isDarkTheme ? 0.42 : 0.14), isDarkTheme ? 0.86 : 0.93), surfaceAlpha),
+        newBestPopupSurface: scaleThemeAlpha(withThemeAlpha(background, isDarkTheme ? 0.94 : 0.9), backgroundAlpha),
+        dividerSubtle: scaleThemeAlpha(withThemeAlpha(text, isDarkTheme ? 0.08 : 0.12), textAlpha),
+        textPrimary: text,
+        scrambleTopText,
+        textSecondary: scaleThemeAlpha(textSecondary, textAlpha),
+        textTertiary: scaleThemeAlpha(toneTextToBackground(isDarkTheme ? 0.56 : 0.68), textAlpha),
+        textMuted: scaleThemeAlpha(toneTextToBackground(isDarkTheme ? 0.72 : 0.82), textAlpha),
+        accent,
+        accentHover: scaleThemeAlpha(mixThemeColor(accent, text, 0.16), accentAlpha),
+        accentSubtle: scaleThemeAlpha(withThemeAlpha(accent, isDarkTheme ? 0.15 : 0.22), accentAlpha),
+        timerIdle: scrambleTopText,
+        timerHolding: danger,
+        timerReady: success,
+        timerRunning: text,
+        newBestPopup: success,
+        dangerPenalty: simpleDangerPenalty,
+    };
+}
 
 async function registerServiceWorker() {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
     if (window.location?.protocol === 'file:') return;
 
     try {
-        const serviceWorkerUrl = new URL('../sw.js?v=35', import.meta.url);
+        const serviceWorkerUrl = new URL('../sw.js?v=2026040568', import.meta.url);
         await navigator.serviceWorker.register(serviceWorkerUrl);
     } catch (error) {
         console.warn('Service worker registration failed:', error);
@@ -1419,13 +1597,13 @@ function doesDesktopLargeScrambleTextFit(scrambleText, timerDisplay, timerDispla
     const { y: wrapperTranslateY } = getTransformTranslate(wrapperTransform);
     const { y: timerTranslateY } = getTransformTranslate(timerTransform);
     const baselineTimerTop = timerRect.top - wrapperTranslateY - timerTranslateY;
-    
+
     let fits = scrambleRect.bottom <= baselineTimerTop + 0.5;
-    
+
     if (fits && scrambleText.dataset.scrambleLayout === 'megaminx-rows') {
         fits = scrambleText.scrollWidth <= scrambleText.clientWidth + 1;
     }
-    
+
     return fits;
 }
 
@@ -5497,7 +5675,6 @@ function renderSolvesTable(solves, stats) {
         return;
     }
 
-    const container = document.getElementById('solves-container');
     const tbody = document.getElementById('solves-tbody');
     const configuredColumns = getConfiguredSolvesTableStatTokens();
     const visibleColumnCount = 2 + configuredColumns.length;
@@ -5555,15 +5732,14 @@ function renderSolvesTable(solves, stats) {
 
     // Remove old scroll listener
     if (_tableScrollHandler) {
-        container.removeEventListener('scroll', _tableScrollHandler);
+        tbody.removeEventListener('scroll', _tableScrollHandler);
     }
 
     function renderVisibleRows() {
-        const scrollTop = container.scrollTop;
-        const viewportHeight = container.clientHeight;
-        const headerHeight = 28; // approximate sticky header height
+        const scrollTop = tbody.scrollTop;
+        const viewportHeight = tbody.clientHeight;
 
-        const startRow = Math.max(0, Math.floor((scrollTop - headerHeight) / TABLE_ROW_HEIGHT) - 5);
+        const startRow = Math.max(0, Math.floor(scrollTop / TABLE_ROW_HEIGHT) - 5);
         const visibleRows = Math.ceil(viewportHeight / TABLE_ROW_HEIGHT) + 15;
         const endRow = Math.min(totalRows, startRow + visibleRows);
 
@@ -5623,7 +5799,7 @@ function renderSolvesTable(solves, stats) {
             });
         }
     };
-    container.addEventListener('scroll', _tableScrollHandler, { passive: true });
+    tbody.addEventListener('scroll', _tableScrollHandler, { passive: true });
 
     // Click delegation on tbody for all cell types
     tbody.onclick = (e) => {
@@ -5787,23 +5963,27 @@ function initSettingsPanel() {
     themeCustomizationOverlayEl = document.getElementById('theme-customization-overlay');
     const btn = document.getElementById('btn-settings');
     const themeCustomizationTitleEl = document.getElementById('theme-customization-title');
+    const themeCustomizationSimpleSectionEl = document.getElementById('theme-customization-simple-section');
     const themeCustomizationSectionsEl = document.getElementById('theme-customization-sections');
+    const themeCustomizationUndoBtn = document.getElementById('theme-customization-undo');
+    const themeCustomizationRedoBtn = document.getElementById('theme-customization-redo');
     const themeCustomizationCloseBtn = document.getElementById('theme-customization-close');
     const themeCustomizationDockTopRightBtn = document.getElementById('theme-customization-dock-top-right');
     const themeCustomizationDockBottomLeftBtn = document.getElementById('theme-customization-dock-bottom-left');
+    const themeModeSimpleBtn = document.getElementById('btn-theme-mode-simple');
+    const themeModeFullBtn = document.getElementById('btn-theme-mode-full');
     const themeCopyDefaultBtn = document.getElementById('btn-theme-copy-default');
     const themeCopyOledBtn = document.getElementById('btn-theme-copy-oled');
     const themeExportFileBtn = document.getElementById('btn-theme-export-file');
     const themeExportTextBtn = document.getElementById('btn-theme-export-text');
     const themeImportFileBtn = document.getElementById('btn-theme-import-file');
     const themeImportTextBtn = document.getElementById('btn-theme-import-text');
+    const themeBackgroundImageToggleBtn = document.getElementById('theme-background-image-toggle');
     const themeBackgroundImageModeSelect = document.getElementById('theme-background-image-mode');
     const themeBackgroundImageLinkRow = document.getElementById('theme-background-image-link-row');
     const themeBackgroundImageUploadRow = document.getElementById('theme-background-image-upload-row');
     const themeBackgroundImageUrlInput = document.getElementById('theme-background-image-url');
     const themeBackgroundImageStatusEl = document.getElementById('theme-background-image-status');
-    const themeBackgroundImageApplyLinkBtn = document.getElementById('btn-theme-background-apply-link');
-    const themeBackgroundImageClearLinkBtn = document.getElementById('btn-theme-background-clear-link');
     const themeBackgroundImageUploadBtn = document.getElementById('btn-theme-background-upload');
     const themeBackgroundImageClearUploadBtn = document.getElementById('btn-theme-background-clear-upload');
     const themeBackgroundImageOverlayRow = document.getElementById('theme-background-image-overlay-row');
@@ -5813,6 +5993,7 @@ function initSettingsPanel() {
     const themeBackgroundOverlayValue = document.getElementById('theme-background-overlay-value');
     const themeBackgroundOverlayResetBtn = document.getElementById('btn-theme-background-overlay-reset');
     const themeColorControls = new Map();
+    const simpleThemeColorControls = new Map();
     const themeColorKeys = THEME_COLOR_SECTIONS.flatMap((section) => section.items.map(({ key }) => key));
     const THEME_UNDO_LIMIT = 50;
     const THEME_EDIT_COMMIT_DELAY_MS = 220;
@@ -5830,9 +6011,39 @@ function initSettingsPanel() {
     let liveBackgroundUploadPreviewUrl = '';
     let liveBackgroundUploadPreviewThemeId = '';
     const themeColorDebounceTimers = new Map();
+    const simpleThemeColorDebounceTimers = new Map();
     let themeBackgroundOverlayDebounceTimer = 0;
+    let themeCustomizationColorMode = settings.get('themeCustomizationMode') === THEME_EDITOR_MODE_FULL
+        ? THEME_EDITOR_MODE_FULL
+        : THEME_EDITOR_MODE_SIMPLE;
     const THEME_DOCK_TOP_RIGHT = 'top-right';
     const THEME_DOCK_BOTTOM_LEFT = 'bottom-left';
+    const getThemeCustomizationHistoryState = (themeId = settings.get('theme')) => {
+        if (!isCustomThemeId(themeId)) {
+            return { canUndo: false, canRedo: false };
+        }
+
+        const canUndoCurrentEdit = Boolean(
+            themeEditTransaction
+            && themeEditTransaction.themeId === themeId
+            && !themeSnapshotsMatch(themeEditTransaction.beforeSnapshot, cloneThemeSnapshot(themeId))
+        );
+
+        return {
+            canUndo: canUndoCurrentEdit || (themeUndoThemeId === themeId && themeUndoStack.length > 0),
+            canRedo: themeUndoThemeId === themeId && themeRedoStack.length > 0,
+        };
+    };
+    const syncThemeCustomizationHistoryButtons = (themeId = settings.get('theme')) => {
+        const { canUndo, canRedo } = getThemeCustomizationHistoryState(themeId);
+
+        if (themeCustomizationUndoBtn) {
+            themeCustomizationUndoBtn.disabled = !canUndo;
+        }
+        if (themeCustomizationRedoBtn) {
+            themeCustomizationRedoBtn.disabled = !canRedo;
+        }
+    };
     const canDockThemeCustomization = () => true;
     const canShowThemeDockButtons = () => true;
     const syncThemeCustomizationDockButtons = () => {
@@ -5944,7 +6155,7 @@ function initSettingsPanel() {
         const allowNativeTextUndo = activeTag === 'textarea'
             || (activeTag === 'input' && !['color', 'range', 'button', 'submit', 'checkbox'].includes(activeInputType));
 
-        if (isUndoShortcut && isThemeCustomizationOpen() && (!isThemeCustomizationDocked() || themeCustomizationHasFocus) && !allowNativeTextUndo) {
+        if (isUndoShortcut && isThemeCustomizationOpen() && !allowNativeTextUndo) {
             if (undoThemeCustomizationChange()) {
                 e.preventDefault();
                 e.stopImmediatePropagation();
@@ -5952,7 +6163,7 @@ function initSettingsPanel() {
             }
         }
 
-        if (isRedoShortcut && isThemeCustomizationOpen() && (!isThemeCustomizationDocked() || themeCustomizationHasFocus) && !allowNativeTextUndo) {
+        if (isRedoShortcut && isThemeCustomizationOpen() && !allowNativeTextUndo) {
             if (redoThemeCustomizationChange()) {
                 e.preventDefault();
                 e.stopImmediatePropagation();
@@ -6031,12 +6242,31 @@ function initSettingsPanel() {
     const themeSelect = document.getElementById('setting-theme');
     const themeCustomizeRow = document.getElementById('setting-theme-customize-row');
     const customizeThemeBtn = document.getElementById('btn-customize-theme');
+    const simpleModeSections = [
+        ...SIMPLE_THEME_COLOR_SECTIONS,
+        ...THEME_COLOR_SECTIONS.filter((section) => SIMPLE_THEME_SHARED_SECTION_IDS.has(section.id)),
+    ];
 
-    if (themeCustomizationSectionsEl) {
-        themeCustomizationSectionsEl.innerHTML = THEME_COLOR_SECTIONS.map((section) => `
-            <section class="theme-customization-section">
-              <h3 class="theme-customization-section-title">${section.title}</h3>
-              <div class="theme-customization-grid">
+    const renderThemeColorSections = (container, sections, controlMap, { includeAlpha = true } = {}) => {
+        if (!container) return;
+
+        const collapsedSections = settings.get('themeCustomizationCollapsedSections') || {};
+        container.innerHTML = sections.map((section) => `
+            <section
+              class="theme-customization-section${collapsedSections[section.id] ? ' collapsed' : ''}"
+              data-theme-section-id="${section.id}"
+            >
+              <button
+                class="theme-customization-section-toggle"
+                type="button"
+                aria-expanded="${collapsedSections[section.id] ? 'false' : 'true'}"
+                data-theme-section-toggle="${section.id}"
+              >
+                <span class="theme-customization-section-chevron" aria-hidden="true"></span>
+                <span class="theme-customization-section-title">${section.title}</span>
+              </button>
+              <div class="theme-customization-section-content" data-theme-section-content="${section.id}">
+                <div class="theme-customization-grid">
                 ${section.items.filter((item) => !item.hidden).map((item) => `
                   <div class="theme-color-card" data-theme-color-key="${item.key}">
                     <div class="theme-color-header">
@@ -6047,18 +6277,23 @@ function initSettingsPanel() {
                       <input type="color" data-theme-color-input="${item.key}">
                       <button class="btn-action theme-color-reset" type="button" data-theme-color-reset="${item.key}">Reset</button>
                     </div>
-                    <div class="theme-color-alpha">
-                      <input type="range" min="0" max="100" step="1" value="100" data-theme-color-alpha="${item.key}">
-                      <span class="theme-color-alpha-value" data-theme-color-alpha-value="${item.key}">100%</span>
-                    </div>
+                    ${includeAlpha ? `
+                      <div class="theme-color-alpha">
+                        <input type="range" min="0" max="100" step="1" value="100" data-theme-color-alpha="${item.key}">
+                        <span class="theme-color-alpha-value" data-theme-color-alpha-value="${item.key}">100%</span>
+                      </div>
+                    ` : ''}
                     <div class="theme-color-value" data-theme-color-value="${item.key}"></div>
                   </div>
                 `).join('')}
+                </div>
               </div>
             </section>
         `).join('');
 
-        themeCustomizationSectionsEl.querySelectorAll('[data-theme-color-key]').forEach((card) => {
+        attachThemeSectionToggleHandlers(container);
+
+        container.querySelectorAll('[data-theme-color-key]').forEach((card) => {
             const key = card.getAttribute('data-theme-color-key');
             const colorInput = card.querySelector(`[data-theme-color-input="${key}"]`);
             const alphaInput = card.querySelector(`[data-theme-color-alpha="${key}"]`);
@@ -6068,9 +6303,73 @@ function initSettingsPanel() {
             const resetBtn = card.querySelector(`[data-theme-color-reset="${key}"]`);
             if (!key || !colorInput || !preview || !valueLabel) return;
 
-            themeColorControls.set(key, { colorInput, alphaInput, alphaValue, preview, valueLabel, resetBtn });
+            controlMap.set(key, { colorInput, alphaInput, alphaValue, preview, valueLabel, resetBtn });
         });
+    };
+
+    const attachThemeSectionToggleHandlers = (root) => {
+        if (!root) return;
+
+        root.querySelectorAll('[data-theme-section-toggle], #theme-background-image-toggle').forEach((toggleBtn) => {
+            if (toggleBtn.dataset.toggleBound === 'true') return;
+            toggleBtn.dataset.toggleBound = 'true';
+            toggleBtn.addEventListener('click', () => {
+                const sectionEl = toggleBtn.closest('.theme-customization-section');
+                if (!sectionEl) return;
+                const sectionId = sectionEl.dataset.themeSectionId || THEME_BACKGROUND_IMAGE_SECTION_ID;
+
+                const isExpanded = toggleBtn.getAttribute('aria-expanded') !== 'false';
+                const nextExpanded = !isExpanded;
+                toggleBtn.setAttribute('aria-expanded', nextExpanded ? 'true' : 'false');
+                sectionEl.classList.toggle('collapsed', !nextExpanded);
+                settings.set('themeCustomizationCollapsedSections', {
+                    ...settings.get('themeCustomizationCollapsedSections'),
+                    [sectionId]: !nextExpanded,
+                });
+            });
+        });
+    };
+
+    renderThemeColorSections(themeCustomizationSimpleSectionEl, simpleModeSections, simpleThemeColorControls);
+    renderThemeColorSections(themeCustomizationSectionsEl, THEME_COLOR_SECTIONS, themeColorControls);
+    attachThemeSectionToggleHandlers(themeBackgroundImageToggleBtn?.parentElement);
+    const backgroundImageSectionCollapsed = Boolean(
+        settings.get('themeCustomizationCollapsedSections')?.[THEME_BACKGROUND_IMAGE_SECTION_ID],
+    );
+    if (themeBackgroundImageToggleBtn) {
+        themeBackgroundImageToggleBtn.setAttribute('aria-expanded', backgroundImageSectionCollapsed ? 'false' : 'true');
+        themeBackgroundImageToggleBtn.closest('.theme-customization-section')?.classList.toggle('collapsed', backgroundImageSectionCollapsed);
     }
+
+    const syncThemeCustomizationModeButtons = () => {
+        [
+            [themeModeSimpleBtn, THEME_EDITOR_MODE_SIMPLE],
+            [themeModeFullBtn, THEME_EDITOR_MODE_FULL],
+        ].forEach(([button, mode]) => {
+            if (!button) return;
+            const isActive = themeCustomizationColorMode === mode;
+            button.classList.toggle('active-toggle', isActive);
+            button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+        });
+    };
+
+    const syncThemeCustomizationModeUI = () => {
+        if (themeCustomizationSimpleSectionEl) {
+            themeCustomizationSimpleSectionEl.hidden = themeCustomizationColorMode !== THEME_EDITOR_MODE_SIMPLE;
+            themeCustomizationSimpleSectionEl.style.display = themeCustomizationColorMode === THEME_EDITOR_MODE_SIMPLE ? '' : 'none';
+        }
+        if (themeCustomizationSectionsEl) {
+            themeCustomizationSectionsEl.hidden = themeCustomizationColorMode !== THEME_EDITOR_MODE_FULL;
+            themeCustomizationSectionsEl.style.display = themeCustomizationColorMode === THEME_EDITOR_MODE_FULL ? '' : 'none';
+        }
+        syncThemeCustomizationModeButtons();
+    };
+
+    const setThemeCustomizationColorMode = (mode) => {
+        themeCustomizationColorMode = mode === THEME_EDITOR_MODE_FULL ? THEME_EDITOR_MODE_FULL : THEME_EDITOR_MODE_SIMPLE;
+        settings.set('themeCustomizationMode', themeCustomizationColorMode);
+        syncThemeCustomizationModeUI();
+    };
 
     const getCustomThemeBaseId = (themeId = settings.get('theme')) => {
         if (!isCustomThemeId(themeId)) return THEME_DEFAULT_ID;
@@ -6111,6 +6410,11 @@ function initSettingsPanel() {
     const getSavedBackgroundImageUrl = (themeId = settings.get('theme')) => getThemeBackgroundSettings(themeId).url;
 
     const getBackgroundImageOverlayColor = (themeId = settings.get('theme')) => getThemeBackgroundSettings(themeId).overlayColor;
+
+    const hasAvailableBackgroundUpload = (themeId = settings.get('theme')) => (
+        (liveBackgroundUploadPreviewThemeId === themeId && Boolean(liveBackgroundUploadPreviewUrl))
+        || hasCachedBackgroundUpload
+    );
 
     const openUserAssetCache = async () => {
         if (!('caches' in window)) return null;
@@ -6167,6 +6471,26 @@ function initSettingsPanel() {
         return true;
     };
 
+    const restoreCachedBackgroundUploadPreview = async (themeId) => {
+        const cache = await openUserAssetCache();
+        if (!cache || !isCustomThemeId(themeId)) return false;
+
+        const response = await cache.match(getThemeUploadCacheUrl(themeId));
+        if (!response) return false;
+
+        const blob = await response.blob();
+        if (!blob || !blob.size) return false;
+
+        if (liveBackgroundUploadPreviewThemeId === themeId && liveBackgroundUploadPreviewUrl) {
+            return true;
+        }
+
+        clearLiveBackgroundUploadPreview();
+        liveBackgroundUploadPreviewUrl = URL.createObjectURL(blob);
+        liveBackgroundUploadPreviewThemeId = themeId;
+        return true;
+    };
+
     const cacheLinkedBackgroundImage = async (url) => {
         const cache = await openUserAssetCache();
         if (!cache) return false;
@@ -6208,14 +6532,7 @@ function initSettingsPanel() {
 
     const syncBackgroundImageOverlayUI = () => {
         const currentTheme = settings.get('theme');
-        const source = getBackgroundImageSource(currentTheme);
-        const mode = themeBackgroundImageModeOverride
-            || (source === 'upload'
-                ? 'upload'
-                : source === 'link' && getSavedBackgroundImageUrl(currentTheme)
-                    ? 'link'
-                    : 'none');
-        const shouldShow = mode !== 'none';
+        const shouldShow = Boolean(getEffectiveBackgroundImageUrl(currentTheme));
         const { hex, alpha, css } = decomposeThemeColor(
             getBackgroundImageOverlayColor(currentTheme),
             DEFAULTS.backgroundImageOverlayColor,
@@ -6247,6 +6564,7 @@ function initSettingsPanel() {
         const currentTheme = settings.get('theme');
         const savedUrl = getSavedBackgroundImageUrl(currentTheme);
         const source = getBackgroundImageSource(currentTheme);
+        const hasUpload = hasAvailableBackgroundUpload(currentTheme);
         const mode = themeBackgroundImageModeOverride
             || (source === 'upload'
                 ? 'upload'
@@ -6267,12 +6585,16 @@ function initSettingsPanel() {
         syncBackgroundImageOverlayUI();
         if (themeBackgroundImageStatusEl) {
             themeBackgroundImageStatusEl.textContent = source === 'upload' && hasCachedBackgroundUpload
-                ? 'Cached uploaded image is active and available offline on this device.'
-                : mode === 'upload'
-                    ? 'Choose an image to cache it locally for offline use on this device.'
-                : source === 'link' && savedUrl
-                    ? 'Saved image link is active and cached for offline use on this device.'
-                    : 'No custom background image is active.';
+                ? 'Uploaded image is active.'
+                : mode === 'upload' && hasUpload
+                    ? 'Uploaded image is saved on this device.'
+                    : mode === 'upload'
+                        ? 'Choose an image.'
+                        : source === 'link' && savedUrl
+                            ? 'Linked image is active.'
+                            : mode === 'link' && savedUrl
+                                ? 'Image link is saved.'
+                                : 'No custom background image is active.';
         }
     };
 
@@ -6295,10 +6617,13 @@ function initSettingsPanel() {
             nextCustomThemeBackgrounds[currentTheme] = {
                 ...backgroundSettings,
                 source: 'none',
-                url: '',
             };
             settings.set('customThemeBackgrounds', nextCustomThemeBackgrounds);
             return;
+        }
+
+        if (backgroundSettings.source === 'upload' && hasCachedBackgroundUpload) {
+            await restoreCachedBackgroundUploadPreview(currentTheme);
         }
 
         if (backgroundSettings.source === 'link' && !backgroundSettings.url) {
@@ -6356,8 +6681,88 @@ function initSettingsPanel() {
         });
     };
 
-    const syncThemeColorControl = (key, value) => {
-        const controls = themeColorControls.get(key);
+    const getSimpleThemeSeedColors = (themeColors = settings.getActiveThemeColors()) => (
+        Object.fromEntries(SIMPLE_THEME_SEED_KEYS.map((key) => [key, themeColors[key]]))
+    );
+
+    const getMatchingSimpleThemePresetId = (seedColors) => {
+        const normalizedSeedColors = JSON.stringify(seedColors);
+        return [THEME_DEFAULT_ID, THEME_OLED_ID].find((presetThemeId) => {
+            const presetSeedColors = getSimpleThemeSeedColors(getThemePresetColors(presetThemeId));
+            return JSON.stringify(presetSeedColors) === normalizedSeedColors;
+        }) || null;
+    };
+
+    const applySimpleThemeSeedChange = (seedChanges) => {
+        const currentTheme = settings.get('theme');
+        if (!isCustomThemeId(currentTheme)) return;
+
+        const currentThemeColors = settings.getActiveThemeColors();
+        const nextSeedColors = {
+            ...getSimpleThemeSeedColors(currentThemeColors),
+            ...Object.fromEntries(Object.entries(seedChanges || {}).filter(([, value]) => Boolean(value))),
+        };
+        const matchingPresetThemeId = getMatchingSimpleThemePresetId(nextSeedColors);
+        if (matchingPresetThemeId) {
+            applyPresetToCurrentCustomTheme(matchingPresetThemeId);
+            return;
+        }
+        const derivedColors = deriveSimpleThemeColors(nextSeedColors);
+        const nextCustomThemes = settings.get('customThemes');
+        const nextThemeColors = {
+            ...nextCustomThemes[currentTheme],
+            ...derivedColors,
+        };
+
+        if (JSON.stringify(nextCustomThemes[currentTheme]) === JSON.stringify(nextThemeColors)) {
+            return;
+        }
+
+        beginThemeEditTransaction(currentTheme);
+        nextCustomThemes[currentTheme] = nextThemeColors;
+        settings.set('customThemes', nextCustomThemes);
+    };
+
+    const flushSimpleThemeColorSave = (key) => {
+        const controls = simpleThemeColorControls.get(key);
+        if (!controls) return;
+
+        const pendingTimer = simpleThemeColorDebounceTimers.get(key);
+        if (pendingTimer) {
+            window.clearTimeout(pendingTimer);
+            simpleThemeColorDebounceTimers.delete(key);
+        }
+
+        applySimpleThemeSeedChange({
+            [key]: composeThemeColor(
+                controls.colorInput.value,
+                controls.alphaInput ? controls.alphaInput.value : 100,
+            ),
+        });
+    };
+
+    const scheduleSimpleThemeColorSave = (key) => {
+        const existingTimer = simpleThemeColorDebounceTimers.get(key);
+        if (existingTimer) {
+            window.clearTimeout(existingTimer);
+        }
+
+        simpleThemeColorDebounceTimers.set(key, window.setTimeout(() => {
+            simpleThemeColorDebounceTimers.delete(key);
+            flushSimpleThemeColorSave(key);
+        }, THEME_LIVE_EDIT_DEBOUNCE_MS));
+    };
+
+    const resetSimpleThemeColor = (key) => {
+        const currentTheme = settings.get('theme');
+        if (!isCustomThemeId(currentTheme)) return;
+
+        const baseThemeColors = getThemePresetColors(getCustomThemeBaseId(currentTheme));
+        applySimpleThemeSeedChange({ [key]: baseThemeColors[key] });
+    };
+
+    const syncColorControl = (controlMap, key, value) => {
+        const controls = controlMap.get(key);
         if (!controls) return;
 
         const { hex, alpha, css } = decomposeThemeColor(value);
@@ -6376,17 +6781,26 @@ function initSettingsPanel() {
         }
     };
 
+    const syncThemeColorControl = (key, value) => {
+        syncColorControl(themeColorControls, key, value);
+    };
+
     const syncThemeCustomizationModal = () => {
         const currentTheme = settings.get('theme');
         const currentThemeColors = settings.getActiveThemeColors();
 
         themeCustomizationTitleEl.textContent = `${THEME_OPTION_LABELS.get(currentTheme) || 'Theme'}`;
+        simpleThemeColorControls.forEach((_, key) => {
+            syncColorControl(simpleThemeColorControls, key, currentThemeColors[key]);
+        });
         THEME_COLOR_SECTIONS.forEach((section) => {
             section.items.forEach(({ key }) => {
                 syncThemeColorControl(key, currentThemeColors[key]);
             });
         });
         syncThemeBackgroundImageUI();
+        syncThemeCustomizationModeUI();
+        syncThemeCustomizationHistoryButtons(currentTheme);
     };
 
     const setThemeActionFeedback = (button, label) => {
@@ -6430,16 +6844,21 @@ function initSettingsPanel() {
             themeRedoStack = [];
             themeEditTransaction = null;
             clearThemeEditCommitTimer();
+            syncThemeCustomizationHistoryButtons(themeId);
             return;
         }
 
-        if (themeUndoThemeId === themeId) return;
+        if (themeUndoThemeId === themeId) {
+            syncThemeCustomizationHistoryButtons(themeId);
+            return;
+        }
 
         themeUndoThemeId = themeId;
         themeUndoStack = [];
         themeRedoStack = [];
         themeEditTransaction = null;
         clearThemeEditCommitTimer();
+        syncThemeCustomizationHistoryButtons(themeId);
     };
 
     const pushThemeHistorySnapshot = (historyStack, themeId, snapshot) => {
@@ -6468,10 +6887,14 @@ function initSettingsPanel() {
         if (!isCustomThemeId(themeId)) return;
         ensureThemeUndoContext(themeId);
         themeRedoStack = [];
+        syncThemeCustomizationHistoryButtons(themeId);
     };
 
     const flushThemeEditTransaction = () => {
-        if (!themeEditTransaction) return;
+        if (!themeEditTransaction) {
+            syncThemeCustomizationHistoryButtons();
+            return;
+        }
 
         clearThemeEditCommitTimer();
         const { themeId, beforeSnapshot } = themeEditTransaction;
@@ -6481,6 +6904,7 @@ function initSettingsPanel() {
         if (!themeSnapshotsMatch(beforeSnapshot, currentSnapshot)) {
             pushThemeUndoSnapshot(themeId, beforeSnapshot);
         }
+        syncThemeCustomizationHistoryButtons(themeId);
     };
 
     const beginThemeEditTransaction = (themeId) => {
@@ -6499,6 +6923,7 @@ function initSettingsPanel() {
         themeEditCommitTimer = window.setTimeout(() => {
             flushThemeEditTransaction();
         }, THEME_EDIT_COMMIT_DELAY_MS);
+        syncThemeCustomizationHistoryButtons(themeId);
     };
 
     const applyThemeSnapshot = (themeId, snapshot) => {
@@ -6520,6 +6945,7 @@ function initSettingsPanel() {
         settings.set('customThemeBases', nextCustomThemeBases);
         settings.set('customThemeBackgrounds', nextCustomThemeBackgrounds);
         isApplyingThemeUndo = false;
+        syncThemeCustomizationHistoryButtons(themeId);
         return true;
     };
 
@@ -6535,6 +6961,7 @@ function initSettingsPanel() {
             if (themeSnapshotsMatch(beforeSnapshot, cloneThemeSnapshot(currentTheme))) {
                 themeEditTransaction = null;
                 clearThemeEditCommitTimer();
+                syncThemeCustomizationHistoryButtons(currentTheme);
                 return false;
             }
             pushThemeRedoSnapshot(currentTheme, currentSnapshot);
@@ -6659,33 +7086,99 @@ function initSettingsPanel() {
         };
     };
 
-    const getThemeTransferPayload = () => {
+    const getSingleThemeTransferPayload = (themeId = settings.get('theme')) => {
+        if (!isCustomThemeId(themeId)) return '';
+
         const customThemes = settings.get('customThemes');
-        const customThemeBases = settings.get('customThemeBases');
         const customThemeBackgrounds = settings.get('customThemeBackgrounds');
-        const slots = THEME_CUSTOM_IDS.map((themeId) => (
+        const payloadParts = [
             buildCompactThemeSlot(
                 customThemes[themeId] || getThemePresetColors(THEME_DEFAULT_ID),
-                customThemeBases[themeId],
-            )
-        ));
-        const backgroundParts = THEME_CUSTOM_IDS.flatMap((themeId, index) => {
-            const background = normalizeThemeBackgroundSettings(customThemeBackgrounds[themeId]);
-            const slotIndex = index + 1;
-            const parts = [];
-            if (background.source === 'link' && background.url) {
-                parts.push(`bg${slotIndex}:${encodeURIComponent(background.url)}`);
+                getCustomThemeBaseId(themeId),
+            ),
+        ];
+        const background = normalizeThemeBackgroundSettings(customThemeBackgrounds[themeId]);
+        if (background.source === 'link' && background.url) {
+            payloadParts.push(`bg:${encodeURIComponent(background.url)}`);
+        }
+        if (background.overlayColor !== DEFAULTS.backgroundImageOverlayColor) {
+            payloadParts.push(`bgo:${encodeCompactThemeColor(background.overlayColor)}`);
+        }
+        return `ut3:${payloadParts.join('|')}`;
+    };
+
+    const applyImportedThemeToSelectedSlot = async (slotText, extraParts = []) => {
+        const currentTheme = settings.get('theme');
+        if (!isCustomThemeId(currentTheme)) {
+            alert('Select a custom theme slot before importing theme text.');
+            return false;
+        }
+
+        const decodedSlot = decodeCompactThemeSlot(slotText);
+        const nextBackground = createDefaultThemeBackgroundSettings();
+        extraParts.forEach((extraPart) => {
+            if (String(extraPart).startsWith('bg:')) {
+                try {
+                    nextBackground.source = 'link';
+                    nextBackground.url = decodeURIComponent(String(extraPart).slice(3));
+                } catch (_) {
+                }
+                return;
             }
-            if (background.overlayColor !== DEFAULTS.backgroundImageOverlayColor) {
-                parts.push(`bgo${slotIndex}:${encodeCompactThemeColor(background.overlayColor)}`);
+            if (String(extraPart).startsWith('bgo:')) {
+                nextBackground.overlayColor = decodeCompactThemeColor(
+                    String(extraPart).slice(4),
+                    DEFAULTS.backgroundImageOverlayColor,
+                );
             }
-            return parts;
         });
-        return `ut2:${slots.join('|')}${backgroundParts.length ? `|${backgroundParts.join('|')}` : ''}`;
+
+        flushThemeEditTransaction();
+        const previousSnapshot = cloneThemeSnapshot(currentTheme);
+        const nextCustomThemes = settings.get('customThemes');
+        const nextCustomThemeBases = settings.get('customThemeBases');
+        const nextCustomThemeBackgrounds = settings.get('customThemeBackgrounds');
+        const normalizedBackground = normalizeThemeBackgroundSettings(nextBackground);
+        nextCustomThemes[currentTheme] = decodedSlot.colors;
+        nextCustomThemeBases[currentTheme] = decodedSlot.baseThemeId;
+        nextCustomThemeBackgrounds[currentTheme] = normalizedBackground;
+
+        const nextSnapshot = {
+            baseThemeId: decodedSlot.baseThemeId,
+            colors: decodedSlot.colors,
+            background: normalizedBackground,
+        };
+        if (!themeSnapshotsMatch(previousSnapshot, nextSnapshot)) {
+            pushThemeUndoSnapshot(currentTheme, previousSnapshot);
+            clearThemeRedoStack(currentTheme);
+        }
+
+        settings.set('customThemes', nextCustomThemes);
+        settings.set('customThemeBases', nextCustomThemeBases);
+        settings.set('customThemeBackgrounds', nextCustomThemeBackgrounds);
+
+        if (normalizedBackground.source === 'link' && normalizedBackground.url) {
+            try {
+                await cacheLinkedBackgroundImage(normalizedBackground.url);
+            } catch (error) {
+                console.warn('Could not pre-cache imported background image link:', error);
+            }
+        }
+        return true;
     };
 
     const applyImportedThemes = async (text) => {
         const compactText = String(text ?? '').trim();
+        if (compactText.startsWith('ut3:')) {
+            const payloadParts = compactText.slice(4).split('|').filter(Boolean);
+            const [slotText = '', ...extraParts] = payloadParts;
+            if (!slotText) {
+                alert('Theme import is missing theme data.');
+                return false;
+            }
+            return applyImportedThemeToSelectedSlot(slotText, extraParts);
+        }
+
         if (compactText.startsWith('ut2:')) {
             flushThemeEditTransaction();
 
@@ -6944,14 +7437,14 @@ function initSettingsPanel() {
         settings.set('customThemes', nextCustomThemes);
     };
 
-    const flushThemeColorSave = (key) => {
-        const controls = themeColorControls.get(key);
+    const flushDirectThemeColorSave = (key, controlMap = themeColorControls, debounceTimers = themeColorDebounceTimers) => {
+        const controls = controlMap.get(key);
         if (!controls) return;
 
-        const pendingTimer = themeColorDebounceTimers.get(key);
+        const pendingTimer = debounceTimers.get(key);
         if (pendingTimer) {
             window.clearTimeout(pendingTimer);
-            themeColorDebounceTimers.delete(key);
+            debounceTimers.delete(key);
         }
 
         const nextColor = composeThemeColor(
@@ -6961,16 +7454,24 @@ function initSettingsPanel() {
         applyThemeColorChange(key, nextColor);
     };
 
-    const scheduleThemeColorSave = (key) => {
-        const existingTimer = themeColorDebounceTimers.get(key);
+    const scheduleDirectThemeColorSave = (key, controlMap = themeColorControls, debounceTimers = themeColorDebounceTimers) => {
+        const existingTimer = debounceTimers.get(key);
         if (existingTimer) {
             window.clearTimeout(existingTimer);
         }
 
-        themeColorDebounceTimers.set(key, window.setTimeout(() => {
-            themeColorDebounceTimers.delete(key);
-            flushThemeColorSave(key);
+        debounceTimers.set(key, window.setTimeout(() => {
+            debounceTimers.delete(key);
+            flushDirectThemeColorSave(key, controlMap, debounceTimers);
         }, THEME_LIVE_EDIT_DEBOUNCE_MS));
+    };
+
+    const flushThemeColorSave = (key) => {
+        flushDirectThemeColorSave(key, themeColorControls, themeColorDebounceTimers);
+    };
+
+    const scheduleThemeColorSave = (key) => {
+        scheduleDirectThemeColorSave(key, themeColorControls, themeColorDebounceTimers);
     };
 
     const applyThemeBackgroundChange = (updater) => {
@@ -6991,6 +7492,40 @@ function initSettingsPanel() {
         nextCustomThemeBackgrounds[currentTheme] = nextBackground;
         settings.set('customThemeBackgrounds', nextCustomThemeBackgrounds);
         return nextBackground;
+    };
+
+    const commitThemeBackgroundImageLink = async () => {
+        const currentTheme = settings.get('theme');
+        if (!isCustomThemeId(currentTheme)) return false;
+
+        const nextUrl = String(themeBackgroundImageUrlInput?.value || '').trim();
+        const currentBackground = getThemeBackgroundSettings(currentTheme);
+        const nextBackground = normalizeThemeBackgroundSettings({
+            ...currentBackground,
+            source: nextUrl ? 'link' : 'none',
+            url: nextUrl,
+        });
+        const hasChanged = JSON.stringify(currentBackground) !== JSON.stringify(nextBackground);
+
+        themeBackgroundImageModeOverride = 'link';
+
+        if (hasChanged) {
+            applyThemeBackgroundChange(nextBackground);
+        } else {
+            applyBackgroundImage();
+            syncThemeBackgroundImageUI();
+        }
+
+        if (nextUrl) {
+            try {
+                await cacheLinkedBackgroundImage(nextUrl);
+            } catch (error) {
+                console.warn('Could not pre-cache background image link:', error);
+                alert('The image link was saved, but offline caching failed for that URL.');
+            }
+        }
+
+        return hasChanged;
     };
 
     const saveThemeColor = (key) => {
@@ -7089,6 +7624,61 @@ function initSettingsPanel() {
         }
     });
 
+    simpleThemeColorControls.forEach((controls, key) => {
+        if (SIMPLE_THEME_SEED_KEYS.includes(key)) {
+            controls.colorInput.addEventListener('input', () => scheduleSimpleThemeColorSave(key));
+            controls.colorInput.addEventListener('change', () => flushSimpleThemeColorSave(key));
+            controls.alphaInput?.addEventListener('input', () => scheduleSimpleThemeColorSave(key));
+            controls.alphaInput?.addEventListener('change', () => flushSimpleThemeColorSave(key));
+            controls.resetBtn?.addEventListener('click', () => resetSimpleThemeColor(key));
+            return;
+        }
+
+        controls.colorInput.addEventListener('input', () => scheduleDirectThemeColorSave(
+            key,
+            simpleThemeColorControls,
+            simpleThemeColorDebounceTimers,
+        ));
+        controls.colorInput.addEventListener('change', () => flushDirectThemeColorSave(
+            key,
+            simpleThemeColorControls,
+            simpleThemeColorDebounceTimers,
+        ));
+        controls.alphaInput?.addEventListener('input', () => scheduleDirectThemeColorSave(
+            key,
+            simpleThemeColorControls,
+            simpleThemeColorDebounceTimers,
+        ));
+        controls.alphaInput?.addEventListener('change', () => flushDirectThemeColorSave(
+            key,
+            simpleThemeColorControls,
+            simpleThemeColorDebounceTimers,
+        ));
+        controls.resetBtn?.addEventListener('click', () => resetThemeColor(key));
+    });
+
+    themeModeSimpleBtn?.addEventListener('click', () => {
+        setThemeCustomizationColorMode(THEME_EDITOR_MODE_SIMPLE);
+        themeModeSimpleBtn.blur();
+    });
+    themeModeFullBtn?.addEventListener('click', () => {
+        setThemeCustomizationColorMode(THEME_EDITOR_MODE_FULL);
+        themeModeFullBtn.blur();
+    });
+    themeCustomizationUndoBtn?.addEventListener('click', () => {
+        if (themeCustomizationUndoBtn.disabled) return;
+        undoThemeCustomizationChange();
+        themeCustomizationUndoBtn.blur();
+    });
+    themeCustomizationRedoBtn?.addEventListener('click', () => {
+        if (themeCustomizationRedoBtn.disabled) return;
+        redoThemeCustomizationChange();
+        themeCustomizationRedoBtn.blur();
+    });
+    registerShortcutTooltip(themeCustomizationUndoBtn, ['Ctrl', 'Z'], 'bottom');
+    registerShortcutTooltip(themeCustomizationRedoBtn, ['Ctrl', 'Shift', 'Z'], 'bottom');
+    syncThemeCustomizationModeUI();
+
     if (themeSelect) {
         themeSelect.value = settings.get('theme');
         themeSelect.onchange = () => {
@@ -7110,10 +7700,13 @@ function initSettingsPanel() {
     themeCopyDefaultBtn?.addEventListener('click', () => applyPresetToCurrentCustomTheme(THEME_DEFAULT_ID));
     themeCopyOledBtn?.addEventListener('click', () => applyPresetToCurrentCustomTheme(THEME_OLED_ID));
     themeExportFileBtn?.addEventListener('click', () => {
-        downloadThemeText(getThemeTransferPayload(), `ukratimer-themes-${formatDate(Date.now())}.txt`);
+        const text = getSingleThemeTransferPayload();
+        if (!text) return;
+        downloadThemeText(text, `ukratimer-theme-${formatDate(Date.now())}.txt`);
     });
     themeExportTextBtn?.addEventListener('click', async () => {
-        const text = getThemeTransferPayload();
+        const text = getSingleThemeTransferPayload();
+        if (!text) return;
         let copied = false;
         try {
             await navigator.clipboard.writeText(text);
@@ -7126,7 +7719,7 @@ function initSettingsPanel() {
             return;
         }
 
-        await customPrompt('Clipboard copy was blocked. Copy the compact theme text below.', text, 1000000, 'Export Themes As Text');
+        await customPrompt('Clipboard copy was blocked. Copy the selected theme text below.', text, 1000000, 'Export Theme As Text');
     });
     themeImportFileBtn?.addEventListener('click', async () => {
         try {
@@ -7138,7 +7731,7 @@ function initSettingsPanel() {
         }
     });
     themeImportTextBtn?.addEventListener('click', async () => {
-        const text = await customPrompt('Paste exported theme text or JSON.', '', 1000000, 'Import Themes From Text', 'ut2:d|d|d');
+        const text = await customPrompt('Paste exported theme text or JSON for the currently selected custom slot.', '', 1000000, 'Import Theme From Text', 'ut3:d');
         if (!text || !text.trim()) return;
         await applyImportedThemes(text);
     });
@@ -7147,52 +7740,26 @@ function initSettingsPanel() {
         if (!isCustomThemeId(currentTheme)) return;
         const nextMode = themeBackgroundImageModeSelect.value;
         if (nextMode === 'none') {
-            themeBackgroundImageModeOverride = '';
-            await clearCachedBackgroundUpload(currentTheme);
-            applyThemeBackgroundChange((background) => ({ ...background, source: 'none', url: '' }));
+            themeBackgroundImageModeOverride = 'none';
+            applyThemeBackgroundChange((background) => ({ ...background, source: 'none' }));
         } else if (nextMode === 'link') {
             themeBackgroundImageModeOverride = 'link';
-            await clearCachedBackgroundUpload(currentTheme);
             applyThemeBackgroundChange((background) => ({
                 ...background,
                 source: background.url ? 'link' : 'none',
             }));
         } else if (nextMode === 'upload') {
             themeBackgroundImageModeOverride = 'upload';
+            if (hasAvailableBackgroundUpload(currentTheme)) {
+                applyThemeBackgroundChange((background) => ({
+                    ...background,
+                    source: 'upload',
+                }));
+            }
         }
         applyBackgroundImage();
         syncThemeBackgroundImageUI();
         themeBackgroundImageModeSelect.blur();
-    });
-    themeBackgroundImageApplyLinkBtn?.addEventListener('click', async () => {
-        const currentTheme = settings.get('theme');
-        if (!isCustomThemeId(currentTheme)) return;
-        const nextUrl = String(themeBackgroundImageUrlInput?.value || '').trim();
-        themeBackgroundImageModeOverride = nextUrl ? 'link' : '';
-        await clearCachedBackgroundUpload(currentTheme);
-        applyThemeBackgroundChange((background) => ({
-            ...background,
-            source: nextUrl ? 'link' : 'none',
-            url: nextUrl,
-        }));
-        if (nextUrl) {
-            try {
-                await cacheLinkedBackgroundImage(nextUrl);
-            } catch (error) {
-                console.warn('Could not pre-cache background image link:', error);
-                alert('The image link was applied, but offline caching failed for that URL.');
-            }
-        }
-        if (nextUrl) {
-            setThemeActionFeedback(themeBackgroundImageApplyLinkBtn, 'Applied');
-        }
-    });
-    themeBackgroundImageClearLinkBtn?.addEventListener('click', async () => {
-        const currentTheme = settings.get('theme');
-        if (!isCustomThemeId(currentTheme)) return;
-        themeBackgroundImageModeOverride = '';
-        await clearCachedBackgroundUpload(currentTheme);
-        applyThemeBackgroundChange((background) => ({ ...background, source: 'none', url: '' }));
     });
     themeBackgroundImageUploadBtn?.addEventListener('click', async () => {
         try {
@@ -7204,11 +7771,10 @@ function initSettingsPanel() {
             }
             liveBackgroundUploadPreviewUrl = URL.createObjectURL(file);
             liveBackgroundUploadPreviewThemeId = currentTheme;
-            themeBackgroundImageModeOverride = '';
+            themeBackgroundImageModeOverride = 'upload';
             applyThemeBackgroundChange((background) => ({
                 ...background,
                 source: 'upload',
-                url: '',
             }));
             applyBackgroundImage();
             syncThemeBackgroundImageUI();
@@ -7225,16 +7791,19 @@ function initSettingsPanel() {
     themeBackgroundImageClearUploadBtn?.addEventListener('click', async () => {
         const currentTheme = settings.get('theme');
         if (!isCustomThemeId(currentTheme)) return;
-        themeBackgroundImageModeOverride = '';
+        themeBackgroundImageModeOverride = 'upload';
         await clearCachedBackgroundUpload(currentTheme);
-        applyThemeBackgroundChange((background) => ({ ...background, source: 'none', url: '' }));
+        applyThemeBackgroundChange((background) => ({ ...background, source: 'none' }));
         applyBackgroundImage();
         syncThemeBackgroundImageUI();
+    });
+    themeBackgroundImageUrlInput?.addEventListener('blur', () => {
+        void commitThemeBackgroundImageLink();
     });
     themeBackgroundImageUrlInput?.addEventListener('keydown', (event) => {
         if (event.key !== 'Enter') return;
         event.preventDefault();
-        themeBackgroundImageApplyLinkBtn?.click();
+        themeBackgroundImageUrlInput.blur();
     });
     themeBackgroundOverlayColorInput?.addEventListener('input', scheduleThemeBackgroundOverlaySave);
     themeBackgroundOverlayColorInput?.addEventListener('change', flushThemeBackgroundOverlaySave);
@@ -7247,8 +7816,11 @@ function initSettingsPanel() {
         }));
     });
     settings.on('change', (key) => {
-        if (key === 'theme' || key === 'customThemeBackgrounds') {
+        if (key === 'theme') {
             themeBackgroundImageModeOverride = '';
+            void reconcileBackgroundImageState();
+        }
+        if (key === 'customThemeBackgrounds') {
             void reconcileBackgroundImageState();
         }
         if (key !== 'theme' && key !== 'customThemes' && key !== 'customThemeBases' && key !== 'customThemeBackgrounds') return;
@@ -7263,6 +7835,15 @@ function initSettingsPanel() {
         updateThemeSettingsUI();
         refreshTimeDistributionTheme();
     });
+    settings.on('change', (key) => {
+        if (key !== 'settingsCollapsedSections') return;
+        syncSettingsGroupCollapseUI();
+        syncSettingsRowSeparators();
+    });
+    settings.on('reset', () => {
+        syncSettingsGroupCollapseUI();
+        syncSettingsRowSeparators();
+    });
     void reconcileBackgroundImageState();
 
     // Hide UI toggle
@@ -7274,6 +7855,41 @@ function initSettingsPanel() {
     const swipeDownGestureToggle = document.getElementById('setting-swipe-down-gesture');
     const swipeDownGestureRow = document.getElementById('setting-swipe-down-gesture-row');
     const shortcutTooltipsRow = document.getElementById('setting-shortcut-tooltips-row');
+    const settingsGroupEls = Array.from(settingsOverlayEl?.querySelectorAll('.setting-group') || []);
+
+    const syncSettingsGroupCollapseUI = () => {
+        const collapsedSections = settings.get('settingsCollapsedSections') || {};
+        settingsGroupEls.forEach((group) => {
+            const sectionId = group.dataset.settingsSectionId;
+            const toggleBtn = group.querySelector('[data-settings-section-toggle]');
+            if (!sectionId || !toggleBtn) return;
+
+            const isCollapsed = Boolean(collapsedSections[sectionId]);
+            group.classList.toggle('collapsed', isCollapsed);
+            toggleBtn.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+        });
+    };
+
+    settingsGroupEls.forEach((group) => {
+        const sectionId = group.dataset.settingsSectionId;
+        const toggleBtn = group.querySelector('[data-settings-section-toggle]');
+        if (!sectionId || !toggleBtn) return;
+
+        toggleBtn.addEventListener('click', () => {
+            const isExpanded = toggleBtn.getAttribute('aria-expanded') !== 'false';
+            const nextCollapsed = isExpanded;
+            group.classList.toggle('collapsed', nextCollapsed);
+            toggleBtn.setAttribute('aria-expanded', nextCollapsed ? 'false' : 'true');
+            settings.set('settingsCollapsedSections', {
+                ...settings.get('settingsCollapsedSections'),
+                [sectionId]: nextCollapsed,
+            });
+            syncSettingsRowSeparators();
+            toggleBtn.blur();
+        });
+    });
+
+    syncSettingsGroupCollapseUI();
 
     syncSettingsRowSeparators = () => {
         const groups = settingsOverlayEl?.querySelectorAll('.setting-group');
@@ -7282,6 +7898,7 @@ function initSettingsPanel() {
         groups.forEach((group) => {
             const rows = Array.from(group.querySelectorAll('.setting-row'));
             rows.forEach((row) => row.classList.remove('setting-row-last-visible'));
+            if (group.classList.contains('collapsed')) return;
 
             const visibleRows = rows.filter((row) => {
                 if (row.hidden) return false;
@@ -7779,6 +8396,9 @@ function initSettingsPanel() {
 
     if (googleDriveExportBtn) {
         googleDriveExportBtn.onclick = async () => {
+            const confirmed = await customConfirm('This will overwrite the existing Google Drive cloud save. Continue?');
+            if (!confirmed) return;
+
             googleDriveBusy = true;
             syncGoogleDriveButtons();
             setGoogleDriveStatus('Exporting backup to Google Drive...');
@@ -7855,8 +8475,13 @@ function initSettingsPanel() {
         const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const secondsPassedToday = (now.getHours() * 3600) + (now.getMinutes() * 60) + now.getSeconds();
         a.href = url;
-        a.download = `cstimer-export-${formatDate(Date.now())}.txt`;
+        a.download = `ukratimer-${year}-${month}-${day}_${secondsPassedToday}-cstimer-format.txt`;
         a.click();
         URL.revokeObjectURL(url);
     };
