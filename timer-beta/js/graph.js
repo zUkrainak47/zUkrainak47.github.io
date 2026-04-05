@@ -1,6 +1,6 @@
-import { formatTime, getEffectiveTime, EventEmitter } from './utils.js?v=2026040567';
-import { settings } from './settings.js?v=2026040567';
-import { parseGraphStatType } from './stats.js?v=2026040567';
+import { formatTime, getEffectiveTime, EventEmitter } from './utils.js?v=2026040568';
+import { settings } from './settings.js?v=2026040568';
+import { parseGraphStatType } from './stats.js?v=2026040568';
 
 /**
  * Time trend graph with pan/zoom controls.
@@ -928,7 +928,7 @@ function render() {
     const visibleCount = _view.visibleCount === 0 ? tot : Math.max(2, Math.min(tot, _view.visibleCount));
     const maxStart = Math.max(0, totalCount - visibleCount);
     const viewOffset = _view.xPan * maxStart;
-    
+
     // Bounds for looping (ensure we cover the fractional range)
     const startIdx = Math.max(0, Math.floor(viewOffset));
     const endIdx = Math.min(totalCount - 1, Math.ceil(viewOffset + visibleCount));

@@ -54,13 +54,21 @@
 
   /* Statistics */
   --stat-best: #3fb950;
-  --stat-worst: #f85149;
   --stat-ao5: #f0883e;
+  --distribution-median: #f85149;
+  --danger-penalty: #f85149;
   --stat-ao12: #a371f7;
   --stat-ao100: #58a6ff;
+  --new-best-popup-color: #3fb950;
   --stat-new-best: #fe2b2b;
-  --danger: var(--stat-worst);
+  --danger: var(--danger-penalty);
   --success: var(--stat-best);
+  --new-best-popup-border: rgba(63, 185, 80, 0.45);
+  --danger-bg-soft: rgba(248, 81, 73, 0.1);
+  --danger-bg-strong: rgba(248, 81, 73, 0.15);
+  --danger-bg-hover: rgba(248, 81, 73, 0.2);
+  --danger-border: rgba(248, 81, 73, 0.5);
+  --danger-border-strong: rgba(248, 81, 73, 0.6);
 
   /* Graph */
   --graph-color-time: #8b949e;

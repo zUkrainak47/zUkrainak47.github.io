@@ -1,15 +1,15 @@
-import { timer } from './timer.js?v=2026040567';
-import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=2026040567';
-import { sessionManager } from './session.js?v=2026040567';
-import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=2026040567';
-import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=2026040567';
-import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, truncateTimeDisplay } from './utils.js?v=2026040567';
-import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=2026040567';
-import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=2026040567';
-import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=2026040567';
-import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=2026040567';
-import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=2026040567';
-import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=2026040567';
+import { timer } from './timer.js?v=2026040568';
+import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=2026040568';
+import { sessionManager } from './session.js?v=2026040568';
+import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=2026040568';
+import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=2026040568';
+import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, truncateTimeDisplay } from './utils.js?v=2026040568';
+import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=2026040568';
+import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=2026040568';
+import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=2026040568';
+import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=2026040568';
+import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=2026040568';
+import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=2026040568';
 
 let currentScramble = '';
 let currentSortCol = null;
@@ -31,14 +31,21 @@ const SIMPLE_THEME_COLOR_SECTIONS = Object.freeze([
             Object.freeze({ key: 'textPrimary', label: 'Text' }),
             Object.freeze({ key: 'scrambleTopText', label: 'Text #2' }),
             Object.freeze({ key: 'accent', label: 'Accent' }),
-            Object.freeze({ key: 'timerReady', label: 'Success / ready' }),
-            Object.freeze({ key: 'timerHolding', label: 'Warning / hold' }),
+            Object.freeze({ key: 'statNewBest', label: 'New best highlight' }),
+            Object.freeze({ key: 'timerReady', label: 'Timer ready' }),
+            Object.freeze({ key: 'timerHolding', label: 'Timer hold' }),
         ]),
     }),
 ]);
-const SIMPLE_THEME_SEED_KEYS = Object.freeze(
-    SIMPLE_THEME_COLOR_SECTIONS.flatMap((section) => section.items.map(({ key }) => key)),
-);
+const SIMPLE_THEME_SEED_KEYS = Object.freeze([
+    'bgPrimary',
+    'surface',
+    'textPrimary',
+    'scrambleTopText',
+    'accent',
+    'timerReady',
+    'timerHolding',
+]);
 const SIMPLE_THEME_SHARED_SECTION_IDS = new Set([
     'graph',
     'scramble-preview-cube',
@@ -122,11 +129,11 @@ function deriveSimpleThemeColors(seedColors) {
     const accent = accentSeed.css;
     const success = successSeed.css;
     const danger = dangerSeed.css;
+    const simpleDangerPenalty = '#f85149';
     const backgroundAlpha = backgroundSeed.alpha / 100;
     const surfaceAlpha = surfaceSeed.alpha / 100;
     const textAlpha = textSeed.alpha / 100;
     const accentAlpha = accentSeed.alpha / 100;
-    const successAlpha = successSeed.alpha / 100;
     const bgRgb = parseThemeHexToRgb(background, '#0d1117');
     const surfaceRgb = parseThemeHexToRgb(surface, background);
     const textRgb = parseThemeHexToRgb(text, '#e6edf3');
@@ -186,7 +193,8 @@ function deriveSimpleThemeColors(seedColors) {
         timerHolding: danger,
         timerReady: success,
         timerRunning: text,
-        statNewBest: scaleThemeAlpha(mixThemeColor(success, text, 0.18), successAlpha),
+        newBestPopup: success,
+        dangerPenalty: simpleDangerPenalty,
     };
 }
 
@@ -195,7 +203,7 @@ async function registerServiceWorker() {
     if (window.location?.protocol === 'file:') return;
 
     try {
-        const serviceWorkerUrl = new URL('../sw.js?v=2026040567', import.meta.url);
+        const serviceWorkerUrl = new URL('../sw.js?v=2026040568', import.meta.url);
         await navigator.serviceWorker.register(serviceWorkerUrl);
     } catch (error) {
         console.warn('Service worker registration failed:', error);
@@ -1589,13 +1597,13 @@ function doesDesktopLargeScrambleTextFit(scrambleText, timerDisplay, timerDispla
     const { y: wrapperTranslateY } = getTransformTranslate(wrapperTransform);
     const { y: timerTranslateY } = getTransformTranslate(timerTransform);
     const baselineTimerTop = timerRect.top - wrapperTranslateY - timerTranslateY;
-    
+
     let fits = scrambleRect.bottom <= baselineTimerTop + 0.5;
-    
+
     if (fits && scrambleText.dataset.scrambleLayout === 'megaminx-rows') {
         fits = scrambleText.scrollWidth <= scrambleText.clientWidth + 1;
     }
-    
+
     return fits;
 }
 
@@ -6581,12 +6589,12 @@ function initSettingsPanel() {
                 : mode === 'upload' && hasUpload
                     ? 'Uploaded image is saved on this device.'
                     : mode === 'upload'
-                    ? 'Choose an image.'
-                : source === 'link' && savedUrl
-                    ? 'Linked image is active.'
-                    : mode === 'link' && savedUrl
-                        ? 'Image link is saved.'
-                    : 'No custom background image is active.';
+                        ? 'Choose an image.'
+                        : source === 'link' && savedUrl
+                            ? 'Linked image is active.'
+                            : mode === 'link' && savedUrl
+                                ? 'Image link is saved.'
+                                : 'No custom background image is active.';
         }
     };
 
@@ -7632,6 +7640,16 @@ function initSettingsPanel() {
             simpleThemeColorDebounceTimers,
         ));
         controls.colorInput.addEventListener('change', () => flushDirectThemeColorSave(
+            key,
+            simpleThemeColorControls,
+            simpleThemeColorDebounceTimers,
+        ));
+        controls.alphaInput?.addEventListener('input', () => scheduleDirectThemeColorSave(
+            key,
+            simpleThemeColorControls,
+            simpleThemeColorDebounceTimers,
+        ));
+        controls.alphaInput?.addEventListener('change', () => flushDirectThemeColorSave(
             key,
             simpleThemeColorControls,
             simpleThemeColorDebounceTimers,

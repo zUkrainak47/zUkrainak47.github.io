@@ -1,4 +1,4 @@
-import { formatReadableDate, formatTime, getEffectiveTime } from './utils.js?v=2026040567'
+import { formatReadableDate, formatTime, getEffectiveTime } from './utils.js?v=2026040568'
 
 const BIN_WIDTH_OPTIONS = Object.freeze([
     { label: '1:00', ms: 60000 },
@@ -119,7 +119,7 @@ function getThemeColors() {
         legendBorder: readVar('--distribution-legend-border', 'rgba(255, 255, 255, 0.12)'),
         leftBar: readVar('--stat-best', '#41b36d'),
         rightBar: readVar('--stat-ao5', '#f0a11c'),
-        median: readVar('--stat-worst', '#ef4444'),
+        median: readVar('--distribution-median', '#ef4444'),
         selectedStroke: readVar('--distribution-selected-stroke', '#ffd580'),
     }
 }
@@ -1012,22 +1012,22 @@ async function copyChartImage(button = _copyImageButton) {
                 interactive: false,
                 activeIndex: -1,
             })
-            
+
             const dataUrl = exportCanvas.toDataURL('image/png')
             const chartImage = document.getElementById('chart-image')
             const chartImageOverlay = document.getElementById('chart-image-overlay')
             const chartImageInstructions = chartImageOverlay?.querySelector('.chart-image-instructions')
-            
+
             if (chartImage && chartImageOverlay && dataUrl) {
                 chartImage.src = dataUrl
-                
+
                 // Update instruction text based on pointer type
                 if (chartImageInstructions) {
                     chartImageInstructions.textContent = touchPrimaryQuery.matches
                         ? 'Long press to copy the image'
                         : 'Right-click to copy the image'
                 }
-                
+
                 chartImageOverlay.classList.add('active')
                 // setButtonFeedback(button, 'Copy failed')
                 return
@@ -1035,7 +1035,7 @@ async function copyChartImage(button = _copyImageButton) {
         } catch {
             // If modal fails, fall through to text copy
         }
-        
+
         // Fallback to text copy
         if (!navigator.clipboard?.writeText) {
             setButtonFeedback(button, 'Copy failed', 'btn-error')
@@ -1259,17 +1259,17 @@ export function initTimeDistributionModal() {
     // Chart image modal close handlers
     const chartImageClose = document.getElementById('chart-image-close')
     const chartImageOverlay = document.getElementById('chart-image-overlay')
-    
+
     chartImageClose?.addEventListener('click', () => {
         chartImageOverlay?.classList.remove('active')
     })
-    
+
     chartImageOverlay?.addEventListener('click', (event) => {
         if (event.target === chartImageOverlay) {
             chartImageOverlay.classList.remove('active')
         }
     })
-    
+
     // Escape key handler for chart image modal
     document.addEventListener('keydown', (event) => {
         if (event.code !== 'Escape') return

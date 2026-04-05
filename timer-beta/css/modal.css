@@ -139,27 +139,27 @@
 }
 
 .btn-action.btn-danger:hover {
-    background: rgba(248, 81, 73, 0.1);
-    color: var(--stat-worst);
-    border-color: rgba(248, 81, 73, 0.5);
+    background: var(--danger-bg-soft);
+    color: var(--danger);
+    border-color: var(--danger-border);
 }
 
 .btn-action.btn-error {
-    background: rgba(248, 81, 73, 0.15);
-    color: var(--stat-worst);
-    border-color: rgba(248, 81, 73, 0.5);
+    background: var(--danger-bg-strong);
+    color: var(--danger);
+    border-color: var(--danger-border);
 }
 
 .btn-action.btn-error:hover {
-    background: rgba(248, 81, 73, 0.25);
-    color: var(--stat-worst);
-    border-color: rgba(248, 81, 73, 0.6);
+    background: var(--danger-bg-hover);
+    color: var(--danger);
+    border-color: var(--danger-border-strong);
 }
 
 .btn-action.active-penalty {
-    color: var(--stat-worst);
-    border-color: rgba(248, 81, 73, 0.5);
-    background: rgba(248, 81, 73, 0.1);
+    color: var(--danger);
+    border-color: var(--danger-border);
+    background: var(--danger-bg-soft);
 }
 
 .chart-image-modal-box {
@@ -889,13 +889,13 @@
 }
 
 .confirm-actions .btn-danger {
-    background: rgba(248, 81, 73, 0.1);
-    color: var(--stat-worst);
-    border: 1px solid rgba(248, 81, 73, 0.5);
+    background: var(--danger-bg-soft);
+    color: var(--danger);
+    border: 1px solid var(--danger-border);
 }
 
 .confirm-actions .btn-danger:hover {
-    background: rgba(248, 81, 73, 0.2);
+    background: var(--danger-bg-hover);
 }
 
 .confirm-actions .btn-primary-action {

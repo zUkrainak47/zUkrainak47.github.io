@@ -1,5 +1,5 @@
-import { load, save } from './storage.js?v=2026040567';
-import { EventEmitter } from './utils.js?v=2026040567';
+import { load, save } from './storage.js?v=2026040568';
+import { EventEmitter } from './utils.js?v=2026040568';
 
 export const THEME_DEFAULT_ID = 'default';
 export const THEME_OLED_ID = 'oled';
@@ -67,6 +67,7 @@ export const THEME_COLOR_SECTIONS = Object.freeze([
             Object.freeze({ key: 'accent', variable: '--accent', label: 'Accent' }),
             Object.freeze({ key: 'accentHover', variable: '--accent-hover', label: 'Accent hover' }),
             Object.freeze({ key: 'accentSubtle', variable: '--accent-subtle', label: 'Accent subtle', alpha: true }),
+            Object.freeze({ key: 'dangerPenalty', variable: '--danger-penalty', label: 'Danger / penalty' }),
         ]),
     }),
     Object.freeze({
@@ -77,6 +78,7 @@ export const THEME_COLOR_SECTIONS = Object.freeze([
             Object.freeze({ key: 'timerHolding', variable: '--timer-holding', label: 'Timer holding' }),
             Object.freeze({ key: 'timerReady', variable: '--timer-ready', label: 'Timer ready' }),
             Object.freeze({ key: 'timerRunning', variable: '--timer-running', label: 'Timer running' }),
+            Object.freeze({ key: 'newBestPopup', variable: '--new-best-popup-color', label: 'New best popup' }),
             Object.freeze({ key: 'statNewBest', variable: '--stat-new-best', label: 'New best highlight' }),
         ]),
     }),
@@ -91,7 +93,7 @@ export const THEME_COLOR_SECTIONS = Object.freeze([
             Object.freeze({ key: 'graphGrid', variable: '--graph-grid', label: 'Grid' }),
             Object.freeze({ key: 'statBest', variable: '--stat-best', label: 'Distribution left bars' }),
             Object.freeze({ key: 'statAo5', variable: '--stat-ao5', label: 'Distribution right bars' }),
-            Object.freeze({ key: 'statWorst', variable: '--stat-worst', label: 'Distribution median line' }),
+            Object.freeze({ key: 'distributionMedian', variable: '--distribution-median', label: 'Distribution median line' }),
             Object.freeze({ key: 'statAo12', variable: '--stat-ao12', label: 'Distribution accent 1', hidden: true }),
             Object.freeze({ key: 'statAo100', variable: '--stat-ao100', label: 'Distribution accent 2', hidden: true }),
         ]),
@@ -186,7 +188,7 @@ const THEME_COLOR_ITEMS = Object.freeze(THEME_COLOR_SECTIONS.flatMap((section) =
 const THEME_COLOR_KEYS = Object.freeze(THEME_COLOR_ITEMS.map((item) => item.key));
 
 const LEGACY_THEME_FIELD_TO_TOKEN = Object.freeze({
-    newBestColor: 'statNewBest',
+    newBestColor: 'newBestPopup',
     graphColorTime: 'graphColorTime',
     graphColorLine1: 'graphColorLine1',
     graphColorLine2: 'graphColorLine2',
@@ -194,6 +196,13 @@ const LEGACY_THEME_FIELD_TO_TOKEN = Object.freeze({
     graphColorAo5: 'graphColorLine1',
     graphColorAo12: 'graphColorLine2',
     graphColorAo100: 'graphColorLine3',
+});
+
+const LEGACY_THEME_COLOR_KEY_FALLBACKS = Object.freeze({
+    newBestPopup: ['newBestPopup', 'statBest'],
+    statNewBest: ['statNewBest'],
+    distributionMedian: ['distributionMedian', 'statWorst'],
+    dangerPenalty: ['dangerPenalty', 'statWorst'],
 });
 
 const DEFAULT_THEME_COLORS = Object.freeze({
@@ -239,10 +248,12 @@ const DEFAULT_THEME_COLORS = Object.freeze({
     timerReady: '#3fb950',
     timerRunning: '#e6edf3',
     statBest: '#3fb950',
-    statWorst: '#f85149',
     statAo5: '#f0883e',
+    distributionMedian: '#f85149',
+    dangerPenalty: '#f85149',
     statAo12: '#a371f7',
     statAo100: '#58a6ff',
+    newBestPopup: '#3fb950',
     statNewBest: '#fe2b2b',
     graphColorTime: '#8b949e',
     graphColorLine1: '#ff2020',
@@ -262,12 +273,12 @@ const DEFAULT_THEME_COLORS = Object.freeze({
     previewSkewbYellow: '#ffff05',
     previewSkewbOrange: '#ffa503',
     previewSkewbBlue: '#0000ff',
-    previewSkewbOutline: 'rgba(0, 0, 0, 0.4)',
+    previewSkewbOutline: '#000000',
     previewPyraminxYellow: '#ffff05',
     previewPyraminxGreen: '#33cd32',
     previewPyraminxRed: '#ff0000',
     previewPyraminxBlue: '#0000ff',
-    previewPyraminxOutline: 'rgba(0, 0, 0, 0.4)',
+    previewPyraminxOutline: '#000000',
     previewMegaminxFace1: '#f8f8f5',
     previewMegaminxFace2: '#f9c91c',
     previewMegaminxFace3: '#fff6b4',
@@ -411,7 +422,7 @@ const DEFAULTS = {
     graphView: { visibleCount: 0, yZoom: 1, xPan: 1, yPan: 0 },
     showDelta: false,
     newBestPopupEnabled: true,
-    newBestColor: DEFAULT_THEME_COLORS.statNewBest,
+    newBestColor: DEFAULT_THEME_COLORS.newBestPopup,
     graphColorTime: DEFAULT_THEME_COLORS.graphColorTime,
     graphLine1Stat: 'ao5',
     graphLine2Stat: 'ao12',
@@ -597,7 +608,10 @@ function normalizeThemeColors(themeColors, fallback = DEFAULT_THEME_COLORS) {
     const normalized = {};
 
     THEME_COLOR_KEYS.forEach((key) => {
-        normalized[key] = normalizeThemeColorValue(source[key], fallback[key]);
+        const candidateKeys = LEGACY_THEME_COLOR_KEY_FALLBACKS[key] || [key];
+        const matchedKey = candidateKeys.find((candidateKey) => source[candidateKey] != null && source[candidateKey] !== '');
+        const sourceValue = matchedKey ? source[matchedKey] : undefined;
+        normalized[key] = normalizeThemeColorValue(sourceValue, fallback[key]);
     });
 
     return normalized;
@@ -684,7 +698,7 @@ function buildThemeStateFromLoadedSettings(loaded) {
         }
     });
 
-    ['statNewBest', 'graphColorTime', 'graphColorLine1', 'graphColorLine2', 'graphColorLine3'].forEach((key) => {
+    ['newBestPopup', 'statNewBest', 'graphColorTime', 'graphColorLine1', 'graphColorLine2', 'graphColorLine3'].forEach((key) => {
         if (migratedCustomTheme[key] !== baseThemeColors[key]) {
             hasLegacyColorOverride = true;
         }
@@ -819,7 +833,7 @@ class Settings extends EventEmitter {
 
         const activeTheme = this._getActiveThemeColors();
         this._settings.highContrastMode = this._settings.theme === THEME_OLED_ID;
-        this._settings.newBestColor = activeTheme.statNewBest;
+        this._settings.newBestColor = activeTheme.newBestPopup;
         this._settings.graphColorTime = activeTheme.graphColorTime;
         this._settings.graphColorLine1 = activeTheme.graphColorLine1;
         this._settings.graphColorLine2 = activeTheme.graphColorLine2;
@@ -1026,8 +1040,14 @@ class Settings extends EventEmitter {
         document.documentElement.style.setProperty('--graph-color-ao5', themeColors.graphColorLine1);
         document.documentElement.style.setProperty('--graph-color-ao12', themeColors.graphColorLine2);
         document.documentElement.style.setProperty('--graph-color-ao100', themeColors.graphColorLine3);
-        document.documentElement.style.setProperty('--danger', themeColors.statWorst);
+        document.documentElement.style.setProperty('--danger', themeColors.dangerPenalty);
         document.documentElement.style.setProperty('--success', themeColors.statBest);
+        document.documentElement.style.setProperty('--new-best-popup-border', withAlpha(themeColors.newBestPopup, 0.45, 'rgba(63, 185, 80, 0.45)'));
+        document.documentElement.style.setProperty('--danger-bg-soft', withAlpha(themeColors.dangerPenalty, 0.1, 'rgba(248, 81, 73, 0.1)'));
+        document.documentElement.style.setProperty('--danger-bg-strong', withAlpha(themeColors.dangerPenalty, 0.15, 'rgba(248, 81, 73, 0.15)'));
+        document.documentElement.style.setProperty('--danger-bg-hover', withAlpha(themeColors.dangerPenalty, 0.2, 'rgba(248, 81, 73, 0.2)'));
+        document.documentElement.style.setProperty('--danger-border', withAlpha(themeColors.dangerPenalty, 0.5, 'rgba(248, 81, 73, 0.5)'));
+        document.documentElement.style.setProperty('--danger-border-strong', withAlpha(themeColors.dangerPenalty, 0.6, 'rgba(248, 81, 73, 0.6)'));
         document.documentElement.style.setProperty('--timer-delta-glow-strong', withAlpha(themeColors.bgPrimary, 1, 'rgba(12, 17, 22, 1)'));
         document.documentElement.style.setProperty('--timer-delta-glow-soft', withAlpha(themeColors.bgPrimary, 0.92, 'rgba(12, 17, 22, 0.92)'));
         document.documentElement.style.setProperty('--distribution-legend-bg', withAlpha(themeColors.floatingSurface, 0.92, 'rgba(13, 17, 23, 0.92)'));

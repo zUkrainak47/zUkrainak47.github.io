@@ -1,5 +1,5 @@
-import { formatTime, formatSolveTime, formatReadableDate, formatDateTime, getEffectiveTime } from './utils.js?v=2026040567';
-import { sessionManager } from './session.js?v=2026040567';
+import { formatTime, formatSolveTime, formatReadableDate, formatDateTime, getEffectiveTime } from './utils.js?v=2026040568';
+import { sessionManager } from './session.js?v=2026040568';
 
 let _overlay = null;
 let _textarea = null;
@@ -41,23 +41,23 @@ const modalCopyOptions = {
 
 function parseSummaryTimestampDisplay(value) {
     switch (value) {
-    case SUMMARY_TIMESTAMP_DISPLAY_OFF:
-    case SUMMARY_TIMESTAMP_DISPLAY_DATE_TIME:
-    case SUMMARY_TIMESTAMP_DISPLAY_TIME:
-        return value;
-    default:
-        return null;
+        case SUMMARY_TIMESTAMP_DISPLAY_OFF:
+        case SUMMARY_TIMESTAMP_DISPLAY_DATE_TIME:
+        case SUMMARY_TIMESTAMP_DISPLAY_TIME:
+            return value;
+        default:
+            return null;
     }
 }
 
 function getNextSummaryTimestampDisplay(value) {
     switch (value) {
-    case SUMMARY_TIMESTAMP_DISPLAY_DATE_TIME:
-        return SUMMARY_TIMESTAMP_DISPLAY_TIME;
-    case SUMMARY_TIMESTAMP_DISPLAY_TIME:
-        return SUMMARY_TIMESTAMP_DISPLAY_OFF;
-    default:
-        return SUMMARY_TIMESTAMP_DISPLAY_DATE_TIME;
+        case SUMMARY_TIMESTAMP_DISPLAY_DATE_TIME:
+            return SUMMARY_TIMESTAMP_DISPLAY_TIME;
+        case SUMMARY_TIMESTAMP_DISPLAY_TIME:
+            return SUMMARY_TIMESTAMP_DISPLAY_OFF;
+        default:
+            return SUMMARY_TIMESTAMP_DISPLAY_DATE_TIME;
     }
 }
 
@@ -71,46 +71,46 @@ function formatTimestampTimeOnly(timestamp) {
 
 function formatSummaryTimestamp(timestamp) {
     switch (modalCopyOptions.scrambleTimestampDisplay) {
-    case SUMMARY_TIMESTAMP_DISPLAY_DATE_TIME:
-        return formatDateTime(timestamp);
-    case SUMMARY_TIMESTAMP_DISPLAY_TIME:
-        return formatTimestampTimeOnly(timestamp);
-    default:
-        return '';
+        case SUMMARY_TIMESTAMP_DISPLAY_DATE_TIME:
+            return formatDateTime(timestamp);
+        case SUMMARY_TIMESTAMP_DISPLAY_TIME:
+            return formatTimestampTimeOnly(timestamp);
+        default:
+            return '';
     }
 }
 
 function getSummaryTimestampButtonState() {
     switch (modalCopyOptions.scrambleTimestampDisplay) {
-    case SUMMARY_TIMESTAMP_DISPLAY_DATE_TIME:
-        return {
-            title: 'Show time only',
-            ariaLabel: 'Summary timestamp shows date and time. Click to show time only.',
-            ariaPressed: 'true',
-        };
-    case SUMMARY_TIMESTAMP_DISPLAY_TIME:
-        return {
-            title: 'Hide date and time',
-            ariaLabel: 'Summary timestamp shows time only. Click to turn it off.',
-            ariaPressed: 'mixed',
-        };
-    default:
-        return {
-            title: 'Show date and time',
-            ariaLabel: 'Summary timestamp is off. Click to show date and time.',
-            ariaPressed: 'false',
-        };
+        case SUMMARY_TIMESTAMP_DISPLAY_DATE_TIME:
+            return {
+                title: 'Show time only',
+                ariaLabel: 'Summary timestamp shows date and time. Click to show time only.',
+                ariaPressed: 'true',
+            };
+        case SUMMARY_TIMESTAMP_DISPLAY_TIME:
+            return {
+                title: 'Hide date and time',
+                ariaLabel: 'Summary timestamp shows time only. Click to turn it off.',
+                ariaPressed: 'mixed',
+            };
+        default:
+            return {
+                title: 'Show date and time',
+                ariaLabel: 'Summary timestamp is off. Click to show date and time.',
+                ariaPressed: 'false',
+            };
     }
 }
 
 function getSummaryTimestampToastMessage() {
     switch (modalCopyOptions.scrambleTimestampDisplay) {
-    case SUMMARY_TIMESTAMP_DISPLAY_DATE_TIME:
-        return 'Date and time will now be included in summary.';
-    case SUMMARY_TIMESTAMP_DISPLAY_TIME:
-        return 'Only the time will now be included in summary.';
-    default:
-        return 'Date and time will no longer be included in summary.';
+        case SUMMARY_TIMESTAMP_DISPLAY_DATE_TIME:
+            return 'Date and time will now be included in summary.';
+        case SUMMARY_TIMESTAMP_DISPLAY_TIME:
+            return 'Only the time will now be included in summary.';
+        default:
+            return 'Date and time will no longer be included in summary.';
     }
 }
 
@@ -629,7 +629,7 @@ function autoResizeTextarea(el) {
     const isMobile = window.matchMedia('(max-width: 1100px), (pointer: coarse)').matches;
     const referenceHeight = isMobile ? (window.screen.availHeight || window.innerHeight) : window.innerHeight;
     const maxHeight = referenceHeight * 0.4;
-    
+
     el.style.height = 'auto';
     const sHeight = el.scrollHeight;
 
@@ -1027,14 +1027,14 @@ function _showModal(title, text, solveContext = null, detailPayload = null) {
     if (!isRowCountCapped) {
         _textarea.style.height = 'auto';
         _textarea.style.minHeight = 'auto';
-    // } else if (lineCount <= 7) {
-    //     _textarea.rows = 7;
-    //     _textarea.style.height = 'auto';
-    //     _textarea.style.minHeight = 'auto';
-    // } else if (lineCount <= 9) {
-    //     _textarea.rows = 9;
-    //     _textarea.style.height = 'auto';
-    //     _textarea.style.minHeight = 'auto';
+        // } else if (lineCount <= 7) {
+        //     _textarea.rows = 7;
+        //     _textarea.style.height = 'auto';
+        //     _textarea.style.minHeight = 'auto';
+        // } else if (lineCount <= 9) {
+        //     _textarea.rows = 9;
+        //     _textarea.style.height = 'auto';
+        //     _textarea.style.minHeight = 'auto';
     } else {
         const cappedHeight = getTextareaHeightForRows(targetRowCount);
         if (cappedHeight > 0) {
