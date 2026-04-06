@@ -1,14 +1,15 @@
-import { formatTime, formatSolveTime, formatReadableDate, formatDateTime, getEffectiveTime } from './utils.js?v=2026040574';
-import { sessionManager } from './session.js?v=2026040574';
+import { formatTime, formatSolveTime, formatReadableDate, formatDateTime, getEffectiveTime } from './utils.js?v=2026040575';
+import { sessionManager } from './session.js?v=2026040575';
 
 let _overlay = null;
 let _textarea = null;
 let _commentInput = null;
+let _commentTools = null;
 let _modalActions = null;
 let _statNav = null;
 let _mobileSummary = null;
 let _mobileSummaryValue = null;
-let _mobileSummaryMeta = null;
+let _mobileSummaryMetaLabel = null;
 let _mobileShareActions = null;
 let _mobileCopyButton = null;
 let _mobileShareButton = null;
@@ -18,6 +19,12 @@ let _mobileExportToast = null;
 let _copyOptionIncludeCommentsBtn = null;
 let _copyOptionIncludeDateBtn = null;
 let _copyOptionIncludeAbsoluteIndexBtn = null;
+let _desktopMoveSessionMenu = null;
+let _desktopMoveSessionButton = null;
+let _desktopMoveSessionDropdown = null;
+let _mobileMoveSessionMenu = null;
+let _mobileMoveSessionButton = null;
+let _mobileMoveSessionDropdown = null;
 let _currentSolveIndex = null;
 let _selectedStatContext = null;
 let _onStatNavigate = null;
@@ -26,6 +33,8 @@ let _currentModalSource = null;
 let _ghostClickGuardCleanup = null;
 let _ghostClickGuardTimeout = null;
 let _mobileExportToastTimeout = null;
+let _isMovingSolve = false;
+let _floatingMoveSessionContext = null;
 const mobileDetailQuery = window.matchMedia('(max-width: 1100px), (pointer: coarse)');
 const MODAL_GHOST_CLICK_GUARD_MS = 450;
 const MODAL_GHOST_CLICK_RADIUS_PX = 42;
@@ -184,8 +193,8 @@ function getScrambleDateSuffix(solve) {
 
 function getAbsoluteSolveIndex(solve, fallbackIndex = null) {
     if (solve?.id) {
-        const activeSessionSolves = sessionManager.getActiveSession()?.solves || [];
-        const absoluteIndex = activeSessionSolves.findIndex((entry) => entry.id === solve.id);
+        const solveSessionSolves = sessionManager.getSessionById(solve.sessionId)?.solves || [];
+        const absoluteIndex = solveSessionSolves.findIndex((entry) => entry.id === solve.id);
         if (absoluteIndex >= 0) return absoluteIndex + 1;
     }
 
@@ -269,6 +278,178 @@ function clearModalGhostClickGuard() {
     }
 }
 
+function ensureMoveSessionDropdownScroll(dropdownEl) {
+    if (!(dropdownEl instanceof HTMLElement)) return null;
+
+    let scrollEl = Array.from(dropdownEl.children).find((child) => child.classList.contains('custom-select-dropdown-scroll'));
+    if (!(scrollEl instanceof HTMLElement)) {
+        scrollEl = document.createElement('div');
+        scrollEl.className = 'custom-select-dropdown-scroll';
+        scrollEl.append(...Array.from(dropdownEl.childNodes));
+        dropdownEl.replaceChildren(scrollEl);
+    }
+
+    return scrollEl;
+}
+
+function attachMoveSessionDropdownToOverlay(dropdownEl) {
+    if (!(dropdownEl instanceof HTMLElement) || !_overlay) return;
+    ensureMoveSessionDropdownScroll(dropdownEl);
+    dropdownEl.classList.add('floating-move-session-dropdown');
+    if (dropdownEl.parentElement !== _overlay) {
+        _overlay.appendChild(dropdownEl);
+    }
+}
+
+function positionFloatingMoveSessionDropdown() {
+    if (!_floatingMoveSessionContext) return;
+
+    const { buttonEl, dropdownEl } = _floatingMoveSessionContext;
+    if (!(buttonEl instanceof HTMLButtonElement) || !(dropdownEl instanceof HTMLElement)) return;
+
+    const buttonRect = buttonEl.getBoundingClientRect();
+    const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+    const viewportPadding = 12;
+    const gap = 8;
+    const availableBelow = Math.max(120, viewportHeight - buttonRect.bottom - gap - viewportPadding);
+
+    dropdownEl.style.minWidth = `${Math.ceil(buttonRect.width)}px`;
+    dropdownEl.style.maxWidth = `calc(100vw - ${viewportPadding * 2}px)`;
+    dropdownEl.style.setProperty('--custom-select-dropdown-max-height-resolved', `${Math.min(320, availableBelow)}px`);
+    dropdownEl.style.left = `${viewportPadding}px`;
+    dropdownEl.style.top = `${Math.round(buttonRect.bottom + gap)}px`;
+
+    const dropdownRect = dropdownEl.getBoundingClientRect();
+    const clampedLeft = Math.min(
+        Math.max(viewportPadding, buttonRect.left),
+        Math.max(viewportPadding, viewportWidth - dropdownRect.width - viewportPadding)
+    );
+
+    dropdownEl.style.left = `${Math.round(clampedLeft)}px`;
+    dropdownEl.style.top = `${Math.round(buttonRect.bottom + gap)}px`;
+}
+
+function openFloatingMoveSessionDropdown(menuEl, buttonEl) {
+    const dropdownEl = menuEl === _desktopMoveSessionMenu
+        ? _desktopMoveSessionDropdown
+        : menuEl === _mobileMoveSessionMenu
+            ? _mobileMoveSessionDropdown
+            : null;
+    if (!(menuEl instanceof HTMLElement) || !(buttonEl instanceof HTMLButtonElement) || !(dropdownEl instanceof HTMLElement) || !_overlay) {
+        return;
+    }
+
+    _floatingMoveSessionContext = { buttonEl, dropdownEl };
+    dropdownEl.classList.add('open');
+    positionFloatingMoveSessionDropdown();
+}
+
+export function closeMoveSessionMenus() {
+    [_desktopMoveSessionMenu, _mobileMoveSessionMenu].forEach((menuEl) => {
+        menuEl?.classList.remove('open');
+        menuEl?.querySelector('.custom-select-btn')?.setAttribute('aria-expanded', 'false');
+    });
+
+    if (_floatingMoveSessionContext?.dropdownEl instanceof HTMLElement) {
+        const { dropdownEl } = _floatingMoveSessionContext;
+        dropdownEl.classList.remove('open');
+    }
+
+    _floatingMoveSessionContext = null;
+}
+
+function setMoveSessionMenuState(menuEl, buttonEl, shouldOpen) {
+    if (!(menuEl instanceof HTMLElement) || !(buttonEl instanceof HTMLButtonElement)) return;
+    menuEl.classList.toggle('open', shouldOpen);
+    buttonEl.setAttribute('aria-expanded', String(shouldOpen));
+    if (shouldOpen) {
+        openFloatingMoveSessionDropdown(menuEl, buttonEl);
+    } else {
+        closeMoveSessionMenus();
+    }
+}
+
+function getMoveSessionTargetOptions() {
+    const currentSolveSessionId = getCurrentSingleSolveSessionId();
+    return sessionManager.getSessions().filter((session) => session.id !== currentSolveSessionId);
+}
+
+function syncMoveSessionMenu(menuEl, buttonEl, dropdownEl) {
+    if (!(menuEl instanceof HTMLElement) || !(buttonEl instanceof HTMLButtonElement) || !(dropdownEl instanceof HTMLElement)) return;
+
+    const labelEl = buttonEl.querySelector('.custom-select-label');
+    const currentSessionName = getSessionName(getCurrentSingleSolveSessionId());
+    const options = getMoveSessionTargetOptions();
+    const scrollEl = ensureMoveSessionDropdownScroll(dropdownEl);
+
+    if (!(labelEl instanceof HTMLElement) || !(scrollEl instanceof HTMLElement)) return;
+
+    labelEl.textContent = currentSessionName;
+    buttonEl.title = currentSessionName;
+    buttonEl.setAttribute('aria-label', `Move solve to another session. Current session: ${currentSessionName}`);
+    buttonEl.disabled = !_currentModalSource || _currentModalSource.type !== 'single' || options.length === 0 || _isMovingSolve;
+
+    const fragment = document.createDocumentFragment();
+    options.forEach((session) => {
+        const optionButton = document.createElement('button');
+        optionButton.type = 'button';
+        optionButton.className = 'custom-select-option';
+        optionButton.dataset.sessionId = session.id;
+        optionButton.setAttribute('role', 'option');
+        optionButton.setAttribute('aria-selected', 'false');
+        optionButton.textContent = `${session.name} (${session.solveCount})`;
+        fragment.appendChild(optionButton);
+    });
+
+    scrollEl.replaceChildren(fragment);
+}
+
+function syncMoveSessionMenus() {
+    syncMoveSessionMenu(_desktopMoveSessionMenu, _desktopMoveSessionButton, _desktopMoveSessionDropdown);
+    syncMoveSessionMenu(_mobileMoveSessionMenu, _mobileMoveSessionButton, _mobileMoveSessionDropdown);
+}
+
+async function handleMoveSolveToSession(targetSessionId) {
+    if (_isMovingSolve) return;
+    if (_currentModalSource?.type !== 'single') return;
+
+    const solveId = _currentModalSource.solveId;
+    if (!solveId || !targetSessionId || targetSessionId === getCurrentSingleSolveSessionId()) {
+        closeMoveSessionMenus();
+        return;
+    }
+
+    _isMovingSolve = true;
+    syncMoveSessionMenus();
+
+    try {
+        const movedSolve = await sessionManager.moveSolve(solveId, targetSessionId);
+        const targetSession = await sessionManager.ensureSessionSolvesLoaded(targetSessionId);
+        closeMoveSessionMenus();
+
+        const filteredTargetSolves = sessionManager.getFilteredSolvesForSessionId(targetSessionId);
+        const filteredIndex = filteredTargetSolves.findIndex((solve) => solve.id === solveId);
+        const targetSessionSolves = targetSession?.solves || [];
+        const nextSolve = targetSessionSolves.find((solve) => solve.id === solveId) || movedSolve;
+        const nextIndex = filteredIndex >= 0
+            ? filteredIndex
+            : targetSessionSolves.findIndex((solve) => solve.id === solveId);
+
+        if (nextSolve && nextIndex >= 0) {
+            showSolveDetail(nextSolve, nextIndex, null, {
+                enableStatNavigation: filteredIndex >= 0,
+            });
+        }
+    } catch {
+        showMobileExportToast('Move failed.');
+        syncMoveSessionMenus();
+    } finally {
+        _isMovingSolve = false;
+        syncMoveSessionMenus();
+    }
+}
+
 export function armModalGhostClickGuard(point = null) {
     clearModalGhostClickGuard();
 
@@ -308,11 +489,12 @@ export function initModal() {
     _overlay = document.getElementById('modal-overlay');
     _textarea = document.getElementById('modal-textarea');
     _commentInput = document.getElementById('modal-solve-comment');
+    _commentTools = document.getElementById('modal-solve-tools');
     _modalActions = document.getElementById('modal-actions');
     _statNav = document.getElementById('modal-stat-nav');
     _mobileSummary = document.getElementById('modal-mobile-summary');
     _mobileSummaryValue = document.getElementById('modal-mobile-value');
-    _mobileSummaryMeta = document.getElementById('modal-mobile-meta');
+    _mobileSummaryMetaLabel = document.getElementById('modal-mobile-meta-label');
     _mobileShareActions = document.getElementById('modal-mobile-share-actions');
     _mobileCopyButton = document.getElementById('modal-copy-detail');
     _mobileShareButton = document.getElementById('modal-share-detail');
@@ -322,6 +504,14 @@ export function initModal() {
     _copyOptionIncludeCommentsBtn = document.getElementById('modal-option-include-comments');
     _copyOptionIncludeDateBtn = document.getElementById('modal-option-include-date');
     _copyOptionIncludeAbsoluteIndexBtn = document.getElementById('modal-option-include-absolute-index');
+    _desktopMoveSessionMenu = document.getElementById('modal-solve-session-menu');
+    _desktopMoveSessionButton = document.getElementById('modal-solve-session-btn');
+    _desktopMoveSessionDropdown = document.getElementById('modal-solve-session-dropdown');
+    _mobileMoveSessionMenu = document.getElementById('modal-mobile-session-menu');
+    _mobileMoveSessionButton = document.getElementById('modal-mobile-session-btn');
+    _mobileMoveSessionDropdown = document.getElementById('modal-mobile-session-dropdown');
+    attachMoveSessionDropdownToOverlay(_desktopMoveSessionDropdown);
+    attachMoveSessionDropdownToOverlay(_mobileMoveSessionDropdown);
 
     loadModalCopyOptions();
     renderModalCopyOptionButtons();
@@ -339,6 +529,13 @@ export function initModal() {
     document.addEventListener('keydown', (e) => {
         // Ignore Escape if the confirm modal is active so it doesn't close both
         const isConfirmActive = document.getElementById('confirm-overlay').classList.contains('active');
+        const isMoveSessionMenuOpen = Boolean(_floatingMoveSessionContext);
+        if (e.code === 'Escape' && isMoveSessionMenuOpen) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            closeMoveSessionMenus();
+            return;
+        }
         if (e.code === 'Escape' && _overlay.classList.contains('active') && !isConfirmActive) {
             e.preventDefault();
             e.stopImmediatePropagation();
@@ -411,6 +608,34 @@ export function initModal() {
         shareCurrentDetail();
     });
 
+    [_desktopMoveSessionButton, _mobileMoveSessionButton].forEach((buttonEl) => {
+        buttonEl?.addEventListener('click', (event) => {
+            const menuEl = buttonEl === _desktopMoveSessionButton ? _desktopMoveSessionMenu : _mobileMoveSessionMenu;
+            event.stopPropagation();
+
+            if (buttonEl.disabled) return;
+
+            const shouldOpen = !menuEl?.classList.contains('open');
+            closeMoveSessionMenus();
+            document.querySelectorAll('.custom-select-menu').forEach((customMenuEl) => {
+                customMenuEl.classList.remove('open');
+                customMenuEl.querySelector('.custom-select-btn')?.setAttribute('aria-expanded', 'false');
+            });
+            setMoveSessionMenuState(menuEl, buttonEl, shouldOpen);
+        });
+    });
+
+    [_desktopMoveSessionDropdown, _mobileMoveSessionDropdown].forEach((dropdownEl) => {
+        dropdownEl?.addEventListener('click', (event) => {
+            const optionButton = event.target instanceof Element
+                ? event.target.closest('.custom-select-option[data-session-id]')
+                : null;
+
+            if (!(optionButton instanceof HTMLButtonElement)) return;
+            void handleMoveSolveToSession(optionButton.dataset.sessionId || '');
+        });
+    });
+
     _copyOptionIncludeCommentsBtn?.addEventListener('click', () => {
         modalCopyOptions.includeComments = !modalCopyOptions.includeComments;
         saveModalCopyOptions();
@@ -449,11 +674,21 @@ export function initModal() {
         }
     };
 
+    const syncFloatingMoveSessionDropdownPosition = () => {
+        if (_floatingMoveSessionContext) {
+            positionFloatingMoveSessionDropdown();
+        }
+    };
+
     if (typeof mobileDetailQuery.addEventListener === 'function') {
         mobileDetailQuery.addEventListener('change', handleMobileDetailViewportChange);
     } else {
         mobileDetailQuery.addListener(handleMobileDetailViewportChange);
     }
+
+    window.addEventListener('resize', syncFloatingMoveSessionDropdownPosition);
+    window.addEventListener('scroll', syncFloatingMoveSessionDropdownPosition, true);
+    window.visualViewport?.addEventListener?.('resize', syncFloatingMoveSessionDropdownPosition);
 }
 
 export function setModalStatNavigator(callback) {
@@ -651,8 +886,20 @@ function isMobileDetailLayout() {
     return mobileDetailQuery.matches;
 }
 
-function getActiveSessionName() {
-    return sessionManager.getActiveSession()?.name || 'Session';
+function getSessionName(sessionId = sessionManager.getActiveSessionId()) {
+    return sessionManager.getSessionById(sessionId)?.name || 'Session';
+}
+
+function getCurrentSingleSolveSessionId() {
+    if (_currentModalSource?.type === 'single' && _currentModalSource.sessionId) {
+        return _currentModalSource.sessionId;
+    }
+
+    return sessionManager.getActiveSessionId();
+}
+
+function getCurrentSingleSolveSession() {
+    return sessionManager.getSessionById(getCurrentSingleSolveSessionId());
 }
 
 function setActionButtonFeedback(button, label) {
@@ -670,9 +917,9 @@ function refreshSingleSolveSharePreview() {
     if (!_overlay?.classList.contains('active')) return;
     if (_currentModalSource?.type !== 'single') return;
 
-    const activeSession = sessionManager.getActiveSession();
+    const solveSession = getCurrentSingleSolveSession();
     const fallbackSolve = _currentModalSource.solve;
-    const solve = activeSession?.solves?.find(s => s.id === _currentModalSource.solveId) || fallbackSolve;
+    const solve = solveSession?.solves?.find(s => s.id === _currentModalSource.solveId) || fallbackSolve;
     if (!solve) return;
 
     const singleLabel = _currentModalSource.isBest ? 'Best single' : 'Single';
@@ -694,11 +941,13 @@ function rerenderCurrentModalSource() {
     if (!_overlay?.classList.contains('active') || !_currentModalSource) return;
 
     if (_currentModalSource.type === 'single') {
-        const activeSession = sessionManager.getActiveSession();
+        const solveSession = getCurrentSingleSolveSession();
         const fallbackSolve = _currentModalSource.solve;
-        const solve = activeSession?.solves?.find(s => s.id === _currentModalSource.solveId) || fallbackSolve;
+        const solve = solveSession?.solves?.find(s => s.id === _currentModalSource.solveId) || fallbackSolve;
         if (!solve) return;
-        showSolveDetail(solve, _currentModalSource.index, _currentModalSource.isBest);
+        showSolveDetail(solve, _currentModalSource.index, _currentModalSource.isBest, {
+            enableStatNavigation: _currentModalSource.enableStatNavigation !== false,
+        });
         return;
     }
 
@@ -791,12 +1040,21 @@ function renderMobileDetail(detailPayload) {
     _mobileListPanel.hidden = !shouldUseMobileDetail;
 
     if (!shouldUseMobileDetail) {
+        if (_mobileSummaryMetaLabel) _mobileSummaryMetaLabel.textContent = '';
+        if (_mobileMoveSessionMenu) _mobileMoveSessionMenu.hidden = true;
         clearMobileList();
         return;
     }
 
     _mobileSummaryValue.textContent = detailPayload.value;
-    _mobileSummaryMeta.textContent = detailPayload.meta;
+    _mobileSummaryMetaLabel.textContent = detailPayload.metaLabel || detailPayload.meta || '';
+    const shouldShowMobileMoveMenu = Boolean(detailPayload.canMoveSolve);
+    _mobileMoveSessionMenu.hidden = !shouldShowMobileMoveMenu;
+    if (shouldShowMobileMoveMenu) {
+        syncMoveSessionMenus();
+    } else {
+        closeMoveSessionMenus();
+    }
     _mobileCopyButton.textContent = detailPayload.copyLabel;
     _mobileCopyButton.dataset.originalLabel = detailPayload.copyLabel;
     _mobileShareButton.textContent = detailPayload.shareLabel;
@@ -811,7 +1069,9 @@ function buildSolveDetailPayload(title, timeStr, solve, index, singleLabel, shar
     return {
         title,
         value: timeStr,
-        meta: `${getActiveSessionName()} | ${singleLabel.toLowerCase()}`,
+        meta: `${getSessionName(solve.sessionId)} | ${singleLabel.toLowerCase()}`,
+        metaLabel: singleLabel.toLowerCase(),
+        canMoveSolve: true,
         copyLabel: 'Copy Solve',
         shareLabel: 'Share Solve',
         shareText,
@@ -825,11 +1085,13 @@ function buildSolveDetailPayload(title, timeStr, solve, index, singleLabel, shar
     };
 }
 
-function buildAverageDetailPayload(title, valueStr, label, entries, shareText) {
+function buildAverageDetailPayload(title, valueStr, label, entries, shareText, sessionId = sessionManager.getActiveSessionId()) {
     return {
         title,
         value: valueStr,
-        meta: `${getActiveSessionName()} | ${label.toLowerCase()}`,
+        meta: `${getSessionName(sessionId)} | ${label.toLowerCase()}`,
+        metaLabel: `${getSessionName(sessionId)} | ${label.toLowerCase()}`,
+        canMoveSolve: false,
         copyLabel: 'Copy Average',
         shareLabel: 'Share Average',
         shareText,
@@ -842,12 +1104,14 @@ export function closeModal({ isPopState = false } = {}) {
         window.history.back();
     }
     clearModalGhostClickGuard();
+    closeMoveSessionMenus();
     _overlay.classList.remove('active');
     _overlay.classList.remove('stats-detail-active');
     _currentSolveIndex = null;
     _selectedStatContext = null;
     _currentDetailPayload = null;
     _currentModalSource = null;
+    _isMovingSolve = false;
     _mobileExportToast?.classList.remove('visible');
     window.clearTimeout(_mobileExportToastTimeout);
     renderMobileDetail(null);
@@ -862,18 +1126,19 @@ export function getModalSelectionContext() {
 /**
  * Show a single solve detail.
  */
-export function showSolveDetail(solve, index, isBest = null) {
+export function showSolveDetail(solve, index, isBest = null, { enableStatNavigation = true } = {}) {
     _currentSolveIndex = index;
-    _selectedStatContext = {
+    _selectedStatContext = enableStatNavigation ? {
         statType: 'time',
+        sessionId: solve.sessionId,
         endIndex: index,
         endSolveId: solve.id,
-    };
+    } : null;
     const timeStr = formatSolveTime(solve);
     const title = `Solve #${index + 1}`;
 
     if (isBest === null) {
-        const solves = sessionManager.getFilteredSolves();
+        const solves = sessionManager.getFilteredSolvesForSessionId(solve.sessionId);
         let bestTime = Infinity;
         for (const currentSolve of solves) {
             const currentTime = getEffectiveTime(currentSolve);
@@ -889,9 +1154,11 @@ export function showSolveDetail(solve, index, isBest = null) {
     _currentModalSource = {
         type: 'single',
         solveId: solve.id,
+        sessionId: solve.sessionId,
         solve,
         index,
         isBest,
+        enableStatNavigation,
     };
 
     const text = buildSolveShareText(singleLabel, index, timeStr, solve);
@@ -929,7 +1196,14 @@ export function showAverageDetail(label, value, solves, trim = 1, selectionConte
     const title = expandReadableStatLabel(label);
 
     const { shareText, mobileEntries } = buildAverageShareContent(label, valueStr, solves, trim);
-    const detailPayload = buildAverageDetailPayload(title, valueStr, label, mobileEntries, shareText);
+    const detailPayload = buildAverageDetailPayload(
+        title,
+        valueStr,
+        label,
+        mobileEntries,
+        shareText,
+        selectionContext?.sessionId ?? solves[solves.length - 1]?.sessionId ?? sessionManager.getActiveSessionId(),
+    );
     _showModal(title, shareText, null, detailPayload);
 }
 
@@ -1073,8 +1347,12 @@ function _showModal(title, text, solveContext = null, detailPayload = null) {
         btnDnf.style.color = '';
 
         // Setup comment input
+        _commentTools.dataset.mobileVisible = 'true';
+        _commentTools.style.display = 'grid';
         _commentInput.style.display = 'block';
         _commentInput.value = solveContext.comment || '';
+        _desktopMoveSessionMenu.hidden = false;
+        syncMoveSessionMenus();
         requestAnimationFrame(() => autoResizeTextarea(_commentInput));
     } else {
         _modalActions.style.display = 'none';
@@ -1085,7 +1363,12 @@ function _showModal(title, text, solveContext = null, detailPayload = null) {
             dateInfo.textContent = '';
             dateInfo.style.display = 'none';
         }
+        delete _commentTools.dataset.mobileVisible;
+        _commentTools.style.display = 'none';
         _commentInput.style.display = 'none';
+        _desktopMoveSessionMenu.hidden = true;
+        _mobileMoveSessionMenu.hidden = true;
+        closeMoveSessionMenus();
     }
 
     updateStatNavigation();

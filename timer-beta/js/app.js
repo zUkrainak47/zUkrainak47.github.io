@@ -1,15 +1,15 @@
-import { timer } from './timer.js?v=2026040574';
-import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=2026040574';
-import { sessionManager } from './session.js?v=2026040574';
-import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=2026040574';
-import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=2026040574';
-import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, truncateTimeDisplay } from './utils.js?v=2026040574';
-import { initModal, showSolveDetail, showAverageDetail, closeModal, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=2026040574';
-import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=2026040574';
-import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=2026040574';
-import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=2026040574';
-import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=2026040574';
-import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=2026040574';
+import { timer } from './timer.js?v=2026040575';
+import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=2026040575';
+import { sessionManager } from './session.js?v=2026040575';
+import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=2026040575';
+import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=2026040575';
+import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, truncateTimeDisplay } from './utils.js?v=2026040575';
+import { initModal, showSolveDetail, showAverageDetail, closeModal, closeMoveSessionMenus, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=2026040575';
+import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=2026040575';
+import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=2026040575';
+import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=2026040575';
+import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=2026040575';
+import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=2026040575';
 
 let currentScramble = '';
 let currentSortCol = null;
@@ -203,7 +203,7 @@ async function registerServiceWorker() {
     if (window.location?.protocol === 'file:') return;
 
     try {
-        const serviceWorkerUrl = new URL('../sw.js?v=2026040574', import.meta.url);
+        const serviceWorkerUrl = new URL('../sw.js?v=2026040575', import.meta.url);
         await navigator.serviceWorker.register(serviceWorkerUrl);
     } catch (error) {
         console.warn('Service worker registration failed:', error);
@@ -2706,6 +2706,11 @@ async function init() {
         rebuildStatsCache();
         refreshUI();
     });
+    sessionManager.on('solveMoved', () => {
+        refreshSessionList();
+        rebuildStatsCache();
+        refreshUI();
+    });
     sessionManager.on('sessionChanged', onSessionChanged);
     sessionManager.on('sessionDeleted', refreshSessionList);
 
@@ -3328,6 +3333,7 @@ function closeCustomSelectMenus() {
         menuEl.classList.remove('open');
         menuEl.querySelector('.custom-select-btn')?.setAttribute('aria-expanded', 'false');
     });
+    closeMoveSessionMenus();
     syncCustomSelectOverflowState();
 }
 
@@ -3441,7 +3447,7 @@ function initCustomSelectMenus() {
     });
 
     document.addEventListener('pointerdown', (event) => {
-        if (event.target instanceof Element && event.target.closest('.custom-select-menu')) return;
+        if (event.target instanceof Element && (event.target.closest('.custom-select-menu') || event.target.closest('.floating-move-session-dropdown'))) return;
         closeCustomSelectMenus();
     }, true);
 
@@ -5287,13 +5293,14 @@ function openStatDetailAtIndex(type, solves, stats, index, options = {}) {
     const config = getRollingStatConfig(type);
     if (!config || index < config.windowSize - 1) return false;
 
-    const times = statsCache.getTimes();
+    const times = Array.isArray(options.times) ? options.times : statsCache.getTimes();
     const value = config.getValue(times, index);
     if (value == null) return false;
 
     const window = solves.slice(index - config.windowSize + 1, index + 1);
     showAverageDetail(options.label || type, value, window, config.trim, {
         statType: type,
+        sessionId: solves[index].sessionId,
         endIndex: index,
         endSolveId: solves[index].id,
     });
@@ -5301,12 +5308,23 @@ function openStatDetailAtIndex(type, solves, stats, index, options = {}) {
 }
 
 function openShortcutStatDetail(type) {
-    const solves = sessionManager.getFilteredSolves();
+    const selection = getModalSelectionContext();
+    const sessionId = selection?.sessionId ?? sessionManager.getActiveSessionId();
+    const solves = sessionManager.getFilteredSolvesForSessionId(sessionId);
     if (solves.length === 0) return false;
 
-    const stats = statsCache.getStats();
+    const times = solves.map((solve) => getEffectiveTime(solve));
+    let bestTime = Infinity;
+    for (const time of times) {
+        if (time < bestTime) bestTime = time;
+    }
+    const stats = {
+        best: {
+            time: bestTime === Infinity ? null : bestTime,
+        },
+    };
     const index = getSelectedStatSolveIndex(solves);
-    return openStatDetailAtIndex(type, solves, stats, index);
+    return openStatDetailAtIndex(type, solves, stats, index, { times });
 }
 
 function getMostRecentSummarySolve() {
