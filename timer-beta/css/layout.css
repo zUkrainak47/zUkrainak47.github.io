@@ -48,7 +48,7 @@ body.solving #btn-settings {
 
 #left-panel.custom-select-open {
     overflow: visible;
-    z-index: 40;
+    z-index: 70;
 }
 
 #center-panel {
@@ -60,7 +60,7 @@ body.solving #btn-settings {
     position: relative;
     min-height: 0;
     padding-bottom: 12vh;
-    z-index: 10;
+    z-index: 0;
 }
 
 #right-panel {

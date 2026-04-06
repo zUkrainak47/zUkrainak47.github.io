@@ -355,6 +355,10 @@ select {
     transition: opacity var(--transition-fast), transform var(--transition-fast), visibility var(--transition-fast);
 }
 
+#shortcut-tooltip.shortcut-tooltip-below-pills {
+    z-index: 60;
+}
+
 #shortcut-tooltip.no-transition {
     transition: none;
 }
