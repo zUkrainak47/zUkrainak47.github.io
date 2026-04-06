@@ -1,15 +1,15 @@
-import { timer } from './timer.js?v=2026040576';
-import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=2026040576';
-import { sessionManager } from './session.js?v=2026040576';
-import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=2026040576';
-import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=2026040576';
-import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, truncateTimeDisplay } from './utils.js?v=2026040576';
-import { initModal, showSolveDetail, showAverageDetail, closeModal, closeMoveSessionMenus, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=2026040576';
-import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=2026040576';
-import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=2026040576';
-import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=2026040576';
-import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=2026040576';
-import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=2026040576';
+import { timer } from './timer.js?v=2026040577';
+import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=2026040577';
+import { sessionManager } from './session.js?v=2026040577';
+import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=2026040577';
+import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=2026040577';
+import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, truncateTimeDisplay } from './utils.js?v=2026040577';
+import { initModal, showSolveDetail, showAverageDetail, closeModal, closeMoveSessionMenus, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=2026040577';
+import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=2026040577';
+import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=2026040577';
+import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=2026040577';
+import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=2026040577';
+import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=2026040577';
 
 let currentScramble = '';
 let currentSortCol = null;
@@ -203,7 +203,7 @@ async function registerServiceWorker() {
     if (window.location?.protocol === 'file:') return;
 
     try {
-        const serviceWorkerUrl = new URL('../sw.js?v=2026040576', import.meta.url);
+        const serviceWorkerUrl = new URL('../sw.js?v=2026040577', import.meta.url);
         await navigator.serviceWorker.register(serviceWorkerUrl);
     } catch (error) {
         console.warn('Service worker registration failed:', error);
@@ -3244,8 +3244,53 @@ function initZenMode() {
 }
 
 // ──── Scramble ────
+const SCRAMBLE_SUBSET_PARENT_BY_TYPE = new Map([
+    ['ll', '333'],
+    ['pll', '333'],
+    ['zbll', '333'],
+    ['lsll', '333'],
+]);
+const SCRAMBLE_SUBSET_OPTIONS_BY_PUZZLE = Object.freeze({
+    333: Object.freeze([
+        Object.freeze({ id: 'll', menuLabel: 'OLL' }),
+        Object.freeze({ id: 'pll', menuLabel: 'PLL' }),
+        Object.freeze({ id: 'zbll', menuLabel: 'ZBLL' }),
+        Object.freeze({ id: 'lsll', menuLabel: 'LSLL' }),
+    ]),
+});
+const SCRAMBLE_PUZZLE_OPTIONS = Object.freeze(
+    SCRAMBLE_TYPE_OPTIONS.filter((option) => !SCRAMBLE_SUBSET_PARENT_BY_TYPE.has(option.id)),
+);
+const EMPTY_SCRAMBLE_SUBSET_OPTIONS = Object.freeze([]);
+
 function getScrambleTypeMeta(type = getSelectedScrambleType()) {
     return SCRAMBLE_TYPE_OPTIONS.find((option) => option.id === type) || SCRAMBLE_TYPE_OPTIONS[0];
+}
+
+function getScramblePuzzleId(type = getSelectedScrambleType()) {
+    const activeType = getScrambleTypeMeta(type).id;
+    return SCRAMBLE_SUBSET_PARENT_BY_TYPE.get(activeType) || activeType;
+}
+
+function getScramblePuzzleMeta(type = getSelectedScrambleType()) {
+    const puzzleId = getScramblePuzzleId(type);
+    return SCRAMBLE_PUZZLE_OPTIONS.find((option) => option.id === puzzleId) || SCRAMBLE_PUZZLE_OPTIONS[0];
+}
+
+function getScrambleSubsetOptions(puzzleId) {
+    return SCRAMBLE_SUBSET_OPTIONS_BY_PUZZLE[puzzleId] || EMPTY_SCRAMBLE_SUBSET_OPTIONS;
+}
+
+function puzzleHasScrambleSubsets(puzzleId) {
+    return getScrambleSubsetOptions(puzzleId).length > 0;
+}
+
+function getScrambleTypeButtonLabel(type = getSelectedScrambleType()) {
+    return getScrambleTypeMeta(type).buttonLabel;
+}
+
+function getScrambleTypeButtonDescription(type = getSelectedScrambleType()) {
+    return getScrambleTypeMeta(type).menuLabel;
 }
 
 function ensureDropdownScrollContainer(dropdownEl, className) {
@@ -3263,24 +3308,169 @@ function ensureDropdownScrollContainer(dropdownEl, className) {
     return scrollEl;
 }
 
+function ensureScrambleTypeDropdownPanels(dropdownEl) {
+    if (!(dropdownEl instanceof HTMLElement)) return null;
+
+    let mainPanel = Array.from(dropdownEl.children)
+        .find((child) => child.classList.contains('scramble-type-dropdown-main'));
+    let subsetPanel = Array.from(dropdownEl.children)
+        .find((child) => child.classList.contains('scramble-type-subset-dropdown'));
+
+    const looseNodes = Array.from(dropdownEl.childNodes).filter((node) =>
+        !(node instanceof HTMLElement
+            && (node.classList.contains('scramble-type-dropdown-main')
+                || node.classList.contains('scramble-type-subset-dropdown'))),
+    );
+
+    if (!(mainPanel instanceof HTMLElement)) {
+        mainPanel = document.createElement('div');
+        mainPanel.className = 'scramble-type-dropdown-panel scramble-type-dropdown-main';
+        dropdownEl.prepend(mainPanel);
+    }
+
+    if (looseNodes.length > 0) {
+        mainPanel.append(...looseNodes);
+    }
+
+    if (!(subsetPanel instanceof HTMLElement)) {
+        subsetPanel = document.createElement('div');
+        subsetPanel.className = 'scramble-type-dropdown-panel scramble-type-subset-dropdown';
+        dropdownEl.append(subsetPanel);
+    }
+
+    const mainScrollEl = ensureDropdownScrollContainer(mainPanel, 'scramble-type-dropdown-scroll');
+    const subsetScrollEl = ensureDropdownScrollContainer(subsetPanel, 'scramble-type-dropdown-scroll');
+
+    if (!(mainScrollEl instanceof HTMLElement) || !(subsetScrollEl instanceof HTMLElement)) {
+        return null;
+    }
+
+    return {
+        mainPanel,
+        subsetPanel,
+        mainScrollEl,
+        subsetScrollEl,
+    };
+}
+
+function renderScrambleSubsetOptions(menuEl, puzzleId = '') {
+    const dropdownEl = menuEl?.querySelector('.scramble-type-dropdown');
+    const panels = ensureScrambleTypeDropdownPanels(dropdownEl);
+    if (!panels) return null;
+
+    const { subsetPanel, subsetScrollEl } = panels;
+    const subsetOptions = getScrambleSubsetOptions(puzzleId);
+
+    subsetPanel.dataset.scramblePuzzle = puzzleId;
+    subsetPanel.setAttribute(
+        'aria-label',
+        puzzleId ? `${getScramblePuzzleMeta(puzzleId).menuLabel} subset options` : 'Scramble subset options',
+    );
+
+    if (subsetOptions.length === 0) {
+        subsetScrollEl.replaceChildren();
+        return panels;
+    }
+
+    const fragment = document.createDocumentFragment();
+
+    subsetOptions.forEach((option) => {
+        const optionButton = document.createElement('button');
+        optionButton.type = 'button';
+        optionButton.className = 'scramble-type-option scramble-type-subset-option';
+        optionButton.dataset.scrambleType = option.id;
+        optionButton.dataset.scramblePuzzle = puzzleId;
+        optionButton.setAttribute('role', 'menuitemradio');
+        optionButton.setAttribute('aria-checked', 'false');
+        optionButton.textContent = option.menuLabel;
+        fragment.appendChild(optionButton);
+    });
+
+    subsetScrollEl.replaceChildren(fragment);
+    return panels;
+}
+
+function showScrambleSubsetDropdown(menuEl, puzzleId, { ensureActiveVisible = false } = {}) {
+    if (!menuEl) return;
+
+    const subsetOptions = getScrambleSubsetOptions(puzzleId);
+    if (subsetOptions.length === 0) {
+        hideScrambleSubsetDropdown(menuEl);
+        return;
+    }
+
+    if (menuEl.classList.contains('subset-open') && menuEl.dataset.subsetPuzzleId === puzzleId) {
+        if (!ensureActiveVisible) return;
+
+        const activeOptionEl = menuEl.querySelector('.scramble-type-subset-option.active');
+        if (activeOptionEl instanceof HTMLElement) {
+            activeOptionEl.scrollIntoView({ block: 'nearest' });
+        }
+        return;
+    }
+
+    renderScrambleSubsetOptions(menuEl, puzzleId);
+    menuEl.dataset.subsetPuzzleId = puzzleId;
+    menuEl.classList.add('subset-open');
+
+    syncScrambleTypeMenus();
+
+    if (!ensureActiveVisible) return;
+
+    const activeOptionEl = menuEl.querySelector('.scramble-type-subset-option.active');
+    if (activeOptionEl instanceof HTMLElement) {
+        activeOptionEl.scrollIntoView({ block: 'nearest' });
+    }
+}
+
+function hideScrambleSubsetDropdown(menuEl) {
+    if (!menuEl) return;
+    if (!menuEl.classList.contains('subset-open') && !menuEl.dataset.subsetPuzzleId) return;
+
+    menuEl.classList.remove('subset-open');
+    delete menuEl.dataset.subsetPuzzleId;
+}
+
 function populateScrambleTypeMenus() {
-    document.querySelectorAll('.scramble-type-dropdown').forEach((dropdownEl) => {
-        const scrollEl = ensureDropdownScrollContainer(dropdownEl, 'scramble-type-dropdown-scroll');
-        if (!(scrollEl instanceof HTMLElement)) return;
+    document.querySelectorAll('.scramble-type-menu').forEach((menuEl) => {
+        const dropdownEl = menuEl.querySelector('.scramble-type-dropdown');
+        const panels = ensureScrambleTypeDropdownPanels(dropdownEl);
+        if (!panels) return;
         const fragment = document.createDocumentFragment();
 
-        SCRAMBLE_TYPE_OPTIONS.forEach((option) => {
+        SCRAMBLE_PUZZLE_OPTIONS.forEach((option) => {
             const optionButton = document.createElement('button');
             optionButton.type = 'button';
-            optionButton.className = 'scramble-type-option';
+            optionButton.className = 'scramble-type-option scramble-type-puzzle-option';
             optionButton.dataset.scrambleType = option.id;
+            optionButton.dataset.scramblePuzzle = option.id;
+            const hasSubsets = puzzleHasScrambleSubsets(option.id);
+
             optionButton.setAttribute('role', 'menuitemradio');
             optionButton.setAttribute('aria-checked', 'false');
-            optionButton.textContent = option.menuLabel;
+            if (hasSubsets) {
+                optionButton.classList.add('has-subsets');
+                optionButton.setAttribute('aria-haspopup', 'menu');
+            }
+
+            const labelEl = document.createElement('span');
+            labelEl.className = 'scramble-type-option-label';
+            labelEl.textContent = option.menuLabel;
+            optionButton.append(labelEl);
+
+            if (hasSubsets) {
+                const indicatorEl = document.createElement('span');
+                indicatorEl.className = 'scramble-type-option-indicator';
+                indicatorEl.setAttribute('aria-hidden', 'true');
+                indicatorEl.textContent = '▸';
+                optionButton.append(indicatorEl);
+            }
+
             fragment.appendChild(optionButton);
         });
 
-        scrollEl.replaceChildren(fragment);
+        panels.mainScrollEl.replaceChildren(fragment);
+        renderScrambleSubsetOptions(menuEl, '');
     });
 }
 
@@ -3288,6 +3478,7 @@ function closeScrambleTypeMenus() {
     document.querySelectorAll('.scramble-type-menu').forEach((menuEl) => {
         menuEl.classList.remove('open');
         menuEl.classList.remove('dropdown-up');
+        hideScrambleSubsetDropdown(menuEl);
         menuEl.querySelector('.scramble-type-btn')?.setAttribute('aria-expanded', 'false');
         menuEl.querySelector('.scramble-type-dropdown')?.style.removeProperty('--scramble-type-dropdown-max-height');
     });
@@ -3296,15 +3487,20 @@ function closeScrambleTypeMenus() {
 function positionScrambleTypeMenu(menuEl, { ensureActiveVisible = false } = {}) {
     const buttonEl = menuEl?.querySelector('.scramble-type-btn');
     const dropdownEl = menuEl?.querySelector('.scramble-type-dropdown');
+    const panels = ensureScrambleTypeDropdownPanels(dropdownEl);
 
-    if (!(buttonEl instanceof HTMLElement) || !(dropdownEl instanceof HTMLElement)) return;
+    if (!(buttonEl instanceof HTMLElement) || !(dropdownEl instanceof HTMLElement) || !panels) return;
 
     const viewport = window.visualViewport;
+    const viewportLeft = viewport?.offsetLeft || 0;
     const viewportTop = viewport?.offsetTop || 0;
+    const viewportWidth = viewport?.width || window.innerWidth;
     const viewportHeight = viewport?.height || window.innerHeight;
+    const viewportRight = viewportLeft + viewportWidth;
     const viewportBottom = viewportTop + viewportHeight;
     const buttonRect = buttonEl.getBoundingClientRect();
     const gap = parseFloat(getComputedStyle(menuEl).getPropertyValue('--scramble-type-dropdown-gap')) || 8;
+    const submenuGap = parseFloat(getComputedStyle(menuEl).getPropertyValue('--scramble-type-submenu-gap')) || gap;
     const viewportPadding = 12;
     const preferredMaxHeight = 360;
     const availableAbove = Math.max(0, Math.floor(buttonRect.top - viewportTop - gap - viewportPadding));
@@ -3321,9 +3517,30 @@ function positionScrambleTypeMenu(menuEl, { ensureActiveVisible = false } = {}) 
         dropdownEl.style.removeProperty('--scramble-type-dropdown-max-height');
     }
 
-    const activeOptionEl = dropdownEl.querySelector('.scramble-type-option.active');
+    const activeOptionEl = panels.mainPanel.querySelector('.scramble-type-puzzle-option.active');
     if (ensureActiveVisible && activeOptionEl instanceof HTMLElement) {
         activeOptionEl.scrollIntoView({ block: 'nearest' });
+    }
+
+    if (!menuEl.classList.contains('subset-open')) {
+        return;
+    }
+
+    const subsetWidth = Math.max(
+        panels.subsetPanel.offsetWidth,
+        panels.subsetPanel.scrollWidth,
+        panels.subsetPanel.getBoundingClientRect().width,
+    );
+    const mainRect = panels.mainPanel.getBoundingClientRect();
+    const availableRight = Math.max(0, Math.floor(viewportRight - mainRect.right - submenuGap - viewportPadding));
+    const availableLeft = Math.max(0, Math.floor(mainRect.left - viewportLeft - submenuGap - viewportPadding));
+    const shouldOpenLeft = subsetWidth > availableRight && availableLeft > availableRight;
+
+    dropdownEl.classList.toggle('subset-left', shouldOpenLeft && availableLeft > 0);
+
+    const activeSubsetOptionEl = panels.subsetPanel.querySelector('.scramble-type-subset-option.active');
+    if (ensureActiveVisible && activeSubsetOptionEl instanceof HTMLElement) {
+        activeSubsetOptionEl.scrollIntoView({ block: 'nearest' });
     }
 }
 
@@ -3460,25 +3677,40 @@ function initCustomSelectMenus() {
 
 function syncScrambleTypeMenus(type = getSelectedScrambleType()) {
     const activeType = getScrambleTypeMeta(type).id;
-    const activeMeta = getScrambleTypeMeta(activeType);
+    const activePuzzleMeta = getScramblePuzzleMeta(activeType);
     const previewButton = getEl('btn-scramble-preview');
+    const buttonLabel = getScrambleTypeButtonLabel(activeType);
+    const buttonDescription = getScrambleTypeButtonDescription(activeType);
 
-    document.querySelectorAll('.scramble-type-btn').forEach((buttonEl) => {
-        buttonEl.textContent = activeMeta.buttonLabel;
-        buttonEl.title = `Scramble type: ${activeMeta.menuLabel}`;
-        buttonEl.setAttribute('aria-label', `Scramble type: ${activeMeta.menuLabel}`);
+    document.querySelectorAll('.scramble-type-menu').forEach((menuEl) => {
+        const visibleSubsetPuzzleId = menuEl.dataset.subsetPuzzleId || '';
+        if (visibleSubsetPuzzleId) {
+            renderScrambleSubsetOptions(menuEl, visibleSubsetPuzzleId);
+        }
     });
 
-    document.querySelectorAll('.scramble-type-option').forEach((optionEl) => {
+    document.querySelectorAll('.scramble-type-btn').forEach((buttonEl) => {
+        buttonEl.textContent = buttonLabel;
+        buttonEl.title = `Scramble type: ${buttonDescription}`;
+        buttonEl.setAttribute('aria-label', `Scramble type: ${buttonDescription}`);
+    });
+
+    document.querySelectorAll('.scramble-type-puzzle-option').forEach((optionEl) => {
+        const isActive = optionEl.dataset.scramblePuzzle === activePuzzleMeta.id;
+        optionEl.classList.toggle('active', isActive);
+        optionEl.setAttribute('aria-checked', String(isActive));
+    });
+
+    document.querySelectorAll('.scramble-type-subset-option').forEach((optionEl) => {
         const isActive = optionEl.dataset.scrambleType === activeType;
         optionEl.classList.toggle('active', isActive);
         optionEl.setAttribute('aria-checked', String(isActive));
     });
 
-    previewButton?.classList.toggle('square1-preview-type', activeType === 'sq1');
-    previewButton?.classList.toggle('pyraminx-preview-type', activeType === 'pyram');
-    previewButton?.classList.toggle('clock-preview-type', activeType === 'clock');
-    previewButton?.classList.toggle('megaminx-preview-type', activeType === 'minx');
+    previewButton?.classList.toggle('square1-preview-type', activePuzzleMeta.id === 'sq1');
+    previewButton?.classList.toggle('pyraminx-preview-type', activePuzzleMeta.id === 'pyram');
+    previewButton?.classList.toggle('clock-preview-type', activePuzzleMeta.id === 'clock');
+    previewButton?.classList.toggle('megaminx-preview-type', activePuzzleMeta.id === 'minx');
 }
 
 async function reloadScrambleForSelectedType() {
@@ -3706,19 +3938,44 @@ function initScrambleControls() {
         stopDesktopScrambleTransitionSync(event.propertyName);
     });
 
-    async function handleScrambleTypeSelection(nextType) {
+    async function handleScrambleTypeSelection(nextType, {
+        closeAfterSelect = true,
+        keepSubsetOpen = false,
+        menuEl = null,
+    } = {}) {
         if (textEl.classList.contains('loading')) return;
         const activeSessionId = sessionManager.getActiveSessionId();
         if (activeSessionId) {
             await sessionManager.setSessionScrambleType(activeSessionId, nextType);
         }
         const changed = setScrambleType(nextType);
-        closeScrambleTypeMenus();
+        if (closeAfterSelect) {
+            closeScrambleTypeMenus();
+        }
         syncScrambleTypeMenus();
+
+        if (!closeAfterSelect && menuEl instanceof HTMLElement) {
+            menuEl.classList.add('open');
+            menuEl.querySelector('.scramble-type-btn')?.setAttribute('aria-expanded', 'true');
+
+            const puzzleId = getScramblePuzzleId(nextType);
+            if (keepSubsetOpen && puzzleHasScrambleSubsets(puzzleId)) {
+                showScrambleSubsetDropdown(menuEl, puzzleId, { ensureActiveVisible: true });
+            } else {
+                hideScrambleSubsetDropdown(menuEl);
+            }
+
+            positionScrambleTypeMenu(menuEl, { ensureActiveVisible: true });
+        }
+
         if (!changed) return;
 
         setScrambleActionsVisible(false);
         await reloadScrambleForSelectedType();
+
+        if (!closeAfterSelect && menuEl instanceof HTMLElement) {
+            positionScrambleTypeMenu(menuEl, { ensureActiveVisible: true });
+        }
     }
 
     // 1. Copy
@@ -3741,7 +3998,7 @@ function initScrambleControls() {
 
     scrambleTypeMenus.forEach((menuEl) => {
         const buttonEl = menuEl.querySelector('.scramble-type-btn');
-        const optionEls = menuEl.querySelectorAll('.scramble-type-option');
+        const dropdownEl = menuEl.querySelector('.scramble-type-dropdown');
 
         buttonEl?.addEventListener('click', (event) => {
             event.stopPropagation();
@@ -3752,13 +4009,73 @@ function initScrambleControls() {
             if (!shouldOpen) return;
             menuEl.classList.add('open');
             buttonEl.setAttribute('aria-expanded', 'true');
+            const activePuzzleId = getScramblePuzzleId();
+            if (puzzleHasScrambleSubsets(activePuzzleId)) {
+                showScrambleSubsetDropdown(menuEl, activePuzzleId);
+            }
             positionScrambleTypeMenu(menuEl, { ensureActiveVisible: true });
         });
 
-        optionEls.forEach((optionEl) => {
-            optionEl.addEventListener('click', async () => {
-                await handleScrambleTypeSelection(optionEl.dataset.scrambleType || '333');
-            });
+        dropdownEl?.addEventListener('pointerover', (event) => {
+            if (!menuEl.classList.contains('open')) return;
+
+            const optionEl = event.target instanceof Element
+                ? event.target.closest('.scramble-type-puzzle-option')
+                : null;
+            if (!(optionEl instanceof HTMLButtonElement) || !dropdownEl.contains(optionEl)) return;
+
+            const puzzleId = optionEl.dataset.scramblePuzzle || optionEl.dataset.scrambleType || '333';
+            if (puzzleHasScrambleSubsets(puzzleId)) {
+                showScrambleSubsetDropdown(menuEl, puzzleId);
+                positionScrambleTypeMenu(menuEl);
+                return;
+            }
+
+            hideScrambleSubsetDropdown(menuEl);
+            positionScrambleTypeMenu(menuEl);
+        });
+
+        dropdownEl?.addEventListener('focusin', (event) => {
+            if (!menuEl.classList.contains('open')) return;
+
+            const optionEl = event.target instanceof Element
+                ? event.target.closest('.scramble-type-puzzle-option')
+                : null;
+            if (!(optionEl instanceof HTMLButtonElement) || !dropdownEl.contains(optionEl)) return;
+
+            const puzzleId = optionEl.dataset.scramblePuzzle || optionEl.dataset.scrambleType || '333';
+            if (!puzzleHasScrambleSubsets(puzzleId)) return;
+
+            showScrambleSubsetDropdown(menuEl, puzzleId, { ensureActiveVisible: true });
+            positionScrambleTypeMenu(menuEl, { ensureActiveVisible: true });
+        });
+
+        dropdownEl?.addEventListener('click', async (event) => {
+            const puzzleOptionEl = event.target instanceof Element
+                ? event.target.closest('.scramble-type-puzzle-option')
+                : null;
+            if (puzzleOptionEl instanceof HTMLButtonElement && dropdownEl.contains(puzzleOptionEl)) {
+                const puzzleId = puzzleOptionEl.dataset.scramblePuzzle || puzzleOptionEl.dataset.scrambleType || '333';
+                if (puzzleHasScrambleSubsets(puzzleId)) {
+                    const shouldCloseAfterSelect = !coarsePointerQuery.matches;
+                    await handleScrambleTypeSelection(puzzleOptionEl.dataset.scrambleType || '333', {
+                        closeAfterSelect: shouldCloseAfterSelect,
+                        keepSubsetOpen: coarsePointerQuery.matches,
+                        menuEl,
+                    });
+                    return;
+                }
+
+                await handleScrambleTypeSelection(puzzleOptionEl.dataset.scrambleType || '333');
+                return;
+            }
+
+            const subsetOptionEl = event.target instanceof Element
+                ? event.target.closest('.scramble-type-subset-option')
+                : null;
+            if (!(subsetOptionEl instanceof HTMLButtonElement) || !dropdownEl.contains(subsetOptionEl)) return;
+
+            await handleScrambleTypeSelection(subsetOptionEl.dataset.scrambleType || '333');
         });
     });
 
