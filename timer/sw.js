@@ -45,6 +45,7 @@ const LOCAL_PRECACHE_PATHS = [
     './resources/hashtag-full.svg',
     './resources/settings.svg',
     './resources/distribution.svg',
+    './resources/trash.svg',
     './resources/pwa-icon.svg',
     './resources/pwa-icon-192.png',
     './resources/pwa-icon-512.png',

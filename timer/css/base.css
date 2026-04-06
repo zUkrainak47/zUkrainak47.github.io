@@ -310,6 +310,11 @@ select {
     mask-image: url('../resources/legend.svg');
 }
 
+.icon-mask-trash {
+    -webkit-mask-image: url('../resources/trash.svg');
+    mask-image: url('../resources/trash.svg');
+}
+
 @media (min-width: 1101px) and (pointer: fine) {
     #btn-settings .icon-mask-settings {
         width: 0.85em;
@@ -348,6 +353,10 @@ select {
     visibility: hidden;
     transform: translate(-50%, -4px);
     transition: opacity var(--transition-fast), transform var(--transition-fast), visibility var(--transition-fast);
+}
+
+#shortcut-tooltip.shortcut-tooltip-below-pills {
+    z-index: 60;
 }
 
 #shortcut-tooltip.no-transition {

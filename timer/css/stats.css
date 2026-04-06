@@ -9,7 +9,7 @@
 
 #stats-panel.custom-select-open {
     overflow: visible;
-    z-index: 40;
+    z-index: 70;
 }
 
 #stats-sidebar {
@@ -605,6 +605,11 @@ tr:hover .solve-actions {
     transition: all var(--transition-fast);
     user-select: none;
     -webkit-user-select: none;
+}
+
+.btn-icon-small .icon-mask {
+    width: 14px;
+    height: 14px;
 }
 
 .btn-icon-small:hover {

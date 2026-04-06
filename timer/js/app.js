@@ -4038,6 +4038,7 @@ function showShortcutTooltip(target) {
     if (!shortcutTooltipEl || !target?.dataset.shortcutTooltip) return;
 
     const wasActive = shortcutTooltipEl.classList.contains('active');
+    shortcutTooltipEl.classList.toggle('shortcut-tooltip-below-pills', target?.id === 'scramble-text');
     shortcutTooltipEl.dataset.placement = getShortcutTooltipPlacement(target);
     shortcutTooltipEl.textContent = target.dataset.shortcutTooltip;
 
