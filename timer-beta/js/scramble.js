@@ -1,4 +1,5 @@
-import { load, save } from './storage.js?v=2026040577';
+import { load, save } from './storage.js?v=2026040702';
+import { createSubsetScramble } from './subset-scramblers.js?v=2026040702';
 
 let randomScrambleForEvent;
 let _cubingInitPromise = null;
@@ -35,9 +36,14 @@ export const SCRAMBLE_TYPE_OPTIONS = Object.freeze([
     { id: 'sq1', menuLabel: 'Square-1', buttonLabel: 'Sq-1', generator: 'cubing', eventId: 'sq1' },
     { id: 'clock', menuLabel: 'Clock', buttonLabel: 'Clock', generator: 'cubing', eventId: 'clock' },
     { id: 'll', menuLabel: 'OLL', buttonLabel: 'OLL', generator: 'scrambow' },
+    { id: 'cmll', menuLabel: 'CMLL', buttonLabel: 'CMLL', generator: 'scrambow' },
     { id: 'pll', menuLabel: 'PLL', buttonLabel: 'PLL', generator: 'scrambow' },
     { id: 'zbll', menuLabel: 'ZBLL', buttonLabel: 'ZBLL', generator: 'scrambow' },
     { id: 'lsll', menuLabel: 'LSLL', buttonLabel: 'LSLL', generator: 'scrambow' },
+    { id: '222cll', menuLabel: 'CLL', buttonLabel: 'CLL', generator: 'custom' },
+    { id: '222eg1', menuLabel: 'EG1', buttonLabel: 'EG1', generator: 'custom' },
+    { id: '222eg2', menuLabel: 'EG2', buttonLabel: 'EG2', generator: 'custom' },
+    { id: 'pyrl4e', menuLabel: 'L4E', buttonLabel: 'L4E', generator: 'custom' },
 ]);
 
 const SCRAMBLE_TYPE_SET = new Set(SCRAMBLE_TYPE_OPTIONS.map((option) => option.id));
@@ -68,6 +74,11 @@ const CUBING_SCRAMBLE_EVENTS = new Map(
 const SCRAMBLE_QUEUE_TYPES = Object.freeze(SCRAMBLE_TYPE_OPTIONS.map((option) => option.id));
 const SCRAMBLE_QUEUE_TYPE_SET = new Set(SCRAMBLE_QUEUE_TYPES);
 const DEFERRED_QUEUE_FILL_TYPES = new Set(SCRAMBLE_QUEUE_TYPES.filter((type) => type !== '333'));
+const CUSTOM_SUBSET_SCRAMBLE_TYPES = new Set(
+    SCRAMBLE_TYPE_OPTIONS
+        .filter((option) => option.generator === 'custom')
+        .map((option) => option.id),
+);
 
 const _scrambowInstances = new Map();
 const _legacy333ScrambleQueue = sanitizeScrambleQueue(load(LEGACY_SCRAMBLE_QUEUE_STORAGE_KEY, []));
@@ -542,6 +553,7 @@ async function createScrambleForType(type) {
     const cubingEventId = CUBING_SCRAMBLE_EVENTS.get(normalizedType);
     if (cubingEventId) return createCubingScramble(cubingEventId);
     if (SCRAMBOW_SUPPORTED_TYPES.has(normalizedType)) return createScrambowScramble(normalizedType);
+    if (CUSTOM_SUBSET_SCRAMBLE_TYPES.has(normalizedType)) return createSubsetScramble(normalizedType);
     throw new Error(`Unsupported scramble type: ${type}`);
 }
 
