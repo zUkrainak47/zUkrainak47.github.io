@@ -1,15 +1,15 @@
-import { timer } from './timer.js?v=2026040577';
-import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=2026040577';
-import { sessionManager } from './session.js?v=2026040577';
-import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=2026040577';
-import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=2026040577';
-import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, truncateTimeDisplay } from './utils.js?v=2026040577';
-import { initModal, showSolveDetail, showAverageDetail, closeModal, closeMoveSessionMenus, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=2026040577';
-import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=2026040577';
-import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=2026040577';
-import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=2026040577';
-import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=2026040577';
-import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=2026040577';
+import { timer } from './timer.js?v=2026040702';
+import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=2026040702';
+import { sessionManager } from './session.js?v=2026040702';
+import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=2026040702';
+import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=2026040702';
+import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, truncateTimeDisplay } from './utils.js?v=2026040702';
+import { initModal, showSolveDetail, showAverageDetail, closeModal, closeMoveSessionMenus, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=2026040702';
+import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=2026040702';
+import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=2026040702';
+import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=2026040702';
+import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=2026040702';
+import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=2026040702';
 
 let currentScramble = '';
 let currentSortCol = null;
@@ -203,7 +203,7 @@ async function registerServiceWorker() {
     if (window.location?.protocol === 'file:') return;
 
     try {
-        const serviceWorkerUrl = new URL('../sw.js?v=2026040577', import.meta.url);
+        const serviceWorkerUrl = new URL('../sw.js?v=2026040702', import.meta.url);
         await navigator.serviceWorker.register(serviceWorkerUrl);
     } catch (error) {
         console.warn('Service worker registration failed:', error);
@@ -475,19 +475,22 @@ const pyraminxFaceColors = ['#FFFF05', '#33CD32', '#F00', '#00F'];
 const INITIAL_NON_333_STARTUP_SCRAMBLE_DELAY_MS = 220;
 const STANDARD_CUBE_PREVIEW_SIZES = new Map([
     ['222', 2],
+    ['222cll', 2],
+    ['222eg1', 2],
+    ['222eg2', 2],
     ['333', 3],
     ['444', 4],
     ['555', 5],
     ['666', 6],
     ['777', 7],
 ]);
-const YELLOW_TOP_PREVIEW_TYPES = new Set(['ll', 'pll', 'zbll', 'lsll']);
+const YELLOW_TOP_PREVIEW_TYPES = new Set(['ll', 'pll', 'zbll', 'lsll', 'cmll']);
 const CUBE_PREVIEW_SCRAMBLE_TYPES = new Set([
     ...STANDARD_CUBE_PREVIEW_SIZES.keys(),
     ...YELLOW_TOP_PREVIEW_TYPES,
 ]);
 const MEGAMINX_PREVIEW_SCRAMBLE_TYPES = new Set(['minx']);
-const PYRAMINX_PREVIEW_SCRAMBLE_TYPES = new Set(['pyram']);
+const PYRAMINX_PREVIEW_SCRAMBLE_TYPES = new Set(['pyram', 'pyrl4e']);
 const SKEWB_PREVIEW_SCRAMBLE_TYPES = new Set(['skewb']);
 const SQUARE1_PREVIEW_SCRAMBLE_TYPES = new Set(['sq1']);
 const CLOCK_PREVIEW_SCRAMBLE_TYPES = new Set(['clock']);
@@ -3246,9 +3249,14 @@ function initZenMode() {
 // ──── Scramble ────
 const SCRAMBLE_SUBSET_PARENT_BY_TYPE = new Map([
     ['ll', '333'],
+    ['cmll', '333'],
     ['pll', '333'],
     ['zbll', '333'],
     ['lsll', '333'],
+    ['222cll', '222'],
+    ['222eg1', '222'],
+    ['222eg2', '222'],
+    ['pyrl4e', 'pyram'],
 ]);
 const SCRAMBLE_SUBSET_OPTIONS_BY_PUZZLE = Object.freeze({
     333: Object.freeze([
@@ -3256,6 +3264,15 @@ const SCRAMBLE_SUBSET_OPTIONS_BY_PUZZLE = Object.freeze({
         Object.freeze({ id: 'pll', menuLabel: 'PLL' }),
         Object.freeze({ id: 'zbll', menuLabel: 'ZBLL' }),
         Object.freeze({ id: 'lsll', menuLabel: 'LSLL' }),
+        Object.freeze({ id: 'cmll', menuLabel: 'CMLL' }),
+    ]),
+    222: Object.freeze([
+        Object.freeze({ id: '222cll', menuLabel: 'CLL' }),
+        Object.freeze({ id: '222eg1', menuLabel: 'EG1' }),
+        Object.freeze({ id: '222eg2', menuLabel: 'EG2' }),
+    ]),
+    pyram: Object.freeze([
+        Object.freeze({ id: 'pyrl4e', menuLabel: 'L4E' }),
     ]),
 });
 const SCRAMBLE_PUZZLE_OPTIONS = Object.freeze(
@@ -3411,6 +3428,7 @@ function showScrambleSubsetDropdown(menuEl, puzzleId, { ensureActiveVisible = fa
 
     renderScrambleSubsetOptions(menuEl, puzzleId);
     menuEl.dataset.subsetPuzzleId = puzzleId;
+    menuEl.dataset.subsetAnchorPuzzleId = puzzleId;
     menuEl.classList.add('subset-open');
 
     syncScrambleTypeMenus();
@@ -3531,10 +3549,23 @@ function positionScrambleTypeMenu(menuEl, { ensureActiveVisible = false } = {}) 
         panels.subsetPanel.scrollWidth,
         panels.subsetPanel.getBoundingClientRect().width,
     );
+    const dropdownRect = dropdownEl.getBoundingClientRect();
     const mainRect = panels.mainPanel.getBoundingClientRect();
     const availableRight = Math.max(0, Math.floor(viewportRight - mainRect.right - submenuGap - viewportPadding));
     const availableLeft = Math.max(0, Math.floor(mainRect.left - viewportLeft - submenuGap - viewportPadding));
     const shouldOpenLeft = subsetWidth > availableRight && availableLeft > availableRight;
+    const anchorPuzzleId = menuEl.dataset.subsetAnchorPuzzleId || menuEl.dataset.subsetPuzzleId || '';
+    const anchorOptionEl = anchorPuzzleId
+        ? panels.mainPanel.querySelector(`.scramble-type-puzzle-option[data-scramble-puzzle="${anchorPuzzleId}"]`)
+        : null;
+
+    if (anchorOptionEl instanceof HTMLElement) {
+        const anchorRect = anchorOptionEl.getBoundingClientRect();
+        const desiredTop = anchorRect.top - dropdownRect.top;
+        const maxTop = Math.max(0, dropdownEl.offsetHeight - panels.subsetPanel.offsetHeight);
+        const resolvedTop = Math.max(0, Math.min(desiredTop, maxTop));
+        panels.subsetPanel.style.top = `${resolvedTop}px`;
+    }
 
     dropdownEl.classList.toggle('subset-left', shouldOpenLeft && availableLeft > 0);
 
@@ -4017,6 +4048,7 @@ function initScrambleControls() {
         });
 
         dropdownEl?.addEventListener('pointerover', (event) => {
+            if (coarsePointerQuery.matches || (event instanceof PointerEvent && event.pointerType !== 'mouse')) return;
             if (!menuEl.classList.contains('open')) return;
 
             const optionEl = event.target instanceof Element
@@ -4036,6 +4068,7 @@ function initScrambleControls() {
         });
 
         dropdownEl?.addEventListener('focusin', (event) => {
+            if (coarsePointerQuery.matches) return;
             if (!menuEl.classList.contains('open')) return;
 
             const optionEl = event.target instanceof Element
