@@ -278,10 +278,7 @@ class Timer extends EventEmitter {
         if (this._isScrambleBarTarget(e.target) && !this._isMobileTimerViewActive()) return;
 
         if (this.state === State.RUNNING) {
-            e.preventDefault();
-            this._releaseActivePointer(this._activePointerId);
-            this._armGhostClickGuard(e);
-            this._stopTimer(null, this._getEventTimestamp(e));
+            this._consumeStopPointerDown(e);
             return;
         }
 
@@ -303,10 +300,7 @@ class Timer extends EventEmitter {
             if (!canUseBackgroundPress) return;
 
             if (this.state === State.RUNNING) {
-                e.preventDefault();
-                this._releaseActivePointer(this._activePointerId);
-                this._armGhostClickGuard(e);
-                this._stopTimer(null, this._getEventTimestamp(e));
+                this._consumeStopPointerDown(e);
                 return;
             }
 
@@ -335,10 +329,7 @@ class Timer extends EventEmitter {
         if (this.state === State.RUNNING) {
             if (this._isWithinInteractionArea(e.target)) return;
 
-            e.preventDefault();
-            this._releaseActivePointer(this._activePointerId);
-            this._armGhostClickGuard(e);
-            this._stopTimer(null, this._getEventTimestamp(e));
+            this._consumeStopPointerDown(e);
             return;
         }
 
@@ -789,6 +780,18 @@ class Timer extends EventEmitter {
         this._ghostClickGuardTimeout = window.setTimeout(() => {
             this._clearGhostClickGuard();
         }, GHOST_CLICK_GUARD_MS);
+    }
+
+    _consumeStopPointerDown(e) {
+        e.preventDefault();
+        // The timer listens on nested interaction regions (for example, the
+        // timer display inside the center panel). Consume the stop press so the
+        // same touch can't bubble into a second start action after we enter the
+        // stopped state.
+        e.stopPropagation();
+        this._releaseActivePointer(this._activePointerId);
+        this._armGhostClickGuard(e);
+        this._stopTimer(null, this._getEventTimestamp(e));
     }
 
     _clearGhostClickGuard() {
