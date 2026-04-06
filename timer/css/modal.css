@@ -86,6 +86,14 @@
     flex: 1;
 }
 
+.modal-solve-tools {
+    display: grid;
+    grid-template-columns: minmax(0, 4fr) minmax(0, 1fr);
+    gap: 12px;
+    align-items: stretch;
+    margin-bottom: 16px;
+}
+
 .btn-action {
     display: inline-flex;
     align-items: center;
@@ -227,6 +235,97 @@
     line-height: 1.6;
 }
 
+#modal-solve-comment {
+    margin-bottom: 0 !important;
+}
+
+.modal-solve-session-menu {
+    min-width: 0;
+}
+
+.modal-mobile-session-menu {
+    min-width: 0;
+    margin-left: auto;
+    flex: 0 1 48%;
+}
+
+.modal-solve-session-menu .custom-select-btn,
+.modal-mobile-session-menu .custom-select-btn {
+    width: 100%;
+    height: 100%;
+    min-height: 40px;
+}
+
+.modal-solve-session-menu .custom-select-btn {
+    border-radius: var(--radius-md);
+}
+
+.modal-solve-session-menu .custom-select-label,
+.modal-mobile-session-menu .custom-select-label {
+    font-family: var(--font-mono);
+    font-weight: 600;
+}
+
+.modal-solve-session-menu .custom-select-btn:focus,
+.modal-solve-session-menu .custom-select-btn:focus-visible,
+.modal-mobile-session-menu .custom-select-btn:focus,
+.modal-mobile-session-menu .custom-select-btn:focus-visible {
+    outline: none;
+    border-color: var(--floating-surface-border);
+    box-shadow: none;
+}
+
+.modal-solve-session-menu .custom-select-btn:disabled,
+.modal-solve-session-menu .custom-select-btn:disabled:hover,
+.modal-solve-session-menu .custom-select-btn:disabled:active,
+.modal-mobile-session-menu .custom-select-btn:disabled,
+.modal-mobile-session-menu .custom-select-btn:disabled:hover,
+.modal-mobile-session-menu .custom-select-btn:disabled:active {
+    background: var(--floating-surface);
+    border-color: var(--floating-surface-border);
+    transform: none;
+}
+
+.modal-solve-session-menu .custom-select-btn:active,
+.modal-mobile-session-menu .custom-select-btn:active {
+    background: var(--floating-surface-hover);
+    border-color: var(--floating-surface-border-strong);
+}
+
+.modal-solve-session-menu .custom-select-btn:active:focus,
+.modal-solve-session-menu .custom-select-btn:active:focus-visible,
+.modal-mobile-session-menu .custom-select-btn:active:focus,
+.modal-mobile-session-menu .custom-select-btn:active:focus-visible {
+    border-color: var(--floating-surface-border-strong);
+}
+
+.modal-solve-session-menu.custom-select-menu.open .custom-select-btn,
+.modal-mobile-session-menu.custom-select-menu.open .custom-select-btn,
+.modal-solve-session-menu.custom-select-menu.open .custom-select-btn:focus,
+.modal-solve-session-menu.custom-select-menu.open .custom-select-btn:focus-visible,
+.modal-mobile-session-menu.custom-select-menu.open .custom-select-btn:focus,
+.modal-mobile-session-menu.custom-select-menu.open .custom-select-btn:focus-visible {
+    background: var(--floating-surface-hover);
+    border-color: var(--floating-surface-border-strong);
+}
+
+.floating-move-session-dropdown {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: max-content;
+    min-width: 0;
+    max-width: calc(100vw - 24px);
+    z-index: 1300;
+}
+
+.floating-move-session-dropdown.open {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateY(0);
+}
+
 .modal-body textarea:focus {
     border-color: var(--accent);
     outline: none;
@@ -236,7 +335,7 @@
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    margin-top: 12px;
+    margin-top: 10px;
 }
 
 .modal-export-options {
@@ -706,10 +805,17 @@
 .modal-mobile-meta {
     margin-top: var(--space-md);
     padding-top: var(--space-md);
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
     border-top: 1px solid rgba(255, 255, 255, 0.08);
     color: var(--text-secondary);
     font-size: var(--text-sm);
     font-weight: 600;
+}
+
+.modal-mobile-meta-label {
+    min-width: 0;
 }
 
 .modal-mobile-share-actions {
@@ -719,6 +825,7 @@
 .modal-mobile-share-actions .btn-action {
     flex: 1 1 0;
     min-height: 44px;
+    border-radius: var(--radius-xl);
     font-size: var(--text-base);
     font-weight: 600;
 }
@@ -970,6 +1077,16 @@
         margin-bottom: 0 !important;
     }
 
+    .modal-overlay.mobile-detail-active #modal-solve-tools[data-mobile-visible="true"] {
+        order: 3;
+        display: block !important;
+        margin-bottom: 0;
+    }
+
+    .modal-overlay.mobile-detail-active #modal-solve-tools #modal-solve-session-menu {
+        display: none !important;
+    }
+
     .modal-overlay.mobile-detail-active #modal-date-info {
         display: none !important;
     }
@@ -1012,12 +1129,6 @@
         margin-right: auto;
         order: 3;
         width: 100%;
-    }
-
-    .modal-mobile-card,
-    .modal-mobile-entry {
-        padding-left: var(--space-md);
-        padding-right: var(--space-md);
     }
 
     .confirm-actions {

@@ -1,8 +1,8 @@
-import * as db from './db.js?v=2026040574';
-import { load, save } from './storage.js?v=2026040574';
-import { generateId, EventEmitter, getStartOfToday, getStartOfWeek, getStartOfMonth, parseCustomStatsFilter } from './utils.js?v=2026040574';
-import { settings } from './settings.js?v=2026040574';
-import { SCRAMBLE_TYPE_OPTIONS } from './scramble.js?v=2026040574';
+import * as db from './db.js?v=2026040575';
+import { load, save } from './storage.js?v=2026040575';
+import { generateId, EventEmitter, getStartOfToday, getStartOfWeek, getStartOfMonth, parseCustomStatsFilter } from './utils.js?v=2026040575';
+import { settings } from './settings.js?v=2026040575';
+import { SCRAMBLE_TYPE_OPTIONS } from './scramble.js?v=2026040575';
 
 const DEFAULT_SCRAMBLE_TYPE = '333';
 const LEGACY_SCRAMBLE_TYPE_STORAGE_KEY = 'scrambleType';
@@ -70,6 +70,7 @@ class SessionManager extends EventEmitter {
             })(),
             solveCount: solveCounts[index] ?? 0,
             solves: [],
+            solvesLoaded: false,
         }));
 
         if (sessionsToBackfill.length > 0) {
@@ -96,6 +97,7 @@ class SessionManager extends EventEmitter {
         if (!session) return;
         session.solves = await db.getSolvesBySession(sessionId);
         session.solveCount = session.solves.length;
+        session.solvesLoaded = true;
     }
 
     _serializeSession(session) {
@@ -117,6 +119,7 @@ class SessionManager extends EventEmitter {
             scrambleType: sanitizeSessionScrambleType(scrambleType),
             solveCount: 0,
             solves: [],
+            solvesLoaded: false,
         };
         this._sessions.push(session);
         await db.addSession(this._serializeSession(session));
@@ -143,8 +146,21 @@ class SessionManager extends EventEmitter {
         return this._activeId;
     }
 
+    getSessionById(id) {
+        return this._sessions.find((session) => session.id === id) || null;
+    }
+
     getActiveSessionScrambleType() {
         return this.getActiveSession()?.scrambleType ?? getLegacyScrambleTypeFallback();
+    }
+
+    async ensureSessionSolvesLoaded(id) {
+        const session = this.getSessionById(id);
+        if (!session) return null;
+        if (!session.solvesLoaded) {
+            await this._loadSolvesFor(id);
+        }
+        return session;
     }
 
     async setActiveSession(id) {
@@ -166,6 +182,7 @@ class SessionManager extends EventEmitter {
             scrambleType: sanitizeSessionScrambleType(activeSession?.scrambleType ?? getLegacyScrambleTypeFallback()),
             solveCount: 0,
             solves: [],
+            solvesLoaded: false,
         };
         this._sessions.push(session);
         await db.addSession(this._serializeSession(session));
@@ -237,9 +254,24 @@ class SessionManager extends EventEmitter {
         return solve;
     }
 
+    _findSolveLocation(solveId) {
+        for (const session of this._sessions) {
+            const index = session.solves.findIndex((solve) => solve.id === solveId);
+            if (index >= 0) {
+                return {
+                    session,
+                    index,
+                    solve: session.solves[index],
+                };
+            }
+        }
+
+        return null;
+    }
+
     togglePenalty(solveId, penalty) {
-        const session = this.getActiveSession();
-        const solve = session.solves.find(s => s.id === solveId);
+        const location = this._findSolveLocation(solveId);
+        const solve = location?.solve;
         if (!solve) return null;
         solve.penalty = solve.penalty === penalty ? null : penalty;
         db.updateSolve(solve);
@@ -248,8 +280,8 @@ class SessionManager extends EventEmitter {
     }
 
     setSolveComment(solveId, comment) {
-        const session = this.getActiveSession();
-        const solve = session.solves.find(s => s.id === solveId);
+        const location = this._findSolveLocation(solveId);
+        const solve = location?.solve;
         if (!solve) return;
         solve.comment = comment;
         db.updateSolve(solve);
@@ -257,7 +289,9 @@ class SessionManager extends EventEmitter {
     }
 
     deleteSolve(solveId) {
-        const session = this.getActiveSession();
+        const location = this._findSolveLocation(solveId);
+        const session = location?.session;
+        if (!session) return;
         const nextSolves = session.solves.filter(s => s.id !== solveId);
         if (nextSolves.length === session.solves.length) return;
         session.solves = nextSolves;
@@ -266,13 +300,66 @@ class SessionManager extends EventEmitter {
         this.emit('solveDeleted', solveId);
     }
 
+    async moveSolve(solveId, targetSessionId) {
+        const location = this._findSolveLocation(solveId);
+        const sourceSession = location?.session;
+        const targetSession = this._sessions.find((session) => session.id === targetSessionId);
+
+        if (!sourceSession || !targetSession || sourceSession.id === targetSession.id) return null;
+
+        const sourceIndex = location.index;
+        if (sourceIndex === -1) return null;
+
+        const [solve] = sourceSession.solves.splice(sourceIndex, 1);
+        const shouldSyncTargetSolves = Boolean(targetSession.solvesLoaded || targetSession.solveCount === 0);
+        const wasTargetSolvesLoaded = targetSession.solvesLoaded;
+
+        sourceSession.solveCount = Math.max(0, sourceSession.solveCount - 1);
+        targetSession.solveCount += 1;
+        solve.sessionId = targetSession.id;
+
+        if (shouldSyncTargetSolves) {
+            targetSession.solvesLoaded = true;
+            targetSession.solves.push(solve);
+            targetSession.solves.sort((a, b) => a.timestamp - b.timestamp);
+        }
+
+        try {
+            await db.updateSolve(solve);
+        } catch (error) {
+            solve.sessionId = sourceSession.id;
+            sourceSession.solves.splice(sourceIndex, 0, solve);
+            sourceSession.solveCount += 1;
+            targetSession.solveCount = Math.max(0, targetSession.solveCount - 1);
+
+            if (shouldSyncTargetSolves) {
+                targetSession.solvesLoaded = wasTargetSolvesLoaded;
+                targetSession.solves = targetSession.solves.filter((entry) => entry.id !== solve.id);
+            }
+
+            throw error;
+        }
+
+        this.emit('solveMoved', {
+            solve,
+            fromSessionId: sourceSession.id,
+            toSessionId: targetSession.id,
+        });
+
+        return solve;
+    }
+
     /**
      * Get solves for the active session, filtered by current stats filter.
      * Always returns oldest-first order.
      * @returns {object[]}
      */
     getFilteredSolves() {
-        const session = this.getActiveSession();
+        return this.getFilteredSolvesForSessionId(this._activeId);
+    }
+
+    getFilteredSolvesForSessionId(sessionId) {
+        const session = this.getSessionById(sessionId);
         if (!session) return [];
 
         const filter = settings.get('statsFilter');
