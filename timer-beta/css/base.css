@@ -310,6 +310,11 @@ select {
     mask-image: url('../resources/legend.svg');
 }
 
+.icon-mask-trash {
+    -webkit-mask-image: url('../resources/trash.svg');
+    mask-image: url('../resources/trash.svg');
+}
+
 @media (min-width: 1101px) and (pointer: fine) {
     #btn-settings .icon-mask-settings {
         width: 0.85em;

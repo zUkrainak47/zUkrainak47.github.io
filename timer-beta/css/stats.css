@@ -607,6 +607,11 @@ tr:hover .solve-actions {
     -webkit-user-select: none;
 }
 
+.btn-icon-small .icon-mask {
+    width: 14px;
+    height: 14px;
+}
+
 .btn-icon-small:hover {
     background: var(--surface-hover);
     color: var(--text-primary);

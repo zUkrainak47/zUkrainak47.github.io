@@ -455,15 +455,6 @@ body:not(.mobile-viewport) #inspection-cancel-wrap {
     color: rgba(248, 81, 73, 0.5);
 }
 
-#timer-action-delete {
-    color: #822F2A;
-}
-
-#timer-action-delete.is-active,
-#timer-action-delete:not(:disabled):active {
-    color: #ff6b65;
-}
-
 .timer-action-danger.is-active,
 .timer-action-danger:not(:disabled):active {
     color: #ff6b65;
@@ -515,6 +506,11 @@ body:not(.mobile-viewport) #inspection-cancel-wrap {
 .timer-action-svg-comment {
     -webkit-mask-image: url('../resources/comment.svg');
     mask-image: url('../resources/comment.svg');
+}
+
+.timer-action-icon-mask {
+    width: 22px;
+    height: 22px;
 }
 
 .timer-action-icon-svg {

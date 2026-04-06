@@ -164,6 +164,11 @@
     border-color: var(--danger-border-strong);
 }
 
+#modal-actions .icon-mask {
+    width: 14px;
+    height: 14px;
+}
+
 .btn-action.active-penalty {
     color: var(--danger);
     border-color: var(--danger-border);
