@@ -5633,10 +5633,11 @@ function getSelectedStatSolveIndex(solves) {
 
 function openStatDetailAtIndex(type, solves, stats, index, options = {}) {
     if (index < 0 || index >= solves.length) return false;
+    const targetLayer = options.targetLayer || 'primary';
 
     if (type === 'time') {
         const isBest = options.isBest ?? (stats.best.time != null && getEffectiveTime(solves[index]) === stats.best.time);
-        showSolveDetail(solves[index], index, isBest);
+        showSolveDetail(solves[index], index, isBest, { targetLayer });
         return true;
     }
 
@@ -5653,7 +5654,7 @@ function openStatDetailAtIndex(type, solves, stats, index, options = {}) {
         sessionId: solves[index].sessionId,
         endIndex: index,
         endSolveId: solves[index].id,
-    });
+    }, { targetLayer });
     return true;
 }
 
@@ -5674,7 +5675,10 @@ function openShortcutStatDetail(type) {
         },
     };
     const index = getSelectedStatSolveIndex(solves);
-    return openStatDetailAtIndex(type, solves, stats, index, { times });
+    return openStatDetailAtIndex(type, solves, stats, index, {
+        times,
+        targetLayer: selection?.layer === 'secondary' ? 'secondary' : 'primary',
+    });
 }
 
 function getMostRecentSummarySolve() {

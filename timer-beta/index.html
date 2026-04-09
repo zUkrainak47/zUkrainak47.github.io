@@ -492,6 +492,7 @@
         <div id="modal-mobile-share-actions" class="modal-mobile-share-actions" hidden>
           <button id="modal-copy-detail" class="btn-action btn-action-primary" type="button">Copy Detail</button>
           <button id="modal-share-detail" class="btn-action btn-action-primary" type="button">Share Detail</button>
+          <button id="modal-copy-scramble" class="btn-action" type="button" hidden>Copy Scramble</button>
         </div>
         <div id="modal-stat-nav" class="modal-stat-nav" style="display:none;">
           <button class="btn-action" data-stat-type="time" data-min-index="0" title="Single">1</button>
@@ -502,6 +503,57 @@
         </div>
         <div id="modal-mobile-list-panel" class="modal-mobile-list-panel" hidden>
           <div id="modal-mobile-list" class="modal-mobile-list"></div>
+        </div>
+      </div>
+    </div>
+    <div id="modal-secondary-layer" class="modal-secondary-layer" hidden>
+      <div class="modal-box modal-secondary-box">
+        <div class="modal-header">
+          <h2 id="modal-secondary-title"></h2>
+          <div id="modal-secondary-export-options" class="modal-export-options" aria-label="Copy text options">
+            <button id="modal-secondary-option-compact-average" class="btn-action modal-option-btn" type="button"
+              title="Enable compact mode" aria-label="Enable compact mode" aria-pressed="false">
+              <span class="modal-option-icon modal-option-icon-off modal-option-icon-compress" aria-hidden="true"></span>
+              <span class="modal-option-icon modal-option-icon-on modal-option-icon-expand" aria-hidden="true"></span>
+            </button>
+            <button id="modal-secondary-option-include-comments" class="btn-action modal-option-btn" type="button"
+              title="Include comments" aria-label="Include comments">
+              <span class="modal-option-icon modal-option-icon-off modal-option-icon-comment-off"
+                aria-hidden="true"></span>
+              <span class="modal-option-icon modal-option-icon-on modal-option-icon-comment" aria-hidden="true"></span>
+            </button>
+            <button id="modal-secondary-option-include-date" class="btn-action modal-option-btn" type="button"
+              title="Summary timestamp" aria-label="Summary timestamp">
+              <span class="modal-option-icon modal-option-icon-off modal-option-icon-calendar-off"
+                aria-hidden="true"></span>
+              <span class="modal-option-icon modal-option-icon-on modal-option-icon-calendar" aria-hidden="true"></span>
+              <span class="modal-option-icon modal-option-icon-time modal-option-icon-clock" aria-hidden="true"></span>
+            </button>
+            <button id="modal-secondary-option-include-absolute-index" class="btn-action modal-option-btn" type="button"
+              title="Include absolute index" aria-label="Include absolute index">
+              <span class="modal-option-icon modal-option-icon-off modal-option-icon-hashtag" aria-hidden="true"></span>
+              <span class="modal-option-icon modal-option-icon-on modal-option-icon-hashtag-full"
+                aria-hidden="true"></span>
+            </button>
+          </div>
+          <button id="modal-secondary-close" class="modal-close" type="button" aria-label="Close detail layer">✕</button>
+        </div>
+        <div class="modal-body">
+          <textarea id="modal-secondary-textarea" readonly></textarea>
+          <div id="modal-secondary-mobile-summary" class="modal-mobile-card" hidden>
+            <div id="modal-secondary-mobile-value" class="modal-mobile-value"></div>
+            <div id="modal-secondary-mobile-meta" class="modal-mobile-meta">
+              <span id="modal-secondary-mobile-meta-label" class="modal-mobile-meta-label"></span>
+            </div>
+          </div>
+          <div id="modal-secondary-mobile-list-panel" class="modal-mobile-list-panel" hidden>
+            <div id="modal-secondary-mobile-list" class="modal-mobile-list"></div>
+          </div>
+          <div id="modal-secondary-mobile-share-actions" class="modal-mobile-share-actions" hidden>
+            <button id="modal-secondary-copy-detail" class="btn-action btn-action-primary" type="button">Copy Detail</button>
+            <button id="modal-secondary-share-detail" class="btn-action btn-action-primary" type="button">Share Detail</button>
+            <button id="modal-secondary-copy-scramble" class="btn-action" type="button" hidden>Copy Scramble</button>
+          </div>
         </div>
       </div>
     </div>
