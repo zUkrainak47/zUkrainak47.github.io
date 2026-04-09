@@ -1173,6 +1173,10 @@
         padding-bottom: calc(var(--space-lg) + var(--safe-area-bottom));
     }
 
+    .modal-secondary-layer .modal-body {
+        padding-bottom: var(--space-lg);
+    }
+
     .modal-overlay.mobile-detail-active .modal-body {
         display: flex;
         flex-direction: column;
