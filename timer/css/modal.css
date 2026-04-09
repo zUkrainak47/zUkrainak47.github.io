@@ -49,6 +49,10 @@
     font-weight: 700;
 }
 
+#modal-title {
+    min-width: 0;
+}
+
 #modal-date-info {
     font-size: var(--text-sm);
     color: var(--text-secondary);
@@ -399,6 +403,16 @@
     mask-image: url('../resources/clock.svg');
 }
 
+.modal-option-icon-compress {
+    -webkit-mask-image: url('../resources/compress.svg');
+    mask-image: url('../resources/compress.svg');
+}
+
+.modal-option-icon-expand {
+    -webkit-mask-image: url('../resources/expand.svg');
+    mask-image: url('../resources/expand.svg');
+}
+
 .modal-option-icon-hashtag {
     -webkit-mask-image: url('../resources/hashtag.svg');
     mask-image: url('../resources/hashtag.svg');
@@ -712,6 +726,18 @@
     color: var(--text-primary);
 }
 
+.modal-option-btn:disabled.active-toggle,
+.modal-option-btn:disabled.active-toggle:hover {
+    background: var(--surface-hover);
+    color: var(--text-muted);
+    border-color: var(--surface-border);
+}
+
+.modal-option-btn:disabled .modal-option-icon,
+.modal-option-btn:disabled.active-toggle .modal-option-icon {
+    background-color: var(--text-muted);
+}
+
 .modal-header .modal-export-options+.modal-close {
     margin-left: 0;
 }
@@ -850,11 +876,33 @@
     max-height: 100%;
 }
 
+.modal-mobile-list.compact-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(var(--modal-compact-grid-min-col-width, 128px), 1fr));
+    gap: 10px;
+    padding: 10px;
+    align-content: start;
+}
+
 .modal-mobile-entry {
     padding: var(--space-lg);
 }
 
-.modal-mobile-entry+.modal-mobile-entry {
+.modal-mobile-entry.compact {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.modal-mobile-list.compact-grid .modal-mobile-entry {
+    min-width: 0;
+    padding: 12px 14px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-lg);
+    background: rgba(255, 255, 255, 0.025);
+}
+
+.modal-mobile-list:not(.compact-grid) .modal-mobile-entry+.modal-mobile-entry {
     border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
@@ -895,6 +943,23 @@
 
 .modal-mobile-entry.trimmed .modal-mobile-entry-time {
     color: var(--text-secondary);
+}
+
+.modal-mobile-entry.compact .modal-mobile-entry-time {
+    gap: 0;
+    justify-content: flex-start;
+    font-size: clamp(1.02rem, 3.7vw, 1.3rem);
+}
+
+.modal-mobile-entry.compact .modal-mobile-entry-index {
+    display: none;
+}
+
+.modal-mobile-entry-comment {
+    font-size: var(--text-sm);
+    line-height: 1.45;
+    color: var(--text-secondary);
+    word-break: break-word;
 }
 
 .modal-mobile-entry-scramble {

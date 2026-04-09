@@ -1,5 +1,5 @@
-import { formatTime, formatSolveTime, formatReadableDate, formatDateTime, getEffectiveTime } from './utils.js?v=2026040703';
-import { sessionManager } from './session.js?v=2026040703';
+import { formatTime, formatSolveTime, formatReadableDate, formatDateTime, getEffectiveTime } from './utils.js?v=2026040901';
+import { sessionManager } from './session.js?v=2026040901';
 
 let _overlay = null;
 let _textarea = null;
@@ -19,6 +19,7 @@ let _mobileExportToast = null;
 let _copyOptionIncludeCommentsBtn = null;
 let _copyOptionIncludeDateBtn = null;
 let _copyOptionIncludeAbsoluteIndexBtn = null;
+let _copyOptionCompactAverageBtn = null;
 let _desktopMoveSessionMenu = null;
 let _desktopMoveSessionButton = null;
 let _desktopMoveSessionDropdown = null;
@@ -46,7 +47,16 @@ const modalCopyOptions = {
     includeComments: false,
     scrambleTimestampDisplay: SUMMARY_TIMESTAMP_DISPLAY_OFF,
     includeAbsoluteIndex: false,
+    compactAverageSummary: false,
 };
+
+function isAverageSummaryModal(source = _currentModalSource) {
+    return source?.type === 'average';
+}
+
+function isCompactAverageSummaryEnabled(source = _currentModalSource) {
+    return isAverageSummaryModal(source) && modalCopyOptions.compactAverageSummary;
+}
 
 function parseSummaryTimestampDisplay(value) {
     switch (value) {
@@ -133,10 +143,12 @@ function loadModalCopyOptions() {
         modalCopyOptions.scrambleTimestampDisplay = parsedTimestampDisplay
             || (parsed?.includeScrambleDate ? SUMMARY_TIMESTAMP_DISPLAY_DATE_TIME : SUMMARY_TIMESTAMP_DISPLAY_OFF);
         modalCopyOptions.includeAbsoluteIndex = Boolean(parsed?.includeAbsoluteIndex);
+        modalCopyOptions.compactAverageSummary = Boolean(parsed?.compactAverageSummary);
     } catch {
         modalCopyOptions.includeComments = false;
         modalCopyOptions.scrambleTimestampDisplay = SUMMARY_TIMESTAMP_DISPLAY_OFF;
         modalCopyOptions.includeAbsoluteIndex = false;
+        modalCopyOptions.compactAverageSummary = false;
     }
 }
 
@@ -146,37 +158,74 @@ function saveModalCopyOptions() {
             includeComments: modalCopyOptions.includeComments,
             scrambleTimestampDisplay: modalCopyOptions.scrambleTimestampDisplay,
             includeAbsoluteIndex: modalCopyOptions.includeAbsoluteIndex,
+            compactAverageSummary: modalCopyOptions.compactAverageSummary,
         }));
     } catch {
     }
 }
 
 function renderModalCopyOptionButtons() {
+    const isAverageSummary = isAverageSummaryModal();
+    const isCompactSummary = isCompactAverageSummaryEnabled();
+
     if (_copyOptionIncludeCommentsBtn) {
         _copyOptionIncludeCommentsBtn.classList.toggle('active-toggle', modalCopyOptions.includeComments);
         _copyOptionIncludeCommentsBtn.setAttribute('aria-pressed', String(modalCopyOptions.includeComments));
     }
     if (_copyOptionIncludeDateBtn) {
-        const buttonState = getSummaryTimestampButtonState();
-        const hasTimestamp = modalCopyOptions.scrambleTimestampDisplay !== SUMMARY_TIMESTAMP_DISPLAY_OFF;
-        const isTimeOnly = modalCopyOptions.scrambleTimestampDisplay === SUMMARY_TIMESTAMP_DISPLAY_TIME;
+        const buttonState = isCompactSummary
+            ? {
+                title: 'Summary timestamp unavailable in compact mode',
+                ariaLabel: 'Summary timestamp is unavailable in compact mode.',
+                ariaPressed: 'false',
+            }
+            : getSummaryTimestampButtonState();
+        const hasTimestamp = !isCompactSummary && modalCopyOptions.scrambleTimestampDisplay !== SUMMARY_TIMESTAMP_DISPLAY_OFF;
+        const isTimeOnly = !isCompactSummary && modalCopyOptions.scrambleTimestampDisplay === SUMMARY_TIMESTAMP_DISPLAY_TIME;
         _copyOptionIncludeDateBtn.classList.toggle('active-toggle', hasTimestamp);
         _copyOptionIncludeDateBtn.classList.toggle('time-only-toggle', isTimeOnly);
         _copyOptionIncludeDateBtn.dataset.state = modalCopyOptions.scrambleTimestampDisplay;
         _copyOptionIncludeDateBtn.setAttribute('aria-pressed', buttonState.ariaPressed);
         _copyOptionIncludeDateBtn.setAttribute('aria-label', buttonState.ariaLabel);
         _copyOptionIncludeDateBtn.title = buttonState.title;
+        _copyOptionIncludeDateBtn.disabled = isCompactSummary;
     }
     if (_copyOptionIncludeAbsoluteIndexBtn) {
-        _copyOptionIncludeAbsoluteIndexBtn.classList.toggle('active-toggle', modalCopyOptions.includeAbsoluteIndex);
-        _copyOptionIncludeAbsoluteIndexBtn.setAttribute('aria-pressed', String(modalCopyOptions.includeAbsoluteIndex));
+        const isAbsoluteIndexActive = isAverageSummary && !isCompactSummary && modalCopyOptions.includeAbsoluteIndex;
+        _copyOptionIncludeAbsoluteIndexBtn.classList.toggle('active-toggle', isAbsoluteIndexActive);
+        _copyOptionIncludeAbsoluteIndexBtn.setAttribute('aria-pressed', String(isAbsoluteIndexActive));
+        _copyOptionIncludeAbsoluteIndexBtn.disabled = isCompactSummary;
+        _copyOptionIncludeAbsoluteIndexBtn.setAttribute(
+            'aria-label',
+            isCompactSummary ? 'Absolute index is unavailable in compact mode.' : 'Include absolute index'
+        );
+        _copyOptionIncludeAbsoluteIndexBtn.title = isCompactSummary
+            ? 'Absolute index unavailable in compact mode'
+            : 'Include absolute index';
+    }
+    if (_copyOptionCompactAverageBtn) {
+        _copyOptionCompactAverageBtn.classList.toggle('active-toggle', modalCopyOptions.compactAverageSummary);
+        _copyOptionCompactAverageBtn.setAttribute('aria-pressed', String(modalCopyOptions.compactAverageSummary));
+        _copyOptionCompactAverageBtn.setAttribute(
+            'aria-label',
+            modalCopyOptions.compactAverageSummary
+                ? 'Compact mode is on. Click to show the full time list.'
+                : 'Compact mode is off. Click to show a compact summary.'
+        );
+        _copyOptionCompactAverageBtn.title = modalCopyOptions.compactAverageSummary
+            ? 'Show full time list'
+            : 'Show compact summary';
     }
 }
 
 function updateModalCopyOptionVisibility() {
-    if (!_copyOptionIncludeAbsoluteIndexBtn) return;
-    const shouldShowAbsoluteIndex = _currentModalSource?.type === 'average';
-    _copyOptionIncludeAbsoluteIndexBtn.style.display = shouldShowAbsoluteIndex ? '' : 'none';
+    const shouldShowAverageOptions = isAverageSummaryModal();
+    if (_copyOptionIncludeAbsoluteIndexBtn) {
+        _copyOptionIncludeAbsoluteIndexBtn.style.display = shouldShowAverageOptions ? '' : 'none';
+    }
+    if (_copyOptionCompactAverageBtn) {
+        _copyOptionCompactAverageBtn.style.display = shouldShowAverageOptions ? '' : 'none';
+    }
 }
 
 function getCommentSuffix(solve) {
@@ -217,21 +266,54 @@ function buildAverageShareContent(label, valueStr, solves, trim = 1) {
         .sort((a, b) => a.time - b.time);
     const bestIndices = trim > 0 ? new Set(sorted.slice(0, trim).map(s => s.index)) : new Set();
     const worstIndices = trim > 0 ? new Set(sorted.slice(-trim).map(s => s.index)) : new Set();
+    const isCompactSummary = modalCopyOptions.compactAverageSummary;
+    const shouldUseAbsoluteIndex = modalCopyOptions.includeAbsoluteIndex && !isCompactSummary;
     const activeSessionSolves = sessionManager.getActiveSession()?.solves || [];
     const absoluteIndexById = new Map(activeSessionSolves.map((solve, index) => [solve.id, index + 1]));
     const displayIndices = solves.map((solve, index) => {
-        if (!modalCopyOptions.includeAbsoluteIndex) return index + 1;
+        if (!shouldUseAbsoluteIndex) return index + 1;
         return absoluteIndexById.get(solve.id) || (index + 1);
     });
-    const indexPadWidth = String(Math.max(...displayIndices, 1)).length;
+    const compactValues = [];
+    const mobileEntries = [];
+    solves.forEach((solve, i) => {
+        const tStr = formatSolveTime(solve);
+        const displayIndex = displayIndices[i];
+        const isBest = bestIndices.has(i);
+        const isWorst = worstIndices.has(i);
+        const display = (isBest || isWorst) ? `(${tStr})` : tStr;
+        const lineTime = `${display}${getCommentSuffix(solve)}`;
+        if (isCompactSummary) {
+            compactValues.push(lineTime);
+        }
+        mobileEntries.push({
+            position: displayIndex,
+            time: display,
+            scramble: solve.scramble,
+            date: isCompactSummary ? '' : formatSummaryTimestamp(solve.timestamp),
+            comment: modalCopyOptions.includeComments ? String(solve?.comment ?? '').trim() : '',
+            compact: isCompactSummary,
+            trimmed: isBest || isWorst,
+        });
+    });
 
+    if (isCompactSummary) {
+        return {
+            shareText: [
+                `Generated by UkraTimer on ${formatReadableDate(Date.now())}`,
+                `${label}: ${valueStr}  =  ${compactValues.join(', ')}`,
+            ].join('\n'),
+            mobileEntries,
+        };
+    }
+
+    const indexPadWidth = String(Math.max(...displayIndices, 1)).length;
     const lines = [
         `Generated by UkraTimer on ${formatReadableDate(Date.now())}`,
         `${label}: ${valueStr}`,
         '',
         'Time List:',
     ];
-    const mobileEntries = [];
 
     solves.forEach((solve, i) => {
         const tStr = formatSolveTime(solve);
@@ -242,13 +324,6 @@ function buildAverageShareContent(label, valueStr, solves, trim = 1) {
         const lineTime = `${display}${getCommentSuffix(solve)}`;
         const lineScramble = `${solve.scramble}${getScrambleDateSuffix(solve)}`;
         lines.push(`${String(displayIndex).padStart(indexPadWidth)}. ${lineTime}    ${lineScramble}`);
-        mobileEntries.push({
-            position: displayIndex,
-            time: display,
-            scramble: solve.scramble,
-            date: formatSummaryTimestamp(solve.timestamp),
-            trimmed: isBest || isWorst,
-        });
     });
 
     return {
@@ -504,6 +579,7 @@ export function initModal() {
     _copyOptionIncludeCommentsBtn = document.getElementById('modal-option-include-comments');
     _copyOptionIncludeDateBtn = document.getElementById('modal-option-include-date');
     _copyOptionIncludeAbsoluteIndexBtn = document.getElementById('modal-option-include-absolute-index');
+    _copyOptionCompactAverageBtn = document.getElementById('modal-option-compact-average');
     _desktopMoveSessionMenu = document.getElementById('modal-solve-session-menu');
     _desktopMoveSessionButton = document.getElementById('modal-solve-session-btn');
     _desktopMoveSessionDropdown = document.getElementById('modal-solve-session-dropdown');
@@ -665,6 +741,18 @@ export function initModal() {
             modalCopyOptions.includeAbsoluteIndex
                 ? 'Absolute index will now be included in summary.'
                 : 'Absolute index will no longer be included in summary.'
+        );
+    });
+
+    _copyOptionCompactAverageBtn?.addEventListener('click', () => {
+        modalCopyOptions.compactAverageSummary = !modalCopyOptions.compactAverageSummary;
+        saveModalCopyOptions();
+        renderModalCopyOptionButtons();
+        rerenderCurrentModalSource();
+        showMobileExportToast(
+            modalCopyOptions.compactAverageSummary
+                ? 'Compact mode is now enabled for stat summaries.'
+                : 'Compact mode is now disabled for stat summaries.'
         );
     });
 
@@ -1001,6 +1089,7 @@ function createMobileEntry(entry) {
     const item = document.createElement('div');
     item.className = 'modal-mobile-entry';
     if (entry.trimmed) item.classList.add('trimmed');
+    if (entry.compact) item.classList.add('compact');
 
     const head = document.createElement('div');
     head.className = 'modal-mobile-entry-head';
@@ -1015,6 +1104,21 @@ function createMobileEntry(entry) {
     const time = document.createElement('span');
     time.textContent = entry.time;
 
+    timeBlock.append(index, time);
+
+    if (entry.compact) {
+        const compactComment = document.createElement('div');
+        compactComment.className = 'modal-mobile-entry-comment';
+        compactComment.textContent = entry.comment || '';
+
+        if (!entry.comment) {
+            compactComment.hidden = true;
+        }
+
+        item.append(timeBlock, compactComment);
+        return item;
+    }
+
     const date = document.createElement('div');
     date.className = 'modal-mobile-entry-date';
     date.textContent = entry.date;
@@ -1023,11 +1127,19 @@ function createMobileEntry(entry) {
     scramble.className = 'modal-mobile-entry-scramble';
     scramble.textContent = entry.scramble;
 
-    timeBlock.append(index, time);
     head.append(timeBlock);
     if (entry.date) head.append(date);
     item.append(head, scramble);
     return item;
+}
+
+function getCompactGridMinColumnWidth(entries) {
+    const maxTimeLength = entries.reduce((max, entry) => {
+        const timeLength = String(entry?.time ?? '').length;
+        return Math.max(max, timeLength);
+    }, 0);
+    const safeLength = Math.max(4, maxTimeLength);
+    return `calc(${safeLength}ch + 2rem)`;
 }
 
 function renderMobileDetail(detailPayload) {
@@ -1042,6 +1154,8 @@ function renderMobileDetail(detailPayload) {
     if (!shouldUseMobileDetail) {
         if (_mobileSummaryMetaLabel) _mobileSummaryMetaLabel.textContent = '';
         if (_mobileMoveSessionMenu) _mobileMoveSessionMenu.hidden = true;
+        _mobileList?.classList.remove('compact-grid');
+        _mobileList?.style.removeProperty('--modal-compact-grid-min-col-width');
         clearMobileList();
         return;
     }
@@ -1060,6 +1174,16 @@ function renderMobileDetail(detailPayload) {
     _mobileShareButton.textContent = detailPayload.shareLabel;
     _mobileShareButton.dataset.originalLabel = detailPayload.shareLabel;
 
+    const shouldUseCompactGrid = detailPayload.entries.some((entry) => entry.compact);
+    _mobileList.classList.toggle('compact-grid', shouldUseCompactGrid);
+    if (shouldUseCompactGrid) {
+        _mobileList.style.setProperty(
+            '--modal-compact-grid-min-col-width',
+            getCompactGridMinColumnWidth(detailPayload.entries)
+        );
+    } else {
+        _mobileList.style.removeProperty('--modal-compact-grid-min-col-width');
+    }
     clearMobileList();
     _mobileList.append(...detailPayload.entries.map(createMobileEntry));
     _mobileList.scrollTop = 0;
@@ -1080,6 +1204,8 @@ function buildSolveDetailPayload(title, timeStr, solve, index, singleLabel, shar
             time: timeStr,
             scramble: solve.scramble,
             date: formatSummaryTimestamp(solve.timestamp),
+            comment: '',
+            compact: false,
             trimmed: false,
         }],
     };
@@ -1292,6 +1418,7 @@ function _showModal(title, text, solveContext = null, detailPayload = null) {
     _textarea.value = text;
     _currentDetailPayload = detailPayload;
     updateModalCopyOptionVisibility();
+    renderModalCopyOptionButtons();
 
     const visualRowCount = getTextareaVisualRowCount(text);
     const targetRowCount = Math.min(Math.max(1, visualRowCount), 16);
