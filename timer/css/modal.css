@@ -36,6 +36,40 @@
     transform: scale(1) translateY(0);
 }
 
+.modal-secondary-layer {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 2;
+}
+
+.modal-secondary-layer[hidden] {
+    display: none !important;
+}
+
+.modal-secondary-layer::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(6, 10, 16, 0.34);
+    backdrop-filter: blur(3px);
+}
+
+.modal-secondary-box {
+    position: relative;
+    width: min(88vw, 720px);
+    max-height: min(76vh, 820px);
+    z-index: 1;
+}
+
+.modal-overlay.secondary-active>.modal-box:first-child {
+    transform: scale(0.98) translateY(6px);
+    filter: saturate(0.9);
+}
+
 .modal-header {
     display: flex;
     align-items: center;
@@ -850,15 +884,21 @@
 }
 
 .modal-mobile-share-actions {
+    display: flex;
     gap: var(--space-sm);
 }
 
 .modal-mobile-share-actions .btn-action {
     flex: 1 1 0;
+    min-width: 0;
     min-height: 44px;
     border-radius: var(--radius-xl);
     font-size: var(--text-base);
     font-weight: 600;
+}
+
+.modal-mobile-share-actions .btn-action[hidden] {
+    display: none !important;
 }
 
 .modal-mobile-list-panel {
@@ -886,6 +926,18 @@
 
 .modal-mobile-entry {
     padding: var(--space-lg);
+}
+
+.modal-mobile-entry.clickable {
+    width: 100%;
+    text-align: left;
+    color: inherit;
+    border: none;
+    background: none;
+}
+
+.modal-mobile-entry.clickable:active {
+    transform: scale(0.99);
 }
 
 .modal-mobile-entry.compact {
@@ -1099,6 +1151,18 @@
         transform: translateY(20px);
     }
 
+    .modal-secondary-layer {
+        align-items: center;
+        padding: 16px;
+    }
+
+    .modal-secondary-box {
+        width: min(94vw, 560px);
+        max-width: min(94vw, 560px);
+        max-height: 84dvh;
+        border-radius: var(--radius-2xl);
+    }
+
     .modal-header,
     .modal-body {
         padding-left: var(--space-md);
@@ -1176,6 +1240,38 @@
     .modal-overlay.mobile-detail-active #modal-stat-nav {
         order: 5;
         margin-top: 0;
+    }
+
+    .modal-secondary-layer.mobile-detail-active .modal-body {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-md);
+        overflow: hidden;
+    }
+
+    .modal-secondary-layer.mobile-detail-active #modal-secondary-textarea {
+        display: none;
+    }
+
+    .modal-secondary-layer.mobile-detail-active #modal-secondary-mobile-list-panel {
+        display: flex;
+    }
+
+    .modal-secondary-layer.mobile-detail-active #modal-secondary-mobile-list-panel {
+        flex-direction: column;
+    }
+
+    .modal-secondary-layer.mobile-detail-active #modal-secondary-mobile-list-panel {
+        order: 1;
+    }
+
+    .modal-secondary-layer.mobile-detail-active #modal-secondary-mobile-share-actions {
+        display: flex;
+        order: 2;
+    }
+
+    .modal-secondary-layer.mobile-detail-active #modal-secondary-mobile-list {
+        overflow: visible;
     }
 
     .scramble-preview-modal-box {
