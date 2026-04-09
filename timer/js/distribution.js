@@ -1,4 +1,4 @@
-import { formatReadableDate, formatTime, getEffectiveTime } from './utils.js?v=2026040904'
+import { formatReadableDate, formatTime, getEffectiveTime } from './utils.js?v=2026040905'
 
 const BIN_WIDTH_OPTIONS = Object.freeze([
     { label: '1:00', ms: 60000 },
@@ -1248,8 +1248,18 @@ export function initTimeDistributionModal() {
 
     loadPreferences()
 
+    let _distributionMouseDownTarget = null;
+    let _distributionMouseUpTarget = null;
+    _overlay.addEventListener('mousedown', (event) => {
+        _distributionMouseDownTarget = event.target;
+    });
+    _overlay.addEventListener('mouseup', (event) => {
+        _distributionMouseUpTarget = event.target;
+    });
     _overlay.addEventListener('click', (event) => {
-        if (event.target === _overlay) closeTimeDistributionModal()
+        if (_distributionMouseDownTarget === _overlay && _distributionMouseUpTarget === _overlay) closeTimeDistributionModal();
+        _distributionMouseDownTarget = null;
+        _distributionMouseUpTarget = null;
     })
 
     _closeButton?.addEventListener('click', () => {
@@ -1264,10 +1274,20 @@ export function initTimeDistributionModal() {
         chartImageOverlay?.classList.remove('active')
     })
 
+    let _chartImageMouseDownTarget = null;
+    let _chartImageMouseUpTarget = null;
+    chartImageOverlay?.addEventListener('mousedown', (event) => {
+        _chartImageMouseDownTarget = event.target;
+    });
+    chartImageOverlay?.addEventListener('mouseup', (event) => {
+        _chartImageMouseUpTarget = event.target;
+    });
     chartImageOverlay?.addEventListener('click', (event) => {
-        if (event.target === chartImageOverlay) {
+        if (_chartImageMouseDownTarget === chartImageOverlay && _chartImageMouseUpTarget === chartImageOverlay) {
             chartImageOverlay.classList.remove('active')
         }
+        _chartImageMouseDownTarget = null;
+        _chartImageMouseUpTarget = null;
     })
 
     // Escape key handler for chart image modal

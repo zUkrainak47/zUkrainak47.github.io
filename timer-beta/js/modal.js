@@ -1,5 +1,5 @@
-import { formatTime, formatSolveTime, formatReadableDate, formatDateTime, getEffectiveTime } from './utils.js?v=2026040904';
-import { sessionManager } from './session.js?v=2026040904';
+import { formatTime, formatSolveTime, formatReadableDate, formatDateTime, getEffectiveTime } from './utils.js?v=2026040905';
+import { sessionManager } from './session.js?v=2026040905';
 
 let _overlay = null;
 let _textarea = null;
@@ -692,12 +692,24 @@ export function initModal() {
     renderModalCopyOptionButtons();
     updateModalCopyOptionVisibility();
 
+    let _overlayMouseDownTarget = null;
+    let _overlayMouseUpTarget = null;
+    _overlay.addEventListener('mousedown', (e) => { _overlayMouseDownTarget = e.target; });
+    _overlay.addEventListener('mouseup', (e) => { _overlayMouseUpTarget = e.target; });
     _overlay.addEventListener('click', (e) => {
-        if (e.target === _overlay) closeModal();
+        if (_overlayMouseDownTarget === _overlay && _overlayMouseUpTarget === _overlay) closeModal();
+        _overlayMouseDownTarget = null;
+        _overlayMouseUpTarget = null;
     });
 
+    let _secondaryMouseDownTarget = null;
+    let _secondaryMouseUpTarget = null;
+    _secondaryLayer?.addEventListener('mousedown', (e) => { _secondaryMouseDownTarget = e.target; });
+    _secondaryLayer?.addEventListener('mouseup', (e) => { _secondaryMouseUpTarget = e.target; });
     _secondaryLayer?.addEventListener('click', (e) => {
-        if (e.target === _secondaryLayer) closeSecondaryModal();
+        if (_secondaryMouseDownTarget === _secondaryLayer && _secondaryMouseUpTarget === _secondaryLayer) closeSecondaryModal();
+        _secondaryMouseDownTarget = null;
+        _secondaryMouseUpTarget = null;
     });
 
     const closeBtn = _overlay.querySelector('.modal-close');
@@ -1015,11 +1027,17 @@ export function customConfirm(message) {
         }
 
         // Cleanup function
+        let confirmMouseDownTarget = null;
+        let confirmMouseUpTarget = null;
+        const onOverlayMouseDown = (e) => { confirmMouseDownTarget = e.target; };
+        const onOverlayMouseUp = (e) => { confirmMouseUpTarget = e.target; };
         const cleanup = () => {
             overlay.classList.remove('active');
             btnOk.removeEventListener('click', onOk);
             btnCancel.removeEventListener('click', onCancel);
             btnClose.removeEventListener('click', onCancel);
+            overlay.removeEventListener('mousedown', onOverlayMouseDown);
+            overlay.removeEventListener('mouseup', onOverlayMouseUp);
             overlay.removeEventListener('click', onOverlayClick);
             document.removeEventListener('keydown', onKeydown);
             if (document.activeElement) document.activeElement.blur();
@@ -1028,7 +1046,11 @@ export function customConfirm(message) {
         // Handlers
         const onOk = () => { cleanup(); resolve(true); };
         const onCancel = () => { cleanup(); resolve(false); };
-        const onOverlayClick = (e) => { if (e.target === overlay) onCancel(); };
+        const onOverlayClick = (e) => {
+            if (confirmMouseDownTarget === overlay && confirmMouseUpTarget === overlay) onCancel();
+            confirmMouseDownTarget = null;
+            confirmMouseUpTarget = null;
+        };
         const onKeydown = (e) => {
             if (!overlay.classList.contains('active')) return;
             if (e.key === 'Escape') {
@@ -1044,6 +1066,8 @@ export function customConfirm(message) {
         btnOk.addEventListener('click', onOk);
         btnCancel.addEventListener('click', onCancel);
         btnClose.addEventListener('click', onCancel);
+        overlay.addEventListener('mousedown', onOverlayMouseDown);
+        overlay.addEventListener('mouseup', onOverlayMouseUp);
         overlay.addEventListener('click', onOverlayClick);
         document.addEventListener('keydown', onKeydown);
 
@@ -1081,11 +1105,17 @@ export function customPrompt(message, defaultValue = '', maxLength = 100, title 
             window.history.pushState({ isBackIntercepted: true }, '');
         }
 
+        let promptMouseDownTarget = null;
+        let promptMouseUpTarget = null;
+        const onPromptOverlayMouseDown = (e) => { promptMouseDownTarget = e.target; };
+        const onPromptOverlayMouseUp = (e) => { promptMouseUpTarget = e.target; };
         const cleanup = () => {
             overlay.classList.remove('active');
             btnOk.removeEventListener('click', onOk);
             btnCancel.removeEventListener('click', onDiscard);
             btnClose.removeEventListener('click', onCancel);
+            overlay.removeEventListener('mousedown', onPromptOverlayMouseDown);
+            overlay.removeEventListener('mouseup', onPromptOverlayMouseUp);
             overlay.removeEventListener('click', onOverlayClick);
             document.removeEventListener('keydown', onKeydown);
             inputEl.removeEventListener('input', onInput);
@@ -1096,7 +1126,11 @@ export function customPrompt(message, defaultValue = '', maxLength = 100, title 
         const onOk = () => { cleanup(); resolve(inputEl.value); };
         const onDiscard = () => { cleanup(); resolve(null); };
         const onCancel = () => { cleanup(); resolve(inputEl.value); };
-        const onOverlayClick = (e) => { if (e.target === overlay) onCancel(); };
+        const onOverlayClick = (e) => {
+            if (promptMouseDownTarget === overlay && promptMouseUpTarget === overlay) onCancel();
+            promptMouseDownTarget = null;
+            promptMouseUpTarget = null;
+        };
         const onInput = () => {
             autoResizeTextarea(inputEl);
             if (onInputCb) onInputCb(inputEl.value);
@@ -1119,6 +1153,8 @@ export function customPrompt(message, defaultValue = '', maxLength = 100, title 
         btnOk.addEventListener('click', onOk);
         btnCancel.addEventListener('click', onDiscard);
         btnClose.addEventListener('click', onCancel);
+        overlay.addEventListener('mousedown', onPromptOverlayMouseDown);
+        overlay.addEventListener('mouseup', onPromptOverlayMouseUp);
         overlay.addEventListener('click', onOverlayClick);
         document.addEventListener('keydown', onKeydown);
         inputEl.addEventListener('input', onInput);

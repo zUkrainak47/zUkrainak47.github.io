@@ -1,15 +1,15 @@
-import { timer } from './timer.js?v=2026040904';
-import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=2026040904';
-import { sessionManager } from './session.js?v=2026040904';
-import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=2026040904';
-import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=2026040904';
-import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, truncateTimeDisplay } from './utils.js?v=2026040904';
-import { initModal, showSolveDetail, showAverageDetail, closeModal, closeMoveSessionMenus, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=2026040904';
-import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=2026040904';
-import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=2026040904';
-import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=2026040904';
-import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=2026040904';
-import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=2026040904';
+import { timer } from './timer.js?v=2026040905';
+import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=2026040905';
+import { sessionManager } from './session.js?v=2026040905';
+import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=2026040905';
+import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=2026040905';
+import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, truncateTimeDisplay } from './utils.js?v=2026040905';
+import { initModal, showSolveDetail, showAverageDetail, closeModal, closeMoveSessionMenus, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=2026040905';
+import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=2026040905';
+import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=2026040905';
+import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=2026040905';
+import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=2026040905';
+import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=2026040905';
 
 let currentScramble = '';
 let currentSortCol = null;
@@ -203,7 +203,7 @@ async function registerServiceWorker() {
     if (window.location?.protocol === 'file:') return;
 
     try {
-        const serviceWorkerUrl = new URL('../sw.js?v=2026040904', import.meta.url);
+        const serviceWorkerUrl = new URL('../sw.js?v=2026040905', import.meta.url);
         await navigator.serviceWorker.register(serviceWorkerUrl);
     } catch (error) {
         console.warn('Service worker registration failed:', error);
@@ -2635,8 +2635,18 @@ function initScramblePreviewModal() {
         closeScramblePreviewModal();
     });
 
+    let _scramblePreviewMouseDownTarget = null;
+    let _scramblePreviewMouseUpTarget = null;
+    scramblePreviewOverlayEl.addEventListener('mousedown', (event) => {
+        _scramblePreviewMouseDownTarget = event.target;
+    });
+    scramblePreviewOverlayEl.addEventListener('mouseup', (event) => {
+        _scramblePreviewMouseUpTarget = event.target;
+    });
     scramblePreviewOverlayEl.addEventListener('click', (event) => {
-        if (event.target === scramblePreviewOverlayEl) closeScramblePreviewModal();
+        if (_scramblePreviewMouseDownTarget === scramblePreviewOverlayEl && _scramblePreviewMouseUpTarget === scramblePreviewOverlayEl) closeScramblePreviewModal();
+        _scramblePreviewMouseDownTarget = null;
+        _scramblePreviewMouseUpTarget = null;
     });
 
     document.addEventListener('keydown', (event) => {
@@ -6482,8 +6492,18 @@ function initSettingsPanel() {
         openKeyboardShortcutsOverlay({ closeSettings: true, isSwitching: true });
     };
     document.getElementById('settings-close').onclick = closeSettingsPanel;
+    let _settingsMouseDownTarget = null;
+    let _settingsMouseUpTarget = null;
+    settingsOverlayEl.addEventListener('mousedown', (e) => {
+        _settingsMouseDownTarget = e.target;
+    });
+    settingsOverlayEl.addEventListener('mouseup', (e) => {
+        _settingsMouseUpTarget = e.target;
+    });
     settingsOverlayEl.addEventListener('click', (e) => {
-        if (e.target === settingsOverlayEl) closeSettingsPanel();
+        if (_settingsMouseDownTarget === settingsOverlayEl && _settingsMouseUpTarget === settingsOverlayEl) closeSettingsPanel();
+        _settingsMouseDownTarget = null;
+        _settingsMouseUpTarget = null;
     });
     themeCustomizationCloseBtn?.addEventListener('click', () => {
         if (isThemeCustomizationDocked()) {
@@ -6513,10 +6533,20 @@ function initSettingsPanel() {
         setThemeCustomizationDockPosition(nextPosition);
         themeCustomizationDockBottomLeftBtn.blur();
     });
+    let _themeMouseDownTarget = null;
+    let _themeMouseUpTarget = null;
+    themeCustomizationOverlayEl?.addEventListener('mousedown', (e) => {
+        _themeMouseDownTarget = e.target;
+    });
+    themeCustomizationOverlayEl?.addEventListener('mouseup', (e) => {
+        _themeMouseUpTarget = e.target;
+    });
     themeCustomizationOverlayEl?.addEventListener('click', (e) => {
-        if (e.target === themeCustomizationOverlayEl && !isThemeCustomizationDocked()) {
+        if (_themeMouseDownTarget === themeCustomizationOverlayEl && _themeMouseUpTarget === themeCustomizationOverlayEl && !isThemeCustomizationDocked()) {
             closeThemeCustomizationModal();
         }
+        _themeMouseDownTarget = null;
+        _themeMouseUpTarget = null;
     });
     window.addEventListener('resize', () => {
         if (isThemeCustomizationDocked() && !canDockThemeCustomization()) {
@@ -8967,8 +8997,18 @@ function initShortcutsOverlay() {
     renderKeyboardShortcuts();
 
     document.getElementById('shortcuts-close').onclick = closeKeyboardShortcutsOverlay;
+    let _shortcutsMouseDownTarget = null;
+    let _shortcutsMouseUpTarget = null;
+    shortcutsOverlayEl.addEventListener('mousedown', (e) => {
+        _shortcutsMouseDownTarget = e.target;
+    });
+    shortcutsOverlayEl.addEventListener('mouseup', (e) => {
+        _shortcutsMouseUpTarget = e.target;
+    });
     shortcutsOverlayEl.addEventListener('click', (e) => {
-        if (e.target === shortcutsOverlayEl) closeKeyboardShortcutsOverlay();
+        if (_shortcutsMouseDownTarget === shortcutsOverlayEl && _shortcutsMouseUpTarget === shortcutsOverlayEl) closeKeyboardShortcutsOverlay();
+        _shortcutsMouseDownTarget = null;
+        _shortcutsMouseUpTarget = null;
     });
 
     document.addEventListener('keydown', (e) => {
