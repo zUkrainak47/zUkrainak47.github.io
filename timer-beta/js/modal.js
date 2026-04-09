@@ -1,5 +1,5 @@
-import { formatTime, formatSolveTime, formatReadableDate, formatDateTime, getEffectiveTime } from './utils.js?v=2026040901';
-import { sessionManager } from './session.js?v=2026040901';
+import { formatTime, formatSolveTime, formatReadableDate, formatDateTime, getEffectiveTime } from './utils.js?v=2026040902';
+import { sessionManager } from './session.js?v=2026040902';
 
 let _overlay = null;
 let _textarea = null;
@@ -17,6 +17,7 @@ let _mobileShareButton = null;
 let _mobileListPanel = null;
 let _mobileList = null;
 let _mobileExportToast = null;
+let _secondaryMobileExportToast = null;
 let _copyOptionIncludeCommentsBtn = null;
 let _copyOptionIncludeDateBtn = null;
 let _copyOptionIncludeAbsoluteIndexBtn = null;
@@ -56,6 +57,7 @@ let _currentModalSource = null;
 let _ghostClickGuardCleanup = null;
 let _ghostClickGuardTimeout = null;
 let _mobileExportToastTimeout = null;
+let _secondaryMobileExportToastTimeout = null;
 let _isMovingSolve = false;
 let _floatingMoveSessionContext = null;
 const mobileDetailQuery = window.matchMedia('(max-width: 1100px), (pointer: coarse)');
@@ -129,6 +131,11 @@ function formatSummaryTimestamp(timestamp) {
         default:
             return '';
     }
+}
+
+function formatMobilePreviewTimestamp(timestamp) {
+    if (!timestamp) return '';
+    return formatDateTime(timestamp);
 }
 
 function getSummaryTimestampButtonState() {
@@ -350,7 +357,7 @@ function buildAverageShareContent(label, valueStr, solves, trim = 1) {
             position: displayIndex,
             time: display,
             scramble: solve.scramble,
-            date: isCompactSummary ? '' : formatSummaryTimestamp(solve.timestamp),
+            date: isCompactSummary ? '' : formatMobilePreviewTimestamp(solve.timestamp),
             comment: modalCopyOptions.includeComments ? String(solve?.comment ?? '').trim() : '',
             solveId: solve.id,
             sessionId: solve.sessionId,
@@ -394,11 +401,22 @@ function buildAverageShareContent(label, valueStr, solves, trim = 1) {
     };
 }
 
-function showMobileExportToast(message) {
-    if (!_mobileExportToast || !isMobileDetailLayout() || !_overlay?.classList.contains('active')) return;
+function showMobileExportToast(message, targetLayer = getActiveModalLayer()) {
+    if (!isMobileDetailLayout() || !_overlay?.classList.contains('active')) return;
 
-    _mobileExportToast.textContent = message;
-    _mobileExportToast.classList.add('visible');
+    const toast = targetLayer === MODAL_LAYER_SECONDARY ? _secondaryMobileExportToast : _mobileExportToast;
+    if (!toast) return;
+
+    toast.textContent = message;
+    toast.classList.add('visible');
+    if (targetLayer === MODAL_LAYER_SECONDARY) {
+        window.clearTimeout(_secondaryMobileExportToastTimeout);
+        _secondaryMobileExportToastTimeout = window.setTimeout(() => {
+            _secondaryMobileExportToast?.classList.remove('visible');
+        }, 1700);
+        return;
+    }
+
     window.clearTimeout(_mobileExportToastTimeout);
     _mobileExportToastTimeout = window.setTimeout(() => {
         _mobileExportToast?.classList.remove('visible');
@@ -652,6 +670,7 @@ export function initModal() {
     _secondaryMobileListPanel = document.getElementById('modal-secondary-mobile-list-panel');
     _secondaryMobileList = document.getElementById('modal-secondary-mobile-list');
     _mobileExportToast = document.getElementById('modal-mobile-export-toast');
+    _secondaryMobileExportToast = document.getElementById('modal-secondary-mobile-export-toast');
     _copyOptionIncludeCommentsBtn = document.getElementById('modal-option-include-comments');
     _copyOptionIncludeDateBtn = document.getElementById('modal-option-include-date');
     _copyOptionIncludeAbsoluteIndexBtn = document.getElementById('modal-option-include-absolute-index');
@@ -853,6 +872,12 @@ export function initModal() {
         saveModalCopyOptions();
         renderModalCopyOptionButtons();
         rerenderSecondaryModalSource();
+        showMobileExportToast(
+            modalCopyOptions.includeComments
+                ? 'Comments will now be included in summary.'
+                : 'Comments will no longer be included in summary.',
+            MODAL_LAYER_SECONDARY
+        );
     });
 
     _copyOptionIncludeDateBtn?.addEventListener('click', () => {
@@ -868,6 +893,7 @@ export function initModal() {
         saveModalCopyOptions();
         renderModalCopyOptionButtons();
         rerenderSecondaryModalSource();
+        showMobileExportToast(getSummaryTimestampToastMessage(), MODAL_LAYER_SECONDARY);
     });
 
     _copyOptionIncludeAbsoluteIndexBtn?.addEventListener('click', () => {
@@ -887,6 +913,12 @@ export function initModal() {
         saveModalCopyOptions();
         renderModalCopyOptionButtons();
         rerenderSecondaryModalSource();
+        showMobileExportToast(
+            modalCopyOptions.includeAbsoluteIndex
+                ? 'Absolute index will now be included in summary.'
+                : 'Absolute index will no longer be included in summary.',
+            MODAL_LAYER_SECONDARY
+        );
     });
 
     _copyOptionCompactAverageBtn?.addEventListener('click', () => {
@@ -906,6 +938,12 @@ export function initModal() {
         saveModalCopyOptions();
         renderModalCopyOptionButtons();
         rerenderSecondaryModalSource();
+        showMobileExportToast(
+            modalCopyOptions.compactAverageSummary
+                ? 'Compact mode is now enabled for stat summaries.'
+                : 'Compact mode is now disabled for stat summaries.',
+            MODAL_LAYER_SECONDARY
+        );
     });
 
     const handleMobileDetailViewportChange = () => {
@@ -1455,7 +1493,7 @@ function buildSolveDetailPayload(title, timeStr, solve, index, singleLabel, shar
             position: index + 1,
             time: timeStr,
             scramble: solve.scramble,
-            date: formatSummaryTimestamp(solve.timestamp),
+            date: formatMobilePreviewTimestamp(solve.timestamp),
             comment: '',
             compact: false,
             trimmed: false,
