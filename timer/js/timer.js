@@ -1,5 +1,5 @@
-import { settings } from './settings.js?v=2026040906';
-import { EventEmitter, formatTime, truncateTimeDisplay } from './utils.js?v=2026040906';
+import { settings } from './settings.js?v=2026040907';
+import { EventEmitter, formatTime, truncateTimeDisplay } from './utils.js?v=2026040907';
 
 const State = {
     IDLE: 'idle',
@@ -49,6 +49,7 @@ class Timer extends EventEmitter {
         this._ghostClickGuardOrigin = null;
         this._ghostClickGuardTimeout = null;
         this._typingInspectionTimeout = null;
+        this._cachedViewport = { width: 0, height: 0 };
 
         this._onKeyDown = this._onKeyDown.bind(this);
         this._onKeyUp = this._onKeyUp.bind(this);
@@ -66,6 +67,8 @@ class Timer extends EventEmitter {
     init(displayEl, interactionEls = [displayEl]) {
         this._displayEl = displayEl;
         this._interactionEls = Array.from(new Set(interactionEls.filter(Boolean)));
+        this._cachedViewport.width = window.innerWidth || document.documentElement.clientWidth;
+        this._cachedViewport.height = window.innerHeight || document.documentElement.clientHeight;
         document.addEventListener('keydown', this._onKeyDown);
         document.addEventListener('keyup', this._onKeyUp);
         window.addEventListener('blur', this._onWindowBlur);
@@ -923,6 +926,8 @@ class Timer extends EventEmitter {
     }
 
     refreshDisplayRules() {
+        this._cachedViewport.width = window.innerWidth || document.documentElement.clientWidth;
+        this._cachedViewport.height = window.innerHeight || document.documentElement.clientHeight;
         if (this._lastFullText) {
             this._updateDisplay(this._lastFullText);
         }
@@ -933,8 +938,8 @@ class Timer extends EventEmitter {
         if (!this._displayEl) return;
 
         let displayStr = text;
-        const width = window.innerWidth || document.documentElement.clientWidth;
-        const height = window.innerHeight || document.documentElement.clientHeight;
+        const width = this._cachedViewport.width;
+        const height = this._cachedViewport.height;
         const isDesktop = width > 1100;
         const isZen = document.body.classList.contains('zen');
         const isMobilePortrait = width <= 1100 && height > width;
