@@ -1,5 +1,5 @@
-import { settings } from './settings.js?v=2026040905';
-import { EventEmitter, formatTime, truncateTimeDisplay } from './utils.js?v=2026040905';
+import { settings } from './settings.js?v=2026040906';
+import { EventEmitter, formatTime, truncateTimeDisplay } from './utils.js?v=2026040906';
 
 const State = {
     IDLE: 'idle',
@@ -227,7 +227,7 @@ class Timer extends EventEmitter {
                 this._spaceDown = false;
                 if (this.state === State.INSPECTION_PRIMED) {
                     e.preventDefault();
-                    this._handleStartRelease();
+                    this._handleStartRelease(e);
                     return;
                 }
             }
@@ -247,7 +247,7 @@ class Timer extends EventEmitter {
         if (e.code === 'Space') {
             e.preventDefault();
             this._spaceDown = false;
-            this._handleStartRelease();
+            this._handleStartRelease(e);
             return;
         }
 
@@ -257,7 +257,7 @@ class Timer extends EventEmitter {
         const wasStackmatReady = this._isStackmatActive();
         this._setStackmatFlag(e.code, false);
         if (wasStackmatReady && !this._isStackmatActive()) {
-            this._handleStartRelease();
+            this._handleStartRelease(e);
         }
     }
 
@@ -367,7 +367,7 @@ class Timer extends EventEmitter {
         if (e.pointerId !== this._activePointerId) return;
         e.preventDefault();
         this._releaseActivePointer(e.pointerId);
-        this._handleStartRelease();
+        this._handleStartRelease(e);
     }
 
     _onPointerCancel(e) {
@@ -407,7 +407,7 @@ class Timer extends EventEmitter {
         }
     }
 
-    _handleStartRelease() {
+    _handleStartRelease(releaseEvent) {
         if (this.state === State.HOLDING) {
             this._cancelHold();
             this._setState(State.IDLE);
@@ -416,7 +416,7 @@ class Timer extends EventEmitter {
         }
 
         if (this.state === State.READY) {
-            this._startTimer();
+            this._startTimer(releaseEvent);
             return;
         }
 
@@ -433,7 +433,7 @@ class Timer extends EventEmitter {
         }
 
         if (this.state === State.INSPECTION_READY) {
-            this._startTimer();
+            this._startTimer(releaseEvent);
         }
     }
 
@@ -536,7 +536,7 @@ class Timer extends EventEmitter {
         }
     }
 
-    _startTimer() {
+    _startTimer(releaseEvent) {
         const fromInspection = this._isInspectionTickingState(this.state);
 
         this._cancelHold();
@@ -553,7 +553,12 @@ class Timer extends EventEmitter {
 
         this._setState(State.RUNNING);
         this._setColor(State.RUNNING);
-        this.startTime = performance.now();
+        const now = performance.now();
+        const eventTs = releaseEvent ? this._getEventTimestamp(releaseEvent) : null;
+        const hasUsableStartTimestamp = Number.isFinite(eventTs)
+            && eventTs <= now
+            && eventTs >= now - 500;
+        this.startTime = hasUsableStartTimestamp ? eventTs : now;
         this.elapsed = 0;
 
         if (!this._shouldShowRunningTime()) {

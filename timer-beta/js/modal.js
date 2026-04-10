@@ -1,5 +1,5 @@
-import { formatTime, formatSolveTime, formatReadableDate, formatDateTime, getEffectiveTime } from './utils.js?v=2026040905';
-import { sessionManager } from './session.js?v=2026040905';
+import { formatTime, formatSolveTime, formatReadableDate, formatDateTime, getEffectiveTime } from './utils.js?v=2026040906';
+import { sessionManager } from './session.js?v=2026040906';
 
 let _overlay = null;
 let _textarea = null;
