@@ -237,6 +237,10 @@ body.mobile-viewport #setting-large-scramble-text-row {
     font-size: var(--text-xs);
 }
 
+.setting-delta-reference-stat {
+    width: 96px;
+}
+
 .setting-graph-line-stat:focus {
     outline: none;
     border-color: var(--accent);

@@ -1,5 +1,5 @@
-import { load, save } from './storage.js?v=2026040907';
-import { EventEmitter } from './utils.js?v=2026040907';
+import { load, save } from './storage.js?v=2026041201';
+import { EventEmitter } from './utils.js?v=2026041201';
 
 export const THEME_DEFAULT_ID = 'default';
 export const THEME_OLED_ID = 'oled';
@@ -421,6 +421,7 @@ const DEFAULTS = {
     graphCollapsed: false,
     graphView: { visibleCount: 0, yZoom: 1, xPan: 1, yPan: 0 },
     showDelta: false,
+    deltaReference: '',
     newBestPopupEnabled: true,
     newBestColor: DEFAULT_THEME_COLORS.newBestPopup,
     graphColorTime: DEFAULT_THEME_COLORS.graphColorTime,

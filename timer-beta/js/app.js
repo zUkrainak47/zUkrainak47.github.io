@@ -1,15 +1,15 @@
-import { timer } from './timer.js?v=2026040907';
-import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=2026040907';
-import { sessionManager } from './session.js?v=2026040907';
-import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=2026040907';
-import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=2026040907';
-import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, truncateTimeDisplay } from './utils.js?v=2026040907';
-import { initModal, showSolveDetail, showAverageDetail, closeModal, closeMoveSessionMenus, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=2026040907';
-import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=2026040907';
-import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=2026040907';
-import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=2026040907';
-import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=2026040907';
-import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=2026040907';
+import { timer } from './timer.js?v=2026041201';
+import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=2026041201';
+import { sessionManager } from './session.js?v=2026041201';
+import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=2026041201';
+import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=2026041201';
+import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, truncateTimeDisplay } from './utils.js?v=2026041201';
+import { initModal, showSolveDetail, showAverageDetail, closeModal, closeMoveSessionMenus, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=2026041201';
+import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=2026041201';
+import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=2026041201';
+import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=2026041201';
+import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=2026041201';
+import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=2026041201';
 
 let currentScramble = '';
 let currentSortCol = null;
@@ -203,7 +203,7 @@ async function registerServiceWorker() {
     if (window.location?.protocol === 'file:') return;
 
     try {
-        const serviceWorkerUrl = new URL('../sw.js?v=2026040907', import.meta.url);
+        const serviceWorkerUrl = new URL('../sw.js?v=2026041201', import.meta.url);
         await navigator.serviceWorker.register(serviceWorkerUrl);
     } catch (error) {
         console.warn('Service worker registration failed:', error);
@@ -242,7 +242,10 @@ const SUMMARY_STAT_PRESETS = {
 };
 const MAX_CUSTOM_SUMMARY_STATS = 12;
 const MAX_ROLLING_STAT_INPUT_LENGTH = 7;
+const MAX_DELTA_REFERENCE_INPUT_LENGTH = 7;
 const SOLVES_TABLE_STAT_SETTING_KEYS = ['solvesTableStat1', 'solvesTableStat2'];
+const DELTA_REFERENCE_SINGLE_TOKENS = new Set(['single', 'prev', 'last']);
+const DELTA_REFERENCE_MEAN_TOKENS = new Set(['mean', 'session']);
 const SHIFT_STAT_SHORTCUT_CODES = ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0', 'Minus', 'Equal'];
 const SHIFT_STAT_SHORTCUT_DISPLAY = {
     Digit1: '1',
@@ -2734,7 +2737,7 @@ async function init() {
         }
         if (key === 'newBestPopupEnabled' && !settings.get('newBestPopupEnabled')) clearNewBestAlert();
         if (key === 'shortcutTooltipsEnabled' && !settings.get('shortcutTooltipsEnabled')) hideShortcutTooltip();
-        if (key === 'statsFilter' || key === 'customFilterDuration' || key === 'showDelta' || key === 'theme' || key === 'customThemes' || key.startsWith('graphColor') || key.startsWith('graphLine') || key === 'graphTooltipDateEnabled' || key === 'newBestColor' || key === 'summaryStatsList' || key.startsWith('solvesTableStat')) {
+        if (key === 'statsFilter' || key === 'customFilterDuration' || key === 'showDelta' || key === 'deltaReference' || key === 'theme' || key === 'customThemes' || key.startsWith('graphColor') || key.startsWith('graphLine') || key === 'graphTooltipDateEnabled' || key === 'newBestColor' || key === 'summaryStatsList' || key.startsWith('solvesTableStat')) {
             if (key === 'statsFilter' || key === 'customFilterDuration') rebuildStatsCache();
             if (key === 'summaryStatsList') {
                 syncModalStatNavigation();
@@ -4480,6 +4483,63 @@ function parseGraphLineStatInput(rawInput) {
     };
 }
 
+function getDeltaReferenceLabel(token) {
+    if (token === 'mean') return 'session mean';
+    return token;
+}
+
+function parseDeltaReferenceInput(rawInput) {
+    const token = normalizeSummaryStatToken(rawInput);
+    if (!token) {
+        return {
+            ok: true,
+            token: '',
+            resolvedToken: 'single',
+            label: getDeltaReferenceLabel('single'),
+            empty: true,
+            message: '',
+        };
+    }
+
+    if (DELTA_REFERENCE_SINGLE_TOKENS.has(token)) {
+        return {
+            ok: true,
+            token: 'single',
+            resolvedToken: 'single',
+            label: getDeltaReferenceLabel('single'),
+            empty: false,
+            message: '',
+        };
+    }
+
+    const normalizedToken = DELTA_REFERENCE_MEAN_TOKENS.has(token) ? 'mean' : token;
+    const parsed = parseGraphStatType(normalizedToken);
+    if (!parsed) {
+        return {
+            ok: false,
+            token,
+            resolvedToken: null,
+            label: '',
+            empty: false,
+            message: `Invalid target: ${token}`,
+        };
+    }
+
+    return {
+        ok: true,
+        token: parsed.type,
+        resolvedToken: parsed.type,
+        label: getDeltaReferenceLabel(parsed.type),
+        empty: false,
+        message: '',
+    };
+}
+
+function getConfiguredDeltaReferenceToken() {
+    const parsed = parseDeltaReferenceInput(settings.get('deltaReference'));
+    return parsed.ok ? parsed.resolvedToken : 'single';
+}
+
 function parseSummaryStatInput(rawInput, { truncate = true } = {}) {
     const source = String(rawInput ?? '');
     const parts = source.split(/[\s,]+/).map(normalizeSummaryStatToken).filter(Boolean);
@@ -5565,9 +5625,11 @@ function updateDelta(solves) {
     const state = timer.getState();
     const showDelta = settings.get('showDelta');
     const isTimerActive = state === 'running' || state === 'ready' || isInspectionState(state);
+    const times = solves.map((solve) => getEffectiveTime(solve));
+    const currentIndex = times.length - 1;
 
-    // Clear if disabled, not enough solves, or timer is active
-    if (!showDelta || solves.length < 2 || isTimerActive) {
+    // Clear if disabled, there are no solves, or the timer is active.
+    if (!showDelta || solves.length === 0 || isTimerActive) {
         // However, if the current solve is a DNF, we still want to show (DNF) regardless of showDelta
         if (solves.length > 0 && solves[solves.length - 1].penalty === 'DNF' && !isTimerActive) {
             deltaEl.textContent = '(DNF)';
@@ -5581,8 +5643,9 @@ function updateDelta(solves) {
     }
 
     const current = solves[solves.length - 1];
+    const curTime = times[currentIndex];
 
-    // If we have >= 2 solves and delta is enabled, we still first check if current is DNF
+    // If delta is enabled, we still first check if current is DNF.
     if (current.penalty === 'DNF') {
         deltaEl.textContent = '(DNF)';
         deltaEl.classList.remove('delta-negative', 'delta-zero');
@@ -5590,17 +5653,30 @@ function updateDelta(solves) {
         return;
     }
 
-    const previous = solves[solves.length - 2];
-    const curTime = getEffectiveTime(current);
-    const prevTime = getEffectiveTime(previous);
+    const deltaReferenceToken = getConfiguredDeltaReferenceToken();
+    let referenceTime = null;
+    const referenceIndex = currentIndex - 1;
 
-    // Hide if either is DNF
-    if (curTime === Infinity || prevTime === Infinity) {
+    if (deltaReferenceToken === 'single') {
+        referenceTime = referenceIndex >= 0 ? times[referenceIndex] : null;
+    } else if (deltaReferenceToken === 'mean') {
+        const validTimes = times.slice(0, currentIndex).filter((time) => time !== Infinity);
+        referenceTime = validTimes.length
+            ? validTimes.reduce((sum, time) => sum + time, 0) / validTimes.length
+            : null;
+    } else {
+        referenceTime = referenceIndex >= 0
+            ? rollingStatAt(times, referenceIndex, deltaReferenceToken)
+            : null;
+    }
+
+    // Hide if either side is unavailable or DNF.
+    if (curTime === Infinity || referenceTime == null || referenceTime === Infinity) {
         deltaEl.classList.remove('visible');
         return;
     }
 
-    const diff = curTime - prevTime;
+    const diff = curTime - referenceTime;
     const sign = diff > 0 ? '+' : diff < 0 ? '-' : '';
     const formatted = formatTime(Math.abs(diff));
     deltaEl.textContent = `(${sign}${formatted})`;
@@ -8637,6 +8713,34 @@ function initSettingsPanel() {
     const deltaToggle = document.getElementById('setting-show-delta');
     deltaToggle.checked = settings.get('showDelta');
     deltaToggle.onchange = () => settings.set('showDelta', deltaToggle.checked);
+
+    const deltaReferenceInput = document.getElementById('setting-delta-reference');
+    const deltaReferenceFeedback = document.getElementById('setting-delta-reference-feedback');
+    if (deltaReferenceInput && deltaReferenceFeedback) {
+        deltaReferenceInput.maxLength = MAX_DELTA_REFERENCE_INPUT_LENGTH;
+        deltaReferenceInput.value = String(settings.get('deltaReference') || '').slice(0, MAX_DELTA_REFERENCE_INPUT_LENGTH);
+
+        const updateDeltaReferenceFeedback = () => {
+            const parsed = parseDeltaReferenceInput(deltaReferenceInput.value);
+            if (!parsed.ok) {
+                deltaReferenceFeedback.classList.add('is-error');
+                deltaReferenceFeedback.textContent = parsed.message;
+                return null;
+            }
+
+            deltaReferenceFeedback.classList.remove('is-error');
+            deltaReferenceFeedback.textContent = `Using ${parsed.label}`;
+            return parsed;
+        };
+
+        updateDeltaReferenceFeedback();
+
+        deltaReferenceInput.addEventListener('input', () => {
+            const parsed = updateDeltaReferenceFeedback();
+            if (!parsed) return;
+            settings.set('deltaReference', parsed.empty ? '' : parsed.token);
+        });
+    }
 
     const newBestPopupToggle = document.getElementById('setting-new-best-popup');
     newBestPopupToggle.checked = settings.get('newBestPopupEnabled');
