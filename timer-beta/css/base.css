@@ -418,7 +418,6 @@ select {
     transform: translate(-50%, 0);
 }
 
-body.shortcut-tooltips-disabled #shortcut-tooltip,
 body.coarse-pointer #shortcut-tooltip {
     display: none;
 }

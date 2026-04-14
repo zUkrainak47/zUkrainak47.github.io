@@ -1,15 +1,15 @@
-import { timer } from './timer.js?v=2026041201';
-import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=2026041201';
-import { sessionManager } from './session.js?v=2026041201';
-import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=2026041201';
-import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=2026041201';
-import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, truncateTimeDisplay } from './utils.js?v=2026041201';
-import { initModal, showSolveDetail, showAverageDetail, closeModal, closeMoveSessionMenus, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=2026041201';
-import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=2026041201';
-import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=2026041201';
-import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=2026041201';
-import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=2026041201';
-import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=2026041201';
+import { timer } from './timer.js?v=2026041401';
+import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=2026041401';
+import { sessionManager } from './session.js?v=2026041401';
+import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=2026041401';
+import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=2026041401';
+import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, truncateTimeDisplay } from './utils.js?v=2026041401';
+import { initModal, showSolveDetail, showAverageDetail, closeModal, closeMoveSessionMenus, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=2026041401';
+import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=2026041401';
+import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=2026041401';
+import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=2026041401';
+import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=2026041401';
+import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=2026041401';
 
 let currentScramble = '';
 let currentSortCol = null;
@@ -203,7 +203,7 @@ async function registerServiceWorker() {
     if (window.location?.protocol === 'file:') return;
 
     try {
-        const serviceWorkerUrl = new URL('../sw.js?v=2026041201', import.meta.url);
+        const serviceWorkerUrl = new URL('../sw.js?v=2026041401', import.meta.url);
         await navigator.serviceWorker.register(serviceWorkerUrl);
     } catch (error) {
         console.warn('Service worker registration failed:', error);
@@ -2736,7 +2736,6 @@ async function init() {
             syncInspectionSpeechUnlockPromptVisibility();
         }
         if (key === 'newBestPopupEnabled' && !settings.get('newBestPopupEnabled')) clearNewBestAlert();
-        if (key === 'shortcutTooltipsEnabled' && !settings.get('shortcutTooltipsEnabled')) hideShortcutTooltip();
         if (key === 'statsFilter' || key === 'customFilterDuration' || key === 'showDelta' || key === 'deltaReference' || key === 'theme' || key === 'customThemes' || key.startsWith('graphColor') || key.startsWith('graphLine') || key === 'graphTooltipDateEnabled' || key === 'newBestColor' || key === 'summaryStatsList' || key.startsWith('solvesTableStat')) {
             if (key === 'statsFilter' || key === 'customFilterDuration') rebuildStatsCache();
             if (key === 'summaryStatsList') {
@@ -4396,7 +4395,7 @@ function positionShortcutTooltip(target) {
 }
 
 function showShortcutTooltip(target) {
-    if (!areShortcutTooltipsAvailable() || !settings.get('shortcutTooltipsEnabled')) return;
+    if (!areShortcutTooltipsAvailable()) return;
     if (!shortcutTooltipEl || !target?.dataset.shortcutTooltip) return;
 
     const wasActive = shortcutTooltipEl.classList.contains('active');
@@ -8353,7 +8352,6 @@ function initSettingsPanel() {
     const timeEntryRow = document.getElementById('setting-time-entry-row');
     const swipeDownGestureToggle = document.getElementById('setting-swipe-down-gesture');
     const swipeDownGestureRow = document.getElementById('setting-swipe-down-gesture-row');
-    const shortcutTooltipsRow = document.getElementById('setting-shortcut-tooltips-row');
     const settingsGroupEls = Array.from(settingsOverlayEl?.querySelectorAll('.setting-group') || []);
 
     const syncSettingsGroupCollapseUI = () => {
@@ -8444,12 +8442,6 @@ function initSettingsPanel() {
         syncSettingsRowSeparators();
     };
 
-    const updateShortcutTooltipsVisibility = () => {
-        if (!shortcutTooltipsRow) return;
-        shortcutTooltipsRow.style.display = coarsePointerQuery.matches ? 'none' : '';
-        syncSettingsRowSeparators();
-    };
-
     if (hideUIToggle) {
         hideUIToggle.checked = settings.get('hideUIWhileSolving');
 
@@ -8465,14 +8457,12 @@ function initSettingsPanel() {
     updateSwipeDownGestureVisibility();
     updateBackgroundSpacebarVisibility();
     updateTimeEntryVisibility();
-    updateShortcutTooltipsVisibility();
 
     const handleSettingsViewportChange = () => {
         updateCenterTimerState();
         updateSwipeDownGestureVisibility();
         updateBackgroundSpacebarVisibility();
         updateTimeEntryVisibility();
-        updateShortcutTooltipsVisibility();
         syncSettingsRowSeparators();
     };
 
@@ -8529,13 +8519,6 @@ function initSettingsPanel() {
     if (largeScrambleTextToggle) {
         largeScrambleTextToggle.checked = settings.get('largeScrambleText');
         largeScrambleTextToggle.onchange = () => settings.set('largeScrambleText', largeScrambleTextToggle.checked);
-    }
-
-
-    const shortcutTooltipsToggle = document.getElementById('setting-shortcut-tooltips');
-    if (shortcutTooltipsToggle) {
-        shortcutTooltipsToggle.checked = settings.get('shortcutTooltipsEnabled');
-        shortcutTooltipsToggle.onchange = () => settings.set('shortcutTooltipsEnabled', shortcutTooltipsToggle.checked);
     }
 
     const summaryPresetSelect = document.getElementById('setting-summary-stats-preset');

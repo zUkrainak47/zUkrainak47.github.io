@@ -1,5 +1,5 @@
-import { load, save } from './storage.js?v=2026041201';
-import { EventEmitter } from './utils.js?v=2026041201';
+import { load, save } from './storage.js?v=2026041401';
+import { EventEmitter } from './utils.js?v=2026041401';
 
 export const THEME_DEFAULT_ID = 'default';
 export const THEME_OLED_ID = 'oled';
@@ -444,7 +444,6 @@ const DEFAULTS = {
     backgroundImageUrl: '',
     backgroundImageOverlayColor: DEFAULT_BACKGROUND_IMAGE_OVERLAY_COLOR,
     swipeDownGestureEnabled: true,
-    shortcutTooltipsEnabled: true,
 };
 
 export { DEFAULTS };
@@ -1022,7 +1021,6 @@ class Settings extends EventEmitter {
 
         document.body.classList.toggle('no-animations', !this._settings.animationsEnabled);
         document.body.classList.toggle('high-contrast-mode', this._settings.theme === THEME_OLED_ID);
-        document.body.classList.toggle('shortcut-tooltips-disabled', !this._settings.shortcutTooltipsEnabled);
         document.body.classList.toggle('typing-entry-mode', this._settings.timeEntryMode === 'typing');
         document.body.classList.toggle('background-spacebar-enabled', Boolean(this._settings.backgroundSpacebarEnabled));
 
