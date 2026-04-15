@@ -14,7 +14,6 @@ import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo
 let currentScramble = '';
 let currentSortCol = null;
 let currentSortDir = null; // 'asc' or 'desc'
-let commentsOnlyFilterActive = false;
 let scrambleCopyTimeout = null;
 let cubingWarmupHideTimeout = null;
 
@@ -4595,8 +4594,6 @@ function initTableSorting() {
         if (col === 'search') {
             toggleSearchMenu();
             return;
-        } else if (col === 'comments') {
-            commentsOnlyFilterActive = !commentsOnlyFilterActive;
         } else if (currentSortCol === col) {
             if (currentSortDir === 'asc') {
                 currentSortDir = 'desc';
@@ -6463,8 +6460,6 @@ function getSolvesTableHeaderState(columnKey) {
     let label = columnKey;
     if (columnKey === 'search') {
         label = '<span class="icon-mask icon-mask-search" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle;"></span>';
-    } else if (columnKey === 'comments') {
-        label = commentsOnlyFilterActive ? '#\u2009*' : '#';
     }
 
     let sortIndicator = '';
@@ -6477,7 +6472,7 @@ function getSolvesTableHeaderState(columnKey) {
 
 function ensureValidSolvesTableSort(configuredColumns) {
     if (!currentSortCol) return;
-    if (currentSortCol === 'comments' || currentSortCol === 'time') return;
+    if (currentSortCol === 'time') return;
 
     const allowed = new Set(configuredColumns.map((column) => column.type));
     if (allowed.has(currentSortCol)) return;
@@ -6689,8 +6684,6 @@ function renderSolvesTable(solves, stats) {
     let indices = [];
     if (isSearchActive) {
         indices = getSearchMatchedSolveIndices(solves);
-    } else if (commentsOnlyFilterActive) {
-        indices = solves.map((_, i) => i).filter(i => solves[i].comment && solves[i].comment.trim() !== '');
     } else {
         indices = solves.map((_, i) => i);
     }
