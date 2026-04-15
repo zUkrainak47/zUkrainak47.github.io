@@ -5837,7 +5837,7 @@ function solveMatchesSearchFilters(solve, index, filters = searchFilters) {
     if (indexMin !== '' && displayIndex < Number(indexMin)) return false;
     if (indexMax !== '' && displayIndex > Number(indexMax)) return false;
 
-    const timeSec = solve.penalty === 'DNF' ? Infinity : (solve.time / 1000);
+    const timeSec = getEffectiveTime(solve) / 1000;
     if (timeMin !== '' && timeSec < Number(timeMin)) return false;
     if (timeMax !== '' && timeSec > Number(timeMax)) return false;
 
