@@ -6183,6 +6183,15 @@ function syncSolvesTableHeader(configuredColumns) {
     if (statCount === 0) {
         indexWidth = isMobile ? 14 : 18;
         timeWidth = 100 - indexWidth;
+    } else if (isMobile && statCount === 2) {
+        indexWidth = 18;
+        timeWidth = 22;
+        statWidth = 30;
+        if (longestStatLabelLength >= 7) {
+            headerFontSize = '0.54rem';
+        } else if (longestStatLabelLength >= 6) {
+            headerFontSize = '0.58rem';
+        }
     } else {
         const indexWeight = isMobile ? 1 : 2;
         const statWeight = longestStatLabelLength >= 7
