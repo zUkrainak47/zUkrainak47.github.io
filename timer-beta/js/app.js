@@ -7124,10 +7124,41 @@ function syncSearchMenuVisibility({ focusInput = false } = {}) {
     syncSolvesTableHeader(getConfiguredSolvesTableStatTokens());
 }
 
+function clearSearchFilters({ clearSelection = false } = {}) {
+    const searchInput = document.getElementById('stats-search-input');
+    const indexMin = document.getElementById('search-filter-index-min');
+    const indexMax = document.getElementById('search-filter-index-max');
+    const timeMin = document.getElementById('search-filter-time-min');
+    const timeMax = document.getElementById('search-filter-time-max');
+
+    if (searchInput) searchInput.value = '';
+    if (indexMin) indexMin.value = '';
+    if (indexMax) indexMax.value = '';
+    if (timeMin) timeMin.value = '';
+    if (timeMax) timeMax.value = '';
+
+    searchFilters = {
+        text: '',
+        indexMin: '',
+        indexMax: '',
+        timeMin: '',
+        timeMax: '',
+    };
+
+    if (!clearSelection) return;
+
+    selectedSolveIds.clear();
+    lastSelectedSolveIndex = -1;
+    lastSelectedSolveId = null;
+    selectionAnchorSolveIndex = -1;
+    selectionAnchorSolveId = null;
+    activeRangeSelectedSolveIds.clear();
+}
+
 function openSearchMenuForSelection() {
     if (isSearchActive) return;
-    isSearchActive = true;
-    syncSearchMenuVisibility();
+    clearSearchFilters();
+    toggleSearchMenu(true);
 }
 
 function toggleSearchMenu(forceActive) {
@@ -7279,18 +7310,8 @@ function initSearchMenu() {
     if (clearFiltersBtn) {
         clearFiltersBtn.onclick = () => {
             if (bulkActionProgressState.active) return;
-            if (searchInput) searchInput.value = '';
-            if (indexMin) indexMin.value = '';
-            if (indexMax) indexMax.value = '';
-            if (timeMin) timeMin.value = '';
-            if (timeMax) timeMax.value = '';
-            selectedSolveIds.clear();
-            lastSelectedSolveIndex = -1;
-            lastSelectedSolveId = null;
-            selectionAnchorSolveIndex = -1;
-            selectionAnchorSolveId = null;
-            activeRangeSelectedSolveIds.clear();
-            triggerSearchUpdate();
+            clearSearchFilters({ clearSelection: true });
+            refreshUI();
         };
     }
 
