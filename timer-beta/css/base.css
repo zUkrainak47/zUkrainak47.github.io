@@ -315,6 +315,11 @@ select {
     mask-image: url('../resources/trash.svg');
 }
 
+.icon-mask-search {
+    -webkit-mask-image: url('../resources/search.svg');
+    mask-image: url('../resources/search.svg');
+}
+
 @media (min-width: 1101px) and (pointer: fine) {
     #btn-settings .icon-mask-settings {
         width: 0.85em;

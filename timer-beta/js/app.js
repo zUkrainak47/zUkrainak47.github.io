@@ -17,6 +17,13 @@ let currentSortDir = null; // 'asc' or 'desc'
 let commentsOnlyFilterActive = false;
 let scrambleCopyTimeout = null;
 let cubingWarmupHideTimeout = null;
+
+// Search and selection state
+let isSearchActive = false;
+let searchFilters = { text: '', indexMin: '', indexMax: '', dateMin: '', dateMax: '', timeMin: '', timeMax: '' };
+let selectedSolveIds = new Set();
+let lastSelectedSolveIndex = -1;
+
 const statsCache = new StatsCache();
 let _skipSolveAddedRefresh = false; // set true when commitSolve manages the refresh itself
 const THEME_EDITOR_MODE_SIMPLE = 'simple';
@@ -2718,11 +2725,13 @@ async function init() {
     });
     sessionManager.on('solveUpdated', () => { rebuildStatsCache(); refreshUI(); });
     sessionManager.on('solveDeleted', () => {
+        if (window._isBulkAction) return;
         refreshSessionList();
         rebuildStatsCache();
         refreshUI();
     });
     sessionManager.on('solveMoved', () => {
+        if (window._isBulkAction) return;
         refreshSessionList();
         rebuildStatsCache();
         refreshUI();
@@ -2768,6 +2777,7 @@ async function init() {
     initShortcutsOverlay();
     initSessionControls();
     initFilterControls();
+    initSearchMenu();
     initCollapsiblePanels();
     initZenMode();
     initScrambleControls();
@@ -3706,6 +3716,14 @@ function initCustomSelectMenus() {
         ariaLabel: 'Stats filter',
     });
 
+    registerCustomSelectMenu({
+        selectId: 'search-bulk-move-select',
+        menuId: 'search-bulk-move-menu',
+        buttonId: 'btn-search-bulk-move',
+        dropdownId: 'search-bulk-move-dropdown',
+        ariaLabel: 'Move selected solves',
+    });
+
     document.addEventListener('pointerdown', (event) => {
         if (event.target instanceof Element && (event.target.closest('.custom-select-menu') || event.target.closest('.floating-move-session-dropdown'))) return;
         closeCustomSelectMenus();
@@ -4267,7 +4285,10 @@ function initTableSorting() {
         const col = th.dataset.sort;
         if (!col) return;
 
-        if (col === 'comments') {
+        if (col === 'search') {
+            toggleSearchMenu();
+            return;
+        } else if (col === 'comments') {
             commentsOnlyFilterActive = !commentsOnlyFilterActive;
         } else if (currentSortCol === col) {
             if (currentSortDir === 'asc') {
@@ -6058,9 +6079,12 @@ function handleStatClick(type, which, solves, stats) {
 let _lastTableParams = null;
 
 function getSolvesTableHeaderState(columnKey) {
-    const label = columnKey === 'comments'
-        ? (commentsOnlyFilterActive ? '#\u2009*' : '#')
-        : columnKey;
+    let label = columnKey;
+    if (columnKey === 'search') {
+        label = '<span class="icon-mask icon-mask-search" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle;"></span>';
+    } else if (columnKey === 'comments') {
+        label = commentsOnlyFilterActive ? '#\u2009*' : '#';
+    }
 
     let sortIndicator = '';
     if (columnKey === currentSortCol) {
@@ -6127,7 +6151,8 @@ function syncSolvesTableHeader(configuredColumns) {
 
     const renderHeaderCell = (columnKey, extraAttributes = '') => {
         const { label, sortIndicator } = getSolvesTableHeaderState(columnKey);
-        return `<th data-sort="${columnKey}" ${extraAttributes} style="cursor: pointer;">
+        const activeClass = columnKey === 'search' && isSearchActive ? 'search-mode-active' : '';
+        return `<th data-sort="${columnKey}" class="${activeClass}" ${extraAttributes} style="cursor: pointer;">
             <span class="solves-table-header-content">
                 <span class="solves-table-header-label">${label}</span>
                 <span class="solves-table-header-sort" aria-hidden="true">${sortIndicator}</span>
@@ -6136,7 +6161,7 @@ function syncSolvesTableHeader(configuredColumns) {
     };
 
     headerRow.innerHTML = [
-        renderHeaderCell('comments'),
+        renderHeaderCell('search'),
         renderHeaderCell('time'),
         ...configuredColumns.map((column) => renderHeaderCell(column.type, 'data-stat-column="true"')),
     ].join('');
@@ -6168,7 +6193,32 @@ function renderSolvesTable(solves, stats) {
 
     // Build sorted index order
     let indices = [];
-    if (commentsOnlyFilterActive) {
+    if (isSearchActive) {
+        const { text, indexMin, indexMax, timeMin, timeMax } = searchFilters;
+        const textLower = text.toLowerCase();
+
+        indices = solves.map((_, i) => i).filter(i => {
+            const solve = solves[i];
+            const displayIndex = i + 1;
+            
+            if (indexMin !== '' && displayIndex < Number(indexMin)) return false;
+            if (indexMax !== '' && displayIndex > Number(indexMax)) return false;
+
+            const timeSec = solve.penalty === 'DNF' ? Infinity : (solve.time / 1000);
+            if (timeMin !== '' && timeSec < Number(timeMin)) return false;
+            if (timeMax !== '' && timeSec > Number(timeMax)) return false;
+
+            if (textLower) {
+                const tStr = formatSolveTime(solve).toLowerCase();
+                const cStr = (solve.comment || '').toLowerCase();
+                const sStr = (solve.scramble || '').toLowerCase();
+                if (!tStr.includes(textLower) && !cStr.includes(textLower) && !sStr.includes(textLower)) {
+                    return false;
+                }
+            }
+            return true;
+        });
+    } else if (commentsOnlyFilterActive) {
         indices = solves.map((_, i) => i).filter(i => solves[i].comment && solves[i].comment.trim() !== '');
     } else {
         indices = solves.map((_, i) => i);
@@ -6203,6 +6253,8 @@ function renderSolvesTable(solves, stats) {
     // Cache for virtualized rendering
     _tableSortedIndices = indices;
     _tableSolves = solves;
+    
+    updateSearchBulkActionUI();
 
     // ── Virtual scroll: only render visible rows ──
     const totalRows = indices.length;
@@ -6248,8 +6300,13 @@ function renderSolvesTable(solves, stats) {
             let indicator = '';
             if (solve.comment) indicator += '*';
 
-            html += `<tr data-solve-id="${solve.id}" data-solve-index="${i}">
-      <td><span class="solve-index-content">${i + 1}${indicator ? `<span class="solve-index-indicator">${indicator}</span>` : ''}</span></td>
+            const selectedClass = selectedSolveIds.has(solve.id) ? 'selected-solve' : '';
+
+            html += `<tr data-solve-id="${solve.id}" data-solve-index="${i}" class="${selectedClass}">
+      <td class="solve-index-td"><span class="solve-index-content">
+          <input type="checkbox" class="solve-index-checkbox" ${selectedClass ? 'checked' : ''} aria-hidden="true" tabindex="-1">
+          <span class="solve-index-number">${i + 1}${indicator ? `<span class="solve-index-indicator">${indicator}</span>` : ''}</span>
+      </span></td>
       <td class="solve-time-cell ${solve.penalty === 'DNF' ? 'dnf-time' : ''} ${isBestTime ? 'new-best-cell' : ''}">
         ${timeStr}
       </td>
@@ -6286,6 +6343,42 @@ function renderSolvesTable(solves, stats) {
         const tr = td.closest('tr');
         if (!tr || !tr.dataset.solveIndex) return;
         const idx = parseInt(tr.dataset.solveIndex);
+        const solveId = tr.dataset.solveId;
+        const isIndexSelectionClick = td.classList.contains('solve-index-td') || Boolean(e.target.closest('.solve-index-content'));
+        const shouldSelectSolve = isIndexSelectionClick || e.shiftKey;
+
+        if (shouldSelectSolve) {
+            if (!isSearchActive) openSearchMenuForSelection();
+
+            if (e.shiftKey && lastSelectedSolveIndex !== -1) {
+                // Range selection
+                const prevVisualIndex = _tableSortedIndices.indexOf(lastSelectedSolveIndex);
+                const currVisualIndex = _tableSortedIndices.indexOf(idx);
+                if (prevVisualIndex !== -1 && currVisualIndex !== -1) {
+                    const start = Math.min(prevVisualIndex, currVisualIndex);
+                    const end = Math.max(prevVisualIndex, currVisualIndex);
+                    for (let i = start; i <= end; i++) {
+                        const rowIdx = _tableSortedIndices[i];
+                        selectedSolveIds.add(solves[rowIdx].id);
+                    }
+                }
+            } else {
+                if (selectedSolveIds.has(solveId)) {
+                    selectedSolveIds.delete(solveId);
+                } else {
+                    selectedSolveIds.add(solveId);
+                }
+            }
+            lastSelectedSolveIndex = idx;
+            updateSearchBulkActionUI();
+            
+            // Re-render
+            const tbodyInstance = document.getElementById('solves-tbody');
+            const scrollBefore = tbodyInstance.scrollTop;
+            renderVisibleRows();
+            tbodyInstance.scrollTop = scrollBefore;
+            return;
+        }
 
         if (td.classList.contains('solve-time-cell')) {
             openStatDetailAtIndex('time', solves, stats, idx);
@@ -6339,6 +6432,7 @@ function refreshSessionList() {
 
     syncCustomSelectMenu('session-select');
     syncCustomSelectMenu('mobile-session-select');
+    syncSearchBulkMoveOptions();
 }
 
 function onSessionChanged() {
@@ -6432,6 +6526,213 @@ function initFilterControls() {
     settings.on('change', (key) => {
         if (key !== 'statsFilter' && key !== 'customFilterDuration') return;
         syncFilterControlsFromSettings();
+    });
+}
+
+function syncSearchMenuVisibility({ focusInput = false } = {}) {
+    const summaryEl = document.getElementById('stats-summary');
+    const searchMenuEl = document.getElementById('stats-search-menu');
+    if (!summaryEl || !searchMenuEl) return;
+
+    if (isSearchActive) {
+        summaryEl.hidden = true;
+        summaryEl.style.display = 'none';
+        searchMenuEl.hidden = false;
+        searchMenuEl.style.display = 'flex';
+        syncSearchBulkMoveOptions();
+        updateSearchBulkActionUI();
+        if (focusInput) {
+            window.requestAnimationFrame(() => {
+                document.getElementById('stats-search-input')?.focus();
+            });
+        }
+    } else {
+        summaryEl.hidden = false;
+        summaryEl.style.display = '';
+        searchMenuEl.hidden = true;
+        searchMenuEl.style.display = 'none';
+    }
+
+    syncSolvesTableHeader(getConfiguredSolvesTableStatTokens());
+}
+
+function openSearchMenuForSelection() {
+    if (isSearchActive) return;
+    isSearchActive = true;
+    syncSearchMenuVisibility();
+}
+
+function toggleSearchMenu(forceActive) {
+    const nextActive = typeof forceActive === 'boolean' ? forceActive : !isSearchActive;
+    if (isSearchActive === nextActive) {
+        syncSearchMenuVisibility({ focusInput: nextActive });
+        return;
+    }
+
+    isSearchActive = nextActive;
+
+    if (!isSearchActive) {
+        selectedSolveIds.clear();
+        lastSelectedSolveIndex = -1;
+        currentSortCol = null;
+        currentSortDir = null;
+    }
+
+    syncSearchMenuVisibility({ focusInput: isSearchActive });
+    refreshUI();
+}
+
+function updateSearchBulkActionUI() {
+    const countEl = document.getElementById('search-selected-count');
+    const moveBtn = document.getElementById('btn-search-bulk-move');
+    const deleteBtn = document.getElementById('btn-search-bulk-delete');
+    const matchCount = Array.isArray(_tableSortedIndices) ? _tableSortedIndices.length : 0;
+    const activeSessionId = sessionManager.getActiveSessionId();
+    const hasMoveTargets = sessionManager.getSessions().some((session) => session.id !== activeSessionId);
+    
+    if (countEl) {
+        if (isSearchActive) {
+            countEl.textContent = `${selectedSolveIds.size} selected, ${matchCount} matches`;
+        } else {
+            countEl.textContent = `${selectedSolveIds.size} selected`;
+        }
+    }
+    
+    const hasSelection = selectedSolveIds.size > 0;
+    if (moveBtn) moveBtn.disabled = !hasSelection || !hasMoveTargets;
+    if (deleteBtn) deleteBtn.disabled = !hasSelection;
+}
+
+function syncSearchBulkMoveOptions() {
+    const moveSelect = document.getElementById('search-bulk-move-select');
+    if (!(moveSelect instanceof HTMLSelectElement)) return;
+
+    const activeId = sessionManager.getActiveSessionId();
+    const sessions = sessionManager.getSessions().filter((session) => session.id !== activeId);
+    const previousValue = moveSelect.value;
+
+    moveSelect.innerHTML = '<option value="">Move to...</option>';
+    sessions.forEach((session) => {
+        const opt = document.createElement('option');
+        opt.value = session.id;
+        opt.textContent = `${session.name} (${session.solveCount})`;
+        moveSelect.appendChild(opt);
+    });
+
+    moveSelect.value = sessions.some((session) => session.id === previousValue) ? previousValue : '';
+    syncCustomSelectMenu('search-bulk-move-select');
+}
+
+function initSearchMenu() {
+    const searchInput = document.getElementById('stats-search-input');
+    const indexMin = document.getElementById('search-filter-index-min');
+    const indexMax = document.getElementById('search-filter-index-max');
+    const timeMin = document.getElementById('search-filter-time-min');
+    const timeMax = document.getElementById('search-filter-time-max');
+
+    let debounceTimer;
+    const triggerSearchUpdate = () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            searchFilters = {
+                text: searchInput?.value || '',
+                indexMin: indexMin?.value || '',
+                indexMax: indexMax?.value || '',
+                timeMin: timeMin?.value || '',
+                timeMax: timeMax?.value || ''
+            };
+            selectedSolveIds.clear();
+            lastSelectedSolveIndex = -1;
+            refreshUI();
+        }, 150);
+    };
+
+    [searchInput, indexMin, indexMax, timeMin, timeMax].forEach(input => {
+        if (!input) return;
+        input.addEventListener('input', triggerSearchUpdate);
+    });
+
+    const selectAllBtn = document.getElementById('btn-search-select-all');
+    if (selectAllBtn) {
+        selectAllBtn.onclick = () => {
+            const solves = sessionManager.getActiveSession()?.solves || [];
+            if (selectedSolveIds.size === _tableSortedIndices.length) {
+                selectedSolveIds.clear();
+                lastSelectedSolveIndex = -1;
+            } else {
+                _tableSortedIndices.forEach(idx => {
+                    selectedSolveIds.add(solves[idx].id);
+                });
+            }
+            updateSearchBulkActionUI();
+            _lastTableParams = null; // force re-render
+            refreshUI();
+        };
+    }
+
+    const clearFiltersBtn = document.getElementById('btn-search-clear-filters');
+    if (clearFiltersBtn) {
+        clearFiltersBtn.onclick = () => {
+            if (searchInput) searchInput.value = '';
+            if (indexMin) indexMin.value = '';
+            if (indexMax) indexMax.value = '';
+            if (timeMin) timeMin.value = '';
+            if (timeMax) timeMax.value = '';
+            triggerSearchUpdate();
+        };
+    }
+
+    const deleteBtn = document.getElementById('btn-search-bulk-delete');
+    if (deleteBtn) {
+        deleteBtn.onclick = async () => {
+            if (selectedSolveIds.size === 0) return;
+            if (await customConfirm(`Delete ${selectedSolveIds.size} selected solves?`)) {
+                window._isBulkAction = true;
+                for (const solveId of selectedSolveIds) {
+                    sessionManager.deleteSolve(solveId);
+                }
+                window._isBulkAction = false;
+                selectedSolveIds.clear();
+                lastSelectedSolveIndex = -1;
+                updateSearchBulkActionUI();
+                rebuildStatsCache();
+                refreshUI();
+            }
+        };
+    }
+    
+    // Bulk move setup
+    const moveSelect = document.getElementById('search-bulk-move-select');
+    
+    if (moveSelect) {
+        syncSearchBulkMoveOptions();
+
+        moveSelect.onchange = async () => {
+            const targetSessionId = moveSelect.value;
+            if (!targetSessionId || selectedSolveIds.size === 0) return;
+            moveSelect.value = ''; // Reset
+            syncCustomSelectMenu('search-bulk-move-select');
+            
+            window._isBulkAction = true;
+            for (const solveId of selectedSolveIds) {
+                await sessionManager.moveSolve(solveId, targetSessionId);
+            }
+            window._isBulkAction = false;
+            
+            selectedSolveIds.clear();
+            lastSelectedSolveIndex = -1;
+            syncSearchBulkMoveOptions();
+            updateSearchBulkActionUI();
+            rebuildStatsCache();
+            refreshUI();
+        };
+    }
+
+    document.addEventListener('keydown', (event) => {
+        if (event.code !== 'Escape' || !isSearchActive) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        toggleSearchMenu(false);
     });
 }
 

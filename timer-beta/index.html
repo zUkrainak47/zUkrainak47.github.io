@@ -43,6 +43,7 @@
   <link rel="preload" href="resources/settings.svg?v=2026041401" as="image" type="image/svg+xml">
   <link rel="preload" href="resources/distribution.svg?v=2026041401" as="image" type="image/svg+xml">
   <link rel="preload" href="resources/trash.svg?v=2026041401" as="image" type="image/svg+xml">
+  <link rel="preload" href="resources/search.svg?v=2026041401" as="image" type="image/svg+xml">
 
   <!-- Styles -->
   <link rel="stylesheet" href="css/variables.css?v=2026041401">
@@ -235,6 +236,45 @@
             </table>
           </div>
 
+          <!-- Search UI -->
+          <div id="stats-search-menu" hidden>
+              <div class="stats-search-filters">
+              <div class="stats-search-filter-group">
+                <input type="text" id="search-filter-index-min" class="search-filter-input" placeholder="Min idx" inputmode="numeric">
+                <span class="search-filter-sep">-</span>
+                <input type="text" id="search-filter-index-max" class="search-filter-input" placeholder="Max idx" inputmode="numeric">
+              </div>
+              <div class="stats-search-filter-group">
+                <input type="text" id="search-filter-time-min" class="search-filter-input" placeholder="Min time" inputmode="decimal">
+                <span class="search-filter-sep">-</span>
+                <input type="text" id="search-filter-time-max" class="search-filter-input" placeholder="Max time" inputmode="decimal">
+              </div>
+            </div>
+            <div class="stats-search-toolbar stats-search-count-row" style="padding-top: 0; padding-bottom: 2px;">
+              <span id="search-selected-count" style="font-size: 0.85rem; color: var(--text-secondary); width: 100%; text-align: center;">0 selected, 0 matches</span>
+            </div>
+            <div class="stats-search-toolbar stats-search-actions-row">
+              <button id="btn-search-select-all" class="btn-action">Select All</button>
+              <button id="btn-search-clear-filters" class="btn-action">Clear</button>
+              <div class="custom-select-menu" id="search-bulk-move-menu">
+                <button id="btn-search-bulk-move" class="custom-select-btn" title="Move selected" type="button"
+                  aria-haspopup="listbox" aria-expanded="false" aria-controls="search-bulk-move-dropdown" disabled>
+                  <span class="custom-select-label">Move to...</span>
+                  <span class="custom-select-caret" aria-hidden="true">▾</span>
+                </button>
+                <div id="search-bulk-move-dropdown" class="custom-select-dropdown" role="listbox"
+                  aria-label="Move selected solves"></div>
+                <select id="search-bulk-move-select" tabindex="-1" aria-hidden="true">
+                  <option value="">Move to...</option>
+                </select>
+              </div>
+              <button id="btn-search-bulk-delete" class="btn-action btn-danger" title="Delete selected" disabled>
+                <span class="icon-mask icon-mask-trash" aria-hidden="true"></span>
+              </button>
+            </div>
+            <input type="text" id="stats-search-input" placeholder="Search times, scrambles, comments..." autocomplete="off" spellcheck="false">
+          </div>
+
           <!-- Session info -->
           <div id="session-info">
             <span id="solve-count">solve: 0/0</span>
@@ -247,7 +287,7 @@
           <table id="solves-table">
             <thead>
               <tr>
-                <th data-sort="comments" style="cursor: pointer; white-space: nowrap;">#</th>
+                <th data-sort="search" style="cursor: pointer; white-space: nowrap;"><span class="icon-mask icon-mask-search" aria-hidden="true" style="margin: 0 auto;"></span></th>
                 <th data-sort="time" style="cursor: pointer;">time</th>
                 <th data-sort="ao5" style="cursor: pointer;">ao5</th>
                 <th data-sort="ao12" style="cursor: pointer;">ao12</th>

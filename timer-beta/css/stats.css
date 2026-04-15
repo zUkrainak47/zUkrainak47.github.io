@@ -217,6 +217,14 @@
     border-top-left-radius: var(--radius-md);
 }
 
+#solves-table th.search-mode-active {
+    color: var(--accent);
+}
+
+#solves-table th.search-mode-active .solves-table-header-sort {
+    color: var(--accent);
+}
+
 #solves-table th[data-sort="time"] {
     width: var(--solves-table-time-width);
 }
@@ -628,6 +636,152 @@ tr:hover .solve-actions {
     border-color: var(--danger-border);
 }
 
+/* Search Menu */
+#stats-search-menu {
+    display: none;
+    flex-direction: column;
+    gap: var(--space-sm);
+    margin: var(--space-xs) var(--space-sm);
+    padding: var(--space-sm);
+    background: var(--surface);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--text-muted);
+}
+
+.stats-search-filters {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.stats-search-filter-group {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.search-filter-input {
+    flex: 1 1 0%;
+    min-width: 40px;
+    font-size: var(--text-sm);
+    padding: 6px 10px;
+}
+
+.search-filter-sep {
+    color: var(--text-tertiary);
+    font-weight: bold;
+}
+
+.stats-search-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 2px;
+}
+
+.stats-search-actions-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.8fr) minmax(0, 1.65fr) auto;
+    gap: var(--space-xs);
+    align-items: center;
+    justify-content: stretch;
+}
+
+.stats-search-actions-row > .btn-action,
+.stats-search-actions-row > .custom-select-menu {
+    min-width: 0;
+}
+
+.stats-search-actions-row > .btn-action:not(#btn-search-bulk-delete),
+.stats-search-actions-row > .custom-select-menu {
+    width: 100%;
+}
+
+#search-bulk-move-menu {
+    position: relative;
+    width: 100%;
+}
+
+#search-bulk-move-menu .custom-select-btn {
+    width: 100%;
+    min-width: 0;
+    height: 28px;
+    padding: 0 8px;
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    color: var(--text-secondary);
+    border: 1px solid var(--text-muted);
+    box-shadow: none;
+}
+
+#search-bulk-move-menu .custom-select-btn:hover,
+#search-bulk-move-menu.open .custom-select-btn {
+    background: var(--surface-hover);
+    color: var(--text-primary);
+    border-color: var(--text-tertiary);
+}
+
+#search-bulk-move-menu .custom-select-btn:disabled,
+#search-bulk-move-menu .custom-select-btn:disabled:hover {
+    background: var(--surface-hover);
+    color: var(--text-muted);
+    border-color: var(--surface-border);
+}
+
+#search-bulk-move-menu .custom-select-label {
+    font-weight: 500;
+}
+
+#btn-search-bulk-delete {
+    width: 28px;
+    min-width: 28px;
+    padding: 0;
+}
+
+#search-selected-count {
+    font-size: var(--text-xs);
+    color: var(--text-secondary);
+    font-weight: bold;
+}
+
+#stats-search-input {
+    width: 100%;
+    font-size: var(--text-sm);
+    padding: 8px 12px;
+}
+
+/* Checkbox overlay within index cell */
+.solve-index-content {
+    position: relative;
+    display: inline-block;
+    min-width: 28px;
+}
+.solve-index-checkbox {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    transform: translateY(-50%);
+    opacity: 0;
+    pointer-events: none;
+    margin: 0;
+    accent-color: var(--accent);
+}
+#solves-table tr.selected-solve .solve-index-checkbox,
+#solves-table tr:hover .solve-index-checkbox {
+    opacity: 1;
+    pointer-events: auto;
+}
+#solves-table tr.selected-solve .solve-index-number,
+#solves-table tr:hover .solve-index-number {
+    opacity: 0;
+}
+
+/* Selected solves */
+#solves-table tr.selected-solve td {
+    background: var(--surface-selected, rgba(65, 132, 228, 0.2)) !important;
+}
+
 @media (max-width: 1100px), (pointer: coarse) {
     #stats-summary {
         margin: var(--space-md);
@@ -734,7 +888,8 @@ tr:hover .solve-actions {
         padding: 0;
     }
 
-    body[data-mobile-panel="stats"] #stats-summary {
+    body[data-mobile-panel="stats"] #stats-summary,
+    body[data-mobile-panel="stats"] #stats-search-menu {
         margin: var(--space-xs) var(--space-sm) var(--space-xs);
         padding: 12px;
         border-radius: 12px;
@@ -816,8 +971,10 @@ tr:hover .solve-actions {
         font-size: 0.78rem;
     }
 
-    body[data-mobile-panel="stats"] #stats-summary {
+    body[data-mobile-panel="stats"] #stats-summary,
+    body[data-mobile-panel="stats"] #stats-search-menu {
         padding: 10px;
+        border-radius: 12px;
     }
 
     body[data-mobile-panel="stats"] #stats-summary table {
