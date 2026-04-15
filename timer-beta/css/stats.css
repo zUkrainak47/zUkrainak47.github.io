@@ -272,19 +272,21 @@
     vertical-align: baseline;
 }
 
-#solves-table tr:hover td {
-    background: var(--surface-hover);
-    border-bottom-color: transparent;
-}
+@media (hover: hover) and (pointer: fine) {
+    #solves-table tr:hover td {
+        background: var(--surface-hover);
+        border-bottom-color: transparent;
+    }
 
-#solves-table tr:hover td:first-child {
-    border-top-left-radius: var(--radius-md);
-    border-bottom-left-radius: var(--radius-md);
-}
+    #solves-table tr:hover td:first-child {
+        border-top-left-radius: var(--radius-md);
+        border-bottom-left-radius: var(--radius-md);
+    }
 
-#solves-table tr:hover td:last-child {
-    border-top-right-radius: var(--radius-md);
-    border-bottom-right-radius: var(--radius-md);
+    #solves-table tr:hover td:last-child {
+        border-top-right-radius: var(--radius-md);
+        border-bottom-right-radius: var(--radius-md);
+    }
 }
 
 .solve-time-cell {
@@ -304,8 +306,10 @@
     box-shadow: -10px 0 10px rgba(38, 44, 54, 0.8);
 }
 
-tr:hover .solve-actions {
-    display: inline-flex;
+@media (hover: hover) and (pointer: fine) {
+    tr:hover .solve-actions {
+        display: inline-flex;
+    }
 }
 
 .solve-actions button {
@@ -772,14 +776,23 @@ tr:hover .solve-actions {
     margin: 0;
     accent-color: var(--accent);
 }
-#solves-table tr.selected-solve .solve-index-checkbox,
-#solves-table tr:hover .solve-index-checkbox {
+#solves-table tr.selected-solve .solve-index-checkbox {
     opacity: 1;
     pointer-events: auto;
 }
-#solves-table tr.selected-solve .solve-index-number,
-#solves-table tr:hover .solve-index-number {
+#solves-table tr.selected-solve .solve-index-number {
     opacity: 0;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    #solves-table tr:hover .solve-index-checkbox {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    #solves-table tr:hover .solve-index-number {
+        opacity: 0;
+    }
 }
 
 /* Selected solves */
