@@ -205,28 +205,27 @@ export async function updateSolve(solve) {
 
 export async function updateSolves(solves, { batchSize = 2000, onProgress = null } = {}) {
     if (!Array.isArray(solves) || solves.length === 0) return;
+    void batchSize;
+
     const db = await openDB();
-    const size = Math.max(1, Math.floor(batchSize));
     let completed = 0;
+    const tx = db.transaction('solves', 'readwrite');
+    const store = tx.objectStore('solves');
 
-    for (let index = 0; index < solves.length; index += size) {
-        const tx = db.transaction('solves', 'readwrite');
-        const store = tx.objectStore('solves');
-        const batch = solves.slice(index, index + size);
-
-        for (const solve of batch) {
-            store.put(solve);
-        }
-
-        await _txComplete(tx);
-        completed += batch.length;
-        if (typeof onProgress === 'function') {
-            onProgress({
-                completed,
-                total: solves.length,
-            });
-        }
+    for (const solve of solves) {
+        const request = store.put(solve);
+        request.onsuccess = () => {
+            completed += 1;
+            if (typeof onProgress === 'function') {
+                onProgress({
+                    completed,
+                    total: solves.length,
+                });
+            }
+        };
     }
+
+    return _txComplete(tx);
 }
 
 export async function deleteSolve(solveId) {
@@ -238,28 +237,27 @@ export async function deleteSolve(solveId) {
 
 export async function deleteSolves(solveIds, { batchSize = 2000, onProgress = null } = {}) {
     if (!Array.isArray(solveIds) || solveIds.length === 0) return;
+    void batchSize;
+
     const db = await openDB();
-    const size = Math.max(1, Math.floor(batchSize));
     let completed = 0;
+    const tx = db.transaction('solves', 'readwrite');
+    const store = tx.objectStore('solves');
 
-    for (let index = 0; index < solveIds.length; index += size) {
-        const tx = db.transaction('solves', 'readwrite');
-        const store = tx.objectStore('solves');
-        const batch = solveIds.slice(index, index + size);
-
-        for (const solveId of batch) {
-            store.delete(solveId);
-        }
-
-        await _txComplete(tx);
-        completed += batch.length;
-        if (typeof onProgress === 'function') {
-            onProgress({
-                completed,
-                total: solveIds.length,
-            });
-        }
+    for (const solveId of solveIds) {
+        const request = store.delete(solveId);
+        request.onsuccess = () => {
+            completed += 1;
+            if (typeof onProgress === 'function') {
+                onProgress({
+                    completed,
+                    total: solveIds.length,
+                });
+            }
+        };
     }
+
+    return _txComplete(tx);
 }
 
 // ──── Bulk Operations (import/export) ────
