@@ -472,7 +472,7 @@ tr:hover .solve-actions {
     width: max-content;
     display: block;
     min-width: 100%;
-    max-width: min(340px, calc(100vw - 24px));
+    max-width: min(240px, 70vw);
     max-height: var(--custom-select-dropdown-max-height-resolved);
     overflow: hidden;
     padding: 6px;
@@ -630,7 +630,7 @@ tr:hover .solve-actions {
     transform: scale(0.95);
 }
 
-.btn-icon-small.btn-danger:hover {
+.btn-icon-small.btn-danger:not(:disabled):hover {
     background: var(--danger-bg-soft);
     color: var(--danger);
     border-color: var(--danger-border);
@@ -727,6 +727,11 @@ tr:hover .solve-actions {
     background: var(--surface-hover);
     color: var(--text-muted);
     border-color: var(--surface-border);
+}
+
+#search-bulk-move-menu .custom-select-dropdown {
+    left: auto;
+    right: 0;
 }
 
 #search-bulk-move-menu .custom-select-label {

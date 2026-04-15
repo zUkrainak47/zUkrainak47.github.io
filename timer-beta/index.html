@@ -240,9 +240,9 @@
           <div id="stats-search-menu" hidden>
               <div class="stats-search-filters">
               <div class="stats-search-filter-group">
-                <input type="text" id="search-filter-index-min" class="search-filter-input" placeholder="Min idx" inputmode="numeric">
+                <input type="text" id="search-filter-index-min" class="search-filter-input" placeholder="Min index" inputmode="numeric">
                 <span class="search-filter-sep">-</span>
-                <input type="text" id="search-filter-index-max" class="search-filter-input" placeholder="Max idx" inputmode="numeric">
+                <input type="text" id="search-filter-index-max" class="search-filter-input" placeholder="Max index" inputmode="numeric">
               </div>
               <div class="stats-search-filter-group">
                 <input type="text" id="search-filter-time-min" class="search-filter-input" placeholder="Min time" inputmode="decimal">
@@ -265,7 +265,7 @@
                 <div id="search-bulk-move-dropdown" class="custom-select-dropdown" role="listbox"
                   aria-label="Move selected solves"></div>
                 <select id="search-bulk-move-select" tabindex="-1" aria-hidden="true">
-                  <option value="">Move to...</option>
+                  <option value="" hidden disabled>Move to...</option>
                 </select>
               </div>
               <button id="btn-search-bulk-delete" class="btn-action btn-danger" title="Delete selected" disabled>

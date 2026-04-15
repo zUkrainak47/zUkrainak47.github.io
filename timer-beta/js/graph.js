@@ -305,6 +305,11 @@ function getActiveFocusedIndex() {
     return _hoveredIndex >= 0 ? _hoveredIndex : _touchFocusedIndex;
 }
 
+function getSolveDisplayIndex(index) {
+    const solve = _solves[index];
+    return Number.isInteger(solve?.graphDisplayIndex) ? solve.graphDisplayIndex : (index + 1);
+}
+
 function getCanvasPointerPosition(canvas, event) {
     const rect = canvas.getBoundingClientRect();
     return {
@@ -439,7 +444,10 @@ export function initGraph(canvas) {
         const { rect, x } = getCanvasPointerPosition(canvas, e);
         const idx = getSolveIndexAtCanvasX(rect, x);
         if (idx >= 0) {
-            graphEvents.emit('nodeClick', idx);
+            graphEvents.emit('nodeClick', {
+                idx,
+                solveId: _solves[idx]?.id,
+            });
         }
     });
 
@@ -461,6 +469,7 @@ export function initGraph(canvas) {
             window.setTimeout(() => {
                 graphEvents.emit('nodeClick', {
                     idx: focusedIndex,
+                    solveId: _solves[focusedIndex]?.id,
                     source: 'touch',
                     ...touchPoint,
                 });
@@ -1114,7 +1123,7 @@ function render() {
 
         ctx.font = '11px JetBrains Mono, monospace';
         const solveLabelPrefix = hasComment ? '*' : '#';
-        const lines = [`${solveLabelPrefix}${activeIndex + 1}: ${text}`];
+        const lines = [`${solveLabelPrefix}${getSolveDisplayIndex(activeIndex)}: ${text}`];
         lineDefinitions.forEach((line) => {
             const value = getLineStatValue(line.statType, activeIndex, allTimes);
             if (value != null) lines.push(`${line.statType}: ${formatTime(value)}`);

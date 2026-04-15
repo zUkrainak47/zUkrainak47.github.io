@@ -184,7 +184,7 @@
     border-color: var(--surface-border);
 }
 
-.btn-action.btn-danger:hover {
+.btn-action.btn-danger:not(:disabled):hover {
     background: var(--danger-bg-soft);
     color: var(--danger);
     border-color: var(--danger-border);

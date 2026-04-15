@@ -7,7 +7,7 @@ import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, 
 import { initModal, showSolveDetail, showAverageDetail, closeModal, closeMoveSessionMenus, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=2026041401';
 import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=2026041401';
 import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=2026041401';
-import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=2026041401';
+import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionData, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=2026041401';
 import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=2026041401';
 import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=2026041401';
 
@@ -2824,9 +2824,15 @@ async function init() {
 
     graphEvents.on('nodeClick', (payload) => {
         const interaction = typeof payload === 'number' ? { idx: payload } : payload;
-        const idx = interaction?.idx;
         const solves = sessionManager.getFilteredSolves();
         const stats = statsCache.getStats();
+        let idx = interaction?.idx;
+        if (interaction?.solveId) {
+            const resolvedIndex = solves.findIndex((solve) => solve.id === interaction.solveId);
+            if (resolvedIndex >= 0) {
+                idx = resolvedIndex;
+            }
+        }
         if (idx >= 0 && idx < solves.length) {
             if (interaction?.source === 'touch') {
                 armModalGhostClickGuard({
@@ -2916,7 +2922,7 @@ function initGraphDistributionButton() {
     if (!button) return;
 
     button.addEventListener('click', () => {
-        showTimeDistributionModal(sessionManager.getFilteredSolves(), {
+        showTimeDistributionModal(getSearchScopedSolves(), {
             sessionName: sessionManager.getActiveSession()?.name || 'Session',
         });
     });
@@ -3629,6 +3635,7 @@ function registerCustomSelectMenu({ selectId, menuId, buttonId, dropdownId, aria
     const sync = () => {
         const options = Array.from(selectEl.options);
         const selectedOption = options.find((option) => option.value === selectEl.value) || options[0] || null;
+        const interactiveOptions = options.filter((option) => !option.hidden && !option.disabled);
         const scrollEl = ensureDropdownScrollContainer(dropdownEl, 'custom-select-dropdown-scroll');
 
         if (!(scrollEl instanceof HTMLElement)) return;
@@ -3636,15 +3643,17 @@ function registerCustomSelectMenu({ selectId, menuId, buttonId, dropdownId, aria
         labelEl.textContent = selectedOption?.textContent || '';
         buttonEl.title = selectedOption?.textContent || '';
         buttonEl.setAttribute('aria-label', selectedOption ? `${ariaLabel}: ${selectedOption.textContent}` : ariaLabel);
-        buttonEl.disabled = options.length === 0;
+        buttonEl.disabled = selectEl.disabled || interactiveOptions.length === 0;
 
         const fragment = document.createDocumentFragment();
         options.forEach((option) => {
+            if (option.hidden) return;
             const optionButton = document.createElement('button');
             optionButton.type = 'button';
             optionButton.className = 'custom-select-option';
             optionButton.dataset.value = option.value;
             optionButton.setAttribute('role', 'option');
+            optionButton.disabled = option.disabled;
 
             const isActive = option.value === selectEl.value;
             optionButton.classList.toggle('active', isActive);
@@ -5128,7 +5137,7 @@ function initKeyboardShortcuts() {
                     break;
                 }
                 if (isSolveModalActive) return;
-                showTimeDistributionModal(sessionManager.getFilteredSolves(), {
+                showTimeDistributionModal(getSearchScopedSolves(), {
                     sessionName: sessionManager.getActiveSession()?.name || 'Session',
                 });
                 break;
@@ -5523,6 +5532,50 @@ function syncStatsCacheWithFilteredSolves(solves = sessionManager.getFilteredSol
     return solves;
 }
 
+function solveMatchesSearchFilters(solve, index, filters = searchFilters) {
+    const { text, indexMin, indexMax, timeMin, timeMax } = filters;
+    const displayIndex = index + 1;
+
+    if (indexMin !== '' && displayIndex < Number(indexMin)) return false;
+    if (indexMax !== '' && displayIndex > Number(indexMax)) return false;
+
+    const timeSec = solve.penalty === 'DNF' ? Infinity : (solve.time / 1000);
+    if (timeMin !== '' && timeSec < Number(timeMin)) return false;
+    if (timeMax !== '' && timeSec > Number(timeMax)) return false;
+
+    const textLower = text.toLowerCase();
+    if (!textLower) return true;
+
+    const timeText = formatSolveTime(solve).toLowerCase();
+    const commentText = (solve.comment || '').toLowerCase();
+    const scrambleText = (solve.scramble || '').toLowerCase();
+    return timeText.includes(textLower)
+        || commentText.includes(textLower)
+        || scrambleText.includes(textLower);
+}
+
+function getSearchMatchedSolveIndices(solves, filters = searchFilters) {
+    if (!isSearchActive) return solves.map((_, index) => index);
+    return solves
+        .map((_, index) => index)
+        .filter((index) => solveMatchesSearchFilters(solves[index], index, filters));
+}
+
+function getSearchScopedSolves(solves = sessionManager.getFilteredSolves()) {
+    if (!isSearchActive) return solves;
+    const matchedIndices = getSearchMatchedSolveIndices(solves);
+    return matchedIndices.map((index) => ({
+        ...solves[index],
+        graphDisplayIndex: index + 1,
+    }));
+}
+
+function buildStatsCacheForSolves(solves) {
+    const cache = new StatsCache();
+    cache.rebuild(solves);
+    return cache;
+}
+
 /**
  * Rebuild the stats cache from scratch for the current filtered solves.
  * Called on session switch, filter change, import, delete, penalty toggle.
@@ -5534,10 +5587,19 @@ function rebuildStatsCache() {
 function refreshUI() {
     const solves = syncStatsCacheWithFilteredSolves();
     const stats = statsCache.getStats();
+    const graphAndDistributionSolves = getSearchScopedSolves(solves);
+    const graphStatsCache = graphAndDistributionSolves === solves
+        ? statsCache
+        : buildStatsCacheForSolves(graphAndDistributionSolves);
 
     renderSummaryStats(stats, solves);
     renderSolvesTable(solves, stats);
-    updateGraphData(solves, statsCache);
+    updateGraphData(graphAndDistributionSolves, graphStatsCache);
+    if (isTimeDistributionModalOpen()) {
+        refreshTimeDistributionData(graphAndDistributionSolves, {
+            sessionName: sessionManager.getActiveSession()?.name || 'Session',
+        });
+    }
     updateTimerInfo(stats, solves);
     refreshSessionList();
 
@@ -6194,30 +6256,7 @@ function renderSolvesTable(solves, stats) {
     // Build sorted index order
     let indices = [];
     if (isSearchActive) {
-        const { text, indexMin, indexMax, timeMin, timeMax } = searchFilters;
-        const textLower = text.toLowerCase();
-
-        indices = solves.map((_, i) => i).filter(i => {
-            const solve = solves[i];
-            const displayIndex = i + 1;
-            
-            if (indexMin !== '' && displayIndex < Number(indexMin)) return false;
-            if (indexMax !== '' && displayIndex > Number(indexMax)) return false;
-
-            const timeSec = solve.penalty === 'DNF' ? Infinity : (solve.time / 1000);
-            if (timeMin !== '' && timeSec < Number(timeMin)) return false;
-            if (timeMax !== '' && timeSec > Number(timeMax)) return false;
-
-            if (textLower) {
-                const tStr = formatSolveTime(solve).toLowerCase();
-                const cStr = (solve.comment || '').toLowerCase();
-                const sStr = (solve.scramble || '').toLowerCase();
-                if (!tStr.includes(textLower) && !cStr.includes(textLower) && !sStr.includes(textLower)) {
-                    return false;
-                }
-            }
-            return true;
-        });
+        indices = getSearchMatchedSolveIndices(solves);
     } else if (commentsOnlyFilterActive) {
         indices = solves.map((_, i) => i).filter(i => solves[i].comment && solves[i].comment.trim() !== '');
     } else {
@@ -6532,11 +6571,14 @@ function initFilterControls() {
 function syncSearchMenuVisibility({ focusInput = false } = {}) {
     const summaryEl = document.getElementById('stats-summary');
     const searchMenuEl = document.getElementById('stats-search-menu');
-    if (!summaryEl || !searchMenuEl) return;
+    const sessionInfoEl = document.getElementById('session-info');
+    if (!summaryEl || !searchMenuEl || !sessionInfoEl) return;
 
     if (isSearchActive) {
         summaryEl.hidden = true;
         summaryEl.style.display = 'none';
+        sessionInfoEl.hidden = true;
+        sessionInfoEl.style.display = 'none';
         searchMenuEl.hidden = false;
         searchMenuEl.style.display = 'flex';
         syncSearchBulkMoveOptions();
@@ -6549,6 +6591,8 @@ function syncSearchMenuVisibility({ focusInput = false } = {}) {
     } else {
         summaryEl.hidden = false;
         summaryEl.style.display = '';
+        sessionInfoEl.hidden = false;
+        sessionInfoEl.style.display = '';
         searchMenuEl.hidden = true;
         searchMenuEl.style.display = 'none';
     }
@@ -6584,6 +6628,7 @@ function toggleSearchMenu(forceActive) {
 
 function updateSearchBulkActionUI() {
     const countEl = document.getElementById('search-selected-count');
+    const moveSelect = document.getElementById('search-bulk-move-select');
     const moveBtn = document.getElementById('btn-search-bulk-move');
     const deleteBtn = document.getElementById('btn-search-bulk-delete');
     const matchCount = Array.isArray(_tableSortedIndices) ? _tableSortedIndices.length : 0;
@@ -6599,6 +6644,10 @@ function updateSearchBulkActionUI() {
     }
     
     const hasSelection = selectedSolveIds.size > 0;
+    if (moveSelect instanceof HTMLSelectElement) {
+        moveSelect.disabled = !hasSelection || !hasMoveTargets;
+        syncCustomSelectMenu('search-bulk-move-select');
+    }
     if (moveBtn) moveBtn.disabled = !hasSelection || !hasMoveTargets;
     if (deleteBtn) deleteBtn.disabled = !hasSelection;
 }
@@ -6611,7 +6660,7 @@ function syncSearchBulkMoveOptions() {
     const sessions = sessionManager.getSessions().filter((session) => session.id !== activeId);
     const previousValue = moveSelect.value;
 
-    moveSelect.innerHTML = '<option value="">Move to...</option>';
+    moveSelect.innerHTML = '<option value="" hidden disabled>Move to...</option>';
     sessions.forEach((session) => {
         const opt = document.createElement('option');
         opt.value = session.id;
@@ -6641,8 +6690,6 @@ function initSearchMenu() {
                 timeMin: timeMin?.value || '',
                 timeMax: timeMax?.value || ''
             };
-            selectedSolveIds.clear();
-            lastSelectedSolveIndex = -1;
             refreshUI();
         }, 150);
     };
@@ -6655,10 +6702,16 @@ function initSearchMenu() {
     const selectAllBtn = document.getElementById('btn-search-select-all');
     if (selectAllBtn) {
         selectAllBtn.onclick = () => {
-            const solves = sessionManager.getActiveSession()?.solves || [];
-            if (selectedSolveIds.size === _tableSortedIndices.length) {
-                selectedSolveIds.clear();
-                lastSelectedSolveIndex = -1;
+            const solves = sessionManager.getFilteredSolves();
+            const allMatchesSelected = _tableSortedIndices.length > 0
+                && _tableSortedIndices.every((idx) => selectedSolveIds.has(solves[idx].id));
+            if (allMatchesSelected) {
+                _tableSortedIndices.forEach((idx) => {
+                    selectedSolveIds.delete(solves[idx].id);
+                });
+                if (selectedSolveIds.size === 0) {
+                    lastSelectedSolveIndex = -1;
+                }
             } else {
                 _tableSortedIndices.forEach(idx => {
                     selectedSolveIds.add(solves[idx].id);
@@ -6678,6 +6731,8 @@ function initSearchMenu() {
             if (indexMax) indexMax.value = '';
             if (timeMin) timeMin.value = '';
             if (timeMax) timeMax.value = '';
+            selectedSolveIds.clear();
+            lastSelectedSolveIndex = -1;
             triggerSearchUpdate();
         };
     }
