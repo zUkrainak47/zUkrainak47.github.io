@@ -9999,6 +9999,7 @@ function initSettingsPanel() {
             googleDriveBusy = true;
             syncGoogleDriveButtons();
             setGoogleDriveStatus('Checking Google Drive backup...');
+            let didBeginImport = false;
 
             try {
                 if (!(await ensureGoogleDriveSession())) return;
@@ -10019,6 +10020,7 @@ function initSettingsPanel() {
 
                 if (await customConfirm('This will replace all your current data with the Google Drive backup. Continue?')) {
                     await beginImportProgress('backup');
+                    didBeginImport = true;
                     await importAll(data, {
                         onProgress: applyImportProgress,
                     });
@@ -10027,7 +10029,9 @@ function initSettingsPanel() {
                     return;
                 }
             } catch (error) {
-                failImportProgress('backup');
+                if (didBeginImport) {
+                    failImportProgress('backup');
+                }
                 reportGoogleDriveError(error?.message || 'Cloud import failed.');
             } finally {
                 googleDriveBusy = false;
