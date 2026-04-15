@@ -19,7 +19,7 @@ let cubingWarmupHideTimeout = null;
 
 // Search and selection state
 let isSearchActive = false;
-let searchFilters = { text: '', indexMin: '', indexMax: '', dateMin: '', dateMax: '', timeMin: '', timeMax: '' };
+let searchFilters = { text: '', indexMin: '', indexMax: '', timeMin: '', timeMax: '' };
 let selectedSolveIds = new Set();
 let lastSelectedSolveIndex = -1;
 let lastSelectedSolveId = null;
