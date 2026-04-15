@@ -203,9 +203,8 @@ export async function updateSolve(solve) {
     return _txComplete(tx);
 }
 
-export async function updateSolves(solves, { batchSize = 2000, onProgress = null } = {}) {
+export async function updateSolves(solves, { onProgress = null } = {}) {
     if (!Array.isArray(solves) || solves.length === 0) return;
-    void batchSize;
 
     const db = await openDB();
     let completed = 0;
@@ -235,9 +234,8 @@ export async function deleteSolve(solveId) {
     return _txComplete(tx);
 }
 
-export async function deleteSolves(solveIds, { batchSize = 2000, onProgress = null } = {}) {
+export async function deleteSolves(solveIds, { onProgress = null } = {}) {
     if (!Array.isArray(solveIds) || solveIds.length === 0) return;
-    void batchSize;
 
     const db = await openDB();
     let completed = 0;
@@ -281,9 +279,7 @@ export async function getAllData() {
  * @param {object[]} sessions
  * @param {object[]} solves
  */
-export async function replaceAllData(sessions, solves, { batchSize = 2000, onProgress = null } = {}) {
-    void batchSize;
-
+export async function replaceAllData(sessions, solves, { onProgress = null } = {}) {
     const db = await openDB();
     const total = 1 + sessions.length + solves.length;
     let completed = 0;
