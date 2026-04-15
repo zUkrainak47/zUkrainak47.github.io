@@ -25,6 +25,19 @@ let selectedSolveIds = new Set();
 let lastSelectedSolveIndex = -1;
 let selectionAnchorSolveIndex = -1;
 let activeRangeSelectedSolveIds = new Set();
+let bulkActionProgressState = {
+    visible: false,
+    active: false,
+    status: 'idle',
+    action: null,
+    phase: null,
+    percent: 0,
+    selectedCount: 0,
+    completed: 0,
+    total: 0,
+    targetSessionName: '',
+};
+let bulkActionProgressHideTimeout = null;
 
 const statsCache = new StatsCache();
 let _skipSolveAddedRefresh = false; // set true when commitSolve manages the refresh itself
@@ -271,6 +284,124 @@ const SHIFT_STAT_SHORTCUT_DISPLAY = {
     Equal: '=',
     Backquote: '`',
 };
+
+function waitForNextPaint() {
+    return new Promise((resolve) => {
+        if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+            window.requestAnimationFrame(() => resolve());
+            return;
+        }
+
+        setTimeout(resolve, 0);
+    });
+}
+
+function formatBulkActionProgressText(snapshot = bulkActionProgressState) {
+    const actionVerb = snapshot.action === 'move' ? 'Moving' : 'Deleting';
+    const count = Number.isFinite(snapshot.selectedCount) ? snapshot.selectedCount : 0;
+    const countLabel = `${count.toLocaleString()} solve${count === 1 ? '' : 's'}`;
+
+    if (snapshot.status === 'complete') {
+        return snapshot.action === 'move'
+            ? `Moved ${countLabel}`
+            : `Deleted ${countLabel}`;
+    }
+
+    if (snapshot.status === 'error') {
+        return snapshot.action === 'move'
+            ? `Couldn't move ${countLabel}`
+            : `Couldn't delete ${countLabel}`;
+    }
+
+    switch (snapshot.phase) {
+        case 'scanning':
+            return `${actionVerb} ${countLabel}: scanning session`;
+        case 'merging':
+            return `${actionVerb} ${countLabel}: updating ${snapshot.targetSessionName || 'target session'}`;
+        case 'writing':
+            return snapshot.action === 'move'
+                ? `${actionVerb} ${countLabel}: writing ${snapshot.completed.toLocaleString()}/${snapshot.total.toLocaleString()}`
+                : `${actionVerb} ${countLabel}: removing ${snapshot.completed.toLocaleString()}/${snapshot.total.toLocaleString()}`;
+        case 'starting':
+        default:
+            return `${actionVerb} ${countLabel}...`;
+    }
+}
+
+function updateBulkActionProgressUI() {
+    const container = document.getElementById('search-bulk-progress');
+    const textEl = document.getElementById('search-bulk-progress-text');
+    const percentEl = document.getElementById('search-bulk-progress-percent');
+    const trackEl = document.getElementById('search-bulk-progress-track');
+    const fillEl = document.getElementById('search-bulk-progress-fill');
+    if (!container || !textEl || !percentEl || !trackEl || !fillEl) return;
+
+    if (!bulkActionProgressState.visible) {
+        container.hidden = true;
+        container.classList.remove('is-complete', 'is-error');
+        trackEl.setAttribute('aria-valuenow', '0');
+        fillEl.style.width = '0%';
+        return;
+    }
+
+    const percent = Math.max(0, Math.min(100, Number(bulkActionProgressState.percent) || 0));
+    container.hidden = false;
+    container.classList.toggle('is-complete', bulkActionProgressState.status === 'complete');
+    container.classList.toggle('is-error', bulkActionProgressState.status === 'error');
+    textEl.textContent = formatBulkActionProgressText();
+    percentEl.textContent = `${Math.round(percent)}%`;
+    trackEl.setAttribute('aria-valuenow', String(Math.round(percent)));
+    fillEl.style.width = `${percent}%`;
+}
+
+function setBulkActionProgressState(nextState) {
+    if (bulkActionProgressHideTimeout) {
+        clearTimeout(bulkActionProgressHideTimeout);
+        bulkActionProgressHideTimeout = null;
+    }
+
+    bulkActionProgressState = {
+        ...bulkActionProgressState,
+        ...nextState,
+    };
+
+    updateBulkActionProgressUI();
+    updateSearchBulkActionUI();
+}
+
+function hideBulkActionProgress({ delayMs = 0 } = {}) {
+    const applyHide = () => {
+        bulkActionProgressState = {
+            visible: false,
+            active: false,
+            status: 'idle',
+            action: null,
+            phase: null,
+            percent: 0,
+            selectedCount: 0,
+            completed: 0,
+            total: 0,
+            targetSessionName: '',
+        };
+        updateBulkActionProgressUI();
+        updateSearchBulkActionUI();
+    };
+
+    if (bulkActionProgressHideTimeout) {
+        clearTimeout(bulkActionProgressHideTimeout);
+        bulkActionProgressHideTimeout = null;
+    }
+
+    if (delayMs > 0) {
+        bulkActionProgressHideTimeout = setTimeout(() => {
+            bulkActionProgressHideTimeout = null;
+            applyHide();
+        }, delayMs);
+        return;
+    }
+
+    applyHide();
+}
 const buttonShortcutTooltipBindings = [
     { selector: '#btn-settings', binding: ['/'], placement: 'right' },
     { selector: '#scramble-text', binding: ['C'] },
@@ -6600,6 +6731,7 @@ function syncSearchMenuVisibility({ focusInput = false } = {}) {
         searchMenuEl.hidden = false;
         searchMenuEl.style.display = 'flex';
         syncSearchBulkMoveOptions();
+        updateBulkActionProgressUI();
         updateSearchBulkActionUI();
         if (focusInput) {
             window.requestAnimationFrame(() => {
@@ -6626,6 +6758,10 @@ function openSearchMenuForSelection() {
 
 function toggleSearchMenu(forceActive) {
     const nextActive = typeof forceActive === 'boolean' ? forceActive : !isSearchActive;
+    if (bulkActionProgressState.active && !nextActive) {
+        syncSearchMenuVisibility({ focusInput: isSearchActive });
+        return;
+    }
     if (isSearchActive === nextActive) {
         syncSearchMenuVisibility({ focusInput: nextActive });
         return;
@@ -6651,9 +6787,12 @@ function updateSearchBulkActionUI() {
     const moveSelect = document.getElementById('search-bulk-move-select');
     const moveBtn = document.getElementById('btn-search-bulk-move');
     const deleteBtn = document.getElementById('btn-search-bulk-delete');
+    const selectAllBtn = document.getElementById('btn-search-select-all');
+    const clearFiltersBtn = document.getElementById('btn-search-clear-filters');
     const matchCount = Array.isArray(_tableSortedIndices) ? _tableSortedIndices.length : 0;
     const activeSessionId = sessionManager.getActiveSessionId();
     const hasMoveTargets = sessionManager.getSessions().some((session) => session.id !== activeSessionId);
+    const bulkActionActive = bulkActionProgressState.active;
     
     if (countEl) {
         if (isSearchActive) {
@@ -6665,11 +6804,13 @@ function updateSearchBulkActionUI() {
     
     const hasSelection = selectedSolveIds.size > 0;
     if (moveSelect instanceof HTMLSelectElement) {
-        moveSelect.disabled = !hasSelection || !hasMoveTargets;
+        moveSelect.disabled = bulkActionActive || !hasSelection || !hasMoveTargets;
         syncCustomSelectMenu('search-bulk-move-select');
     }
-    if (moveBtn) moveBtn.disabled = !hasSelection || !hasMoveTargets;
-    if (deleteBtn) deleteBtn.disabled = !hasSelection;
+    if (moveBtn) moveBtn.disabled = bulkActionActive || !hasSelection || !hasMoveTargets;
+    if (deleteBtn) deleteBtn.disabled = bulkActionActive || !hasSelection;
+    if (selectAllBtn) selectAllBtn.disabled = bulkActionActive;
+    if (clearFiltersBtn) clearFiltersBtn.disabled = bulkActionActive;
 }
 
 function syncSearchBulkMoveOptions() {
@@ -6722,6 +6863,7 @@ function initSearchMenu() {
     const selectAllBtn = document.getElementById('btn-search-select-all');
     if (selectAllBtn) {
         selectAllBtn.onclick = () => {
+            if (bulkActionProgressState.active) return;
             const solves = sessionManager.getFilteredSolves();
             const allMatchesSelected = _tableSortedIndices.length > 0
                 && _tableSortedIndices.every((idx) => selectedSolveIds.has(solves[idx].id));
@@ -6756,6 +6898,7 @@ function initSearchMenu() {
     const clearFiltersBtn = document.getElementById('btn-search-clear-filters');
     if (clearFiltersBtn) {
         clearFiltersBtn.onclick = () => {
+            if (bulkActionProgressState.active) return;
             if (searchInput) searchInput.value = '';
             if (indexMin) indexMin.value = '';
             if (indexMax) indexMax.value = '';
@@ -6772,13 +6915,74 @@ function initSearchMenu() {
     const deleteBtn = document.getElementById('btn-search-bulk-delete');
     if (deleteBtn) {
         deleteBtn.onclick = async () => {
-            if (selectedSolveIds.size === 0) return;
+            if (bulkActionProgressState.active || selectedSolveIds.size === 0) return;
             if (await customConfirm(`Delete ${selectedSolveIds.size} selected solves?`)) {
+                const solveIds = Array.from(selectedSolveIds);
+                setBulkActionProgressState({
+                    visible: true,
+                    active: true,
+                    status: 'running',
+                    action: 'delete',
+                    phase: 'starting',
+                    percent: 0,
+                    selectedCount: solveIds.length,
+                    completed: 0,
+                    total: solveIds.length,
+                    targetSessionName: '',
+                });
+                await waitForNextPaint();
                 window._isBulkAction = true;
-                for (const solveId of selectedSolveIds) {
-                    sessionManager.deleteSolve(solveId);
+
+                try {
+                    const deletedCount = await sessionManager.bulkDeleteSolves(solveIds, {
+                        onProgress: (snapshot) => {
+                            setBulkActionProgressState({
+                                visible: true,
+                                active: snapshot.phase !== 'complete',
+                                status: snapshot.phase === 'complete' ? 'complete' : 'running',
+                                action: snapshot.action,
+                                phase: snapshot.phase,
+                                percent: snapshot.percent,
+                                selectedCount: snapshot.selectedCount,
+                                completed: snapshot.completed,
+                                total: snapshot.total,
+                                targetSessionName: snapshot.targetSessionName || '',
+                            });
+                        },
+                    });
+
+                    setBulkActionProgressState({
+                        visible: true,
+                        active: false,
+                        status: 'complete',
+                        action: 'delete',
+                        phase: 'complete',
+                        percent: 100,
+                        selectedCount: deletedCount,
+                        completed: deletedCount,
+                        total: deletedCount,
+                        targetSessionName: '',
+                    });
+                } catch (error) {
+                    setBulkActionProgressState({
+                        visible: true,
+                        active: false,
+                        status: 'error',
+                        action: 'delete',
+                        phase: 'complete',
+                        percent: 100,
+                        selectedCount: solveIds.length,
+                        completed: 0,
+                        total: solveIds.length,
+                        targetSessionName: '',
+                    });
+                    hideBulkActionProgress({ delayMs: 2200 });
+                    console.error('Bulk delete failed:', error);
+                    return;
+                } finally {
+                    window._isBulkAction = false;
                 }
-                window._isBulkAction = false;
+
                 selectedSolveIds.clear();
                 lastSelectedSolveIndex = -1;
                 selectionAnchorSolveIndex = -1;
@@ -6786,6 +6990,7 @@ function initSearchMenu() {
                 updateSearchBulkActionUI();
                 rebuildStatsCache();
                 refreshUI();
+                hideBulkActionProgress({ delayMs: 1200 });
             }
         };
     }
@@ -6798,16 +7003,77 @@ function initSearchMenu() {
 
         moveSelect.onchange = async () => {
             const targetSessionId = moveSelect.value;
-            if (!targetSessionId || selectedSolveIds.size === 0) return;
+            if (bulkActionProgressState.active || !targetSessionId || selectedSolveIds.size === 0) return;
             moveSelect.value = ''; // Reset
             syncCustomSelectMenu('search-bulk-move-select');
-            
+
+            const solveIds = Array.from(selectedSolveIds);
+            const targetSessionName = sessionManager.getSessions().find((session) => session.id === targetSessionId)?.name || '';
+            setBulkActionProgressState({
+                visible: true,
+                active: true,
+                status: 'running',
+                action: 'move',
+                phase: 'starting',
+                percent: 0,
+                selectedCount: solveIds.length,
+                completed: 0,
+                total: solveIds.length,
+                targetSessionName,
+            });
+            await waitForNextPaint();
             window._isBulkAction = true;
-            for (const solveId of selectedSolveIds) {
-                await sessionManager.moveSolve(solveId, targetSessionId);
+
+            try {
+                const movedCount = await sessionManager.bulkMoveSolves(solveIds, targetSessionId, {
+                    onProgress: (snapshot) => {
+                        setBulkActionProgressState({
+                            visible: true,
+                            active: snapshot.phase !== 'complete',
+                            status: snapshot.phase === 'complete' ? 'complete' : 'running',
+                            action: snapshot.action,
+                            phase: snapshot.phase,
+                            percent: snapshot.percent,
+                            selectedCount: snapshot.selectedCount,
+                            completed: snapshot.completed,
+                            total: snapshot.total,
+                            targetSessionName: snapshot.targetSessionName || targetSessionName,
+                        });
+                    },
+                });
+
+                setBulkActionProgressState({
+                    visible: true,
+                    active: false,
+                    status: 'complete',
+                    action: 'move',
+                    phase: 'complete',
+                    percent: 100,
+                    selectedCount: movedCount,
+                    completed: movedCount,
+                    total: movedCount,
+                    targetSessionName,
+                });
+            } catch (error) {
+                setBulkActionProgressState({
+                    visible: true,
+                    active: false,
+                    status: 'error',
+                    action: 'move',
+                    phase: 'complete',
+                    percent: 100,
+                    selectedCount: solveIds.length,
+                    completed: 0,
+                    total: solveIds.length,
+                    targetSessionName,
+                });
+                hideBulkActionProgress({ delayMs: 2200 });
+                console.error('Bulk move failed:', error);
+                return;
+            } finally {
+                window._isBulkAction = false;
             }
-            window._isBulkAction = false;
-            
+
             selectedSolveIds.clear();
             lastSelectedSolveIndex = -1;
             selectionAnchorSolveIndex = -1;
@@ -6816,6 +7082,7 @@ function initSearchMenu() {
             updateSearchBulkActionUI();
             rebuildStatsCache();
             refreshUI();
+            hideBulkActionProgress({ delayMs: 1200 });
         };
     }
 

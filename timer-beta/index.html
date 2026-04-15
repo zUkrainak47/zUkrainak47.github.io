@@ -253,6 +253,16 @@
             <div class="stats-search-toolbar stats-search-count-row" style="padding-top: 0; padding-bottom: 2px;">
               <span id="search-selected-count" style="font-size: 0.85rem; color: var(--text-secondary); width: 100%; text-align: center;">0 selected, 0 matches</span>
             </div>
+            <div id="search-bulk-progress" hidden aria-live="polite">
+              <div class="search-bulk-progress-row">
+                <span id="search-bulk-progress-text">Deleting solves...</span>
+                <span id="search-bulk-progress-percent">0%</span>
+              </div>
+              <div id="search-bulk-progress-track" role="progressbar" aria-label="Bulk action progress"
+                aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                <div id="search-bulk-progress-fill"></div>
+              </div>
+            </div>
             <div class="stats-search-toolbar stats-search-actions-row">
               <button id="btn-search-select-all" class="btn-action">Select All</button>
               <button id="btn-search-clear-filters" class="btn-action">Clear</button>
