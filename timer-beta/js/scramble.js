@@ -1,5 +1,5 @@
-import { load, save } from './storage.js?v=2026041401';
-import { createSubsetScramble } from './subset-scramblers.js?v=2026041401';
+import { load, save } from './storage.js?v=2026041501';
+import { createSubsetScramble } from './subset-scramblers.js?v=2026041501';
 
 let randomScrambleForEvent;
 let _cubingInitPromise = null;
