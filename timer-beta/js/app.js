@@ -1,15 +1,15 @@
-import { timer } from './timer.js?v=2026041502';
-import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=2026041502';
-import { sessionManager } from './session.js?v=2026041502';
-import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=2026041502';
-import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=2026041502';
-import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, truncateTimeDisplay } from './utils.js?v=2026041502';
-import { initModal, showSolveDetail, showAverageDetail, closeModal, closeMoveSessionMenus, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=2026041502';
-import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=2026041502';
-import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=2026041502';
-import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionData, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=2026041502';
-import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=2026041502';
-import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=2026041502';
+import { timer } from './timer.js?v=2026041503';
+import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=2026041503';
+import { sessionManager } from './session.js?v=2026041503';
+import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=2026041503';
+import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=2026041503';
+import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, truncateTimeDisplay } from './utils.js?v=2026041503';
+import { initModal, showSolveDetail, showAverageDetail, closeModal, closeMoveSessionMenus, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=2026041503';
+import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=2026041503';
+import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=2026041503';
+import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionData, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=2026041503';
+import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=2026041503';
+import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=2026041503';
 
 let currentScramble = '';
 let currentSortCol = null;
@@ -23,6 +23,8 @@ let isSearchActive = false;
 let searchFilters = { text: '', indexMin: '', indexMax: '', dateMin: '', dateMax: '', timeMin: '', timeMax: '' };
 let selectedSolveIds = new Set();
 let lastSelectedSolveIndex = -1;
+let selectionAnchorSolveIndex = -1;
+let activeRangeSelectedSolveIds = new Set();
 
 const statsCache = new StatsCache();
 let _skipSolveAddedRefresh = false; // set true when commitSolve manages the refresh itself
@@ -210,7 +212,7 @@ async function registerServiceWorker() {
     if (window.location?.protocol === 'file:') return;
 
     try {
-        const serviceWorkerUrl = new URL('../sw.js?v=2026041502', import.meta.url);
+        const serviceWorkerUrl = new URL('../sw.js?v=2026041503', import.meta.url);
         await navigator.serviceWorker.register(serviceWorkerUrl);
     } catch (error) {
         console.warn('Service worker registration failed:', error);
@@ -6398,26 +6400,33 @@ function renderSolvesTable(solves, stats) {
         if (shouldSelectSolve) {
             if (!isSearchActive) openSearchMenuForSelection();
 
-            if (e.shiftKey && lastSelectedSolveIndex !== -1) {
-                // Range selection
-                const prevVisualIndex = _tableSortedIndices.indexOf(lastSelectedSolveIndex);
+            if (e.shiftKey && selectionAnchorSolveIndex !== -1) {
+                const anchorVisualIndex = _tableSortedIndices.indexOf(selectionAnchorSolveIndex);
                 const currVisualIndex = _tableSortedIndices.indexOf(idx);
-                if (prevVisualIndex !== -1 && currVisualIndex !== -1) {
-                    const start = Math.min(prevVisualIndex, currVisualIndex);
-                    const end = Math.max(prevVisualIndex, currVisualIndex);
+                if (anchorVisualIndex !== -1 && currVisualIndex !== -1) {
+                    activeRangeSelectedSolveIds.forEach((id) => selectedSolveIds.delete(id));
+                    activeRangeSelectedSolveIds.clear();
+
+                    const start = Math.min(anchorVisualIndex, currVisualIndex);
+                    const end = Math.max(anchorVisualIndex, currVisualIndex);
                     for (let i = start; i <= end; i++) {
                         const rowIdx = _tableSortedIndices[i];
-                        selectedSolveIds.add(solves[rowIdx].id);
+                        const rangeSolveId = solves[rowIdx].id;
+                        selectedSolveIds.add(rangeSolveId);
+                        activeRangeSelectedSolveIds.add(rangeSolveId);
                     }
+                    lastSelectedSolveIndex = idx;
                 }
             } else {
+                activeRangeSelectedSolveIds.clear();
                 if (selectedSolveIds.has(solveId)) {
                     selectedSolveIds.delete(solveId);
                 } else {
                     selectedSolveIds.add(solveId);
                 }
+                lastSelectedSolveIndex = idx;
+                selectionAnchorSolveIndex = selectedSolveIds.size > 0 ? idx : -1;
             }
-            lastSelectedSolveIndex = idx;
             updateSearchBulkActionUI();
             
             // Re-render
@@ -6627,6 +6636,8 @@ function toggleSearchMenu(forceActive) {
     if (!isSearchActive) {
         selectedSolveIds.clear();
         lastSelectedSolveIndex = -1;
+        selectionAnchorSolveIndex = -1;
+        activeRangeSelectedSolveIds.clear();
         currentSortCol = null;
         currentSortDir = null;
     }
@@ -6718,13 +6729,23 @@ function initSearchMenu() {
                 _tableSortedIndices.forEach((idx) => {
                     selectedSolveIds.delete(solves[idx].id);
                 });
+                activeRangeSelectedSolveIds.clear();
                 if (selectedSolveIds.size === 0) {
                     lastSelectedSolveIndex = -1;
+                    selectionAnchorSolveIndex = -1;
                 }
             } else {
                 _tableSortedIndices.forEach(idx => {
                     selectedSolveIds.add(solves[idx].id);
                 });
+                activeRangeSelectedSolveIds.clear();
+                if (_tableSortedIndices.length > 0) {
+                    const newestSelectedIndex = _tableSortedIndices[0];
+                    lastSelectedSolveIndex = newestSelectedIndex;
+                    if (selectionAnchorSolveIndex === -1) {
+                        selectionAnchorSolveIndex = newestSelectedIndex;
+                    }
+                }
             }
             updateSearchBulkActionUI();
             _lastTableParams = null; // force re-render
@@ -6742,6 +6763,8 @@ function initSearchMenu() {
             if (timeMax) timeMax.value = '';
             selectedSolveIds.clear();
             lastSelectedSolveIndex = -1;
+            selectionAnchorSolveIndex = -1;
+            activeRangeSelectedSolveIds.clear();
             triggerSearchUpdate();
         };
     }
@@ -6758,6 +6781,8 @@ function initSearchMenu() {
                 window._isBulkAction = false;
                 selectedSolveIds.clear();
                 lastSelectedSolveIndex = -1;
+                selectionAnchorSolveIndex = -1;
+                activeRangeSelectedSolveIds.clear();
                 updateSearchBulkActionUI();
                 rebuildStatsCache();
                 refreshUI();
@@ -6785,6 +6810,8 @@ function initSearchMenu() {
             
             selectedSolveIds.clear();
             lastSelectedSolveIndex = -1;
+            selectionAnchorSolveIndex = -1;
+            activeRangeSelectedSolveIds.clear();
             syncSearchBulkMoveOptions();
             updateSearchBulkActionUI();
             rebuildStatsCache();

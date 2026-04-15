@@ -243,6 +243,8 @@
     cursor: pointer;
     transition: all var(--transition-fast);
     border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 #solves-table td:first-child {
@@ -782,17 +784,6 @@
 }
 #solves-table tr.selected-solve .solve-index-number {
     opacity: 0;
-}
-
-@media (hover: hover) and (pointer: fine) {
-    #solves-table tr:hover .solve-index-checkbox {
-        opacity: 1;
-        pointer-events: auto;
-    }
-
-    #solves-table tr:hover .solve-index-number {
-        opacity: 0;
-    }
 }
 
 /* Selected solves */
