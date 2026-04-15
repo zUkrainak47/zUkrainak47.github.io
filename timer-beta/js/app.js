@@ -5689,6 +5689,26 @@ function solveMatchesSearchFilters(solve, index, filters = searchFilters) {
 
 function getSearchMatchedSolveIndices(solves, filters = searchFilters) {
     if (!isSearchActive) return solves.map((_, index) => index);
+
+    const hasTextFilter = Boolean(filters.text?.trim());
+    const hasTimeFilter = filters.timeMin !== '' || filters.timeMax !== '';
+    const hasIndexFilter = filters.indexMin !== '' || filters.indexMax !== '';
+
+    if (hasIndexFilter && !hasTextFilter && !hasTimeFilter) {
+        const minIndex = filters.indexMin !== '' ? Math.max(1, Math.floor(Number(filters.indexMin))) : 1;
+        const maxIndex = filters.indexMax !== '' ? Math.min(solves.length, Math.floor(Number(filters.indexMax))) : solves.length;
+
+        if (!Number.isFinite(minIndex) || !Number.isFinite(maxIndex) || minIndex > maxIndex) {
+            return [];
+        }
+
+        const matched = [];
+        for (let index = minIndex - 1; index < maxIndex; index += 1) {
+            matched.push(index);
+        }
+        return matched;
+    }
+
     return solves
         .map((_, index) => index)
         .filter((index) => solveMatchesSearchFilters(solves[index], index, filters));
@@ -6272,6 +6292,7 @@ function handleStatClick(type, which, solves, stats) {
 }
 
 let _lastTableParams = null;
+let _lastTableIndexFilterKey = '';
 
 function getSolvesTableHeaderState(columnKey) {
     let label = columnKey;
@@ -6371,6 +6392,108 @@ function syncSolvesTableHeader(configuredColumns) {
     ].join('');
 }
 
+function getVisibleSolveViewportInfo(indices, tbody) {
+    if (!Array.isArray(indices) || indices.length === 0 || !tbody) return null;
+
+    const scrollTop = tbody.scrollTop;
+    const viewportHeight = tbody.clientHeight;
+    const topVisibleRow = Math.max(0, Math.floor(scrollTop / TABLE_ROW_HEIGHT));
+    const rowOffset = scrollTop - (topVisibleRow * TABLE_ROW_HEIGHT);
+    const visibleRows = Math.ceil(viewportHeight / TABLE_ROW_HEIGHT) + 1;
+    const endRow = Math.min(indices.length, topVisibleRow + visibleRows);
+
+    if (endRow <= topVisibleRow) return null;
+
+    let minDisplayIndex = Number.POSITIVE_INFINITY;
+    let maxDisplayIndex = Number.NEGATIVE_INFINITY;
+    const visibleDisplayIndices = [];
+
+    for (let row = topVisibleRow; row < endRow; row += 1) {
+        const displayIndex = indices[row] + 1;
+        visibleDisplayIndices.push(displayIndex);
+        if (displayIndex < minDisplayIndex) minDisplayIndex = displayIndex;
+        if (displayIndex > maxDisplayIndex) maxDisplayIndex = displayIndex;
+    }
+
+    if (!Number.isFinite(minDisplayIndex) || !Number.isFinite(maxDisplayIndex)) return null;
+
+    return {
+        min: minDisplayIndex,
+        max: maxDisplayIndex,
+        anchorRowOffset: rowOffset,
+        visibleDisplayIndices,
+    };
+}
+
+function getSolveDisplayRange(indices) {
+    if (!Array.isArray(indices) || indices.length === 0) return null;
+
+    let minDisplayIndex = Number.POSITIVE_INFINITY;
+    let maxDisplayIndex = Number.NEGATIVE_INFINITY;
+
+    for (const index of indices) {
+        const displayIndex = index + 1;
+        if (displayIndex < minDisplayIndex) minDisplayIndex = displayIndex;
+        if (displayIndex > maxDisplayIndex) maxDisplayIndex = displayIndex;
+    }
+
+    if (!Number.isFinite(minDisplayIndex) || !Number.isFinite(maxDisplayIndex)) return null;
+
+    return {
+        min: minDisplayIndex,
+        max: maxDisplayIndex,
+    };
+}
+
+function getIndexFilterViewportKey() {
+    return JSON.stringify({
+        sessionId: sessionManager.getActiveSessionId(),
+        searchActive: isSearchActive,
+        indexMin: searchFilters.indexMin,
+        indexMax: searchFilters.indexMax,
+    });
+}
+
+function resolveIndexFilterViewportAdjustment(previousViewportInfo, previousIndexFilterKey, nextIndexFilterKey, nextIndices) {
+    if (previousIndexFilterKey === nextIndexFilterKey) {
+        return { jump: null, scrollTop: null };
+    }
+
+    const nextDisplayRange = getSolveDisplayRange(nextIndices);
+    if (!previousViewportInfo || !nextDisplayRange) {
+        return { jump: null, scrollTop: null };
+    }
+
+    if (nextDisplayRange.min > previousViewportInfo.max) {
+        return { jump: 'bottom', scrollTop: null };
+    }
+
+    if (nextDisplayRange.max < previousViewportInfo.min) {
+        return { jump: 'top', scrollTop: null };
+    }
+
+    const nextDisplayIndexSet = new Set(nextIndices.map((index) => index + 1));
+    const retainedViewportIndex = previousViewportInfo.visibleDisplayIndices.findIndex((displayIndex) =>
+        nextDisplayIndexSet.has(displayIndex),
+    );
+
+    if (retainedViewportIndex === -1) {
+        return { jump: null, scrollTop: null };
+    }
+
+    const retainedDisplayIndex = previousViewportInfo.visibleDisplayIndices[retainedViewportIndex];
+    const anchorRowIndex = nextIndices.findIndex((index) => (index + 1) === retainedDisplayIndex);
+    if (anchorRowIndex === -1) {
+        return { jump: null, scrollTop: null };
+    }
+
+    const retainedOffset = previousViewportInfo.anchorRowOffset + (retainedViewportIndex * TABLE_ROW_HEIGHT);
+    return {
+        jump: null,
+        scrollTop: Math.max(0, (anchorRowIndex * TABLE_ROW_HEIGHT) - retainedOffset),
+    };
+}
+
 // ──── Solves Table ────
 function renderSolvesTable(solves, stats) {
     if (solves && stats) {
@@ -6383,6 +6506,8 @@ function renderSolvesTable(solves, stats) {
     }
 
     const tbody = document.getElementById('solves-tbody');
+    const previousViewportInfo = getVisibleSolveViewportInfo(_tableSortedIndices, tbody);
+    const previousIndexFilterKey = _lastTableIndexFilterKey;
     const configuredColumns = getConfiguredSolvesTableStatTokens();
     const visibleColumnCount = 2 + configuredColumns.length;
     ensureValidSolvesTableSort(configuredColumns);
@@ -6440,6 +6565,14 @@ function renderSolvesTable(solves, stats) {
     // ── Virtual scroll: only render visible rows ──
     const totalRows = indices.length;
     const totalHeight = totalRows * TABLE_ROW_HEIGHT;
+    const indexFilterKey = getIndexFilterViewportKey();
+    const { jump: pendingViewportJump, scrollTop: pendingScrollTop } = resolveIndexFilterViewportAdjustment(
+        previousViewportInfo,
+        previousIndexFilterKey,
+        indexFilterKey,
+        indices,
+    );
+    _lastTableIndexFilterKey = indexFilterKey;
 
     // Remove old scroll listener
     if (_tableScrollHandler) {
@@ -6449,9 +6582,12 @@ function renderSolvesTable(solves, stats) {
     function renderVisibleRows() {
         const scrollTop = tbody.scrollTop;
         const viewportHeight = tbody.clientHeight;
-
-        const startRow = Math.max(0, Math.floor(scrollTop / TABLE_ROW_HEIGHT) - 5);
         const visibleRows = Math.ceil(viewportHeight / TABLE_ROW_HEIGHT) + 15;
+        const maxStartRow = Math.max(0, totalRows - visibleRows);
+        const startRow = Math.min(
+            maxStartRow,
+            Math.max(0, Math.floor(scrollTop / TABLE_ROW_HEIGHT) - 5),
+        );
         const endRow = Math.min(totalRows, startRow + visibleRows);
 
         const topPad = startRow * TABLE_ROW_HEIGHT;
@@ -6503,6 +6639,17 @@ function renderSolvesTable(solves, stats) {
     }
 
     renderVisibleRows();
+
+    if (pendingScrollTop != null) {
+        tbody.scrollTop = pendingScrollTop;
+        renderVisibleRows();
+    } else if (pendingViewportJump === 'top') {
+        tbody.scrollTop = 0;
+        renderVisibleRows();
+    } else if (pendingViewportJump === 'bottom') {
+        tbody.scrollTop = totalHeight;
+        renderVisibleRows();
+    }
 
     // Scroll handler with rAF debounce
     let rafPending = false;
