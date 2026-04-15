@@ -22,7 +22,9 @@ let isSearchActive = false;
 let searchFilters = { text: '', indexMin: '', indexMax: '', dateMin: '', dateMax: '', timeMin: '', timeMax: '' };
 let selectedSolveIds = new Set();
 let lastSelectedSolveIndex = -1;
+let lastSelectedSolveId = null;
 let selectionAnchorSolveIndex = -1;
+let selectionAnchorSolveId = null;
 let activeRangeSelectedSolveIds = new Set();
 let bulkActionProgressState = {
     visible: false,
@@ -5891,6 +5893,69 @@ function buildStatsCacheForSolves(solves) {
     return cache;
 }
 
+function reconcileSelectedSolveState(solves = sessionManager.getFilteredSolves()) {
+    const validSolveIds = new Set(solves.map((solve) => solve.id));
+    let changed = false;
+
+    selectedSolveIds.forEach((solveId) => {
+        if (validSolveIds.has(solveId)) return;
+        selectedSolveIds.delete(solveId);
+        changed = true;
+    });
+
+    activeRangeSelectedSolveIds.forEach((solveId) => {
+        if (validSolveIds.has(solveId) && selectedSolveIds.has(solveId)) return;
+        activeRangeSelectedSolveIds.delete(solveId);
+        changed = true;
+    });
+
+    if (selectedSolveIds.size === 0) {
+        if (lastSelectedSolveIndex !== -1) changed = true;
+        if (lastSelectedSolveId != null) changed = true;
+        if (selectionAnchorSolveIndex !== -1) changed = true;
+        if (selectionAnchorSolveId != null) changed = true;
+        if (activeRangeSelectedSolveIds.size > 0) changed = true;
+
+        lastSelectedSolveIndex = -1;
+        lastSelectedSolveId = null;
+        selectionAnchorSolveIndex = -1;
+        selectionAnchorSolveId = null;
+        activeRangeSelectedSolveIds.clear();
+        return changed;
+    }
+
+    if (!selectionAnchorSolveId || !selectedSolveIds.has(selectionAnchorSolveId) || !validSolveIds.has(selectionAnchorSolveId)) {
+        if (selectionAnchorSolveIndex !== -1 || selectionAnchorSolveId != null || activeRangeSelectedSolveIds.size > 0) {
+            changed = true;
+        }
+        selectionAnchorSolveIndex = -1;
+        selectionAnchorSolveId = null;
+        activeRangeSelectedSolveIds.clear();
+    } else {
+        const nextAnchorIndex = solves.findIndex((solve) => solve.id === selectionAnchorSolveId);
+        if (selectionAnchorSolveIndex !== nextAnchorIndex) {
+            selectionAnchorSolveIndex = nextAnchorIndex;
+            changed = true;
+        }
+    }
+
+    if (!lastSelectedSolveId || !selectedSolveIds.has(lastSelectedSolveId) || !validSolveIds.has(lastSelectedSolveId)) {
+        if (lastSelectedSolveIndex !== -1 || lastSelectedSolveId != null) {
+            changed = true;
+        }
+        lastSelectedSolveIndex = -1;
+        lastSelectedSolveId = null;
+    } else {
+        const nextLastSelectedIndex = solves.findIndex((solve) => solve.id === lastSelectedSolveId);
+        if (lastSelectedSolveIndex !== nextLastSelectedIndex) {
+            lastSelectedSolveIndex = nextLastSelectedIndex;
+            changed = true;
+        }
+    }
+
+    return changed;
+}
+
 /**
  * Rebuild the stats cache from scratch for the current filtered solves.
  * Called on session switch, filter change, import, delete, penalty toggle.
@@ -5901,6 +5966,7 @@ function rebuildStatsCache() {
 
 function refreshUI() {
     const solves = syncStatsCacheWithFilteredSolves();
+    reconcileSelectedSolveState(solves);
     const stats = statsCache.getStats();
     const graphAndDistributionSolves = getSearchScopedSolves(solves);
     const graphStatsCache = graphAndDistributionSolves === solves
@@ -6852,6 +6918,7 @@ function renderSolvesTable(solves, stats) {
                         activeRangeSelectedSolveIds.add(rangeSolveId);
                     }
                     lastSelectedSolveIndex = idx;
+                    lastSelectedSolveId = solveId;
                 }
             } else {
                 activeRangeSelectedSolveIds.clear();
@@ -6861,7 +6928,9 @@ function renderSolvesTable(solves, stats) {
                     selectedSolveIds.add(solveId);
                 }
                 lastSelectedSolveIndex = idx;
-                selectionAnchorSolveIndex = selectedSolveIds.size > 0 ? idx : -1;
+                lastSelectedSolveId = selectedSolveIds.has(solveId) ? solveId : null;
+                selectionAnchorSolveIndex = selectedSolveIds.has(solveId) ? idx : -1;
+                selectionAnchorSolveId = selectedSolveIds.has(solveId) ? solveId : null;
             }
             updateSearchBulkActionUI();
             
@@ -7077,7 +7146,9 @@ function toggleSearchMenu(forceActive) {
     if (!isSearchActive) {
         selectedSolveIds.clear();
         lastSelectedSolveIndex = -1;
+        lastSelectedSolveId = null;
         selectionAnchorSolveIndex = -1;
+        selectionAnchorSolveId = null;
         activeRangeSelectedSolveIds.clear();
         currentSortCol = null;
         currentSortDir = null;
@@ -7179,7 +7250,9 @@ function initSearchMenu() {
                 activeRangeSelectedSolveIds.clear();
                 if (selectedSolveIds.size === 0) {
                     lastSelectedSolveIndex = -1;
+                    lastSelectedSolveId = null;
                     selectionAnchorSolveIndex = -1;
+                    selectionAnchorSolveId = null;
                 }
             } else {
                 _tableSortedIndices.forEach(idx => {
@@ -7189,8 +7262,10 @@ function initSearchMenu() {
                 if (_tableSortedIndices.length > 0) {
                     const newestSelectedIndex = _tableSortedIndices[0];
                     lastSelectedSolveIndex = newestSelectedIndex;
+                    lastSelectedSolveId = solves[newestSelectedIndex]?.id || null;
                     if (selectionAnchorSolveIndex === -1) {
                         selectionAnchorSolveIndex = newestSelectedIndex;
+                        selectionAnchorSolveId = solves[newestSelectedIndex]?.id || null;
                     }
                 }
             }
@@ -7211,7 +7286,9 @@ function initSearchMenu() {
             if (timeMax) timeMax.value = '';
             selectedSolveIds.clear();
             lastSelectedSolveIndex = -1;
+            lastSelectedSolveId = null;
             selectionAnchorSolveIndex = -1;
+            selectionAnchorSolveId = null;
             activeRangeSelectedSolveIds.clear();
             triggerSearchUpdate();
         };
@@ -7290,7 +7367,9 @@ function initSearchMenu() {
 
                 selectedSolveIds.clear();
                 lastSelectedSolveIndex = -1;
+                lastSelectedSolveId = null;
                 selectionAnchorSolveIndex = -1;
+                selectionAnchorSolveId = null;
                 activeRangeSelectedSolveIds.clear();
                 updateSearchBulkActionUI();
                 rebuildStatsCache();
@@ -7381,7 +7460,9 @@ function initSearchMenu() {
 
             selectedSolveIds.clear();
             lastSelectedSolveIndex = -1;
+            lastSelectedSolveId = null;
             selectionAnchorSolveIndex = -1;
+            selectionAnchorSolveId = null;
             activeRangeSelectedSolveIds.clear();
             syncSearchBulkMoveOptions();
             updateSearchBulkActionUI();
