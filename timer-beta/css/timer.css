@@ -92,6 +92,59 @@
     background: rgba(12, 29, 48, 0.94);
 }
 
+#import-progress {
+    width: min(92vw, 26em);
+    max-width: min(92vw, 26em);
+    padding: 0.55em 0.8em 0.65em;
+    text-transform: none;
+    letter-spacing: 0.03em;
+    font-weight: 600;
+    line-height: 1.2;
+    white-space: normal;
+    color: var(--accent-hover);
+    border-color: rgba(88, 166, 255, 0.45);
+    background: rgba(12, 29, 48, 0.94);
+}
+
+#import-progress .operation-progress-row {
+    font-size: 1em;
+    color: inherit;
+    font-weight: inherit;
+}
+
+#import-progress .operation-progress-text {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    text-align: left;
+}
+
+#import-progress .operation-progress-percent {
+    color: inherit;
+    font-size: 0.95em;
+}
+
+#import-progress .operation-progress-track {
+    height: 0.38em;
+    margin-top: 0.22em;
+    background: rgba(255, 255, 255, 0.14);
+}
+
+#import-progress .operation-progress-fill {
+    background: linear-gradient(90deg, #58a6ff 0%, #7ee787 100%);
+}
+
+#import-progress.is-complete {
+    color: #3fb950;
+    border-color: rgba(63, 185, 80, 0.5);
+    background: rgba(11, 31, 18, 0.94);
+}
+
+#import-progress.is-error {
+    color: #f85149;
+    border-color: var(--danger-border);
+    background: var(--danger-bg-strong);
+}
+
 .timer-popup-danger {
     background: var(--danger-bg-strong);
     border-color: var(--danger-border);
@@ -866,6 +919,13 @@ body.pill-size-large #timer-info .stat-label {
     .timer-popup {
         font-size: 0.17em;
         margin-bottom: 0.22em;
+    }
+
+    #import-progress {
+        width: min(88vw, 25em);
+        max-width: min(88vw, 25em);
+        padding-inline: 0.75em;
+        padding-block: 0.5em 0.6em;
     }
 
     .mobile-summary-cell {

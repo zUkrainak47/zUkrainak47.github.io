@@ -253,14 +253,14 @@
             <div class="stats-search-toolbar stats-search-count-row" style="padding-top: 0; padding-bottom: 2px;">
               <span id="search-selected-count" style="font-size: 0.85rem; color: var(--text-secondary); width: 100%; text-align: center;">0 selected, 0 matches</span>
             </div>
-            <div id="search-bulk-progress" hidden aria-live="polite">
-              <div class="search-bulk-progress-row">
-                <span id="search-bulk-progress-text">Deleting solves...</span>
-                <span id="search-bulk-progress-percent">0%</span>
+            <div id="search-bulk-progress" class="operation-progress" hidden aria-live="polite">
+              <div class="operation-progress-row">
+                <span id="search-bulk-progress-text" class="operation-progress-text">Deleting solves...</span>
+                <span id="search-bulk-progress-percent" class="operation-progress-percent">0%</span>
               </div>
-              <div id="search-bulk-progress-track" role="progressbar" aria-label="Bulk action progress"
+              <div id="search-bulk-progress-track" class="operation-progress-track" role="progressbar" aria-label="Bulk action progress"
                 aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-                <div id="search-bulk-progress-fill"></div>
+                <div id="search-bulk-progress-fill" class="operation-progress-fill"></div>
               </div>
             </div>
             <div class="stats-search-toolbar stats-search-actions-row">
@@ -351,6 +351,16 @@
         <span id="new-best-alert" class="timer-popup timer-popup-best" aria-live="polite"></span>
         <span id="penalty-shortcut-alert" class="timer-popup timer-popup-danger" aria-live="polite"></span>
         <span id="cubing-warmup-alert" class="timer-popup" aria-live="polite"></span>
+        <div id="import-progress" class="timer-popup timer-popup-progress" hidden aria-live="polite">
+          <div class="operation-progress-row">
+            <span id="import-progress-text" class="operation-progress-text">Importing backup...</span>
+            <span id="import-progress-percent" class="operation-progress-percent">0%</span>
+          </div>
+          <div id="import-progress-track" class="operation-progress-track" role="progressbar" aria-label="Import progress"
+            aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <div id="import-progress-fill" class="operation-progress-fill"></div>
+          </div>
+        </div>
         <span id="timer-delta"></span>
       </div>
       <div id="timer-info">

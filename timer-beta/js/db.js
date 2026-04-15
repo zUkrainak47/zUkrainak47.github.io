@@ -283,26 +283,81 @@ export async function getAllData() {
  * @param {object[]} sessions
  * @param {object[]} solves
  */
-export async function replaceAllData(sessions, solves) {
+export async function replaceAllData(sessions, solves, { batchSize = 2000, onProgress = null } = {}) {
     const db = await openDB();
-    const tx = db.transaction(['sessions', 'solves'], 'readwrite');
+    const size = Math.max(1, Math.floor(batchSize));
+    const total = 1 + sessions.length + solves.length;
+    let completed = 0;
 
-    // Clear existing
-    tx.objectStore('sessions').clear();
-    tx.objectStore('solves').clear();
-
-    // Write new data
-    const sessionStore = tx.objectStore('sessions');
-    for (const session of sessions) {
-        sessionStore.put(session);
+    if (typeof onProgress === 'function') {
+        onProgress({
+            stage: 'clearing',
+            completed,
+            total,
+        });
     }
 
-    const solveStore = tx.objectStore('solves');
-    for (const solve of solves) {
-        solveStore.put(solve);
+    const clearTx = db.transaction(['sessions', 'solves'], 'readwrite');
+    clearTx.objectStore('sessions').clear();
+    clearTx.objectStore('solves').clear();
+    await _txComplete(clearTx);
+
+    completed += 1;
+    if (typeof onProgress === 'function') {
+        onProgress({
+            stage: 'sessions',
+            completed,
+            total,
+        });
     }
 
-    return _txComplete(tx);
+    for (let index = 0; index < sessions.length; index += size) {
+        const tx = db.transaction('sessions', 'readwrite');
+        const store = tx.objectStore('sessions');
+        const batch = sessions.slice(index, index + size);
+
+        for (const session of batch) {
+            store.put(session);
+        }
+
+        await _txComplete(tx);
+        completed += batch.length;
+        if (typeof onProgress === 'function') {
+            onProgress({
+                stage: 'sessions',
+                completed,
+                total,
+            });
+        }
+    }
+
+    if (typeof onProgress === 'function') {
+        onProgress({
+            stage: 'solves',
+            completed,
+            total,
+        });
+    }
+
+    for (let index = 0; index < solves.length; index += size) {
+        const tx = db.transaction('solves', 'readwrite');
+        const store = tx.objectStore('solves');
+        const batch = solves.slice(index, index + size);
+
+        for (const solve of batch) {
+            store.put(solve);
+        }
+
+        await _txComplete(tx);
+        completed += batch.length;
+        if (typeof onProgress === 'function') {
+            onProgress({
+                stage: 'solves',
+                completed,
+                total,
+            });
+        }
+    }
 }
 
 // ──── Helpers ────

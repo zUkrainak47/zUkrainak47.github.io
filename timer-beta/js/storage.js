@@ -9,6 +9,7 @@ const BACKUP_LOCAL_STORAGE_KEYS = Object.freeze([
     'scrambleType',
 ]);
 const BACKUP_LOCAL_STORAGE_KEY_SET = new Set(BACKUP_LOCAL_STORAGE_KEYS);
+const IMPORT_PROGRESS_YIELD_INTERVAL = 2000;
 
 /**
  * Load data from localStorage.
@@ -57,6 +58,62 @@ function clearBackupLocalStorageKeys() {
     BACKUP_LOCAL_STORAGE_KEYS.forEach((key) => remove(key));
 }
 
+function _reportImportProgress(onProgress, snapshot) {
+    if (typeof onProgress === 'function') {
+        onProgress(snapshot);
+    }
+}
+
+function _waitForNextFrame() {
+    return new Promise((resolve) => {
+        if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+            window.requestAnimationFrame(() => resolve());
+            return;
+        }
+
+        setTimeout(resolve, 0);
+    });
+}
+
+function _countEmbeddedSolves(sessions) {
+    return sessions.reduce((count, session) => (
+        count + (Array.isArray(session.solves) ? session.solves.length : 0)
+    ), 0);
+}
+
+async function _replaceImportedData(
+    dbSessions,
+    dbSolves,
+    { source = 'backup', onProgress = null, processedOffset = 0, totalWork = processedOffset + 1 + dbSessions.length + dbSolves.length } = {},
+) {
+    clearBackupLocalStorageKeys();
+
+    await db.replaceAllData(dbSessions, dbSolves, {
+        onProgress: ({ stage, completed, total }) => {
+            const processed = processedOffset + completed;
+            _reportImportProgress(onProgress, {
+                source,
+                phase: 'writing',
+                stage,
+                completed,
+                total,
+                processed,
+                totalWork,
+                percent: totalWork > 0 ? (processed / totalWork) * 100 : 100,
+                sessionCount: dbSessions.length,
+                solveCount: dbSolves.length,
+            });
+        },
+    });
+}
+
+function _saveImportedBackupValues(data) {
+    for (const [key, value] of Object.entries(data)) {
+        if (key === 'version' || key === 'sessions' || !BACKUP_LOCAL_STORAGE_KEY_SET.has(key)) continue;
+        save(key, value);
+    }
+}
+
 /**
  * Export all timer data as a single JSON object.
  * Reads sessions + solves from IndexedDB, settings from localStorage.
@@ -89,15 +146,31 @@ export async function exportAll() {
  * Import data from a JSON object, overwriting existing data.
  * @param {object} data
  */
-export async function importAll(data) {
+export async function importAll(data, { onProgress = null } = {}) {
     if (!data || typeof data !== 'object') return;
-
-    clearBackupLocalStorageKeys();
 
     // Separate sessions from other data
     const sessions = data.sessions || [];
+    const totalSolveCount = _countEmbeddedSolves(sessions);
     const dbSessions = [];
     const dbSolves = [];
+    const parseTotal = sessions.length + totalSolveCount;
+    const writeTotal = 1 + sessions.length + totalSolveCount;
+    const totalWork = parseTotal + writeTotal;
+    let parseCompleted = 0;
+
+    _reportImportProgress(onProgress, {
+        source: 'backup',
+        phase: 'parsing',
+        stage: 'sessions',
+        completed: 0,
+        total: parseTotal,
+        processed: 0,
+        totalWork,
+        percent: totalWork > 0 ? 0 : 100,
+        sessionCount: sessions.length,
+        solveCount: totalSolveCount,
+    });
 
     for (const session of sessions) {
         dbSessions.push({
@@ -107,6 +180,7 @@ export async function importAll(data) {
             order: Number.isFinite(session.order) ? session.order : dbSessions.length,
             ...(typeof session.scrambleType === 'string' ? { scrambleType: session.scrambleType } : {}),
         });
+        parseCompleted += 1;
 
         if (Array.isArray(session.solves)) {
             for (const solve of session.solves) {
@@ -114,19 +188,53 @@ export async function importAll(data) {
                     ...solve,
                     sessionId: session.id,
                 });
+                parseCompleted += 1;
+
+                if (parseCompleted % IMPORT_PROGRESS_YIELD_INTERVAL === 0 || parseCompleted === parseTotal) {
+                    _reportImportProgress(onProgress, {
+                        source: 'backup',
+                        phase: 'parsing',
+                        stage: 'solves',
+                        completed: parseCompleted,
+                        total: parseTotal,
+                        processed: parseCompleted,
+                        totalWork,
+                        percent: totalWork > 0 ? (parseCompleted / totalWork) * 100 : 100,
+                        sessionCount: sessions.length,
+                        solveCount: totalSolveCount,
+                    });
+
+                    if (parseCompleted < parseTotal) {
+                        await _waitForNextFrame();
+                    }
+                }
             }
         }
     }
 
-    // Write to IndexedDB
-    await db.replaceAllData(dbSessions, dbSolves);
+    await _replaceImportedData(dbSessions, dbSolves, {
+        source: 'backup',
+        onProgress,
+        processedOffset: parseTotal,
+        totalWork,
+    });
 
     // Write remaining import-backed localStorage keys (settings, active session,
     // selected scramble type). Cache/runtime keys stay device-local.
-    for (const [key, value] of Object.entries(data)) {
-        if (key === 'version' || key === 'sessions' || !BACKUP_LOCAL_STORAGE_KEY_SET.has(key)) continue;
-        save(key, value);
-    }
+    _saveImportedBackupValues(data);
+
+    _reportImportProgress(onProgress, {
+        source: 'backup',
+        phase: 'complete',
+        stage: 'complete',
+        completed: totalWork,
+        total: totalWork,
+        processed: totalWork,
+        totalWork,
+        percent: 100,
+        sessionCount: dbSessions.length,
+        solveCount: dbSolves.length,
+    });
 }
 
 function _parseDelimitedRecords(text, delimiter = ';') {
@@ -218,7 +326,7 @@ export function isSessionCsvFormat(text) {
     }
 }
 
-export function convertSessionCsv(text) {
+export async function convertSessionCsv(text, { onProgress = null } = {}) {
     const normalized = _normalizeImportText(text);
     const records = _parseDelimitedRecords(normalized);
     if (records.length === 0) {
@@ -232,6 +340,18 @@ export function convertSessionCsv(text) {
 
     const sessionsByName = new Map();
     const sessionOrder = [];
+    const totalRows = Math.max(0, records.length - 1);
+
+    _reportImportProgress(onProgress, {
+        source: 'csv',
+        phase: 'parsing',
+        stage: 'rows',
+        completed: 0,
+        total: totalRows,
+        processed: 0,
+        totalWork: totalRows,
+        percent: totalRows > 0 ? 0 : 100,
+    });
 
     for (let lineIndex = 1; lineIndex < records.length; lineIndex++) {
         const fields = records[lineIndex];
@@ -272,21 +392,100 @@ export function convertSessionCsv(text) {
             timestamp,
             comment: rawComment || '',
         });
+
+        const completed = lineIndex;
+        if (completed % IMPORT_PROGRESS_YIELD_INTERVAL === 0 || completed === totalRows) {
+            _reportImportProgress(onProgress, {
+                source: 'csv',
+                phase: 'parsing',
+                stage: 'rows',
+                completed,
+                total: totalRows,
+                processed: completed,
+                totalWork: totalRows,
+                percent: totalRows > 0 ? (completed / totalRows) * 100 : 100,
+            });
+
+            if (completed < totalRows) {
+                await _waitForNextFrame();
+            }
+        }
     }
 
     sessionOrder.forEach(session => {
         session.solves.sort((a, b) => a.timestamp - b.timestamp);
     });
 
+    const dbSessions = sessionOrder.map((session) => ({
+        id: session.id,
+        name: session.name,
+        createdAt: session.createdAt,
+        order: session.order,
+    }));
+    const dbSolves = [];
+
+    sessionOrder.forEach((session) => {
+        session.solves.forEach((solve) => {
+            dbSolves.push({
+                ...solve,
+                sessionId: session.id,
+            });
+        });
+    });
+
     return {
-        version: STORAGE_VERSION,
-        sessions: sessionOrder,
-        activeSessionId: sessionOrder[0]?.id ?? null,
+        dbSessions,
+        dbSolves,
+        backupValues: {
+            activeSessionId: sessionOrder[0]?.id ?? null,
+        },
     };
 }
 
-export async function importSessionCsv(text) {
-    await importAll(convertSessionCsv(text));
+export async function importSessionCsv(text, { onProgress = null } = {}) {
+    const PARSE_PERCENT = 45;
+    const WRITE_PERCENT = 55;
+    const csvParseProgress = (snapshot) => {
+        const parseFraction = snapshot.total > 0 ? (snapshot.completed / snapshot.total) : 1;
+        _reportImportProgress(onProgress, {
+            ...snapshot,
+            source: 'csv',
+            percent: parseFraction * PARSE_PERCENT,
+            totalWork: 100,
+        });
+    };
+    const { dbSessions, dbSolves, backupValues } = await convertSessionCsv(text, {
+        onProgress: csvParseProgress,
+    });
+    const writeProgress = (snapshot) => {
+        const writeFraction = snapshot.total > 0 ? (snapshot.completed / snapshot.total) : 1;
+        _reportImportProgress(onProgress, {
+            ...snapshot,
+            source: 'csv',
+            percent: PARSE_PERCENT + (writeFraction * WRITE_PERCENT),
+            totalWork: 100,
+        });
+    };
+
+    await _replaceImportedData(dbSessions, dbSolves, {
+        source: 'csv',
+        onProgress: writeProgress,
+    });
+
+    _saveImportedBackupValues(backupValues);
+
+    _reportImportProgress(onProgress, {
+        source: 'csv',
+        phase: 'complete',
+        stage: 'complete',
+        completed: 100,
+        total: 100,
+        processed: 100,
+        totalWork: 100,
+        percent: 100,
+        sessionCount: dbSessions.length,
+        solveCount: dbSolves.length,
+    });
 }
 
 // ──── csTimer Format Conversion ────
@@ -590,7 +789,7 @@ export function isCsTimerFormat(data) {
 /**
  * Convert csTimer JSON → internal format and import it.
  */
-export async function importCsTimer(csData) {
+export async function importCsTimer(csData, { onProgress = null } = {}) {
     if (!csData || typeof csData !== 'object') return;
 
     const properties = (csData.properties && typeof csData.properties === 'object')
@@ -663,15 +862,34 @@ export async function importCsTimer(csData) {
 
     const dbSessions = [];
     const dbSolves = [];
+    const totalRawSolveCount = importedSessions.reduce((count, session) => count + session.solves.length, 0);
+    const parseTotal = importedSessions.length + totalRawSolveCount;
+    const estimatedTotalWork = parseTotal + 1 + importedSessions.length + totalRawSolveCount;
+    let parseCompleted = 0;
 
-    importedSessions.forEach((session, index) => {
+    _reportImportProgress(onProgress, {
+        source: 'cstimer',
+        phase: 'parsing',
+        stage: 'sessions',
+        completed: 0,
+        total: parseTotal,
+        processed: 0,
+        totalWork: estimatedTotalWork,
+        percent: 0,
+        sessionCount: importedSessions.length,
+        solveCount: totalRawSolveCount,
+    });
+
+    for (let index = 0; index < importedSessions.length; index += 1) {
+        const session = importedSessions[index];
         let sessionCreatedAt = Date.now();
         let hasTimestamp = false;
+        parseCompleted += 1;
 
-        session.solves.forEach((entry) => {
-            if (!Array.isArray(entry) || entry.length < 4) return;
+        for (const entry of session.solves) {
+            if (!Array.isArray(entry) || entry.length < 4) continue;
             const [penaltyAndTime, scramble, comment, timestampSec] = entry;
-            if (!Array.isArray(penaltyAndTime) || penaltyAndTime.length < 2) return;
+            if (!Array.isArray(penaltyAndTime) || penaltyAndTime.length < 2) continue;
 
             const [penaltyFlag, rawTime] = penaltyAndTime;
             let penalty = null;
@@ -694,7 +912,27 @@ export async function importCsTimer(csData) {
                 timestamp: Number.isFinite(timestamp) && timestamp >= 0 ? timestamp : Date.now(),
                 comment: (comment && typeof comment === 'string') ? comment : '',
             });
-        });
+            parseCompleted += 1;
+
+            if (parseCompleted % IMPORT_PROGRESS_YIELD_INTERVAL === 0 || parseCompleted === parseTotal) {
+                _reportImportProgress(onProgress, {
+                    source: 'cstimer',
+                    phase: 'parsing',
+                    stage: 'solves',
+                    completed: parseCompleted,
+                    total: parseTotal,
+                    processed: parseCompleted,
+                    totalWork: estimatedTotalWork,
+                    percent: estimatedTotalWork > 0 ? (parseCompleted / estimatedTotalWork) * 100 : 100,
+                    sessionCount: importedSessions.length,
+                    solveCount: totalRawSolveCount,
+                });
+
+                if (parseCompleted < parseTotal) {
+                    await _waitForNextFrame();
+                }
+            }
+        }
 
         dbSessions.push({
             id: session.id,
@@ -703,7 +941,7 @@ export async function importCsTimer(csData) {
             order: index,
             scrambleType: session.scrambleType,
         });
-    });
+    }
 
     if (importedSessions.length === 0) return;
 
@@ -721,15 +959,32 @@ export async function importCsTimer(csData) {
     const activeImportedSessionId = activeImportedSession?.id || dbSessions[0]?.id || null;
     const activeImportedScrambleType = activeImportedSession?.scrambleType || '333';
 
-    clearBackupLocalStorageKeys();
+    const totalWork = parseTotal + 1 + dbSessions.length + dbSolves.length;
 
-    // Write to IndexedDB
-    await db.replaceAllData(dbSessions, dbSolves);
+    await _replaceImportedData(dbSessions, dbSolves, {
+        source: 'cstimer',
+        onProgress,
+        processedOffset: parseTotal,
+        totalWork,
+    });
 
     // Write settings to localStorage
     save('activeSessionId', activeImportedSessionId);
     save('scrambleType', activeImportedScrambleType);
     save('settings', newSettings);
+
+    _reportImportProgress(onProgress, {
+        source: 'cstimer',
+        phase: 'complete',
+        stage: 'complete',
+        completed: totalWork,
+        total: totalWork,
+        processed: totalWork,
+        totalWork,
+        percent: 100,
+        sessionCount: dbSessions.length,
+        solveCount: dbSolves.length,
+    });
 }
 
 /**

@@ -38,6 +38,20 @@ let bulkActionProgressState = {
     targetSessionName: '',
 };
 let bulkActionProgressHideTimeout = null;
+let importProgressState = {
+    visible: false,
+    active: false,
+    status: 'idle',
+    source: null,
+    phase: null,
+    stage: null,
+    percent: 0,
+    completed: 0,
+    total: 0,
+    sessionCount: 0,
+    solveCount: 0,
+};
+let importProgressHideTimeout = null;
 
 const statsCache = new StatsCache();
 let _skipSolveAddedRefresh = false; // set true when commitSolve manages the refresh itself
@@ -248,6 +262,7 @@ const TIMER_POPUP_ELEMENT_IDS = [
     'new-best-alert',
     'penalty-shortcut-alert',
     'cubing-warmup-alert',
+    'import-progress',
 ];
 
 function syncTimerPopupStacking() {
@@ -328,30 +343,81 @@ function formatBulkActionProgressText(snapshot = bulkActionProgressState) {
     }
 }
 
-function updateBulkActionProgressUI() {
-    const container = document.getElementById('search-bulk-progress');
-    const textEl = document.getElementById('search-bulk-progress-text');
-    const percentEl = document.getElementById('search-bulk-progress-percent');
-    const trackEl = document.getElementById('search-bulk-progress-track');
-    const fillEl = document.getElementById('search-bulk-progress-fill');
+function formatImportProgressText(snapshot = importProgressState) {
+    const sourceLabel = snapshot.source === 'cstimer'
+        ? 'csTimer'
+        : snapshot.source === 'csv'
+            ? 'CSV'
+            : 'backup';
+
+    if (snapshot.status === 'complete') {
+        return `Imported ${snapshot.solveCount.toLocaleString()} solve${snapshot.solveCount === 1 ? '' : 's'}`;
+    }
+
+    if (snapshot.status === 'error') {
+        return `Import failed`;
+    }
+
+    switch (snapshot.phase) {
+        case 'parsing':
+            return `Importing ${sourceLabel}: parsing data`;
+        case 'writing':
+            if (snapshot.stage === 'clearing') return `Importing ${sourceLabel}: replacing existing data`;
+            if (snapshot.stage === 'sessions') return `Importing ${sourceLabel}: saving sessions`;
+            return `Importing ${sourceLabel}: saving solves`;
+        default:
+            return `Importing ${sourceLabel}...`;
+    }
+}
+
+function updateOperationProgressUI({ baseId, state, formatter }) {
+    const container = document.getElementById(baseId);
+    const textEl = document.getElementById(`${baseId}-text`);
+    const percentEl = document.getElementById(`${baseId}-percent`);
+    const trackEl = document.getElementById(`${baseId}-track`);
+    const fillEl = document.getElementById(`${baseId}-fill`);
     if (!container || !textEl || !percentEl || !trackEl || !fillEl) return;
 
-    if (!bulkActionProgressState.visible) {
+    if (!state.visible) {
         container.hidden = true;
+        container.classList.remove('visible');
         container.classList.remove('is-complete', 'is-error');
         trackEl.setAttribute('aria-valuenow', '0');
         fillEl.style.width = '0%';
+        if (container.classList.contains('timer-popup')) {
+            syncTimerPopupStacking();
+        }
         return;
     }
 
-    const percent = Math.max(0, Math.min(100, Number(bulkActionProgressState.percent) || 0));
+    const percent = Math.max(0, Math.min(100, Number(state.percent) || 0));
     container.hidden = false;
-    container.classList.toggle('is-complete', bulkActionProgressState.status === 'complete');
-    container.classList.toggle('is-error', bulkActionProgressState.status === 'error');
-    textEl.textContent = formatBulkActionProgressText();
+    container.classList.add('visible');
+    container.classList.toggle('is-complete', state.status === 'complete');
+    container.classList.toggle('is-error', state.status === 'error');
+    textEl.textContent = formatter(state);
     percentEl.textContent = `${Math.round(percent)}%`;
     trackEl.setAttribute('aria-valuenow', String(Math.round(percent)));
     fillEl.style.width = `${percent}%`;
+    if (container.classList.contains('timer-popup')) {
+        syncTimerPopupStacking();
+    }
+}
+
+function updateBulkActionProgressUI() {
+    updateOperationProgressUI({
+        baseId: 'search-bulk-progress',
+        state: bulkActionProgressState,
+        formatter: formatBulkActionProgressText,
+    });
+}
+
+function updateImportProgressUI() {
+    updateOperationProgressUI({
+        baseId: 'import-progress',
+        state: importProgressState,
+        formatter: formatImportProgressText,
+    });
 }
 
 function setBulkActionProgressState(nextState) {
@@ -401,6 +467,105 @@ function hideBulkActionProgress({ delayMs = 0 } = {}) {
     }
 
     applyHide();
+}
+
+function setImportProgressState(nextState) {
+    if (importProgressHideTimeout) {
+        clearTimeout(importProgressHideTimeout);
+        importProgressHideTimeout = null;
+    }
+
+    importProgressState = {
+        ...importProgressState,
+        ...nextState,
+    };
+
+    updateImportProgressUI();
+}
+
+function hideImportProgress({ delayMs = 0 } = {}) {
+    const applyHide = () => {
+        importProgressState = {
+            visible: false,
+            active: false,
+            status: 'idle',
+            source: null,
+            phase: null,
+            stage: null,
+            percent: 0,
+            completed: 0,
+            total: 0,
+            sessionCount: 0,
+            solveCount: 0,
+        };
+        updateImportProgressUI();
+    };
+
+    if (importProgressHideTimeout) {
+        clearTimeout(importProgressHideTimeout);
+        importProgressHideTimeout = null;
+    }
+
+    if (delayMs > 0) {
+        importProgressHideTimeout = setTimeout(() => {
+            importProgressHideTimeout = null;
+            applyHide();
+        }, delayMs);
+        return;
+    }
+
+    applyHide();
+}
+
+async function beginImportProgress(source = 'backup') {
+    if (mobileViewportQuery.matches) {
+        setActiveMobilePanel('timer');
+    }
+
+    setImportProgressState({
+        visible: true,
+        active: true,
+        status: 'running',
+        source,
+        phase: 'starting',
+        stage: 'starting',
+        percent: 0,
+        completed: 0,
+        total: 0,
+        sessionCount: 0,
+        solveCount: 0,
+    });
+
+    await waitForNextPaint();
+}
+
+function applyImportProgress(snapshot) {
+    setImportProgressState({
+        visible: true,
+        active: snapshot.phase !== 'complete',
+        status: snapshot.phase === 'complete' ? 'complete' : 'running',
+        source: snapshot.source,
+        phase: snapshot.phase,
+        stage: snapshot.stage,
+        percent: snapshot.percent,
+        completed: snapshot.completed,
+        total: snapshot.total,
+        sessionCount: snapshot.sessionCount ?? 0,
+        solveCount: snapshot.solveCount ?? 0,
+    });
+}
+
+function failImportProgress(source = importProgressState.source) {
+    setImportProgressState({
+        visible: true,
+        active: false,
+        status: 'error',
+        source,
+        phase: 'complete',
+        stage: 'complete',
+        percent: 100,
+    });
+    hideImportProgress({ delayMs: 2200 });
 }
 const buttonShortcutTooltipBindings = [
     { selector: '#btn-settings', binding: ['/'], placement: 'right' },
@@ -9758,11 +9923,16 @@ function initSettingsPanel() {
                 closeSettingsPanel({ isPopState: true });
 
                 if (await customConfirm('This will replace all your current data with the Google Drive backup. Continue?')) {
-                    await importAll(data);
+                    await beginImportProgress('backup');
+                    await importAll(data, {
+                        onProgress: applyImportProgress,
+                    });
+                    await waitForNextPaint();
                     location.reload();
                     return;
                 }
             } catch (error) {
+                failImportProgress('backup');
                 reportGoogleDriveError(error?.message || 'Cloud import failed.');
             } finally {
                 googleDriveBusy = false;
@@ -9862,19 +10032,34 @@ function initSettingsPanel() {
             closeSettingsPanel({ isPopState: true });
 
             if (await customConfirm('This will replace all your current data. Continue?')) {
+                const importSource = isJsonImport && isCsTimerFormat(data)
+                    ? 'cstimer'
+                    : isJsonImport && data && typeof data === 'object'
+                        ? 'backup'
+                        : 'csv';
+                await beginImportProgress(importSource);
+
                 if (isJsonImport && isCsTimerFormat(data)) {
-                    await importCsTimer(data);
+                    await importCsTimer(data, {
+                        onProgress: applyImportProgress,
+                    });
                 } else if (isJsonImport && data && typeof data === 'object') {
-                    await importAll(data);
+                    await importAll(data, {
+                        onProgress: applyImportProgress,
+                    });
                 } else {
-                    await importSessionCsv(text);
+                    await importSessionCsv(text, {
+                        onProgress: applyImportProgress,
+                    });
                 }
+                await waitForNextPaint();
                 location.reload();
             }
         } catch (e) {
             // Silently ignore user-cancelled or AbortError
             if (e.name === 'AbortError') return;
             if (e.message === 'cancelled' || e.message === 'no-file') return;
+            failImportProgress();
             console.error('Import failed:', {
                 message: e?.message || String(e),
                 stack: e?.stack || null,
