@@ -251,6 +251,7 @@ async function registerServiceWorker() {
 const TABLE_ROW_HEIGHT = 27; // px per row, matches CSS
 let _tableScrollHandler = null;
 let _tableSortedIndices = null; // cached sorted index order
+let _pendingSolvesTableViewportReset = false;
 let _tableSolves = null; // reference to current solves array
 const popupState = {
     inspection: { elementId: 'inspection-alert', hideTimeout: null, clearTimeout: null },
@@ -6850,8 +6851,12 @@ function renderSolvesTable(solves, stats) {
     }
 
     const tbody = document.getElementById('solves-tbody');
-    const previousViewportInfo = getVisibleSolveViewportInfo(_tableSortedIndices, tbody);
-    const previousIndexFilterKey = _lastTableIndexFilterKey;
+    const shouldResetViewportToTop = _pendingSolvesTableViewportReset;
+    _pendingSolvesTableViewportReset = false;
+    const previousViewportInfo = shouldResetViewportToTop
+        ? null
+        : getVisibleSolveViewportInfo(_tableSortedIndices, tbody);
+    const previousIndexFilterKey = shouldResetViewportToTop ? '' : _lastTableIndexFilterKey;
     const configuredColumns = getConfiguredSolvesTableStatTokens();
     const visibleColumnCount = 2 + configuredColumns.length;
     ensureValidSolvesTableSort(configuredColumns);
@@ -6908,12 +6913,14 @@ function renderSolvesTable(solves, stats) {
     const totalRows = indices.length;
     const totalHeight = totalRows * TABLE_ROW_HEIGHT;
     const indexFilterKey = getIndexFilterViewportKey();
-    const { jump: pendingViewportJump, scrollTop: pendingScrollTop } = resolveIndexFilterViewportAdjustment(
-        previousViewportInfo,
-        previousIndexFilterKey,
-        indexFilterKey,
-        indices,
-    );
+    const { jump: pendingViewportJump, scrollTop: pendingScrollTop } = shouldResetViewportToTop
+        ? { jump: 'top', scrollTop: null }
+        : resolveIndexFilterViewportAdjustment(
+            previousViewportInfo,
+            previousIndexFilterKey,
+            indexFilterKey,
+            indices,
+        );
     _lastTableIndexFilterKey = indexFilterKey;
 
     // Remove old scroll listener
@@ -7116,6 +7123,7 @@ function refreshSessionList() {
 }
 
 function onSessionChanged() {
+    _pendingSolvesTableViewportReset = true;
     refreshSessionList();
     rebuildStatsCache();
     refreshUI();
