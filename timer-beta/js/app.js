@@ -664,7 +664,7 @@ const keyboardShortcutGroups = [
             },
             {
                 action: 'Open search',
-                bindings: [['Ctrl', 'F'], ['Cmd', 'F']],
+                bindings: [['Ctrl', 'F']],
             },
             {
                 action: 'Open single details',
