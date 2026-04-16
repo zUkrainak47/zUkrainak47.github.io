@@ -1,5 +1,5 @@
-import { load, save } from './storage.js?v=2026041604';
-import { EventEmitter } from './utils.js?v=2026041604';
+import { load, save } from './storage.js?v=2026041605';
+import { EventEmitter } from './utils.js?v=2026041605';
 
 export const THEME_DEFAULT_ID = 'default';
 export const THEME_OLED_ID = 'oled';
