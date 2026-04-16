@@ -665,6 +665,11 @@ const keyboardShortcutGroups = [
                 detail: 'Shift + 1..0, -, = (based on Summary rows setting)',
                 bindings: [['Shift', '1'], ['Shift', '2'], ['Shift', '3'], ['Shift', '4'], ['Shift', '5'], ['Shift', '6'], ['Shift', '7'], ['Shift', '8'], ['Shift', '9'], ['Shift', '0'], ['Shift', '-'], ['Shift', '=']],
             },
+            {
+                action: 'Select all solves',
+                // detail: 'Search mode selects all matches',
+                bindings: [['Ctrl', 'A']],
+            },
         ],
     },
     {
@@ -5249,6 +5254,8 @@ function initKeyboardShortcuts() {
 
         const slashShortcutPressed = isSlashShortcut(e);
         const isShortcutHelpKey = slashShortcutPressed && (e.ctrlKey || e.metaKey);
+        const normalizedKey = String(e.key).toLowerCase();
+        const isSelectAllShortcut = (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && normalizedKey === 'a';
         if (isShortcutHelpKey) {
             e.preventDefault();
 
@@ -5321,6 +5328,15 @@ function initKeyboardShortcuts() {
             }
 
             openSettingsPanel();
+            return;
+        }
+
+        if (isSelectAllShortcut) {
+            if (hasBlockingOverlayOpen() || isSettingsPanelBlocking()) return;
+            if (timer.getState() !== 'idle' && timer.getState() !== 'stopped') return;
+
+            e.preventDefault();
+            selectAllCurrentTableSolves();
             return;
         }
 
@@ -7152,6 +7168,10 @@ function clearSearchFilters({ clearSelection = false } = {}) {
 
     if (!clearSelection) return;
 
+    clearSelectedSolveState();
+}
+
+function clearSelectedSolveState() {
     selectedSolveIds.clear();
     lastSelectedSolveIndex = -1;
     lastSelectedSolveId = null;
@@ -7164,6 +7184,38 @@ function openSearchMenuForSelection() {
     if (isSearchActive) return;
     clearSearchFilters();
     toggleSearchMenu(true);
+}
+
+function selectSolveIndices(indices, solves = _tableSolves || sessionManager.getFilteredSolves()) {
+    clearSelectedSolveState();
+
+    indices.forEach((index) => {
+        const solveId = solves[index]?.id;
+        if (solveId) selectedSolveIds.add(solveId);
+    });
+
+    if (indices.length === 0) return;
+
+    const newestSelectedIndex = indices[0];
+    const newestSelectedSolveId = solves[newestSelectedIndex]?.id || null;
+    lastSelectedSolveIndex = newestSelectedIndex;
+    lastSelectedSolveId = newestSelectedSolveId;
+    selectionAnchorSolveIndex = newestSelectedIndex;
+    selectionAnchorSolveId = newestSelectedSolveId;
+}
+
+function selectAllCurrentTableSolves() {
+    if (bulkActionProgressState.active) return;
+
+    if (!isSearchActive) {
+        openSearchMenuForSelection();
+    }
+
+    const solves = Array.isArray(_tableSolves) ? _tableSolves : sessionManager.getFilteredSolves();
+    const indices = Array.isArray(_tableSortedIndices) ? _tableSortedIndices : [];
+    selectSolveIndices(indices, solves);
+    updateSearchBulkActionUI();
+    refreshUI();
 }
 
 function toggleSearchMenu(forceActive) {
@@ -7180,12 +7232,7 @@ function toggleSearchMenu(forceActive) {
     isSearchActive = nextActive;
 
     if (!isSearchActive) {
-        selectedSolveIds.clear();
-        lastSelectedSolveIndex = -1;
-        lastSelectedSolveId = null;
-        selectionAnchorSolveIndex = -1;
-        selectionAnchorSolveId = null;
-        activeRangeSelectedSolveIds.clear();
+        clearSelectedSolveState();
         currentSortCol = null;
         currentSortDir = null;
     }
