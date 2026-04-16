@@ -1,4 +1,4 @@
-import { formatReadableDate, formatTime, getEffectiveTime } from './utils.js?v=2026041401'
+import { formatReadableDate, formatTime, getEffectiveTime } from './utils.js?v=2026041606'
 
 const BIN_WIDTH_OPTIONS = Object.freeze([
     { label: '1:00', ms: 60000 },
@@ -1084,9 +1084,7 @@ export function closeTimeDistributionModal({ isPopState = false } = {}) {
     if (document.activeElement) document.activeElement.blur()
 }
 
-export function showTimeDistributionModal(solves, { sessionName = 'Session' } = {}) {
-    if (!_overlay) return
-
+function setDistributionState(solves, { sessionName = 'Session' } = {}) {
     const validTimes = solves
         .map((solve) => getEffectiveTime(solve))
         .filter((time) => Number.isFinite(time))
@@ -1106,6 +1104,12 @@ export function showTimeDistributionModal(solves, { sessionName = 'Session' } = 
         legendVisible: _prefs.legendVisible,
         distribution: buildDistribution(validTimes, BIN_WIDTH_OPTIONS[nextBinWidthIndex].ms, _prefs.customMin, _prefs.customMax),
     }
+}
+
+export function showTimeDistributionModal(solves, { sessionName = 'Session' } = {}) {
+    if (!_overlay) return
+
+    setDistributionState(solves, { sessionName })
 
     if (!window.history.state?.isBackIntercepted) {
         window.history.pushState({ isBackIntercepted: true }, '')
@@ -1115,6 +1119,14 @@ export function showTimeDistributionModal(solves, { sessionName = 'Session' } = 
     requestAnimationFrame(() => {
         renderDistribution()
         _copyImageButton?.focus()
+    })
+}
+
+export function refreshTimeDistributionData(solves, { sessionName = 'Session' } = {}) {
+    if (!_overlay?.classList.contains('active')) return
+    setDistributionState(solves, { sessionName })
+    requestAnimationFrame(() => {
+        renderDistribution()
     })
 }
 

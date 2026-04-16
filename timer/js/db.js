@@ -203,10 +203,58 @@ export async function updateSolve(solve) {
     return _txComplete(tx);
 }
 
+export async function updateSolves(solves, { onProgress = null } = {}) {
+    if (!Array.isArray(solves) || solves.length === 0) return;
+
+    const db = await openDB();
+    let completed = 0;
+    const tx = db.transaction('solves', 'readwrite');
+    const store = tx.objectStore('solves');
+
+    for (const solve of solves) {
+        const request = store.put(solve);
+        request.onsuccess = () => {
+            completed += 1;
+            if (typeof onProgress === 'function') {
+                onProgress({
+                    completed,
+                    total: solves.length,
+                });
+            }
+        };
+    }
+
+    return _txComplete(tx);
+}
+
 export async function deleteSolve(solveId) {
     const db = await openDB();
     const tx = db.transaction('solves', 'readwrite');
     tx.objectStore('solves').delete(solveId);
+    return _txComplete(tx);
+}
+
+export async function deleteSolves(solveIds, { onProgress = null } = {}) {
+    if (!Array.isArray(solveIds) || solveIds.length === 0) return;
+
+    const db = await openDB();
+    let completed = 0;
+    const tx = db.transaction('solves', 'readwrite');
+    const store = tx.objectStore('solves');
+
+    for (const solveId of solveIds) {
+        const request = store.delete(solveId);
+        request.onsuccess = () => {
+            completed += 1;
+            if (typeof onProgress === 'function') {
+                onProgress({
+                    completed,
+                    total: solveIds.length,
+                });
+            }
+        };
+    }
+
     return _txComplete(tx);
 }
 
@@ -231,23 +279,58 @@ export async function getAllData() {
  * @param {object[]} sessions
  * @param {object[]} solves
  */
-export async function replaceAllData(sessions, solves) {
+export async function replaceAllData(sessions, solves, { onProgress = null } = {}) {
     const db = await openDB();
+    const total = 1 + sessions.length + solves.length;
+    let completed = 0;
+    let clearRequestsRemaining = 2;
     const tx = db.transaction(['sessions', 'solves'], 'readwrite');
-
-    // Clear existing
-    tx.objectStore('sessions').clear();
-    tx.objectStore('solves').clear();
-
-    // Write new data
     const sessionStore = tx.objectStore('sessions');
+    const solveStore = tx.objectStore('solves');
+
+    const emitProgress = (stage) => {
+        if (typeof onProgress !== 'function') return;
+        onProgress({
+            stage,
+            completed,
+            total,
+        });
+    };
+
+    const updateStageAfterClear = () => {
+        if (clearRequestsRemaining > 0) return;
+        completed = 1;
+        emitProgress(sessions.length > 0 ? 'sessions' : 'solves');
+    };
+
+    emitProgress('clearing');
+
+    const clearSessionsRequest = sessionStore.clear();
+    clearSessionsRequest.onsuccess = () => {
+        clearRequestsRemaining -= 1;
+        updateStageAfterClear();
+    };
+
+    const clearSolvesRequest = solveStore.clear();
+    clearSolvesRequest.onsuccess = () => {
+        clearRequestsRemaining -= 1;
+        updateStageAfterClear();
+    };
+
     for (const session of sessions) {
-        sessionStore.put(session);
+        const request = sessionStore.put(session);
+        request.onsuccess = () => {
+            completed += 1;
+            emitProgress(completed < (1 + sessions.length) ? 'sessions' : 'solves');
+        };
     }
 
-    const solveStore = tx.objectStore('solves');
     for (const solve of solves) {
-        solveStore.put(solve);
+        const request = solveStore.put(solve);
+        request.onsuccess = () => {
+            completed += 1;
+            emitProgress('solves');
+        };
     }
 
     return _txComplete(tx);

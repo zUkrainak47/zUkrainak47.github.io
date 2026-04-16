@@ -1,12 +1,13 @@
-import * as db from './db.js?v=2026041401';
-import { load, save } from './storage.js?v=2026041401';
-import { generateId, EventEmitter, getStartOfToday, getStartOfWeek, getStartOfMonth, parseCustomStatsFilter } from './utils.js?v=2026041401';
-import { settings } from './settings.js?v=2026041401';
-import { SCRAMBLE_TYPE_OPTIONS } from './scramble.js?v=2026041401';
+import * as db from './db.js?v=2026041606';
+import { load, save } from './storage.js?v=2026041606';
+import { generateId, EventEmitter, getStartOfToday, getStartOfWeek, getStartOfMonth, parseCustomStatsFilter } from './utils.js?v=2026041606';
+import { settings } from './settings.js?v=2026041606';
+import { SCRAMBLE_TYPE_OPTIONS } from './scramble.js?v=2026041606';
 
 const DEFAULT_SCRAMBLE_TYPE = '333';
 const LEGACY_SCRAMBLE_TYPE_STORAGE_KEY = 'scrambleType';
 const SCRAMBLE_TYPE_SET = new Set(SCRAMBLE_TYPE_OPTIONS.map((option) => option.id));
+const BULK_OPERATION_YIELD_INTERVAL = 2000;
 
 function sanitizeSessionScrambleType(value) {
     const normalized = typeof value === 'string' ? value.trim().toLowerCase() : '';
@@ -15,6 +16,91 @@ function sanitizeSessionScrambleType(value) {
 
 function getLegacyScrambleTypeFallback() {
     return sanitizeSessionScrambleType(load(LEGACY_SCRAMBLE_TYPE_STORAGE_KEY, DEFAULT_SCRAMBLE_TYPE));
+}
+
+function findSolveInsertIndex(solves, solve) {
+    let low = 0;
+    let high = solves.length;
+
+    while (low < high) {
+        const mid = Math.floor((low + high) / 2);
+        if ((solves[mid]?.timestamp ?? 0) <= (solve?.timestamp ?? 0)) {
+            low = mid + 1;
+        } else {
+            high = mid;
+        }
+    }
+
+    return low;
+}
+
+function waitForNextFrame() {
+    return new Promise((resolve) => {
+        if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+            window.requestAnimationFrame(() => resolve());
+            return;
+        }
+
+        setTimeout(resolve, 0);
+    });
+}
+
+async function mergeSolvesByTimestampWithProgress(left, right, onProgress = null) {
+    const merged = [];
+    let leftIndex = 0;
+    let rightIndex = 0;
+    let completed = 0;
+    const total = left.length + right.length;
+
+    while (leftIndex < left.length && rightIndex < right.length) {
+        if ((left[leftIndex]?.timestamp ?? 0) <= (right[rightIndex]?.timestamp ?? 0)) {
+            merged.push(left[leftIndex]);
+            leftIndex += 1;
+        } else {
+            merged.push(right[rightIndex]);
+            rightIndex += 1;
+        }
+
+        completed += 1;
+        if (completed % BULK_OPERATION_YIELD_INTERVAL === 0) {
+            if (typeof onProgress === 'function') {
+                onProgress({ completed, total });
+            }
+            await waitForNextFrame();
+        }
+    }
+
+    while (leftIndex < left.length) {
+        merged.push(left[leftIndex]);
+        leftIndex += 1;
+        completed += 1;
+
+        if (completed % BULK_OPERATION_YIELD_INTERVAL === 0) {
+            if (typeof onProgress === 'function') {
+                onProgress({ completed, total });
+            }
+            await waitForNextFrame();
+        }
+    }
+
+    while (rightIndex < right.length) {
+        merged.push(right[rightIndex]);
+        rightIndex += 1;
+        completed += 1;
+
+        if (completed % BULK_OPERATION_YIELD_INTERVAL === 0) {
+            if (typeof onProgress === 'function') {
+                onProgress({ completed, total });
+            }
+            await waitForNextFrame();
+        }
+    }
+
+    if (typeof onProgress === 'function') {
+        onProgress({ completed, total });
+    }
+
+    return merged;
 }
 
 class SessionManager extends EventEmitter {
@@ -292,9 +378,9 @@ class SessionManager extends EventEmitter {
         const location = this._findSolveLocation(solveId);
         const session = location?.session;
         if (!session) return;
-        const nextSolves = session.solves.filter(s => s.id !== solveId);
-        if (nextSolves.length === session.solves.length) return;
-        session.solves = nextSolves;
+        const solveIndex = location.index;
+        if (solveIndex < 0) return;
+        session.solves.splice(solveIndex, 1);
         session.solveCount = Math.max(0, session.solveCount - 1);
         db.deleteSolve(solveId);
         this.emit('solveDeleted', solveId);
@@ -320,8 +406,8 @@ class SessionManager extends EventEmitter {
 
         if (shouldSyncTargetSolves) {
             targetSession.solvesLoaded = true;
-            targetSession.solves.push(solve);
-            targetSession.solves.sort((a, b) => a.timestamp - b.timestamp);
+            const insertIndex = findSolveInsertIndex(targetSession.solves, solve);
+            targetSession.solves.splice(insertIndex, 0, solve);
         }
 
         try {
@@ -347,6 +433,257 @@ class SessionManager extends EventEmitter {
         });
 
         return solve;
+    }
+
+    async bulkDeleteSolves(solveIds, { onProgress = null } = {}) {
+        const session = this.getActiveSession();
+        if (!session) return 0;
+
+        const solveIdSet = solveIds instanceof Set ? solveIds : new Set(solveIds);
+        if (solveIdSet.size === 0) return 0;
+
+        const previousSolves = session.solves;
+        const previousSolveCount = session.solveCount;
+        const remainingSolves = [];
+        const deletedSolveIds = [];
+        const totalScanCount = session.solves.length;
+        const totalWork = totalScanCount + solveIdSet.size;
+        const reportProgress = (snapshot) => {
+            if (typeof onProgress !== 'function') return;
+            const effectiveTotalWork = Number.isFinite(snapshot.totalWork) ? snapshot.totalWork : totalWork;
+            const processed = Math.max(0, Math.min(effectiveTotalWork, snapshot.processed ?? 0));
+            onProgress({
+                action: 'delete',
+                selectedCount: solveIdSet.size,
+                totalWork: effectiveTotalWork,
+                ...snapshot,
+                percent: effectiveTotalWork > 0 ? (processed / effectiveTotalWork) * 100 : 100,
+            });
+        };
+
+        reportProgress({
+            phase: 'scanning',
+            completed: 0,
+            total: totalScanCount,
+            processed: 0,
+        });
+
+        for (let index = 0; index < session.solves.length; index += 1) {
+            const solve = session.solves[index];
+            if (solveIdSet.has(solve.id)) {
+                deletedSolveIds.push(solve.id);
+            } else {
+                remainingSolves.push(solve);
+            }
+
+            const completed = index + 1;
+            if (completed % BULK_OPERATION_YIELD_INTERVAL === 0 || completed === totalScanCount) {
+                reportProgress({
+                    phase: 'scanning',
+                    completed,
+                    total: totalScanCount,
+                    processed: completed,
+                });
+
+                if (completed < totalScanCount) {
+                    await waitForNextFrame();
+                }
+            }
+        }
+
+        if (deletedSolveIds.length === 0) return 0;
+
+        session.solves = remainingSolves;
+        session.solveCount = Math.max(0, previousSolveCount - deletedSolveIds.length);
+
+        try {
+            reportProgress({
+                phase: 'writing',
+                completed: 0,
+                total: deletedSolveIds.length,
+                processed: totalScanCount,
+            });
+
+            await db.deleteSolves(deletedSolveIds, {
+                onProgress: ({ completed, total }) => {
+                    reportProgress({
+                        phase: 'writing',
+                        completed,
+                        total,
+                        processed: totalScanCount + completed,
+                    });
+                },
+            });
+        } catch (error) {
+            session.solves = previousSolves;
+            session.solveCount = previousSolveCount;
+            throw error;
+        }
+
+        reportProgress({
+            phase: 'complete',
+            completed: deletedSolveIds.length,
+            total: deletedSolveIds.length,
+            processed: totalWork,
+        });
+
+        this.emit('solveDeleted', deletedSolveIds);
+        return deletedSolveIds.length;
+    }
+
+    async bulkMoveSolves(solveIds, targetSessionId, { onProgress = null } = {}) {
+        const sourceSession = this.getActiveSession();
+        const targetSession = this._sessions.find((session) => session.id === targetSessionId);
+
+        if (!sourceSession || !targetSession || sourceSession.id === targetSession.id) return 0;
+
+        const solveIdSet = solveIds instanceof Set ? solveIds : new Set(solveIds);
+        if (solveIdSet.size === 0) return 0;
+
+        const remainingSolves = [];
+        const movedSolves = [];
+        const totalScanCount = sourceSession.solves.length;
+        const shouldSyncTargetSolves = Boolean(targetSession.solvesLoaded || targetSession.solveCount === 0);
+        const mergeTotal = shouldSyncTargetSolves ? (targetSession.solves.length + solveIdSet.size) : 0;
+        const totalWork = totalScanCount + mergeTotal + solveIdSet.size;
+        const reportProgress = (snapshot) => {
+            if (typeof onProgress !== 'function') return;
+            const effectiveTotalWork = Number.isFinite(snapshot.totalWork) ? snapshot.totalWork : totalWork;
+            const processed = Math.max(0, Math.min(effectiveTotalWork, snapshot.processed ?? 0));
+            onProgress({
+                action: 'move',
+                selectedCount: solveIdSet.size,
+                targetSessionId: targetSession.id,
+                targetSessionName: targetSession.name,
+                totalWork: effectiveTotalWork,
+                ...snapshot,
+                percent: effectiveTotalWork > 0 ? (processed / effectiveTotalWork) * 100 : 100,
+            });
+        };
+
+        reportProgress({
+            phase: 'scanning',
+            completed: 0,
+            total: totalScanCount,
+            processed: 0,
+        });
+
+        for (let index = 0; index < sourceSession.solves.length; index += 1) {
+            const solve = sourceSession.solves[index];
+            if (solveIdSet.has(solve.id)) {
+                movedSolves.push(solve);
+            } else {
+                remainingSolves.push(solve);
+            }
+
+            const completed = index + 1;
+            if (completed % BULK_OPERATION_YIELD_INTERVAL === 0 || completed === totalScanCount) {
+                reportProgress({
+                    phase: 'scanning',
+                    completed,
+                    total: totalScanCount,
+                    processed: completed,
+                });
+
+                if (completed < totalScanCount) {
+                    await waitForNextFrame();
+                }
+            }
+        }
+
+        if (movedSolves.length === 0) return 0;
+
+        const previousSourceSolves = sourceSession.solves;
+        const previousSourceSolveCount = sourceSession.solveCount;
+        const previousTargetSolves = targetSession.solves;
+        const previousTargetSolveCount = targetSession.solveCount;
+        const previousTargetSolvesLoaded = targetSession.solvesLoaded;
+        const actualTotalWork = totalScanCount + (shouldSyncTargetSolves ? (targetSession.solves.length + movedSolves.length) : 0) + movedSolves.length;
+        const progressBaseAfterScan = totalScanCount;
+        const progressBaseAfterMerge = progressBaseAfterScan + (shouldSyncTargetSolves ? (targetSession.solves.length + movedSolves.length) : 0);
+
+        sourceSession.solves = remainingSolves;
+        sourceSession.solveCount = Math.max(0, previousSourceSolveCount - movedSolves.length);
+        targetSession.solveCount += movedSolves.length;
+
+        for (const solve of movedSolves) {
+            solve.sessionId = targetSession.id;
+        }
+
+        if (shouldSyncTargetSolves) {
+            targetSession.solvesLoaded = true;
+            reportProgress({
+                phase: 'merging',
+                completed: 0,
+                total: targetSession.solves.length + movedSolves.length,
+                processed: progressBaseAfterScan,
+                totalWork: actualTotalWork,
+            });
+
+            targetSession.solves = await mergeSolvesByTimestampWithProgress(
+                targetSession.solves,
+                movedSolves,
+                ({ completed, total }) => {
+                    reportProgress({
+                        phase: 'merging',
+                        completed,
+                        total,
+                        processed: progressBaseAfterScan + completed,
+                        totalWork: actualTotalWork,
+                    });
+                },
+            );
+        }
+
+        try {
+            reportProgress({
+                phase: 'writing',
+                completed: 0,
+                total: movedSolves.length,
+                processed: progressBaseAfterMerge,
+                totalWork: actualTotalWork,
+            });
+
+            await db.updateSolves(movedSolves, {
+                onProgress: ({ completed, total }) => {
+                    reportProgress({
+                        phase: 'writing',
+                        completed,
+                        total,
+                        processed: progressBaseAfterMerge + completed,
+                        totalWork: actualTotalWork,
+                    });
+                },
+            });
+        } catch (error) {
+            sourceSession.solves = previousSourceSolves;
+            sourceSession.solveCount = previousSourceSolveCount;
+            targetSession.solves = previousTargetSolves;
+            targetSession.solveCount = previousTargetSolveCount;
+            targetSession.solvesLoaded = previousTargetSolvesLoaded;
+
+            for (const solve of movedSolves) {
+                solve.sessionId = sourceSession.id;
+            }
+
+            throw error;
+        }
+
+        reportProgress({
+            phase: 'complete',
+            completed: movedSolves.length,
+            total: movedSolves.length,
+            processed: actualTotalWork,
+            totalWork: actualTotalWork,
+        });
+
+        this.emit('solveMoved', {
+            solveIds: movedSolves.map((solve) => solve.id),
+            fromSessionId: sourceSession.id,
+            toSessionId: targetSession.id,
+        });
+
+        return movedSolves.length;
     }
 
     /**

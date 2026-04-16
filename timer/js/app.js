@@ -1,22 +1,59 @@
-import { timer } from './timer.js?v=2026041401';
-import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=2026041401';
-import { sessionManager } from './session.js?v=2026041401';
-import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=2026041401';
-import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=2026041401';
-import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, truncateTimeDisplay } from './utils.js?v=2026041401';
-import { initModal, showSolveDetail, showAverageDetail, closeModal, closeMoveSessionMenus, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=2026041401';
-import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=2026041401';
-import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=2026041401';
-import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=2026041401';
-import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=2026041401';
-import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=2026041401';
+import { timer } from './timer.js?v=2026041606';
+import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=2026041606';
+import { sessionManager } from './session.js?v=2026041606';
+import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=2026041606';
+import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=2026041606';
+import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, parseTimeInputToMs, truncateTimeDisplay } from './utils.js?v=2026041606';
+import { initModal, showSolveDetail, showAverageDetail, closeModal, closeMoveSessionMenus, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=2026041606';
+import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=2026041606';
+import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=2026041606';
+import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionData, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=2026041606';
+import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=2026041606';
+import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=2026041606';
 
 let currentScramble = '';
 let currentSortCol = null;
 let currentSortDir = null; // 'asc' or 'desc'
-let commentsOnlyFilterActive = false;
 let scrambleCopyTimeout = null;
 let cubingWarmupHideTimeout = null;
+
+// Search and selection state
+let isSearchActive = false;
+let searchFilters = { text: '', indexMin: '', indexMax: '', timeMin: '', timeMax: '' };
+let selectedSolveIds = new Set();
+let lastSelectedSolveIndex = -1;
+let lastSelectedSolveId = null;
+let selectionAnchorSolveIndex = -1;
+let selectionAnchorSolveId = null;
+let activeRangeSelectedSolveIds = new Set();
+let bulkActionProgressState = {
+    visible: false,
+    active: false,
+    status: 'idle',
+    action: null,
+    phase: null,
+    percent: 0,
+    selectedCount: 0,
+    completed: 0,
+    total: 0,
+    targetSessionName: '',
+};
+let bulkActionProgressHideTimeout = null;
+let importProgressState = {
+    visible: false,
+    active: false,
+    status: 'idle',
+    source: null,
+    phase: null,
+    stage: null,
+    percent: 0,
+    completed: 0,
+    total: 0,
+    sessionCount: 0,
+    solveCount: 0,
+};
+let importProgressHideTimeout = null;
+
 const statsCache = new StatsCache();
 let _skipSolveAddedRefresh = false; // set true when commitSolve manages the refresh itself
 const THEME_EDITOR_MODE_SIMPLE = 'simple';
@@ -203,7 +240,7 @@ async function registerServiceWorker() {
     if (window.location?.protocol === 'file:') return;
 
     try {
-        const serviceWorkerUrl = new URL('../sw.js?v=2026041401', import.meta.url);
+        const serviceWorkerUrl = new URL('../sw.js?v=2026041606', import.meta.url);
         await navigator.serviceWorker.register(serviceWorkerUrl);
     } catch (error) {
         console.warn('Service worker registration failed:', error);
@@ -214,6 +251,7 @@ async function registerServiceWorker() {
 const TABLE_ROW_HEIGHT = 27; // px per row, matches CSS
 let _tableScrollHandler = null;
 let _tableSortedIndices = null; // cached sorted index order
+let _pendingSolvesTableViewportReset = false;
 let _tableSolves = null; // reference to current solves array
 const popupState = {
     inspection: { elementId: 'inspection-alert', hideTimeout: null, clearTimeout: null },
@@ -226,6 +264,7 @@ const TIMER_POPUP_ELEMENT_IDS = [
     'new-best-alert',
     'penalty-shortcut-alert',
     'cubing-warmup-alert',
+    'import-progress',
 ];
 
 function syncTimerPopupStacking() {
@@ -262,6 +301,279 @@ const SHIFT_STAT_SHORTCUT_DISPLAY = {
     Equal: '=',
     Backquote: '`',
 };
+
+function waitForNextPaint() {
+    return new Promise((resolve) => {
+        if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+            window.requestAnimationFrame(() => resolve());
+            return;
+        }
+
+        setTimeout(resolve, 0);
+    });
+}
+
+function formatBulkActionProgressText(snapshot = bulkActionProgressState) {
+    const actionVerb = snapshot.action === 'move' ? 'Moving' : 'Deleting';
+    const count = Number.isFinite(snapshot.selectedCount) ? snapshot.selectedCount : 0;
+    const countLabel = `${count.toLocaleString()} solve${count === 1 ? '' : 's'}`;
+
+    if (snapshot.status === 'complete') {
+        return snapshot.action === 'move'
+            ? `Moved ${countLabel}`
+            : `Deleted ${countLabel}`;
+    }
+
+    if (snapshot.status === 'error') {
+        return snapshot.action === 'move'
+            ? `Couldn't move ${countLabel}`
+            : `Couldn't delete ${countLabel}`;
+    }
+
+    switch (snapshot.phase) {
+        case 'scanning':
+            return `${actionVerb} ${countLabel}: scanning session`;
+        case 'merging':
+            return `${actionVerb} ${countLabel}: updating ${snapshot.targetSessionName || 'target session'}`;
+        case 'writing':
+            return snapshot.action === 'move'
+                ? `${actionVerb} ${countLabel}: writing ${snapshot.completed.toLocaleString()}/${snapshot.total.toLocaleString()}`
+                : `${actionVerb} ${countLabel}: removing ${snapshot.completed.toLocaleString()}/${snapshot.total.toLocaleString()}`;
+        case 'starting':
+        default:
+            return `${actionVerb} ${countLabel}...`;
+    }
+}
+
+function formatImportProgressText(snapshot = importProgressState) {
+    const sourceLabel = snapshot.source === 'cstimer'
+        ? 'csTimer'
+        : snapshot.source === 'csv'
+            ? 'CSV'
+            : 'backup';
+
+    if (snapshot.status === 'complete') {
+        return `Imported ${snapshot.solveCount.toLocaleString()} solve${snapshot.solveCount === 1 ? '' : 's'}`;
+    }
+
+    if (snapshot.status === 'error') {
+        return `Import failed`;
+    }
+
+    switch (snapshot.phase) {
+        case 'parsing':
+            return `Importing ${sourceLabel}: parsing data`;
+        case 'writing':
+            if (snapshot.stage === 'clearing') return `Importing ${sourceLabel}: replacing existing data`;
+            if (snapshot.stage === 'sessions') return `Importing ${sourceLabel}: saving sessions`;
+            return `Importing ${sourceLabel}: saving solves`;
+        default:
+            return `Importing ${sourceLabel}...`;
+    }
+}
+
+function updateOperationProgressUI({ baseId, state, formatter }) {
+    const container = document.getElementById(baseId);
+    const textEl = document.getElementById(`${baseId}-text`);
+    const percentEl = document.getElementById(`${baseId}-percent`);
+    const trackEl = document.getElementById(`${baseId}-track`);
+    const fillEl = document.getElementById(`${baseId}-fill`);
+    if (!container || !textEl || !percentEl || !trackEl || !fillEl) return;
+
+    if (!state.visible) {
+        container.hidden = true;
+        container.classList.remove('visible');
+        container.classList.remove('is-active');
+        container.classList.remove('is-complete', 'is-error');
+        trackEl.setAttribute('aria-valuenow', '0');
+        fillEl.style.transition = 'none';
+        fillEl.style.transform = 'translateZ(0) scaleX(0)';
+        if (container.classList.contains('timer-popup')) {
+            syncTimerPopupStacking();
+        }
+        return;
+    }
+
+    const percent = Math.max(0, Math.min(100, Number(state.percent) || 0));
+    const isActive = !!state.active && state.status === 'running';
+    container.hidden = false;
+    container.classList.add('visible');
+    container.classList.toggle('is-active', isActive);
+    container.classList.toggle('is-complete', state.status === 'complete');
+    container.classList.toggle('is-error', state.status === 'error');
+    textEl.textContent = formatter(state);
+    percentEl.textContent = `${Math.round(percent)}%`;
+    trackEl.setAttribute('aria-valuenow', String(Math.round(percent)));
+    fillEl.style.transition = isActive ? 'none' : 'transform 120ms linear';
+    fillEl.style.transform = `translateZ(0) scaleX(${percent / 100})`;
+    if (container.classList.contains('timer-popup')) {
+        syncTimerPopupStacking();
+    }
+}
+
+function updateBulkActionProgressUI() {
+    updateOperationProgressUI({
+        baseId: 'search-bulk-progress',
+        state: bulkActionProgressState,
+        formatter: formatBulkActionProgressText,
+    });
+}
+
+function updateImportProgressUI() {
+    updateOperationProgressUI({
+        baseId: 'import-progress',
+        state: importProgressState,
+        formatter: formatImportProgressText,
+    });
+}
+
+function setBulkActionProgressState(nextState) {
+    if (bulkActionProgressHideTimeout) {
+        clearTimeout(bulkActionProgressHideTimeout);
+        bulkActionProgressHideTimeout = null;
+    }
+
+    bulkActionProgressState = {
+        ...bulkActionProgressState,
+        ...nextState,
+    };
+
+    updateBulkActionProgressUI();
+    updateSearchBulkActionUI();
+}
+
+function hideBulkActionProgress({ delayMs = 0 } = {}) {
+    const applyHide = () => {
+        bulkActionProgressState = {
+            visible: false,
+            active: false,
+            status: 'idle',
+            action: null,
+            phase: null,
+            percent: 0,
+            selectedCount: 0,
+            completed: 0,
+            total: 0,
+            targetSessionName: '',
+        };
+        updateBulkActionProgressUI();
+        updateSearchBulkActionUI();
+    };
+
+    if (bulkActionProgressHideTimeout) {
+        clearTimeout(bulkActionProgressHideTimeout);
+        bulkActionProgressHideTimeout = null;
+    }
+
+    if (delayMs > 0) {
+        bulkActionProgressHideTimeout = setTimeout(() => {
+            bulkActionProgressHideTimeout = null;
+            applyHide();
+        }, delayMs);
+        return;
+    }
+
+    applyHide();
+}
+
+function setImportProgressState(nextState) {
+    if (importProgressHideTimeout) {
+        clearTimeout(importProgressHideTimeout);
+        importProgressHideTimeout = null;
+    }
+
+    importProgressState = {
+        ...importProgressState,
+        ...nextState,
+    };
+
+    updateImportProgressUI();
+}
+
+function hideImportProgress({ delayMs = 0 } = {}) {
+    const applyHide = () => {
+        importProgressState = {
+            visible: false,
+            active: false,
+            status: 'idle',
+            source: null,
+            phase: null,
+            stage: null,
+            percent: 0,
+            completed: 0,
+            total: 0,
+            sessionCount: 0,
+            solveCount: 0,
+        };
+        updateImportProgressUI();
+    };
+
+    if (importProgressHideTimeout) {
+        clearTimeout(importProgressHideTimeout);
+        importProgressHideTimeout = null;
+    }
+
+    if (delayMs > 0) {
+        importProgressHideTimeout = setTimeout(() => {
+            importProgressHideTimeout = null;
+            applyHide();
+        }, delayMs);
+        return;
+    }
+
+    applyHide();
+}
+
+async function beginImportProgress(source = 'backup') {
+    if (mobileViewportQuery.matches) {
+        setActiveMobilePanel('timer');
+    }
+
+    setImportProgressState({
+        visible: true,
+        active: true,
+        status: 'running',
+        source,
+        phase: 'starting',
+        stage: 'starting',
+        percent: 0,
+        completed: 0,
+        total: 0,
+        sessionCount: 0,
+        solveCount: 0,
+    });
+
+    await waitForNextPaint();
+}
+
+function applyImportProgress(snapshot) {
+    setImportProgressState({
+        visible: true,
+        active: snapshot.phase !== 'complete',
+        status: snapshot.phase === 'complete' ? 'complete' : 'running',
+        source: snapshot.source,
+        phase: snapshot.phase,
+        stage: snapshot.stage,
+        percent: snapshot.percent,
+        completed: snapshot.completed,
+        total: snapshot.total,
+        sessionCount: snapshot.sessionCount ?? 0,
+        solveCount: snapshot.solveCount ?? 0,
+    });
+}
+
+function failImportProgress(source = importProgressState.source) {
+    setImportProgressState({
+        visible: true,
+        active: false,
+        status: 'error',
+        source,
+        phase: 'complete',
+        stage: 'complete',
+        percent: 100,
+    });
+    hideImportProgress({ delayMs: 2200 });
+}
 const buttonShortcutTooltipBindings = [
     { selector: '#btn-settings', binding: ['/'], placement: 'right' },
     { selector: '#scramble-text', binding: ['C'] },
@@ -346,6 +658,11 @@ const keyboardShortcutGroups = [
                 bindings: [['-']],
             },
             {
+                action: 'Select all solves',
+                // detail: 'Search mode selects all matches',
+                bindings: [['Ctrl', 'A']],
+            },
+            {
                 action: 'Open single details',
                 bindings: [['Shift', '`']],
             },
@@ -357,8 +674,29 @@ const keyboardShortcutGroups = [
         ],
     },
     {
+        title: 'Sessions',
+        items: [
+            {
+                action: 'Previous session',
+                bindings: [['Alt', 'Up']],
+            },
+            {
+                action: 'Next session',
+                bindings: [['Alt', 'Down']],
+            },
+        ],
+    },
+    {
         title: 'Scramble and layout',
         items: [
+            {
+                action: 'Switch to 2x2 through 7x7',
+                bindings: [['Alt', '2~7']],
+            },
+            {
+                action: 'Switch to Pyra, Mega, Clock, Skewb, Sq-1',
+                bindings: [['Alt', ['P/M/C/S/1']]],
+            },
             {
                 action: 'Toggle zen mode',
                 bindings: [['Z']],
@@ -411,6 +749,23 @@ const keyboardShortcutGroups = [
         ],
     },
 ];
+const ALT_SESSION_SHORTCUT_OFFSETS = new Map([
+    ['ArrowUp', -1],
+    ['ArrowDown', 1],
+]);
+const ALT_SCRAMBLE_TYPE_SHORTCUTS = new Map([
+    ['Digit1', 'sq1'],
+    ['Digit2', '222'],
+    ['Digit3', '333'],
+    ['Digit4', '444'],
+    ['Digit5', '555'],
+    ['Digit6', '666'],
+    ['Digit7', '777'],
+    ['KeyP', 'pyram'],
+    ['KeyM', 'minx'],
+    ['KeyC', 'clock'],
+    ['KeyS', 'skewb'],
+]);
 const blockingOverlayIds = ['modal-overlay', 'distribution-overlay', 'scramble-preview-overlay', 'confirm-overlay', 'prompt-overlay', 'shortcuts-overlay', 'chart-image-overlay', 'theme-customization-overlay'];
 const THEME_OPTION_LABELS = new Map(THEME_OPTIONS.map(({ value, label }) => [value, label]));
 let settingsOverlayEl = null;
@@ -2718,11 +3073,13 @@ async function init() {
     });
     sessionManager.on('solveUpdated', () => { rebuildStatsCache(); refreshUI(); });
     sessionManager.on('solveDeleted', () => {
+        if (window._isBulkAction) return;
         refreshSessionList();
         rebuildStatsCache();
         refreshUI();
     });
     sessionManager.on('solveMoved', () => {
+        if (window._isBulkAction) return;
         refreshSessionList();
         rebuildStatsCache();
         refreshUI();
@@ -2768,6 +3125,7 @@ async function init() {
     initShortcutsOverlay();
     initSessionControls();
     initFilterControls();
+    initSearchMenu();
     initCollapsiblePanels();
     initZenMode();
     initScrambleControls();
@@ -2814,9 +3172,15 @@ async function init() {
 
     graphEvents.on('nodeClick', (payload) => {
         const interaction = typeof payload === 'number' ? { idx: payload } : payload;
-        const idx = interaction?.idx;
         const solves = sessionManager.getFilteredSolves();
         const stats = statsCache.getStats();
+        let idx = interaction?.idx;
+        if (interaction?.solveId) {
+            const resolvedIndex = solves.findIndex((solve) => solve.id === interaction.solveId);
+            if (resolvedIndex >= 0) {
+                idx = resolvedIndex;
+            }
+        }
         if (idx >= 0 && idx < solves.length) {
             if (interaction?.source === 'touch') {
                 armModalGhostClickGuard({
@@ -2906,7 +3270,7 @@ function initGraphDistributionButton() {
     if (!button) return;
 
     button.addEventListener('click', () => {
-        showTimeDistributionModal(sessionManager.getFilteredSolves(), {
+        showTimeDistributionModal(getSearchScopedSolves(), {
             sessionName: sessionManager.getActiveSession()?.name || 'Session',
         });
     });
@@ -3619,6 +3983,7 @@ function registerCustomSelectMenu({ selectId, menuId, buttonId, dropdownId, aria
     const sync = () => {
         const options = Array.from(selectEl.options);
         const selectedOption = options.find((option) => option.value === selectEl.value) || options[0] || null;
+        const interactiveOptions = options.filter((option) => !option.hidden && !option.disabled);
         const scrollEl = ensureDropdownScrollContainer(dropdownEl, 'custom-select-dropdown-scroll');
 
         if (!(scrollEl instanceof HTMLElement)) return;
@@ -3626,15 +3991,17 @@ function registerCustomSelectMenu({ selectId, menuId, buttonId, dropdownId, aria
         labelEl.textContent = selectedOption?.textContent || '';
         buttonEl.title = selectedOption?.textContent || '';
         buttonEl.setAttribute('aria-label', selectedOption ? `${ariaLabel}: ${selectedOption.textContent}` : ariaLabel);
-        buttonEl.disabled = options.length === 0;
+        buttonEl.disabled = selectEl.disabled || interactiveOptions.length === 0;
 
         const fragment = document.createDocumentFragment();
         options.forEach((option) => {
+            if (option.hidden) return;
             const optionButton = document.createElement('button');
             optionButton.type = 'button';
             optionButton.className = 'custom-select-option';
             optionButton.dataset.value = option.value;
             optionButton.setAttribute('role', 'option');
+            optionButton.disabled = option.disabled;
 
             const isActive = option.value === selectEl.value;
             optionButton.classList.toggle('active', isActive);
@@ -3706,6 +4073,14 @@ function initCustomSelectMenus() {
         ariaLabel: 'Stats filter',
     });
 
+    registerCustomSelectMenu({
+        selectId: 'search-bulk-move-select',
+        menuId: 'search-bulk-move-menu',
+        buttonId: 'btn-search-bulk-move',
+        dropdownId: 'search-bulk-move-dropdown',
+        ariaLabel: 'Move selected solves',
+    });
+
     document.addEventListener('pointerdown', (event) => {
         if (event.target instanceof Element && (event.target.closest('.custom-select-menu') || event.target.closest('.floating-move-session-dropdown'))) return;
         closeCustomSelectMenus();
@@ -3769,6 +4144,24 @@ async function reloadScrambleForSelectedType() {
     if (prevBtn) prevBtn.disabled = true;
     scheduleViewportLayoutSync();
     await loadNewScramble();
+}
+
+async function applyActiveSessionScrambleType(nextType, { loadScramble = true } = {}) {
+    if (document.getElementById('scramble-text')?.classList.contains('loading')) return false;
+
+    const activeSessionId = sessionManager.getActiveSessionId();
+    if (activeSessionId) {
+        await sessionManager.setSessionScrambleType(activeSessionId, nextType);
+    }
+
+    const changed = setScrambleType(nextType);
+    syncScrambleTypeMenus(nextType);
+
+    if (loadScramble && changed) {
+        await reloadScrambleForSelectedType();
+    }
+
+    return changed;
 }
 
 async function syncScrambleTypeWithActiveSession({ loadScramble = false } = {}) {
@@ -3985,16 +4378,10 @@ function initScrambleControls() {
         keepSubsetOpen = false,
         menuEl = null,
     } = {}) {
-        if (textEl.classList.contains('loading')) return;
-        const activeSessionId = sessionManager.getActiveSessionId();
-        if (activeSessionId) {
-            await sessionManager.setSessionScrambleType(activeSessionId, nextType);
-        }
-        const changed = setScrambleType(nextType);
+        const changed = await applyActiveSessionScrambleType(nextType, { loadScramble: false });
         if (closeAfterSelect) {
             closeScrambleTypeMenus();
         }
-        syncScrambleTypeMenus();
 
         if (!closeAfterSelect && menuEl instanceof HTMLElement) {
             menuEl.classList.add('open');
@@ -4267,8 +4654,9 @@ function initTableSorting() {
         const col = th.dataset.sort;
         if (!col) return;
 
-        if (col === 'comments') {
-            commentsOnlyFilterActive = !commentsOnlyFilterActive;
+        if (col === 'search') {
+            toggleSearchMenu();
+            return;
         } else if (currentSortCol === col) {
             if (currentSortDir === 'asc') {
                 currentSortDir = 'desc';
@@ -4893,6 +5281,33 @@ function renderKeyboardShortcuts() {
     `).join('');
 }
 
+function getAltSessionShortcutOffset(event) {
+    if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return 0;
+    return ALT_SESSION_SHORTCUT_OFFSETS.get(event.code) || 0;
+}
+
+function getAltScrambleTypeShortcut(event) {
+    if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return null;
+    return ALT_SCRAMBLE_TYPE_SHORTCUTS.get(event.code) || null;
+}
+
+async function switchActiveSessionByOffset(offset) {
+    if (!Number.isFinite(offset) || offset === 0) return false;
+
+    const sessions = sessionManager.getSessions();
+    if (sessions.length <= 1) return false;
+
+    const activeSessionId = sessionManager.getActiveSessionId();
+    const currentIndex = sessions.findIndex((session) => session.id === activeSessionId);
+    if (currentIndex === -1) return false;
+
+    const nextIndex = (currentIndex + offset + sessions.length) % sessions.length;
+    if (nextIndex === currentIndex) return false;
+
+    await sessionManager.setActiveSession(sessions[nextIndex].id);
+    return true;
+}
+
 // ──── Keyboard Shortcuts ────
 function initKeyboardShortcuts() {
     document.addEventListener('keydown', (e) => {
@@ -4917,6 +5332,8 @@ function initKeyboardShortcuts() {
 
         const slashShortcutPressed = isSlashShortcut(e);
         const isShortcutHelpKey = slashShortcutPressed && (e.ctrlKey || e.metaKey);
+        const normalizedKey = String(e.key).toLowerCase();
+        const isSelectAllShortcut = (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && normalizedKey === 'a';
         if (isShortcutHelpKey) {
             e.preventDefault();
 
@@ -4992,6 +5409,15 @@ function initKeyboardShortcuts() {
             return;
         }
 
+        if (isSelectAllShortcut) {
+            if (hasBlockingOverlayOpen() || isSettingsPanelBlocking()) return;
+            if (timer.getState() !== 'idle' && timer.getState() !== 'stopped') return;
+
+            e.preventDefault();
+            selectAllCurrentTableSolves();
+            return;
+        }
+
         // Ignore if confirm or settings modal is active
         if (document.getElementById('confirm-overlay').classList.contains('active') ||
             isSettingsPanelBlocking() ||
@@ -5003,11 +5429,31 @@ function initKeyboardShortcuts() {
         const isSolveModalActive = document.getElementById('modal-overlay').classList.contains('active')
             || document.getElementById('distribution-overlay').classList.contains('active')
             || document.getElementById('scramble-preview-overlay').classList.contains('active');
+        const altSessionShortcutOffset = getAltSessionShortcutOffset(e);
+        const altScrambleTypeShortcut = getAltScrambleTypeShortcut(e);
 
         if (isManualTimeInputFocused() && (e.code === 'Period' || e.code === 'Comma')) return;
 
         // Ignore if timer is running or holding
         if (timer.getState() !== 'idle' && timer.getState() !== 'stopped') return;
+
+        if (altSessionShortcutOffset || altScrambleTypeShortcut) {
+            if (isSolveModalActive) return;
+
+            e.preventDefault();
+            closeCustomSelectMenus();
+            closeScrambleTypeMenus();
+
+            if (altSessionShortcutOffset) {
+                void switchActiveSessionByOffset(altSessionShortcutOffset);
+                return;
+            }
+
+            if (altScrambleTypeShortcut) {
+                void applyActiveSessionScrambleType(altScrambleTypeShortcut);
+                return;
+            }
+        }
 
         if (isDesktopTypingEntryModeEnabled() && !isSolveModalActive && !isManualTimeInputFocused()) {
             if (e.key === 'Escape') {
@@ -5107,7 +5553,7 @@ function initKeyboardShortcuts() {
                     break;
                 }
                 if (isSolveModalActive) return;
-                showTimeDistributionModal(sessionManager.getFilteredSolves(), {
+                showTimeDistributionModal(getSearchScopedSolves(), {
                     sessionName: sessionManager.getActiveSession()?.name || 'Session',
                 });
                 break;
@@ -5502,6 +5948,146 @@ function syncStatsCacheWithFilteredSolves(solves = sessionManager.getFilteredSol
     return solves;
 }
 
+function parseSearchTimeBoundary(value) {
+    const normalized = String(value ?? '').trim();
+    if (!normalized) return null;
+    return parseTimeInputToMs(normalized);
+}
+
+function solveMatchesSearchFilters(solve, index, filters = searchFilters) {
+    const { text, indexMin, indexMax, timeMin, timeMax } = filters;
+    const displayIndex = index + 1;
+
+    if (indexMin !== '' && displayIndex < Number(indexMin)) return false;
+    if (indexMax !== '' && displayIndex > Number(indexMax)) return false;
+
+    const minTimeMs = parseSearchTimeBoundary(timeMin);
+    const maxTimeMs = parseSearchTimeBoundary(timeMax);
+    const hasTimeFilter = minTimeMs != null || maxTimeMs != null;
+
+    if (hasTimeFilter) {
+        const effectiveTime = getEffectiveTime(solve);
+        if (!Number.isFinite(effectiveTime)) return false;
+        if (minTimeMs != null && effectiveTime < minTimeMs) return false;
+        if (maxTimeMs != null && effectiveTime > maxTimeMs) return false;
+    }
+
+    const textLower = text.toLowerCase();
+    if (!textLower) return true;
+
+    const timeText = formatSolveTime(solve).toLowerCase();
+    const commentText = (solve.comment || '').toLowerCase();
+    const scrambleText = (solve.scramble || '').toLowerCase();
+    return timeText.includes(textLower)
+        || commentText.includes(textLower)
+        || scrambleText.includes(textLower);
+}
+
+function getSearchMatchedSolveIndices(solves, filters = searchFilters) {
+    if (!isSearchActive) return solves.map((_, index) => index);
+
+    const hasTextFilter = Boolean(filters.text?.trim());
+    const hasTimeFilter = filters.timeMin !== '' || filters.timeMax !== '';
+    const hasIndexFilter = filters.indexMin !== '' || filters.indexMax !== '';
+
+    if (hasIndexFilter && !hasTextFilter && !hasTimeFilter) {
+        const minIndex = filters.indexMin !== '' ? Math.max(1, Math.floor(Number(filters.indexMin))) : 1;
+        const maxIndex = filters.indexMax !== '' ? Math.min(solves.length, Math.floor(Number(filters.indexMax))) : solves.length;
+
+        if (!Number.isFinite(minIndex) || !Number.isFinite(maxIndex) || minIndex > maxIndex) {
+            return [];
+        }
+
+        const matched = [];
+        for (let index = minIndex - 1; index < maxIndex; index += 1) {
+            matched.push(index);
+        }
+        return matched;
+    }
+
+    return solves
+        .map((_, index) => index)
+        .filter((index) => solveMatchesSearchFilters(solves[index], index, filters));
+}
+
+function getSearchScopedSolves(solves = sessionManager.getFilteredSolves()) {
+    if (!isSearchActive) return solves;
+    const matchedIndices = getSearchMatchedSolveIndices(solves);
+    return matchedIndices.map((index) => ({
+        ...solves[index],
+        graphDisplayIndex: index + 1,
+    }));
+}
+
+function buildStatsCacheForSolves(solves) {
+    const cache = new StatsCache();
+    cache.rebuild(solves);
+    return cache;
+}
+
+function reconcileSelectedSolveState(solves = sessionManager.getFilteredSolves()) {
+    const validSolveIds = new Set(solves.map((solve) => solve.id));
+    let changed = false;
+
+    selectedSolveIds.forEach((solveId) => {
+        if (validSolveIds.has(solveId)) return;
+        selectedSolveIds.delete(solveId);
+        changed = true;
+    });
+
+    activeRangeSelectedSolveIds.forEach((solveId) => {
+        if (validSolveIds.has(solveId) && selectedSolveIds.has(solveId)) return;
+        activeRangeSelectedSolveIds.delete(solveId);
+        changed = true;
+    });
+
+    if (selectedSolveIds.size === 0) {
+        if (lastSelectedSolveIndex !== -1) changed = true;
+        if (lastSelectedSolveId != null) changed = true;
+        if (selectionAnchorSolveIndex !== -1) changed = true;
+        if (selectionAnchorSolveId != null) changed = true;
+        if (activeRangeSelectedSolveIds.size > 0) changed = true;
+
+        lastSelectedSolveIndex = -1;
+        lastSelectedSolveId = null;
+        selectionAnchorSolveIndex = -1;
+        selectionAnchorSolveId = null;
+        activeRangeSelectedSolveIds.clear();
+        return changed;
+    }
+
+    if (!selectionAnchorSolveId || !selectedSolveIds.has(selectionAnchorSolveId) || !validSolveIds.has(selectionAnchorSolveId)) {
+        if (selectionAnchorSolveIndex !== -1 || selectionAnchorSolveId != null || activeRangeSelectedSolveIds.size > 0) {
+            changed = true;
+        }
+        selectionAnchorSolveIndex = -1;
+        selectionAnchorSolveId = null;
+        activeRangeSelectedSolveIds.clear();
+    } else {
+        const nextAnchorIndex = solves.findIndex((solve) => solve.id === selectionAnchorSolveId);
+        if (selectionAnchorSolveIndex !== nextAnchorIndex) {
+            selectionAnchorSolveIndex = nextAnchorIndex;
+            changed = true;
+        }
+    }
+
+    if (!lastSelectedSolveId || !selectedSolveIds.has(lastSelectedSolveId) || !validSolveIds.has(lastSelectedSolveId)) {
+        if (lastSelectedSolveIndex !== -1 || lastSelectedSolveId != null) {
+            changed = true;
+        }
+        lastSelectedSolveIndex = -1;
+        lastSelectedSolveId = null;
+    } else {
+        const nextLastSelectedIndex = solves.findIndex((solve) => solve.id === lastSelectedSolveId);
+        if (lastSelectedSolveIndex !== nextLastSelectedIndex) {
+            lastSelectedSolveIndex = nextLastSelectedIndex;
+            changed = true;
+        }
+    }
+
+    return changed;
+}
+
 /**
  * Rebuild the stats cache from scratch for the current filtered solves.
  * Called on session switch, filter change, import, delete, penalty toggle.
@@ -5512,11 +6098,21 @@ function rebuildStatsCache() {
 
 function refreshUI() {
     const solves = syncStatsCacheWithFilteredSolves();
+    reconcileSelectedSolveState(solves);
     const stats = statsCache.getStats();
+    const graphAndDistributionSolves = getSearchScopedSolves(solves);
+    const graphStatsCache = graphAndDistributionSolves === solves
+        ? statsCache
+        : buildStatsCacheForSolves(graphAndDistributionSolves);
 
     renderSummaryStats(stats, solves);
     renderSolvesTable(solves, stats);
-    updateGraphData(solves, statsCache);
+    updateGraphData(graphAndDistributionSolves, graphStatsCache);
+    if (isTimeDistributionModalOpen()) {
+        refreshTimeDistributionData(graphAndDistributionSolves, {
+            sessionName: sessionManager.getActiveSession()?.name || 'Session',
+        });
+    }
     updateTimerInfo(stats, solves);
     refreshSessionList();
 
@@ -6056,11 +6652,13 @@ function handleStatClick(type, which, solves, stats) {
 }
 
 let _lastTableParams = null;
+let _lastTableIndexFilterKey = '';
 
 function getSolvesTableHeaderState(columnKey) {
-    const label = columnKey === 'comments'
-        ? (commentsOnlyFilterActive ? '#\u2009*' : '#')
-        : columnKey;
+    let label = columnKey;
+    if (columnKey === 'search') {
+        label = '<span class="icon-mask icon-mask-search" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle;"></span>';
+    }
 
     let sortIndicator = '';
     if (columnKey === currentSortCol) {
@@ -6072,7 +6670,7 @@ function getSolvesTableHeaderState(columnKey) {
 
 function ensureValidSolvesTableSort(configuredColumns) {
     if (!currentSortCol) return;
-    if (currentSortCol === 'comments' || currentSortCol === 'time') return;
+    if (currentSortCol === 'time') return;
 
     const allowed = new Set(configuredColumns.map((column) => column.type));
     if (allowed.has(currentSortCol)) return;
@@ -6097,6 +6695,15 @@ function syncSolvesTableHeader(configuredColumns) {
     if (statCount === 0) {
         indexWidth = isMobile ? 14 : 18;
         timeWidth = 100 - indexWidth;
+    } else if (isMobile && statCount === 2) {
+        indexWidth = 18;
+        timeWidth = 22;
+        statWidth = 30;
+        if (longestStatLabelLength >= 7) {
+            headerFontSize = '0.54rem';
+        } else if (longestStatLabelLength >= 6) {
+            headerFontSize = '0.58rem';
+        }
     } else {
         const indexWeight = isMobile ? 1 : 2;
         const statWeight = longestStatLabelLength >= 7
@@ -6127,7 +6734,8 @@ function syncSolvesTableHeader(configuredColumns) {
 
     const renderHeaderCell = (columnKey, extraAttributes = '') => {
         const { label, sortIndicator } = getSolvesTableHeaderState(columnKey);
-        return `<th data-sort="${columnKey}" ${extraAttributes} style="cursor: pointer;">
+        const activeClass = columnKey === 'search' && isSearchActive ? 'search-mode-active' : '';
+        return `<th data-sort="${columnKey}" class="${activeClass}" ${extraAttributes} style="cursor: pointer;">
             <span class="solves-table-header-content">
                 <span class="solves-table-header-label">${label}</span>
                 <span class="solves-table-header-sort" aria-hidden="true">${sortIndicator}</span>
@@ -6136,10 +6744,112 @@ function syncSolvesTableHeader(configuredColumns) {
     };
 
     headerRow.innerHTML = [
-        renderHeaderCell('comments'),
+        renderHeaderCell('search'),
         renderHeaderCell('time'),
         ...configuredColumns.map((column) => renderHeaderCell(column.type, 'data-stat-column="true"')),
     ].join('');
+}
+
+function getVisibleSolveViewportInfo(indices, tbody) {
+    if (!Array.isArray(indices) || indices.length === 0 || !tbody) return null;
+
+    const scrollTop = tbody.scrollTop;
+    const viewportHeight = tbody.clientHeight;
+    const topVisibleRow = Math.max(0, Math.floor(scrollTop / TABLE_ROW_HEIGHT));
+    const rowOffset = scrollTop - (topVisibleRow * TABLE_ROW_HEIGHT);
+    const visibleRows = Math.ceil(viewportHeight / TABLE_ROW_HEIGHT) + 1;
+    const endRow = Math.min(indices.length, topVisibleRow + visibleRows);
+
+    if (endRow <= topVisibleRow) return null;
+
+    let minDisplayIndex = Number.POSITIVE_INFINITY;
+    let maxDisplayIndex = Number.NEGATIVE_INFINITY;
+    const visibleDisplayIndices = [];
+
+    for (let row = topVisibleRow; row < endRow; row += 1) {
+        const displayIndex = indices[row] + 1;
+        visibleDisplayIndices.push(displayIndex);
+        if (displayIndex < minDisplayIndex) minDisplayIndex = displayIndex;
+        if (displayIndex > maxDisplayIndex) maxDisplayIndex = displayIndex;
+    }
+
+    if (!Number.isFinite(minDisplayIndex) || !Number.isFinite(maxDisplayIndex)) return null;
+
+    return {
+        min: minDisplayIndex,
+        max: maxDisplayIndex,
+        anchorRowOffset: rowOffset,
+        visibleDisplayIndices,
+    };
+}
+
+function getSolveDisplayRange(indices) {
+    if (!Array.isArray(indices) || indices.length === 0) return null;
+
+    let minDisplayIndex = Number.POSITIVE_INFINITY;
+    let maxDisplayIndex = Number.NEGATIVE_INFINITY;
+
+    for (const index of indices) {
+        const displayIndex = index + 1;
+        if (displayIndex < minDisplayIndex) minDisplayIndex = displayIndex;
+        if (displayIndex > maxDisplayIndex) maxDisplayIndex = displayIndex;
+    }
+
+    if (!Number.isFinite(minDisplayIndex) || !Number.isFinite(maxDisplayIndex)) return null;
+
+    return {
+        min: minDisplayIndex,
+        max: maxDisplayIndex,
+    };
+}
+
+function getIndexFilterViewportKey() {
+    return JSON.stringify({
+        sessionId: sessionManager.getActiveSessionId(),
+        searchActive: isSearchActive,
+        indexMin: searchFilters.indexMin,
+        indexMax: searchFilters.indexMax,
+    });
+}
+
+function resolveIndexFilterViewportAdjustment(previousViewportInfo, previousIndexFilterKey, nextIndexFilterKey, nextIndices) {
+    if (previousIndexFilterKey === nextIndexFilterKey) {
+        return { jump: null, scrollTop: null };
+    }
+
+    const nextDisplayRange = getSolveDisplayRange(nextIndices);
+    if (!previousViewportInfo || !nextDisplayRange) {
+        return { jump: null, scrollTop: null };
+    }
+
+    if (nextDisplayRange.min > previousViewportInfo.max) {
+        return { jump: 'bottom', scrollTop: null };
+    }
+
+    if (nextDisplayRange.max < previousViewportInfo.min) {
+        return { jump: 'top', scrollTop: null };
+    }
+
+    const nextDisplayIndexSet = new Set(nextIndices.map((index) => index + 1));
+    const retainedViewportIndex = previousViewportInfo.visibleDisplayIndices.findIndex((displayIndex) =>
+        nextDisplayIndexSet.has(displayIndex),
+    );
+
+    if (retainedViewportIndex === -1) {
+        return { jump: null, scrollTop: null };
+    }
+
+    const retainedDisplayIndex = previousViewportInfo.visibleDisplayIndices[retainedViewportIndex];
+    const anchorRowIndex = nextIndices.findIndex((index) => (index + 1) === retainedDisplayIndex);
+    if (anchorRowIndex === -1) {
+        return { jump: null, scrollTop: null };
+    }
+
+    const retainedOffset = previousViewportInfo.anchorRowOffset + (retainedViewportIndex * TABLE_ROW_HEIGHT);
+    return {
+        jump: null,
+        scrollTop: Math.max(0, (anchorRowIndex * TABLE_ROW_HEIGHT) - retainedOffset),
+    };
 }
 
 // ──── Solves Table ────
@@ -6154,6 +6864,12 @@ function renderSolvesTable(solves, stats) {
     }
 
     const tbody = document.getElementById('solves-tbody');
+    const shouldResetViewportToTop = _pendingSolvesTableViewportReset;
+    _pendingSolvesTableViewportReset = false;
+    const previousViewportInfo = shouldResetViewportToTop
+        ? null
+        : getVisibleSolveViewportInfo(_tableSortedIndices, tbody);
+    const previousIndexFilterKey = shouldResetViewportToTop ? '' : _lastTableIndexFilterKey;
     const configuredColumns = getConfiguredSolvesTableStatTokens();
     const visibleColumnCount = 2 + configuredColumns.length;
     ensureValidSolvesTableSort(configuredColumns);
@@ -6168,8 +6884,8 @@ function renderSolvesTable(solves, stats) {
 
     // Build sorted index order
     let indices = [];
-    if (commentsOnlyFilterActive) {
-        indices = solves.map((_, i) => i).filter(i => solves[i].comment && solves[i].comment.trim() !== '');
+    if (isSearchActive) {
+        indices = getSearchMatchedSolveIndices(solves);
     } else {
         indices = solves.map((_, i) => i);
     }
@@ -6203,10 +6919,22 @@ function renderSolvesTable(solves, stats) {
     // Cache for virtualized rendering
     _tableSortedIndices = indices;
     _tableSolves = solves;
+    
+    updateSearchBulkActionUI();
 
     // ── Virtual scroll: only render visible rows ──
     const totalRows = indices.length;
     const totalHeight = totalRows * TABLE_ROW_HEIGHT;
+    const indexFilterKey = getIndexFilterViewportKey();
+    const { jump: pendingViewportJump, scrollTop: pendingScrollTop } = shouldResetViewportToTop
+        ? { jump: 'top', scrollTop: null }
+        : resolveIndexFilterViewportAdjustment(
+            previousViewportInfo,
+            previousIndexFilterKey,
+            indexFilterKey,
+            indices,
+        );
+    _lastTableIndexFilterKey = indexFilterKey;
 
     // Remove old scroll listener
     if (_tableScrollHandler) {
@@ -6216,9 +6944,12 @@ function renderSolvesTable(solves, stats) {
     function renderVisibleRows() {
         const scrollTop = tbody.scrollTop;
         const viewportHeight = tbody.clientHeight;
-
-        const startRow = Math.max(0, Math.floor(scrollTop / TABLE_ROW_HEIGHT) - 5);
         const visibleRows = Math.ceil(viewportHeight / TABLE_ROW_HEIGHT) + 15;
+        const maxStartRow = Math.max(0, totalRows - visibleRows);
+        const startRow = Math.min(
+            maxStartRow,
+            Math.max(0, Math.floor(scrollTop / TABLE_ROW_HEIGHT) - 5),
+        );
         const endRow = Math.min(totalRows, startRow + visibleRows);
 
         const topPad = startRow * TABLE_ROW_HEIGHT;
@@ -6248,8 +6979,13 @@ function renderSolvesTable(solves, stats) {
             let indicator = '';
             if (solve.comment) indicator += '*';
 
-            html += `<tr data-solve-id="${solve.id}" data-solve-index="${i}">
-      <td><span class="solve-index-content">${i + 1}${indicator ? `<span class="solve-index-indicator">${indicator}</span>` : ''}</span></td>
+            const selectedClass = selectedSolveIds.has(solve.id) ? 'selected-solve' : '';
+
+            html += `<tr data-solve-id="${solve.id}" data-solve-index="${i}" class="${selectedClass}">
+      <td class="solve-index-td"><span class="solve-index-content">
+          <input type="checkbox" class="solve-index-checkbox" ${selectedClass ? 'checked' : ''} aria-hidden="true" tabindex="-1">
+          <span class="solve-index-number">${i + 1}${indicator ? `<span class="solve-index-indicator">${indicator}</span>` : ''}</span>
+      </span></td>
       <td class="solve-time-cell ${solve.penalty === 'DNF' ? 'dnf-time' : ''} ${isBestTime ? 'new-best-cell' : ''}">
         ${timeStr}
       </td>
@@ -6265,6 +7001,17 @@ function renderSolvesTable(solves, stats) {
     }
 
     renderVisibleRows();
+
+    if (pendingScrollTop != null) {
+        tbody.scrollTop = pendingScrollTop;
+        renderVisibleRows();
+    } else if (pendingViewportJump === 'top') {
+        tbody.scrollTop = 0;
+        renderVisibleRows();
+    } else if (pendingViewportJump === 'bottom') {
+        tbody.scrollTop = totalHeight;
+        renderVisibleRows();
+    }
 
     // Scroll handler with rAF debounce
     let rafPending = false;
@@ -6286,6 +7033,52 @@ function renderSolvesTable(solves, stats) {
         const tr = td.closest('tr');
         if (!tr || !tr.dataset.solveIndex) return;
         const idx = parseInt(tr.dataset.solveIndex);
+        const solveId = tr.dataset.solveId;
+        const isIndexSelectionClick = td.classList.contains('solve-index-td') || Boolean(e.target.closest('.solve-index-content'));
+        const shouldSelectSolve = isIndexSelectionClick || e.shiftKey;
+
+        if (shouldSelectSolve) {
+            if (!isSearchActive) openSearchMenuForSelection();
+
+            if (e.shiftKey && selectionAnchorSolveIndex !== -1) {
+                const anchorVisualIndex = _tableSortedIndices.indexOf(selectionAnchorSolveIndex);
+                const currVisualIndex = _tableSortedIndices.indexOf(idx);
+                if (anchorVisualIndex !== -1 && currVisualIndex !== -1) {
+                    activeRangeSelectedSolveIds.forEach((id) => selectedSolveIds.delete(id));
+                    activeRangeSelectedSolveIds.clear();
+
+                    const start = Math.min(anchorVisualIndex, currVisualIndex);
+                    const end = Math.max(anchorVisualIndex, currVisualIndex);
+                    for (let i = start; i <= end; i++) {
+                        const rowIdx = _tableSortedIndices[i];
+                        const rangeSolveId = solves[rowIdx].id;
+                        selectedSolveIds.add(rangeSolveId);
+                        activeRangeSelectedSolveIds.add(rangeSolveId);
+                    }
+                    lastSelectedSolveIndex = idx;
+                    lastSelectedSolveId = solveId;
+                }
+            } else {
+                activeRangeSelectedSolveIds.clear();
+                if (selectedSolveIds.has(solveId)) {
+                    selectedSolveIds.delete(solveId);
+                } else {
+                    selectedSolveIds.add(solveId);
+                }
+                lastSelectedSolveIndex = idx;
+                lastSelectedSolveId = selectedSolveIds.has(solveId) ? solveId : null;
+                selectionAnchorSolveIndex = selectedSolveIds.has(solveId) ? idx : -1;
+                selectionAnchorSolveId = selectedSolveIds.has(solveId) ? solveId : null;
+            }
+            updateSearchBulkActionUI();
+            
+            // Re-render
+            const tbodyInstance = document.getElementById('solves-tbody');
+            const scrollBefore = tbodyInstance.scrollTop;
+            renderVisibleRows();
+            tbodyInstance.scrollTop = scrollBefore;
+            return;
+        }
 
         if (td.classList.contains('solve-time-cell')) {
             openStatDetailAtIndex('time', solves, stats, idx);
@@ -6339,9 +7132,11 @@ function refreshSessionList() {
 
     syncCustomSelectMenu('session-select');
     syncCustomSelectMenu('mobile-session-select');
+    syncSearchBulkMoveOptions();
 }
 
 function onSessionChanged() {
+    _pendingSolvesTableViewportReset = true;
     refreshSessionList();
     rebuildStatsCache();
     refreshUI();
@@ -6432,6 +7227,447 @@ function initFilterControls() {
     settings.on('change', (key) => {
         if (key !== 'statsFilter' && key !== 'customFilterDuration') return;
         syncFilterControlsFromSettings();
+    });
+}
+
+function syncSearchMenuVisibility({ focusInput = false } = {}) {
+    const summaryEl = document.getElementById('stats-summary');
+    const searchMenuEl = document.getElementById('stats-search-menu');
+    const sessionInfoEl = document.getElementById('session-info');
+    if (!summaryEl || !searchMenuEl || !sessionInfoEl) return;
+
+    if (isSearchActive) {
+        summaryEl.hidden = true;
+        summaryEl.style.display = 'none';
+        sessionInfoEl.hidden = true;
+        sessionInfoEl.style.display = 'none';
+        searchMenuEl.hidden = false;
+        searchMenuEl.style.display = 'flex';
+        syncSearchBulkMoveOptions();
+        updateBulkActionProgressUI();
+        updateSearchBulkActionUI();
+        if (focusInput) {
+            window.requestAnimationFrame(() => {
+                document.getElementById('stats-search-input')?.focus();
+            });
+        }
+    } else {
+        summaryEl.hidden = false;
+        summaryEl.style.display = '';
+        sessionInfoEl.hidden = false;
+        sessionInfoEl.style.display = '';
+        searchMenuEl.hidden = true;
+        searchMenuEl.style.display = 'none';
+    }
+
+    syncSolvesTableHeader(getConfiguredSolvesTableStatTokens());
+}
+
+function clearSearchFilters({ clearSelection = false } = {}) {
+    const searchInput = document.getElementById('stats-search-input');
+    const indexMin = document.getElementById('search-filter-index-min');
+    const indexMax = document.getElementById('search-filter-index-max');
+    const timeMin = document.getElementById('search-filter-time-min');
+    const timeMax = document.getElementById('search-filter-time-max');
+
+    if (searchInput) searchInput.value = '';
+    if (indexMin) indexMin.value = '';
+    if (indexMax) indexMax.value = '';
+    if (timeMin) timeMin.value = '';
+    if (timeMax) timeMax.value = '';
+
+    searchFilters = {
+        text: '',
+        indexMin: '',
+        indexMax: '',
+        timeMin: '',
+        timeMax: '',
+    };
+
+    if (!clearSelection) return;
+
+    clearSelectedSolveState();
+}
+
+function clearSelectedSolveState() {
+    selectedSolveIds.clear();
+    lastSelectedSolveIndex = -1;
+    lastSelectedSolveId = null;
+    selectionAnchorSolveIndex = -1;
+    selectionAnchorSolveId = null;
+    activeRangeSelectedSolveIds.clear();
+}
+
+function openSearchMenuForSelection() {
+    if (isSearchActive) return;
+    clearSearchFilters();
+    toggleSearchMenu(true);
+}
+
+function selectSolveIndices(indices, solves = _tableSolves || sessionManager.getFilteredSolves()) {
+    clearSelectedSolveState();
+
+    indices.forEach((index) => {
+        const solveId = solves[index]?.id;
+        if (solveId) selectedSolveIds.add(solveId);
+    });
+
+    if (indices.length === 0) return;
+
+    const newestSelectedIndex = indices[0];
+    const newestSelectedSolveId = solves[newestSelectedIndex]?.id || null;
+    lastSelectedSolveIndex = newestSelectedIndex;
+    lastSelectedSolveId = newestSelectedSolveId;
+    selectionAnchorSolveIndex = newestSelectedIndex;
+    selectionAnchorSolveId = newestSelectedSolveId;
+}
+
+function selectAllCurrentTableSolves() {
+    if (bulkActionProgressState.active) return;
+
+    if (!isSearchActive) {
+        openSearchMenuForSelection();
+    }
+
+    const solves = Array.isArray(_tableSolves) ? _tableSolves : sessionManager.getFilteredSolves();
+    const indices = Array.isArray(_tableSortedIndices) ? _tableSortedIndices : [];
+    selectSolveIndices(indices, solves);
+    updateSearchBulkActionUI();
+    refreshUI();
+}
+
+function toggleSearchMenu(forceActive) {
+    const nextActive = typeof forceActive === 'boolean' ? forceActive : !isSearchActive;
+    if (bulkActionProgressState.active && !nextActive) {
+        syncSearchMenuVisibility({ focusInput: isSearchActive });
+        return;
+    }
+    if (isSearchActive === nextActive) {
+        syncSearchMenuVisibility({ focusInput: nextActive });
+        return;
+    }
+
+    isSearchActive = nextActive;
+
+    if (!isSearchActive) {
+        clearSelectedSolveState();
+        currentSortCol = null;
+        currentSortDir = null;
+    }
+
+    syncSearchMenuVisibility({ focusInput: isSearchActive });
+    refreshUI();
+}
+
+function updateSearchBulkActionUI() {
+    const countEl = document.getElementById('search-selected-count');
+    const moveSelect = document.getElementById('search-bulk-move-select');
+    const moveBtn = document.getElementById('btn-search-bulk-move');
+    const deleteBtn = document.getElementById('btn-search-bulk-delete');
+    const selectAllBtn = document.getElementById('btn-search-select-all');
+    const clearFiltersBtn = document.getElementById('btn-search-clear-filters');
+    const matchCount = Array.isArray(_tableSortedIndices) ? _tableSortedIndices.length : 0;
+    const activeSessionId = sessionManager.getActiveSessionId();
+    const hasMoveTargets = sessionManager.getSessions().some((session) => session.id !== activeSessionId);
+    const bulkActionActive = bulkActionProgressState.active;
+    
+    if (countEl) {
+        if (isSearchActive) {
+            countEl.textContent = `${selectedSolveIds.size} selected, ${matchCount} matches`;
+        } else {
+            countEl.textContent = `${selectedSolveIds.size} selected`;
+        }
+    }
+    
+    const hasSelection = selectedSolveIds.size > 0;
+    if (moveSelect instanceof HTMLSelectElement) {
+        moveSelect.disabled = bulkActionActive || !hasSelection || !hasMoveTargets;
+        syncCustomSelectMenu('search-bulk-move-select');
+    }
+    if (moveBtn) moveBtn.disabled = bulkActionActive || !hasSelection || !hasMoveTargets;
+    if (deleteBtn) deleteBtn.disabled = bulkActionActive || !hasSelection;
+    if (selectAllBtn) selectAllBtn.disabled = bulkActionActive;
+    if (clearFiltersBtn) clearFiltersBtn.disabled = bulkActionActive;
+}
+
+function syncSearchBulkMoveOptions() {
+    const moveSelect = document.getElementById('search-bulk-move-select');
+    if (!(moveSelect instanceof HTMLSelectElement)) return;
+
+    const activeId = sessionManager.getActiveSessionId();
+    const sessions = sessionManager.getSessions().filter((session) => session.id !== activeId);
+    const previousValue = moveSelect.value;
+
+    moveSelect.innerHTML = '<option value="" hidden disabled>Move to...</option>';
+    sessions.forEach((session) => {
+        const opt = document.createElement('option');
+        opt.value = session.id;
+        opt.textContent = `${session.name} (${session.solveCount})`;
+        moveSelect.appendChild(opt);
+    });
+
+    moveSelect.value = sessions.some((session) => session.id === previousValue) ? previousValue : '';
+    syncCustomSelectMenu('search-bulk-move-select');
+}
+
+function initSearchMenu() {
+    const searchInput = document.getElementById('stats-search-input');
+    const indexMin = document.getElementById('search-filter-index-min');
+    const indexMax = document.getElementById('search-filter-index-max');
+    const timeMin = document.getElementById('search-filter-time-min');
+    const timeMax = document.getElementById('search-filter-time-max');
+
+    let debounceTimer;
+    const triggerSearchUpdate = () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            searchFilters = {
+                text: searchInput?.value || '',
+                indexMin: indexMin?.value || '',
+                indexMax: indexMax?.value || '',
+                timeMin: timeMin?.value || '',
+                timeMax: timeMax?.value || ''
+            };
+            refreshUI();
+        }, 150);
+    };
+
+    [searchInput, indexMin, indexMax, timeMin, timeMax].forEach(input => {
+        if (!input) return;
+        input.addEventListener('input', triggerSearchUpdate);
+    });
+
+    const selectAllBtn = document.getElementById('btn-search-select-all');
+    if (selectAllBtn) {
+        selectAllBtn.onclick = () => {
+            if (bulkActionProgressState.active) return;
+            const solves = sessionManager.getFilteredSolves();
+            const allMatchesSelected = _tableSortedIndices.length > 0
+                && _tableSortedIndices.every((idx) => selectedSolveIds.has(solves[idx].id));
+            if (allMatchesSelected) {
+                _tableSortedIndices.forEach((idx) => {
+                    selectedSolveIds.delete(solves[idx].id);
+                });
+                activeRangeSelectedSolveIds.clear();
+                if (selectedSolveIds.size === 0) {
+                    lastSelectedSolveIndex = -1;
+                    lastSelectedSolveId = null;
+                    selectionAnchorSolveIndex = -1;
+                    selectionAnchorSolveId = null;
+                }
+            } else {
+                _tableSortedIndices.forEach(idx => {
+                    selectedSolveIds.add(solves[idx].id);
+                });
+                activeRangeSelectedSolveIds.clear();
+                if (_tableSortedIndices.length > 0) {
+                    const newestSelectedIndex = _tableSortedIndices[0];
+                    lastSelectedSolveIndex = newestSelectedIndex;
+                    lastSelectedSolveId = solves[newestSelectedIndex]?.id || null;
+                    if (selectionAnchorSolveIndex === -1) {
+                        selectionAnchorSolveIndex = newestSelectedIndex;
+                        selectionAnchorSolveId = solves[newestSelectedIndex]?.id || null;
+                    }
+                }
+            }
+            updateSearchBulkActionUI();
+            _lastTableParams = null; // force re-render
+            refreshUI();
+        };
+    }
+
+    const clearFiltersBtn = document.getElementById('btn-search-clear-filters');
+    if (clearFiltersBtn) {
+        clearFiltersBtn.onclick = () => {
+            if (bulkActionProgressState.active) return;
+            clearSearchFilters({ clearSelection: true });
+            refreshUI();
+        };
+    }
+
+    const deleteBtn = document.getElementById('btn-search-bulk-delete');
+    if (deleteBtn) {
+        deleteBtn.onclick = async () => {
+            if (bulkActionProgressState.active || selectedSolveIds.size === 0) return;
+            if (await customConfirm(`Delete ${selectedSolveIds.size} selected solves?`)) {
+                const solveIds = Array.from(selectedSolveIds);
+                setBulkActionProgressState({
+                    visible: true,
+                    active: true,
+                    status: 'running',
+                    action: 'delete',
+                    phase: 'starting',
+                    percent: 0,
+                    selectedCount: solveIds.length,
+                    completed: 0,
+                    total: solveIds.length,
+                    targetSessionName: '',
+                });
+                await waitForNextPaint();
+                window._isBulkAction = true;
+
+                try {
+                    const deletedCount = await sessionManager.bulkDeleteSolves(solveIds, {
+                        onProgress: (snapshot) => {
+                            setBulkActionProgressState({
+                                visible: true,
+                                active: snapshot.phase !== 'complete',
+                                status: snapshot.phase === 'complete' ? 'complete' : 'running',
+                                action: snapshot.action,
+                                phase: snapshot.phase,
+                                percent: snapshot.percent,
+                                selectedCount: snapshot.selectedCount,
+                                completed: snapshot.completed,
+                                total: snapshot.total,
+                                targetSessionName: snapshot.targetSessionName || '',
+                            });
+                        },
+                    });
+
+                    setBulkActionProgressState({
+                        visible: true,
+                        active: false,
+                        status: 'complete',
+                        action: 'delete',
+                        phase: 'complete',
+                        percent: 100,
+                        selectedCount: deletedCount,
+                        completed: deletedCount,
+                        total: deletedCount,
+                        targetSessionName: '',
+                    });
+                } catch (error) {
+                    setBulkActionProgressState({
+                        visible: true,
+                        active: false,
+                        status: 'error',
+                        action: 'delete',
+                        phase: 'complete',
+                        percent: 100,
+                        selectedCount: solveIds.length,
+                        completed: 0,
+                        total: solveIds.length,
+                        targetSessionName: '',
+                    });
+                    hideBulkActionProgress({ delayMs: 2200 });
+                    console.error('Bulk delete failed:', error);
+                    return;
+                } finally {
+                    window._isBulkAction = false;
+                }
+
+                selectedSolveIds.clear();
+                lastSelectedSolveIndex = -1;
+                lastSelectedSolveId = null;
+                selectionAnchorSolveIndex = -1;
+                selectionAnchorSolveId = null;
+                activeRangeSelectedSolveIds.clear();
+                updateSearchBulkActionUI();
+                rebuildStatsCache();
+                refreshUI();
+                hideBulkActionProgress({ delayMs: 1200 });
+            }
+        };
+    }
+    
+    // Bulk move setup
+    const moveSelect = document.getElementById('search-bulk-move-select');
+    
+    if (moveSelect) {
+        syncSearchBulkMoveOptions();
+
+        moveSelect.onchange = async () => {
+            const targetSessionId = moveSelect.value;
+            if (bulkActionProgressState.active || !targetSessionId || selectedSolveIds.size === 0) return;
+            moveSelect.value = ''; // Reset
+            syncCustomSelectMenu('search-bulk-move-select');
+
+            const solveIds = Array.from(selectedSolveIds);
+            const targetSessionName = sessionManager.getSessions().find((session) => session.id === targetSessionId)?.name || '';
+            setBulkActionProgressState({
+                visible: true,
+                active: true,
+                status: 'running',
+                action: 'move',
+                phase: 'starting',
+                percent: 0,
+                selectedCount: solveIds.length,
+                completed: 0,
+                total: solveIds.length,
+                targetSessionName,
+            });
+            await waitForNextPaint();
+            window._isBulkAction = true;
+
+            try {
+                const movedCount = await sessionManager.bulkMoveSolves(solveIds, targetSessionId, {
+                    onProgress: (snapshot) => {
+                        setBulkActionProgressState({
+                            visible: true,
+                            active: snapshot.phase !== 'complete',
+                            status: snapshot.phase === 'complete' ? 'complete' : 'running',
+                            action: snapshot.action,
+                            phase: snapshot.phase,
+                            percent: snapshot.percent,
+                            selectedCount: snapshot.selectedCount,
+                            completed: snapshot.completed,
+                            total: snapshot.total,
+                            targetSessionName: snapshot.targetSessionName || targetSessionName,
+                        });
+                    },
+                });
+
+                setBulkActionProgressState({
+                    visible: true,
+                    active: false,
+                    status: 'complete',
+                    action: 'move',
+                    phase: 'complete',
+                    percent: 100,
+                    selectedCount: movedCount,
+                    completed: movedCount,
+                    total: movedCount,
+                    targetSessionName,
+                });
+            } catch (error) {
+                setBulkActionProgressState({
+                    visible: true,
+                    active: false,
+                    status: 'error',
+                    action: 'move',
+                    phase: 'complete',
+                    percent: 100,
+                    selectedCount: solveIds.length,
+                    completed: 0,
+                    total: solveIds.length,
+                    targetSessionName,
+                });
+                hideBulkActionProgress({ delayMs: 2200 });
+                console.error('Bulk move failed:', error);
+                return;
+            } finally {
+                window._isBulkAction = false;
+            }
+
+            selectedSolveIds.clear();
+            lastSelectedSolveIndex = -1;
+            lastSelectedSolveId = null;
+            selectionAnchorSolveIndex = -1;
+            selectionAnchorSolveId = null;
+            activeRangeSelectedSolveIds.clear();
+            syncSearchBulkMoveOptions();
+            updateSearchBulkActionUI();
+            rebuildStatsCache();
+            refreshUI();
+            hideBulkActionProgress({ delayMs: 1200 });
+        };
+    }
+
+    document.addEventListener('keydown', (event) => {
+        if (event.code !== 'Escape' || !isSearchActive) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        toggleSearchMenu(false);
     });
 }
 
@@ -8933,6 +10169,7 @@ function initSettingsPanel() {
             googleDriveBusy = true;
             syncGoogleDriveButtons();
             setGoogleDriveStatus('Checking Google Drive backup...');
+            let didBeginImport = false;
 
             try {
                 if (!(await ensureGoogleDriveSession())) return;
@@ -8952,11 +10189,19 @@ function initSettingsPanel() {
                 closeSettingsPanel({ isPopState: true });
 
                 if (await customConfirm('This will replace all your current data with the Google Drive backup. Continue?')) {
-                    await importAll(data);
+                    await beginImportProgress('backup');
+                    didBeginImport = true;
+                    await importAll(data, {
+                        onProgress: applyImportProgress,
+                    });
+                    await waitForNextPaint();
                     location.reload();
                     return;
                 }
             } catch (error) {
+                if (didBeginImport) {
+                    failImportProgress('backup');
+                }
                 reportGoogleDriveError(error?.message || 'Cloud import failed.');
             } finally {
                 googleDriveBusy = false;
@@ -9056,19 +10301,34 @@ function initSettingsPanel() {
             closeSettingsPanel({ isPopState: true });
 
             if (await customConfirm('This will replace all your current data. Continue?')) {
+                const importSource = isJsonImport && isCsTimerFormat(data)
+                    ? 'cstimer'
+                    : isJsonImport && data && typeof data === 'object'
+                        ? 'backup'
+                        : 'csv';
+                await beginImportProgress(importSource);
+
                 if (isJsonImport && isCsTimerFormat(data)) {
-                    await importCsTimer(data);
+                    await importCsTimer(data, {
+                        onProgress: applyImportProgress,
+                    });
                 } else if (isJsonImport && data && typeof data === 'object') {
-                    await importAll(data);
+                    await importAll(data, {
+                        onProgress: applyImportProgress,
+                    });
                 } else {
-                    await importSessionCsv(text);
+                    await importSessionCsv(text, {
+                        onProgress: applyImportProgress,
+                    });
                 }
+                await waitForNextPaint();
                 location.reload();
             }
         } catch (e) {
             // Silently ignore user-cancelled or AbortError
             if (e.name === 'AbortError') return;
             if (e.message === 'cancelled' || e.message === 'no-file') return;
+            failImportProgress();
             console.error('Import failed:', {
                 message: e?.message || String(e),
                 stack: e?.stack || null,
