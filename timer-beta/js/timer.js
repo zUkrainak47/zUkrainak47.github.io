@@ -1,5 +1,5 @@
-import { settings } from './settings.js?v=2026041603';
-import { EventEmitter, formatTime, truncateTimeDisplay } from './utils.js?v=2026041603';
+import { settings } from './settings.js?v=2026041604';
+import { EventEmitter, formatTime, truncateTimeDisplay } from './utils.js?v=2026041604';
 
 const State = {
     IDLE: 'idle',
