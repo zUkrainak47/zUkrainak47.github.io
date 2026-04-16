@@ -657,6 +657,11 @@ const keyboardShortcutGroups = [
                 bindings: [['-']],
             },
             {
+                action: 'Select all solves',
+                // detail: 'Search mode selects all matches',
+                bindings: [['Ctrl', 'A']],
+            },
+            {
                 action: 'Open single details',
                 bindings: [['Shift', '`']],
             },
@@ -665,16 +670,32 @@ const keyboardShortcutGroups = [
                 detail: 'Shift + 1..0, -, = (based on Summary rows setting)',
                 bindings: [['Shift', '1'], ['Shift', '2'], ['Shift', '3'], ['Shift', '4'], ['Shift', '5'], ['Shift', '6'], ['Shift', '7'], ['Shift', '8'], ['Shift', '9'], ['Shift', '0'], ['Shift', '-'], ['Shift', '=']],
             },
+        ],
+    },
+    {
+        title: 'Sessions',
+        items: [
             {
-                action: 'Select all solves',
-                // detail: 'Search mode selects all matches',
-                bindings: [['Ctrl', 'A']],
+                action: 'Previous session',
+                bindings: [['Alt', 'Up']],
+            },
+            {
+                action: 'Next session',
+                bindings: [['Alt', 'Down']],
             },
         ],
     },
     {
         title: 'Scramble and layout',
         items: [
+            {
+                action: 'Switch to 2x2 through 7x7',
+                bindings: [['Alt', '2~7']],
+            },
+            {
+                action: 'Switch to Pyra, Mega, Clock, Skewb, Sq-1',
+                bindings: [['Alt', ['P/M/C/S/1']]],
+            },
             {
                 action: 'Toggle zen mode',
                 bindings: [['Z']],
@@ -727,6 +748,23 @@ const keyboardShortcutGroups = [
         ],
     },
 ];
+const ALT_SESSION_SHORTCUT_OFFSETS = new Map([
+    ['ArrowUp', -1],
+    ['ArrowDown', 1],
+]);
+const ALT_SCRAMBLE_TYPE_SHORTCUTS = new Map([
+    ['Digit1', 'sq1'],
+    ['Digit2', '222'],
+    ['Digit3', '333'],
+    ['Digit4', '444'],
+    ['Digit5', '555'],
+    ['Digit6', '666'],
+    ['Digit7', '777'],
+    ['KeyP', 'pyram'],
+    ['KeyM', 'minx'],
+    ['KeyC', 'clock'],
+    ['KeyS', 'skewb'],
+]);
 const blockingOverlayIds = ['modal-overlay', 'distribution-overlay', 'scramble-preview-overlay', 'confirm-overlay', 'prompt-overlay', 'shortcuts-overlay', 'chart-image-overlay', 'theme-customization-overlay'];
 const THEME_OPTION_LABELS = new Map(THEME_OPTIONS.map(({ value, label }) => [value, label]));
 let settingsOverlayEl = null;
@@ -4107,6 +4145,24 @@ async function reloadScrambleForSelectedType() {
     await loadNewScramble();
 }
 
+async function applyActiveSessionScrambleType(nextType, { loadScramble = true } = {}) {
+    if (document.getElementById('scramble-text')?.classList.contains('loading')) return false;
+
+    const activeSessionId = sessionManager.getActiveSessionId();
+    if (activeSessionId) {
+        await sessionManager.setSessionScrambleType(activeSessionId, nextType);
+    }
+
+    const changed = setScrambleType(nextType);
+    syncScrambleTypeMenus(nextType);
+
+    if (loadScramble && changed) {
+        await reloadScrambleForSelectedType();
+    }
+
+    return changed;
+}
+
 async function syncScrambleTypeWithActiveSession({ loadScramble = false } = {}) {
     const nextType = sessionManager.getActiveSessionScrambleType();
     const changed = setScrambleType(nextType);
@@ -4321,16 +4377,10 @@ function initScrambleControls() {
         keepSubsetOpen = false,
         menuEl = null,
     } = {}) {
-        if (textEl.classList.contains('loading')) return;
-        const activeSessionId = sessionManager.getActiveSessionId();
-        if (activeSessionId) {
-            await sessionManager.setSessionScrambleType(activeSessionId, nextType);
-        }
-        const changed = setScrambleType(nextType);
+        const changed = await applyActiveSessionScrambleType(nextType, { loadScramble: false });
         if (closeAfterSelect) {
             closeScrambleTypeMenus();
         }
-        syncScrambleTypeMenus();
 
         if (!closeAfterSelect && menuEl instanceof HTMLElement) {
             menuEl.classList.add('open');
@@ -5230,6 +5280,33 @@ function renderKeyboardShortcuts() {
     `).join('');
 }
 
+function getAltSessionShortcutOffset(event) {
+    if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return 0;
+    return ALT_SESSION_SHORTCUT_OFFSETS.get(event.code) || 0;
+}
+
+function getAltScrambleTypeShortcut(event) {
+    if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return null;
+    return ALT_SCRAMBLE_TYPE_SHORTCUTS.get(event.code) || null;
+}
+
+async function switchActiveSessionByOffset(offset) {
+    if (!Number.isFinite(offset) || offset === 0) return false;
+
+    const sessions = sessionManager.getSessions();
+    if (sessions.length <= 1) return false;
+
+    const activeSessionId = sessionManager.getActiveSessionId();
+    const currentIndex = sessions.findIndex((session) => session.id === activeSessionId);
+    if (currentIndex === -1) return false;
+
+    const nextIndex = (currentIndex + offset + sessions.length) % sessions.length;
+    if (nextIndex === currentIndex) return false;
+
+    await sessionManager.setActiveSession(sessions[nextIndex].id);
+    return true;
+}
+
 // ──── Keyboard Shortcuts ────
 function initKeyboardShortcuts() {
     document.addEventListener('keydown', (e) => {
@@ -5351,11 +5428,31 @@ function initKeyboardShortcuts() {
         const isSolveModalActive = document.getElementById('modal-overlay').classList.contains('active')
             || document.getElementById('distribution-overlay').classList.contains('active')
             || document.getElementById('scramble-preview-overlay').classList.contains('active');
+        const altSessionShortcutOffset = getAltSessionShortcutOffset(e);
+        const altScrambleTypeShortcut = getAltScrambleTypeShortcut(e);
 
         if (isManualTimeInputFocused() && (e.code === 'Period' || e.code === 'Comma')) return;
 
         // Ignore if timer is running or holding
         if (timer.getState() !== 'idle' && timer.getState() !== 'stopped') return;
+
+        if (altSessionShortcutOffset || altScrambleTypeShortcut) {
+            if (isSolveModalActive) return;
+
+            e.preventDefault();
+            closeCustomSelectMenus();
+            closeScrambleTypeMenus();
+
+            if (altSessionShortcutOffset) {
+                void switchActiveSessionByOffset(altSessionShortcutOffset);
+                return;
+            }
+
+            if (altScrambleTypeShortcut) {
+                void applyActiveSessionScrambleType(altScrambleTypeShortcut);
+                return;
+            }
+        }
 
         if (isDesktopTypingEntryModeEnabled() && !isSolveModalActive && !isManualTimeInputFocused()) {
             if (e.key === 'Escape') {
