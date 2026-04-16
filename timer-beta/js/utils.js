@@ -84,6 +84,68 @@ export function getEffectiveTime(solve) {
 }
 
 /**
+ * Parse a user-entered time string into milliseconds.
+ * Supports raw seconds ("12.34"), minute/second ("1:23.45"),
+ * and hour/minute/second ("1:02:03.45") formats.
+ * @param {string|number} value
+ * @returns {number|null}
+ */
+export function parseTimeInputToMs(value) {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) && value >= 0 ? Math.round(value * 1000) : null;
+  }
+
+  const normalized = String(value ?? '')
+    .trim()
+    .replace(/\s+/g, '')
+    .replace(/,/g, '.');
+
+  if (!normalized || normalized.startsWith('-')) return null;
+
+  const parseSecondsWithFraction = (text) => {
+    const match = text.match(/^(\d+)(?:\.(\d{0,3}))?$/);
+    if (!match) return null;
+
+    const wholeSeconds = Number(match[1]);
+    const fractionDigits = (match[2] || '').padEnd(3, '0').slice(0, 3);
+    return (wholeSeconds * 1000) + Number(fractionDigits || '0');
+  };
+
+  if (normalized.includes(':')) {
+    const parts = normalized.split(':');
+    if (parts.length < 2 || parts.length > 3 || parts.some((part) => part === '')) {
+      return null;
+    }
+
+    const secondsMs = parseSecondsWithFraction(parts[parts.length - 1]);
+    if (secondsMs == null) return null;
+
+    const wholeSeconds = Math.floor(secondsMs / 1000);
+    if (wholeSeconds >= 60) return null;
+
+    if (parts.length === 2) {
+      const minutes = Number(parts[0]);
+      if (!Number.isInteger(minutes) || minutes < 0) return null;
+      return (minutes * 60 * 1000) + secondsMs;
+    }
+
+    const hours = Number(parts[0]);
+    const minutes = Number(parts[1]);
+    if (!Number.isInteger(hours) || hours < 0) return null;
+    if (!Number.isInteger(minutes) || minutes < 0 || minutes >= 60) return null;
+
+    return (hours * 60 * 60 * 1000) + (minutes * 60 * 1000) + secondsMs;
+  }
+
+  if (!/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(normalized)) return null;
+
+  const seconds = Number(normalized);
+  return Number.isFinite(seconds) && seconds >= 0
+    ? Math.round(seconds * 1000)
+    : null;
+}
+
+/**
  * Generate a unique ID.
  * @returns {string}
  */
