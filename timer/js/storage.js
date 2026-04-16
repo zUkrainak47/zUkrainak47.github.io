@@ -1,4 +1,4 @@
-import * as db from './db.js?v=2026041606';
+import * as db from './db.js?v=2026041607';
 
 const STORAGE_PREFIX = 'cubetimer_';
 const STORAGE_VERSION = 1;
@@ -54,10 +54,6 @@ function hasStoredKey(key) {
     return localStorage.getItem(STORAGE_PREFIX + key) !== null;
 }
 
-function clearBackupLocalStorageKeys() {
-    BACKUP_LOCAL_STORAGE_KEYS.forEach((key) => remove(key));
-}
-
 function _reportImportProgress(onProgress, snapshot) {
     if (typeof onProgress === 'function') {
         onProgress(snapshot);
@@ -86,8 +82,6 @@ async function _replaceImportedData(
     dbSolves,
     { source = 'backup', onProgress = null, processedOffset = 0, totalWork = processedOffset + 1 + dbSessions.length + dbSolves.length } = {},
 ) {
-    clearBackupLocalStorageKeys();
-
     await db.replaceAllData(dbSessions, dbSolves, {
         onProgress: ({ stage, completed, total }) => {
             const processed = processedOffset + completed;
@@ -107,11 +101,28 @@ async function _replaceImportedData(
     });
 }
 
-function _saveImportedBackupValues(data) {
-    for (const [key, value] of Object.entries(data)) {
+function _applyImportedBackupValues(data, { replaceMissing = false } = {}) {
+    const nextValues = new Map();
+
+    for (const [key, value] of Object.entries(data || {})) {
         if (key === 'version' || key === 'sessions' || !BACKUP_LOCAL_STORAGE_KEY_SET.has(key)) continue;
-        save(key, value);
+        nextValues.set(key, value);
     }
+
+    if (replaceMissing) {
+        BACKUP_LOCAL_STORAGE_KEYS.forEach((key) => {
+            if (nextValues.has(key)) {
+                save(key, nextValues.get(key));
+            } else {
+                remove(key);
+            }
+        });
+        return;
+    }
+
+    nextValues.forEach((value, key) => {
+        save(key, value);
+    });
 }
 
 /**
@@ -221,7 +232,7 @@ export async function importAll(data, { onProgress = null } = {}) {
 
     // Write remaining import-backed localStorage keys (settings, active session,
     // selected scramble type). Cache/runtime keys stay device-local.
-    _saveImportedBackupValues(data);
+    _applyImportedBackupValues(data, { replaceMissing: true });
 
     _reportImportProgress(onProgress, {
         source: 'backup',
@@ -472,7 +483,7 @@ export async function importSessionCsv(text, { onProgress = null } = {}) {
         onProgress: writeProgress,
     });
 
-    _saveImportedBackupValues(backupValues);
+    _applyImportedBackupValues(backupValues);
 
     _reportImportProgress(onProgress, {
         source: 'csv',
