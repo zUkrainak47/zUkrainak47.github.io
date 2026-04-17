@@ -547,6 +547,7 @@ const CSTIMER_EXPORT_SETTING_DEFAULTS = Object.freeze({
     inspectionAlerts: 'off',
     timerUpdate: '0.01s',
     timeEntryMode: 'timer',
+    dailyStreakGoal: 0,
     summaryStatsPreset: 'basic',
     summaryStatsCustom: 'mo3 ao5 ao12 ao100',
     solvesTableStat1: 'ao5',

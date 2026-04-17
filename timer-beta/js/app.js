@@ -10,6 +10,7 @@ import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisi
 import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionData, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=2026041608';
 import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=2026041608';
 import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=2026041608';
+import { dailyStreakStore, normalizeDailyStreakGoal } from './streaks.js?v=2026041608';
 
 let currentScramble = '';
 let currentSortCol = null;
@@ -53,9 +54,11 @@ let importProgressState = {
     solveCount: 0,
 };
 let importProgressHideTimeout = null;
+let dailyStreakToastHideTimeout = null;
 
 const statsCache = new StatsCache();
 let _skipSolveAddedRefresh = false; // set true when commitSolve manages the refresh itself
+const DAILY_STREAKS_INTRO_STORAGE_KEY = 'ukratimer_daily_streaks_intro_v1';
 const THEME_EDITOR_MODE_SIMPLE = 'simple';
 const THEME_EDITOR_MODE_FULL = 'full';
 const SIMPLE_THEME_COLOR_SECTIONS = Object.freeze([
@@ -3042,6 +3045,7 @@ async function init() {
     populateScrambleTypeMenus();
     void preloadScrambleEngines();
     await sessionInitPromise;
+    await dailyStreakStore.init();
     await syncScrambleTypeWithActiveSession();
     const shouldLoadInitialScramble = !syncInitialScrambleUI();
     initModal();
@@ -3071,18 +3075,25 @@ async function init() {
         }
     });
 
-    sessionManager.on('solveAdded', () => {
+    sessionManager.on('solveAdded', (solve) => {
+        dailyStreakStore.upsertSolve(solve);
         refreshSessionList();
         if (!_skipSolveAddedRefresh) refreshUI();
     });
-    sessionManager.on('solveUpdated', () => { rebuildStatsCache(); refreshUI(); });
-    sessionManager.on('solveDeleted', () => {
+    sessionManager.on('solveUpdated', (solve) => {
+        dailyStreakStore.upsertSolve(solve);
+        rebuildStatsCache();
+        refreshUI();
+    });
+    sessionManager.on('solveDeleted', (solveIdOrIds) => {
+        dailyStreakStore.deleteSolve(solveIdOrIds);
         if (window._isBulkAction) return;
         refreshSessionList();
         rebuildStatsCache();
         refreshUI();
     });
-    sessionManager.on('solveMoved', () => {
+    sessionManager.on('solveMoved', ({ solve } = {}) => {
+        dailyStreakStore.upsertSolve(solve);
         if (window._isBulkAction) return;
         refreshSessionList();
         rebuildStatsCache();
@@ -3097,7 +3108,7 @@ async function init() {
             syncInspectionSpeechUnlockPromptVisibility();
         }
         if (key === 'newBestPopupEnabled' && !settings.get('newBestPopupEnabled')) clearNewBestAlert();
-        if (key === 'statsFilter' || key === 'customFilterDuration' || key === 'showDelta' || key === 'deltaReference' || key === 'theme' || key === 'customThemes' || key.startsWith('graphColor') || key.startsWith('graphLine') || key === 'graphTooltipDateEnabled' || key === 'newBestColor' || key === 'summaryStatsList' || key.startsWith('solvesTableStat')) {
+        if (key === 'statsFilter' || key === 'customFilterDuration' || key === 'showDelta' || key === 'deltaReference' || key === 'theme' || key === 'customThemes' || key.startsWith('graphColor') || key.startsWith('graphLine') || key === 'graphTooltipDateEnabled' || key === 'newBestColor' || key === 'summaryStatsList' || key.startsWith('solvesTableStat') || key === 'dailyStreakGoal') {
             if (key === 'statsFilter' || key === 'customFilterDuration') rebuildStatsCache();
             if (key === 'summaryStatsList') {
                 syncModalStatNavigation();
@@ -3151,6 +3162,9 @@ async function init() {
     window.addEventListener('orientationchange', syncDesktopTimerInfoPills);
     window.addEventListener('online', startCubingWarmupIfNeeded);
     scheduleViewportLayoutSync();
+    window.requestAnimationFrame(() => {
+        void maybeShowDailyStreakIntro();
+    });
 
     if (shouldLoadInitialScramble) {
         const startInitialScrambleLoad = () => {
@@ -6145,9 +6159,56 @@ function refreshUI() {
     }
 
     // Update delta display
+    updateDailyStreakUI();
     updateDelta(solves);
     updateQuickActionButtons();
     scheduleViewportLayoutSync();
+}
+
+function hasSeenDailyStreakIntro() {
+    try {
+        return localStorage.getItem(DAILY_STREAKS_INTRO_STORAGE_KEY) === '1';
+    } catch (_) {
+        return false;
+    }
+}
+
+function markDailyStreakIntroSeen() {
+    try {
+        localStorage.setItem(DAILY_STREAKS_INTRO_STORAGE_KEY, '1');
+    } catch (_) {
+    }
+}
+
+function showDailyStreakIntroToast() {
+    const toastEl = document.getElementById('daily-streak-toast');
+    if (!toastEl) return;
+
+    if (dailyStreakToastHideTimeout) {
+        clearTimeout(dailyStreakToastHideTimeout);
+        dailyStreakToastHideTimeout = null;
+    }
+
+    toastEl.textContent = 'Daily streaks are here. Settings > Stats';
+    toastEl.hidden = false;
+    window.requestAnimationFrame(() => {
+        toastEl.classList.add('visible');
+    });
+
+    dailyStreakToastHideTimeout = window.setTimeout(() => {
+        toastEl.classList.remove('visible');
+        dailyStreakToastHideTimeout = window.setTimeout(() => {
+            toastEl.hidden = true;
+            dailyStreakToastHideTimeout = null;
+        }, 220);
+    }, 3800);
+}
+
+function maybeShowDailyStreakIntro() {
+    if (hasSeenDailyStreakIntro()) return;
+
+    markDailyStreakIntroSeen();
+    showDailyStreakIntroToast();
 }
 
 let lastSummaryValues = { ao5: null, ao12: null, ao100: null, meanStr: '-' };
@@ -6227,6 +6288,33 @@ function updateTimerInfo(stats, solves) {
     document.querySelectorAll('#mobile-summary-card [data-mobile-summary-action]').forEach((cell) => {
         const action = cell.dataset.mobileSummaryAction;
         cell.disabled = action !== 'stats' && stats.current[action] == null;
+    });
+}
+
+function updateDailyStreakUI() {
+    const cardEls = document.querySelectorAll('[data-daily-streak-card]');
+    if (!cardEls.length) return;
+
+    const streakState = dailyStreakStore.getState(settings.get('dailyStreakGoal'));
+    if (streakState.disabled) {
+        cardEls.forEach((cardEl) => {
+            cardEl.hidden = true;
+        });
+        return;
+    }
+
+    cardEls.forEach((cardEl) => {
+        cardEl.hidden = false;
+
+        const countEl = cardEl.querySelector('[data-daily-streak-count]');
+        const countLabelEl = cardEl.querySelector('[data-daily-streak-count-label]');
+        const progressCountEl = cardEl.querySelector('[data-daily-streak-progress-count]');
+        const fireEl = cardEl.querySelector('[data-daily-streak-fire]');
+
+        if (countEl) countEl.textContent = String(streakState.currentStreak);
+        if (countLabelEl) countLabelEl.textContent = streakState.currentStreak === 1 ? 'day' : 'days';
+        if (progressCountEl) progressCountEl.textContent = `${streakState.todayCount} / ${streakState.goal}`;
+        fireEl?.classList.toggle('is-active', streakState.goalMetToday);
     });
 }
 
@@ -9944,6 +10032,28 @@ function initSettingsPanel() {
         settings.set('pillSize', pillSizeSelect.value);
         pillSizeSelect.blur();
     };
+
+    const dailyStreakGoalInput = document.getElementById('setting-daily-streak-goal');
+    if (dailyStreakGoalInput) {
+        const syncDailyStreakGoalInput = () => {
+            dailyStreakGoalInput.value = String(normalizeDailyStreakGoal(settings.get('dailyStreakGoal'), 0));
+        };
+
+        const commitDailyStreakGoal = () => {
+            const nextGoal = normalizeDailyStreakGoal(dailyStreakGoalInput.value, settings.get('dailyStreakGoal'));
+            dailyStreakGoalInput.value = String(nextGoal);
+            settings.set('dailyStreakGoal', nextGoal);
+        };
+
+        syncDailyStreakGoalInput();
+        dailyStreakGoalInput.addEventListener('change', commitDailyStreakGoal);
+        dailyStreakGoalInput.addEventListener('blur', commitDailyStreakGoal);
+        settings.on('change', (key) => {
+            if (key !== 'dailyStreakGoal') return;
+            syncDailyStreakGoalInput();
+        });
+        settings.on('reset', syncDailyStreakGoalInput);
+    }
 
     // Show delta toggle
     const deltaToggle = document.getElementById('setting-show-delta');
