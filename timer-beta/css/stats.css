@@ -1074,9 +1074,14 @@
         padding: 0;
     }
 
-    body[data-mobile-panel="stats"] #stats-summary,
-    body[data-mobile-panel="stats"] #stats-search-menu {
+    body[data-mobile-panel="stats"] #stats-summary {
         margin: 0 var(--space-sm);
+        padding: 12px;
+        border-radius: 12px;
+    }
+
+    body[data-mobile-panel="stats"] #stats-search-menu {
+        margin: 0 var(--space-sm) 4px;
         padding: 12px;
         border-radius: 12px;
     }
