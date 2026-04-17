@@ -243,7 +243,7 @@ async function registerServiceWorker() {
     if (window.location?.protocol === 'file:') return;
 
     try {
-        const serviceWorkerUrl = new URL('../sw.js?v=2026041608', import.meta.url);
+        const serviceWorkerUrl = new URL('../sw.js?v=2026041801', import.meta.url);
         await navigator.serviceWorker.register(serviceWorkerUrl);
     } catch (error) {
         console.warn('Service worker registration failed:', error);
@@ -2279,6 +2279,7 @@ function setActiveMobilePanel(panel) {
         btn.classList.toggle('active', btn.dataset.mobilePanel === panel);
     });
     hideMobileScrambleActions();
+    closeDailyStreakMobilePopup();
     syncQuickActionsUI();
     syncInspectionCancelControl();
 
@@ -2310,6 +2311,7 @@ function syncMobilePanelState() {
         delete document.body.dataset.mobilePanel;
         document.querySelectorAll('.mobile-panel-tab').forEach((btn) => btn.classList.remove('active'));
         hideMobileScrambleActions();
+        closeDailyStreakMobilePopup();
         syncQuickActionsUI();
         syncInspectionCancelControl();
         syncPersistentManualEntryMode();
@@ -3067,6 +3069,7 @@ async function init() {
     // Wire events
     timer.on('stopped', onSolveComplete);
     timer.on('started', onTimerStarted);
+    timer.on('started', closeDailyStreakMobilePopup);
     timer.on('stateChange', onTimerStateChange);
     timer.on('inspectionAlert', onInspectionAlert);
     timer.on('typingInspectionDone', () => {
@@ -3144,6 +3147,7 @@ async function init() {
     initCollapsiblePanels();
     initZenMode();
     initScrambleControls();
+    initDailyStreakMobileControl();
     initTimerInfoControls();
     initTableSorting();
     initGraphLineToggles();
@@ -3613,6 +3617,9 @@ function setZenMode(isZen) {
     const nextZen = Boolean(isZen);
     const didChange = document.body.classList.contains('zen') !== nextZen;
     document.body.classList.toggle('zen', nextZen);
+    if (nextZen) {
+        closeDailyStreakMobilePopup();
+    }
     settings.set('zenMode', nextZen);
     syncZenButtonState();
     if (didChange) {
@@ -6211,6 +6218,62 @@ function maybeShowDailyStreakIntro() {
     showDailyStreakIntroToast();
 }
 
+function formatDailyStreakMobileProgressText(streakState) {
+    if (!streakState || streakState.disabled) return '';
+
+    return `${streakState.todayCount} / ${streakState.goal}`;
+}
+
+function closeDailyStreakMobilePopup() {
+    const popupEl = getEl('daily-streak-mobile-popup');
+    const buttonEl = getEl('btn-daily-streak-mobile');
+
+    if (popupEl) popupEl.hidden = true;
+    if (buttonEl) buttonEl.setAttribute('aria-expanded', 'false');
+}
+
+function setDailyStreakMobilePopupOpen(isOpen) {
+    const controlEl = getEl('daily-streak-mobile-control');
+    const popupEl = getEl('daily-streak-mobile-popup');
+    const buttonEl = getEl('btn-daily-streak-mobile');
+
+    if (!controlEl || !popupEl || !buttonEl || controlEl.hidden || !isMobileTimerPanelActive()) {
+        closeDailyStreakMobilePopup();
+        return;
+    }
+
+    popupEl.hidden = !isOpen;
+    buttonEl.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+}
+
+function initDailyStreakMobileControl() {
+    const controlEl = getEl('daily-streak-mobile-control');
+    const buttonEl = getEl('btn-daily-streak-mobile');
+    if (!controlEl || !buttonEl) return;
+
+    buttonEl.addEventListener('click', (event) => {
+        event.preventDefault();
+        if (controlEl.hidden) return;
+
+        const popupEl = getEl('daily-streak-mobile-popup');
+        setDailyStreakMobilePopupOpen(popupEl?.hidden ?? true);
+    });
+
+    document.addEventListener('pointerdown', (event) => {
+        if (!(event.target instanceof Node)) return;
+        if (controlEl.contains(event.target)) return;
+        closeDailyStreakMobilePopup();
+    }, true);
+
+    document.addEventListener('keydown', (event) => {
+        if (event.code !== 'Escape') return;
+        closeDailyStreakMobilePopup();
+    });
+
+    window.addEventListener('resize', closeDailyStreakMobilePopup);
+    window.addEventListener('orientationchange', closeDailyStreakMobilePopup);
+}
+
 let lastSummaryValues = { ao5: null, ao12: null, ao100: null, meanStr: '-' };
 
 function syncMobileSummaryDisplays() {
@@ -6293,13 +6356,19 @@ function updateTimerInfo(stats, solves) {
 
 function updateDailyStreakUI() {
     const cardEls = document.querySelectorAll('[data-daily-streak-card]');
-    if (!cardEls.length) return;
+    const mobileControlEl = getEl('daily-streak-mobile-control');
+    const mobileButtonEl = getEl('btn-daily-streak-mobile');
+    const mobileCountEl = document.querySelector('[data-daily-streak-mobile-count]');
+    const mobileProgressEl = document.querySelector('[data-daily-streak-mobile-progress]');
+    if (!cardEls.length && !mobileControlEl) return;
 
     const streakState = dailyStreakStore.getState(settings.get('dailyStreakGoal'));
     if (streakState.disabled) {
         cardEls.forEach((cardEl) => {
             cardEl.hidden = true;
         });
+        if (mobileControlEl) mobileControlEl.hidden = true;
+        closeDailyStreakMobilePopup();
         return;
     }
 
@@ -6316,6 +6385,27 @@ function updateDailyStreakUI() {
         if (progressCountEl) progressCountEl.textContent = `${streakState.todayCount} / ${streakState.goal}`;
         fireEl?.classList.toggle('is-active', streakState.goalMetToday);
     });
+
+    if (mobileControlEl) {
+        mobileControlEl.hidden = false;
+    }
+    if (mobileCountEl) {
+        mobileCountEl.textContent = String(streakState.currentStreak);
+    }
+    if (mobileProgressEl) {
+        mobileProgressEl.textContent = formatDailyStreakMobileProgressText(streakState);
+    }
+    if (mobileButtonEl) {
+        mobileButtonEl.classList.toggle('is-active', streakState.goalMetToday);
+        mobileButtonEl.setAttribute(
+            'aria-label',
+            `Daily streak: ${streakState.currentStreak} ${streakState.currentStreak === 1 ? 'active day' : 'active days'}. ${formatDailyStreakMobileProgressText(streakState)}.`,
+        );
+    }
+
+    if (!isMobileTimerPanelActive()) {
+        closeDailyStreakMobilePopup();
+    }
 }
 
 function updateDelta(solves) {
