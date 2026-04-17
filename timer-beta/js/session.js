@@ -302,6 +302,11 @@ class SessionManager extends EventEmitter {
         const deletedIndex = this._sessions.findIndex(s => s.id === id);
         if (deletedIndex === -1) return;
 
+        const deletedSession = await this.ensureSessionSolvesLoaded(id);
+        const deletedSolveIds = Array.isArray(deletedSession?.solves)
+            ? deletedSession.solves.map((solve) => solve?.id).filter(Boolean)
+            : [];
+
         this._sessions = this._sessions.filter(s => s.id !== id);
         await db.deleteSession(id);
 
@@ -309,13 +314,19 @@ class SessionManager extends EventEmitter {
             await this._createDefault();
             this._activeId = this._sessions[0].id;
             save('activeSessionId', this._activeId);
-            this.emit('sessionDeleted', id);
+            this.emit('sessionDeleted', {
+                id,
+                solveIds: deletedSolveIds,
+            });
             this.emit('sessionChanged', this._activeId);
         } else {
             if (this._activeId === id) {
                 await this.setActiveSession(this._sessions[0].id);
             }
-            this.emit('sessionDeleted', id);
+            this.emit('sessionDeleted', {
+                id,
+                solveIds: deletedSolveIds,
+            });
         }
     }
 

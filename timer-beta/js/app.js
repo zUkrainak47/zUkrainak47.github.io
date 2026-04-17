@@ -3103,7 +3103,14 @@ async function init() {
         refreshUI();
     });
     sessionManager.on('sessionChanged', onSessionChanged);
-    sessionManager.on('sessionDeleted', refreshSessionList);
+    sessionManager.on('sessionDeleted', ({ solveIds } = {}) => {
+        if (Array.isArray(solveIds) && solveIds.length > 0) {
+            dailyStreakStore.deleteSolve(solveIds);
+        }
+        refreshSessionList();
+        rebuildStatsCache();
+        refreshUI();
+    });
 
     settings.on('change', (key) => {
         if (key === 'inspectionAlerts') clearInspectionAlert();
