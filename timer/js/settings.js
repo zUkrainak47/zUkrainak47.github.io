@@ -1,5 +1,5 @@
-import { load, save } from './storage.js?v=2026041608';
-import { EventEmitter } from './utils.js?v=2026041608';
+import { load, save } from './storage.js?v=2026041801';
+import { EventEmitter } from './utils.js?v=2026041801';
 
 export const THEME_DEFAULT_ID = 'default';
 export const THEME_OLED_ID = 'oled';
@@ -409,6 +409,7 @@ const DEFAULTS = {
     displayFont: 'jetbrains-mono',
     largeScrambleText: false,
     pillSize: 'medium',       // 'small', 'medium', 'large', 'hidden'
+    dailyStreakGoal: 0,
     statsFilter: 'all',     // 'all', 'today', 'week', 'month', 'custom'
     customFilterDuration: '', // e.g. '3d', '2h', '100', '100 solves'
     summaryStatsPreset: 'basic', // 'basic', 'extended', 'full', 'custom'

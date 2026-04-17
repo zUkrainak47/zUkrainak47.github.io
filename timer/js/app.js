@@ -1,15 +1,16 @@
-import { timer } from './timer.js?v=2026041608';
-import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=2026041608';
-import { sessionManager } from './session.js?v=2026041608';
-import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=2026041608';
-import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=2026041608';
-import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, parseTimeInputToMs, truncateTimeDisplay } from './utils.js?v=2026041608';
-import { initModal, showSolveDetail, showAverageDetail, closeModal, closeMoveSessionMenus, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=2026041608';
-import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=2026041608';
-import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=2026041608';
-import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionData, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=2026041608';
-import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=2026041608';
-import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=2026041608';
+import { timer } from './timer.js?v=2026041801';
+import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=2026041801';
+import { sessionManager } from './session.js?v=2026041801';
+import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=2026041801';
+import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=2026041801';
+import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, parseTimeInputToMs, truncateTimeDisplay } from './utils.js?v=2026041801';
+import { initModal, showSolveDetail, showAverageDetail, closeModal, closeMoveSessionMenus, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=2026041801';
+import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=2026041801';
+import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=2026041801';
+import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionData, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=2026041801';
+import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=2026041801';
+import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=2026041801';
+import { dailyStreakStore, normalizeDailyStreakGoal } from './streaks.js?v=2026041801';
 
 let currentScramble = '';
 let currentSortCol = null;
@@ -53,9 +54,11 @@ let importProgressState = {
     solveCount: 0,
 };
 let importProgressHideTimeout = null;
+let dailyStreakToastHideTimeout = null;
 
 const statsCache = new StatsCache();
 let _skipSolveAddedRefresh = false; // set true when commitSolve manages the refresh itself
+const DAILY_STREAKS_INTRO_STORAGE_KEY = 'ukratimer_daily_streaks_intro_v1';
 const THEME_EDITOR_MODE_SIMPLE = 'simple';
 const THEME_EDITOR_MODE_FULL = 'full';
 const SIMPLE_THEME_COLOR_SECTIONS = Object.freeze([
@@ -240,7 +243,7 @@ async function registerServiceWorker() {
     if (window.location?.protocol === 'file:') return;
 
     try {
-        const serviceWorkerUrl = new URL('../sw.js?v=2026041608', import.meta.url);
+        const serviceWorkerUrl = new URL('../sw.js?v=2026041801', import.meta.url);
         await navigator.serviceWorker.register(serviceWorkerUrl);
     } catch (error) {
         console.warn('Service worker registration failed:', error);
@@ -2276,6 +2279,7 @@ function setActiveMobilePanel(panel) {
         btn.classList.toggle('active', btn.dataset.mobilePanel === panel);
     });
     hideMobileScrambleActions();
+    closeDailyStreakMobilePopup();
     syncQuickActionsUI();
     syncInspectionCancelControl();
 
@@ -2307,6 +2311,7 @@ function syncMobilePanelState() {
         delete document.body.dataset.mobilePanel;
         document.querySelectorAll('.mobile-panel-tab').forEach((btn) => btn.classList.remove('active'));
         hideMobileScrambleActions();
+        closeDailyStreakMobilePopup();
         syncQuickActionsUI();
         syncInspectionCancelControl();
         syncPersistentManualEntryMode();
@@ -3042,6 +3047,7 @@ async function init() {
     populateScrambleTypeMenus();
     void preloadScrambleEngines();
     await sessionInitPromise;
+    await dailyStreakStore.init();
     await syncScrambleTypeWithActiveSession();
     const shouldLoadInitialScramble = !syncInitialScrambleUI();
     initModal();
@@ -3063,6 +3069,7 @@ async function init() {
     // Wire events
     timer.on('stopped', onSolveComplete);
     timer.on('started', onTimerStarted);
+    timer.on('started', closeDailyStreakMobilePopup);
     timer.on('stateChange', onTimerStateChange);
     timer.on('inspectionAlert', onInspectionAlert);
     timer.on('typingInspectionDone', () => {
@@ -3071,25 +3078,39 @@ async function init() {
         }
     });
 
-    sessionManager.on('solveAdded', () => {
+    sessionManager.on('solveAdded', (solve) => {
+        dailyStreakStore.upsertSolve(solve);
         refreshSessionList();
         if (!_skipSolveAddedRefresh) refreshUI();
     });
-    sessionManager.on('solveUpdated', () => { rebuildStatsCache(); refreshUI(); });
-    sessionManager.on('solveDeleted', () => {
+    sessionManager.on('solveUpdated', (solve) => {
+        dailyStreakStore.upsertSolve(solve);
+        rebuildStatsCache();
+        refreshUI();
+    });
+    sessionManager.on('solveDeleted', (solveIdOrIds) => {
+        dailyStreakStore.deleteSolve(solveIdOrIds);
         if (window._isBulkAction) return;
         refreshSessionList();
         rebuildStatsCache();
         refreshUI();
     });
-    sessionManager.on('solveMoved', () => {
+    sessionManager.on('solveMoved', ({ solve } = {}) => {
+        dailyStreakStore.upsertSolve(solve);
         if (window._isBulkAction) return;
         refreshSessionList();
         rebuildStatsCache();
         refreshUI();
     });
     sessionManager.on('sessionChanged', onSessionChanged);
-    sessionManager.on('sessionDeleted', refreshSessionList);
+    sessionManager.on('sessionDeleted', ({ solveIds } = {}) => {
+        if (Array.isArray(solveIds) && solveIds.length > 0) {
+            dailyStreakStore.deleteSolve(solveIds);
+        }
+        refreshSessionList();
+        rebuildStatsCache();
+        refreshUI();
+    });
 
     settings.on('change', (key) => {
         if (key === 'inspectionAlerts') clearInspectionAlert();
@@ -3097,7 +3118,7 @@ async function init() {
             syncInspectionSpeechUnlockPromptVisibility();
         }
         if (key === 'newBestPopupEnabled' && !settings.get('newBestPopupEnabled')) clearNewBestAlert();
-        if (key === 'statsFilter' || key === 'customFilterDuration' || key === 'showDelta' || key === 'deltaReference' || key === 'theme' || key === 'customThemes' || key.startsWith('graphColor') || key.startsWith('graphLine') || key === 'graphTooltipDateEnabled' || key === 'newBestColor' || key === 'summaryStatsList' || key.startsWith('solvesTableStat')) {
+        if (key === 'statsFilter' || key === 'customFilterDuration' || key === 'showDelta' || key === 'deltaReference' || key === 'theme' || key === 'customThemes' || key.startsWith('graphColor') || key.startsWith('graphLine') || key === 'graphTooltipDateEnabled' || key === 'newBestColor' || key === 'summaryStatsList' || key.startsWith('solvesTableStat') || key === 'dailyStreakGoal') {
             if (key === 'statsFilter' || key === 'customFilterDuration') rebuildStatsCache();
             if (key === 'summaryStatsList') {
                 syncModalStatNavigation();
@@ -3133,6 +3154,7 @@ async function init() {
     initCollapsiblePanels();
     initZenMode();
     initScrambleControls();
+    initDailyStreakMobileControl();
     initTimerInfoControls();
     initTableSorting();
     initGraphLineToggles();
@@ -3151,6 +3173,9 @@ async function init() {
     window.addEventListener('orientationchange', syncDesktopTimerInfoPills);
     window.addEventListener('online', startCubingWarmupIfNeeded);
     scheduleViewportLayoutSync();
+    window.requestAnimationFrame(() => {
+        void maybeShowDailyStreakIntro();
+    });
 
     if (shouldLoadInitialScramble) {
         const startInitialScrambleLoad = () => {
@@ -3599,6 +3624,9 @@ function setZenMode(isZen) {
     const nextZen = Boolean(isZen);
     const didChange = document.body.classList.contains('zen') !== nextZen;
     document.body.classList.toggle('zen', nextZen);
+    if (nextZen) {
+        closeDailyStreakMobilePopup();
+    }
     settings.set('zenMode', nextZen);
     syncZenButtonState();
     if (didChange) {
@@ -6145,9 +6173,112 @@ function refreshUI() {
     }
 
     // Update delta display
+    updateDailyStreakUI();
     updateDelta(solves);
     updateQuickActionButtons();
     scheduleViewportLayoutSync();
+}
+
+function hasSeenDailyStreakIntro() {
+    try {
+        return localStorage.getItem(DAILY_STREAKS_INTRO_STORAGE_KEY) === '1';
+    } catch (_) {
+        return false;
+    }
+}
+
+function markDailyStreakIntroSeen() {
+    try {
+        localStorage.setItem(DAILY_STREAKS_INTRO_STORAGE_KEY, '1');
+    } catch (_) {
+    }
+}
+
+function showDailyStreakIntroToast() {
+    const toastEl = document.getElementById('daily-streak-toast');
+    if (!toastEl) return;
+
+    if (dailyStreakToastHideTimeout) {
+        clearTimeout(dailyStreakToastHideTimeout);
+        dailyStreakToastHideTimeout = null;
+    }
+
+    toastEl.textContent = 'Daily streaks are here. Settings > Stats';
+    toastEl.hidden = false;
+    window.requestAnimationFrame(() => {
+        toastEl.classList.add('visible');
+    });
+
+    dailyStreakToastHideTimeout = window.setTimeout(() => {
+        toastEl.classList.remove('visible');
+        dailyStreakToastHideTimeout = window.setTimeout(() => {
+            toastEl.hidden = true;
+            dailyStreakToastHideTimeout = null;
+        }, 220);
+    }, 3800);
+}
+
+function maybeShowDailyStreakIntro() {
+    if (hasSeenDailyStreakIntro()) return;
+
+    markDailyStreakIntroSeen();
+    showDailyStreakIntroToast();
+}
+
+function formatDailyStreakMobileProgressText(streakState) {
+    if (!streakState || streakState.disabled) return '';
+
+    return `${streakState.todayCount} / ${streakState.goal}`;
+}
+
+function closeDailyStreakMobilePopup() {
+    const popupEl = getEl('daily-streak-mobile-popup');
+    const buttonEl = getEl('btn-daily-streak-mobile');
+
+    if (popupEl) popupEl.hidden = true;
+    if (buttonEl) buttonEl.setAttribute('aria-expanded', 'false');
+}
+
+function setDailyStreakMobilePopupOpen(isOpen) {
+    const controlEl = getEl('daily-streak-mobile-control');
+    const popupEl = getEl('daily-streak-mobile-popup');
+    const buttonEl = getEl('btn-daily-streak-mobile');
+
+    if (!controlEl || !popupEl || !buttonEl || controlEl.hidden || !isMobileTimerPanelActive()) {
+        closeDailyStreakMobilePopup();
+        return;
+    }
+
+    popupEl.hidden = !isOpen;
+    buttonEl.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+}
+
+function initDailyStreakMobileControl() {
+    const controlEl = getEl('daily-streak-mobile-control');
+    const buttonEl = getEl('btn-daily-streak-mobile');
+    if (!controlEl || !buttonEl) return;
+
+    buttonEl.addEventListener('click', (event) => {
+        event.preventDefault();
+        if (controlEl.hidden) return;
+
+        const popupEl = getEl('daily-streak-mobile-popup');
+        setDailyStreakMobilePopupOpen(popupEl?.hidden ?? true);
+    });
+
+    document.addEventListener('pointerdown', (event) => {
+        if (!(event.target instanceof Node)) return;
+        if (controlEl.contains(event.target)) return;
+        closeDailyStreakMobilePopup();
+    }, true);
+
+    document.addEventListener('keydown', (event) => {
+        if (event.code !== 'Escape') return;
+        closeDailyStreakMobilePopup();
+    });
+
+    window.addEventListener('resize', closeDailyStreakMobilePopup);
+    window.addEventListener('orientationchange', closeDailyStreakMobilePopup);
 }
 
 let lastSummaryValues = { ao5: null, ao12: null, ao100: null, meanStr: '-' };
@@ -6228,6 +6359,60 @@ function updateTimerInfo(stats, solves) {
         const action = cell.dataset.mobileSummaryAction;
         cell.disabled = action !== 'stats' && stats.current[action] == null;
     });
+}
+
+function updateDailyStreakUI() {
+    const cardEls = document.querySelectorAll('[data-daily-streak-card]');
+    const mobileControlEl = getEl('daily-streak-mobile-control');
+    const mobileButtonEl = getEl('btn-daily-streak-mobile');
+    const mobileCountEl = document.querySelector('[data-daily-streak-mobile-count]');
+    const mobileProgressEl = document.querySelector('[data-daily-streak-mobile-progress]');
+    if (!cardEls.length && !mobileControlEl) return;
+
+    const streakState = dailyStreakStore.getState(settings.get('dailyStreakGoal'));
+    if (streakState.disabled) {
+        cardEls.forEach((cardEl) => {
+            cardEl.hidden = true;
+        });
+        if (mobileControlEl) mobileControlEl.hidden = true;
+        closeDailyStreakMobilePopup();
+        return;
+    }
+
+    cardEls.forEach((cardEl) => {
+        cardEl.hidden = false;
+
+        const countEl = cardEl.querySelector('[data-daily-streak-count]');
+        const countLabelEl = cardEl.querySelector('[data-daily-streak-count-label]');
+        const progressCountEl = cardEl.querySelector('[data-daily-streak-progress-count]');
+        const fireEl = cardEl.querySelector('[data-daily-streak-fire]');
+
+        if (countEl) countEl.textContent = String(streakState.currentStreak);
+        if (countLabelEl) countLabelEl.textContent = streakState.currentStreak === 1 ? 'day' : 'days';
+        if (progressCountEl) progressCountEl.textContent = `${streakState.todayCount} / ${streakState.goal}`;
+        fireEl?.classList.toggle('is-active', streakState.goalMetToday);
+    });
+
+    if (mobileControlEl) {
+        mobileControlEl.hidden = false;
+    }
+    if (mobileCountEl) {
+        mobileCountEl.textContent = String(streakState.currentStreak);
+    }
+    if (mobileProgressEl) {
+        mobileProgressEl.textContent = formatDailyStreakMobileProgressText(streakState);
+    }
+    if (mobileButtonEl) {
+        mobileButtonEl.classList.toggle('is-active', streakState.goalMetToday);
+        mobileButtonEl.setAttribute(
+            'aria-label',
+            `Daily streak: ${streakState.currentStreak} ${streakState.currentStreak === 1 ? 'active day' : 'active days'}. ${formatDailyStreakMobileProgressText(streakState)}.`,
+        );
+    }
+
+    if (!isMobileTimerPanelActive()) {
+        closeDailyStreakMobilePopup();
+    }
 }
 
 function updateDelta(solves) {
@@ -9944,6 +10129,28 @@ function initSettingsPanel() {
         settings.set('pillSize', pillSizeSelect.value);
         pillSizeSelect.blur();
     };
+
+    const dailyStreakGoalInput = document.getElementById('setting-daily-streak-goal');
+    if (dailyStreakGoalInput) {
+        const syncDailyStreakGoalInput = () => {
+            dailyStreakGoalInput.value = String(normalizeDailyStreakGoal(settings.get('dailyStreakGoal'), 0));
+        };
+
+        const commitDailyStreakGoal = () => {
+            const nextGoal = normalizeDailyStreakGoal(dailyStreakGoalInput.value, settings.get('dailyStreakGoal'));
+            dailyStreakGoalInput.value = String(nextGoal);
+            settings.set('dailyStreakGoal', nextGoal);
+        };
+
+        syncDailyStreakGoalInput();
+        dailyStreakGoalInput.addEventListener('change', commitDailyStreakGoal);
+        dailyStreakGoalInput.addEventListener('blur', commitDailyStreakGoal);
+        settings.on('change', (key) => {
+            if (key !== 'dailyStreakGoal') return;
+            syncDailyStreakGoalInput();
+        });
+        settings.on('reset', syncDailyStreakGoalInput);
+    }
 
     // Show delta toggle
     const deltaToggle = document.getElementById('setting-show-delta');

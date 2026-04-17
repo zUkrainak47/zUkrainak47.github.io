@@ -1,8 +1,8 @@
-import * as db from './db.js?v=2026041608';
-import { load, save } from './storage.js?v=2026041608';
-import { generateId, EventEmitter, getStartOfToday, getStartOfWeek, getStartOfMonth, parseCustomStatsFilter } from './utils.js?v=2026041608';
-import { settings } from './settings.js?v=2026041608';
-import { SCRAMBLE_TYPE_OPTIONS } from './scramble.js?v=2026041608';
+import * as db from './db.js?v=2026041801';
+import { load, save } from './storage.js?v=2026041801';
+import { generateId, EventEmitter, getStartOfToday, getStartOfWeek, getStartOfMonth, parseCustomStatsFilter } from './utils.js?v=2026041801';
+import { settings } from './settings.js?v=2026041801';
+import { SCRAMBLE_TYPE_OPTIONS } from './scramble.js?v=2026041801';
 
 const DEFAULT_SCRAMBLE_TYPE = '333';
 const LEGACY_SCRAMBLE_TYPE_STORAGE_KEY = 'scrambleType';
@@ -302,6 +302,11 @@ class SessionManager extends EventEmitter {
         const deletedIndex = this._sessions.findIndex(s => s.id === id);
         if (deletedIndex === -1) return;
 
+        const deletedSession = await this.ensureSessionSolvesLoaded(id);
+        const deletedSolveIds = Array.isArray(deletedSession?.solves)
+            ? deletedSession.solves.map((solve) => solve?.id).filter(Boolean)
+            : [];
+
         this._sessions = this._sessions.filter(s => s.id !== id);
         await db.deleteSession(id);
 
@@ -309,13 +314,19 @@ class SessionManager extends EventEmitter {
             await this._createDefault();
             this._activeId = this._sessions[0].id;
             save('activeSessionId', this._activeId);
-            this.emit('sessionDeleted', id);
+            this.emit('sessionDeleted', {
+                id,
+                solveIds: deletedSolveIds,
+            });
             this.emit('sessionChanged', this._activeId);
         } else {
             if (this._activeId === id) {
                 await this.setActiveSession(this._sessions[0].id);
             }
-            this.emit('sessionDeleted', id);
+            this.emit('sessionDeleted', {
+                id,
+                solveIds: deletedSolveIds,
+            });
         }
     }
 

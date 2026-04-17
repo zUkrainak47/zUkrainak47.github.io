@@ -1067,6 +1067,7 @@ body.mobile-viewport #setting-large-scramble-text-row {
     }
 
     .setting-row select,
+    .setting-row input[type="number"],
     .setting-row input[type="color"] {
         flex-shrink: 0;
     }

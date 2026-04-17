@@ -465,6 +465,13 @@ body.zen.mobile-viewport .mobile-session-select-wrapper {
     transition: opacity 0.3s ease, visibility 0s linear 0.3s;
 }
 
+body.zen.mobile-viewport .daily-streak-mobile-control {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.3s ease, visibility 0s linear 0.3s;
+}
+
 body.zen #scramble-type-menu-desktop,
 body.zen #scramble-type-menu-mobile {
     visibility: hidden;
