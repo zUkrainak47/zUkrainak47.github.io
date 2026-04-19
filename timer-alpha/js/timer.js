@@ -1,6 +1,6 @@
-import { settings } from './settings.js?v=2026041802';
-import { isHardwareTimeEntryMode, TIME_ENTRY_MODE_TYPING } from './time-entry.js?v=2026041802';
-import { EventEmitter, formatTime, truncateTimeDisplay } from './utils.js?v=2026041802';
+import { settings } from './settings.js?v=2026041901';
+import { isHardwareTimeEntryMode, TIME_ENTRY_MODE_TIMER, TIME_ENTRY_MODE_TYPING } from './time-entry.js?v=2026041901';
+import { EventEmitter, formatTime, truncateTimeDisplay } from './utils.js?v=2026041901';
 
 const State = {
     IDLE: 'idle',
@@ -877,6 +877,7 @@ class Timer extends EventEmitter {
 
     _backgroundSpacebarEnabled() {
         return settings.get('backgroundSpacebarEnabled') === true
+            && settings.get('timeEntryMode') === TIME_ENTRY_MODE_TIMER
             && !this._isDesktopTypingEntryMode();
     }
 

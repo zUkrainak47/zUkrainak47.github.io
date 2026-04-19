@@ -1,19 +1,19 @@
-import { timer, State as TimerState } from './timer.js?v=2026041802';
-import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=2026041802';
-import { sessionManager } from './session.js?v=2026041802';
-import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=2026041802';
-import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=2026041802';
-import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, parseTimeInputToMs, truncateTimeDisplay } from './utils.js?v=2026041802';
-import { initModal, showSolveDetail, showAverageDetail, closeModal, closeMoveSessionMenus, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=2026041802';
-import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=2026041802';
-import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=2026041802';
-import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionData, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=2026041802';
-import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=2026041802';
-import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=2026041802';
-import { dailyStreakStore, normalizeDailyStreakGoal } from './streaks.js?v=2026041802';
-import { bluetoothTimerInput, BluetoothTimerState } from './hardware-bluetooth-timer.js?v=2026041802';
-import { stackmatInput } from './hardware-stackmat.js?v=2026041802';
-import { isHardwareTimeEntryMode, isTypingTimeEntryMode, normalizeTimeEntryMode, TIME_ENTRY_MODE_BLUETOOTH, TIME_ENTRY_MODE_STACKMAT } from './time-entry.js?v=2026041802';
+import { timer, State as TimerState } from './timer.js?v=2026041901';
+import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=2026041901';
+import { sessionManager } from './session.js?v=2026041901';
+import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=2026041901';
+import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=2026041901';
+import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, parseTimeInputToMs, truncateTimeDisplay } from './utils.js?v=2026041901';
+import { initModal, showSolveDetail, showAverageDetail, closeModal, closeMoveSessionMenus, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=2026041901';
+import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=2026041901';
+import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=2026041901';
+import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionData, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=2026041901';
+import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=2026041901';
+import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=2026041901';
+import { dailyStreakStore, normalizeDailyStreakGoal } from './streaks.js?v=2026041901';
+import { bluetoothTimerInput, BluetoothTimerState } from './hardware-bluetooth-timer.js?v=2026041901';
+import { stackmatInput } from './hardware-stackmat.js?v=2026041901';
+import { isHardwareTimeEntryMode, isTypingTimeEntryMode, normalizeTimeEntryMode, TIME_ENTRY_MODE_BLUETOOTH, TIME_ENTRY_MODE_STACKMAT, TIME_ENTRY_MODE_TIMER } from './time-entry.js?v=2026041901';
 
 let currentScramble = '';
 let currentSortCol = null;
@@ -246,7 +246,7 @@ async function registerServiceWorker() {
     if (window.location?.protocol === 'file:') return;
 
     try {
-        const serviceWorkerUrl = new URL('../sw.js?v=2026041802', import.meta.url);
+        const serviceWorkerUrl = new URL('../sw.js?v=2026041901', import.meta.url);
         await navigator.serviceWorker.register(serviceWorkerUrl);
     } catch (error) {
         console.warn('Service worker registration failed:', error);
@@ -1172,6 +1172,7 @@ function syncHardwareInputControls() {
     const mode = getSelectedTimeEntryMode();
     const isHardwareMode = isHardwareTimeEntryMode(mode);
     row.hidden = !isHardwareMode;
+    row.style.display = isHardwareMode ? '' : 'none';
     syncSettingsRowSeparators();
 
     if (!isHardwareMode) return;
@@ -1193,6 +1194,65 @@ function syncHardwareInputControls() {
         button.textContent = hardwareInputUiState.error ? 'Reconnect' : 'Connect';
     }
     button.setAttribute('aria-label', `${button.textContent} ${label}`);
+}
+
+async function syncStackmatDeviceControls() {
+    const row = getEl('setting-stackmat-device-row');
+    const select = getEl('setting-stackmat-input-select');
+    const status = getEl('setting-stackmat-device-status');
+
+    if (!row || !select || !status) return;
+
+    const isStackmatMode = getSelectedTimeEntryMode() === TIME_ENTRY_MODE_STACKMAT;
+    row.hidden = !isStackmatMode;
+    row.style.display = isStackmatMode ? '' : 'none';
+    if (!isStackmatMode) {
+        syncSettingsRowSeparators();
+        return;
+    }
+
+    const savedDeviceId = String(settings.get('stackmatInputDeviceId') || '');
+    const previousValue = select.value;
+    const preferredValue = savedDeviceId || previousValue || '';
+
+    let devices = [];
+    let hasError = false;
+    try {
+        devices = await stackmatInput.listInputDevices();
+    } catch {
+        hasError = true;
+    }
+
+    const optionMarkup = ['<option value="">Default microphone</option>']
+        .concat(devices.map((device) => {
+            const escapedId = device.id.replace(/"/g, '&quot;');
+            const escapedLabel = String(device.label || 'Microphone').replace(/[&<>"]/g, (char) => (
+                char === '&' ? '&amp;'
+                    : char === '<' ? '&lt;'
+                        : char === '>' ? '&gt;'
+                            : '&quot;'
+            ));
+            return `<option value="${escapedId}">${escapedLabel}</option>`;
+        }))
+        .join('');
+    select.innerHTML = optionMarkup;
+
+    const hasPreferredDevice = preferredValue && devices.some((device) => device.id === preferredValue);
+    select.value = hasPreferredDevice ? preferredValue : '';
+
+    status.classList.toggle('is-error', hasError);
+    if (hasError) {
+        status.textContent = 'Could not list microphones. Connect once to grant audio permission, then try again.';
+    } else if (devices.length === 0) {
+        status.textContent = 'No microphones found yet. Connect once to grant audio permission if needed.';
+    } else if (stackmatInput.isConnected()) {
+        status.textContent = 'Choose the Stackmat microphone. Changing it reconnects the audio input.';
+    } else {
+        status.textContent = 'Choose the audio input used for the Stackmat signal.';
+    }
+
+    select.disabled = hasError || hardwareInputUiState.busy;
+    syncSettingsRowSeparators();
 }
 
 function isMobileTimerPanelActive() {
@@ -3185,6 +3245,7 @@ async function init() {
         resetStackmatSession({ preserveStreamConnected: true });
         if (getSelectedTimeEntryMode() === TIME_ENTRY_MODE_STACKMAT) {
             refreshHardwareInputStatus();
+            void syncStackmatDeviceControls();
         }
     });
     stackmatInput.on('disconnected', () => {
@@ -3196,6 +3257,7 @@ async function init() {
                 error: false,
                 busy: false,
             });
+            void syncStackmatDeviceControls();
         }
     });
     stackmatInput.on('packet', handleStackmatPacket);
@@ -3494,7 +3556,7 @@ function initTimerClick() {
 
     timerDisplay.addEventListener('click', () => {
         if (mobileViewportQuery.matches) return;
-        if (settings.get('backgroundSpacebarEnabled')) return;
+        if (settings.get('backgroundSpacebarEnabled') && getSelectedTimeEntryMode() === TIME_ENTRY_MODE_TIMER) return;
         const state = timer.getState();
         // Open modal when timer is not actively solving.
         if (state === 'idle' || state === 'stopped') {
@@ -5893,7 +5955,8 @@ async function connectHardwareInput(mode, { selectionTaskId = currentHardwareSel
 
     try {
         if (mode === TIME_ENTRY_MODE_STACKMAT) {
-            await stackmatInput.connect();
+            const selectedDeviceId = String(settings.get('stackmatInputDeviceId') || '').trim();
+            await stackmatInput.connect(selectedDeviceId ? { deviceId: selectedDeviceId } : {});
         } else {
             await bluetoothTimerInput.connect();
             resetBluetoothSession();
@@ -5920,6 +5983,9 @@ async function connectHardwareInput(mode, { selectionTaskId = currentHardwareSel
     }
 
     refreshHardwareInputStatus();
+    if (mode === TIME_ENTRY_MODE_STACKMAT) {
+        void syncStackmatDeviceControls();
+    }
     showHardwareTimerAlert(`${modeLabel} connected`, { isSuccess: true });
     return true;
 }
@@ -5944,6 +6010,7 @@ async function reconcileHardwareTimeEntryMode({ attemptConnect = false } = {}) {
             timer.resetDisplay();
         }
         refreshHardwareInputStatus();
+        void syncStackmatDeviceControls();
         return;
     }
 
@@ -5956,6 +6023,9 @@ async function reconcileHardwareTimeEntryMode({ attemptConnect = false } = {}) {
         timer.setExternalState(TimerState.IDLE, { displayText: '0.00' });
     }
     refreshHardwareInputStatus();
+    if (mode === TIME_ENTRY_MODE_STACKMAT) {
+        void syncStackmatDeviceControls();
+    }
 }
 
 async function onHardwareInputActionButtonClick() {
@@ -8652,6 +8722,7 @@ function initSettingsPanel() {
         timeEntryModeSelect.value = normalizeTimeEntryMode(settings.get('timeEntryMode'));
         timeEntryModeSelect.onchange = () => {
             settings.set('timeEntryMode', timeEntryModeSelect.value);
+            updateTimeEntryVisibility();
             void reconcileHardwareTimeEntryMode({ attemptConnect: isHardwareTimeEntryMode(timeEntryModeSelect.value) });
             timeEntryModeSelect.blur();
         };
@@ -10284,6 +10355,8 @@ function initSettingsPanel() {
     const backgroundSpacebarRow = backgroundSpacebarToggle?.closest('.setting-row') ?? null;
     const timeEntryRow = document.getElementById('setting-time-entry-row');
     const hardwareInputButton = document.getElementById('setting-hardware-input-btn');
+    const stackmatDeviceRow = document.getElementById('setting-stackmat-device-row');
+    const stackmatInputSelect = document.getElementById('setting-stackmat-input-select');
     const swipeDownGestureToggle = document.getElementById('setting-swipe-down-gesture');
     const swipeDownGestureRow = document.getElementById('setting-swipe-down-gesture-row');
     const settingsGroupEls = Array.from(settingsOverlayEl?.querySelectorAll('.setting-group') || []);
@@ -10366,7 +10439,7 @@ function initSettingsPanel() {
 
     const updateBackgroundSpacebarVisibility = () => {
         if (!backgroundSpacebarRow) return;
-        backgroundSpacebarRow.style.display = finePointerQuery.matches ? '' : 'none';
+        backgroundSpacebarRow.style.display = finePointerQuery.matches && getSelectedTimeEntryMode() === TIME_ENTRY_MODE_TIMER ? '' : 'none';
         syncSettingsRowSeparators();
     };
 
@@ -10374,6 +10447,15 @@ function initSettingsPanel() {
         if (!timeEntryRow) return;
         timeEntryRow.style.display = '';
         syncHardwareInputControls();
+        if (stackmatDeviceRow) {
+            const isStackmatMode = getSelectedTimeEntryMode() === TIME_ENTRY_MODE_STACKMAT;
+            stackmatDeviceRow.hidden = !isStackmatMode;
+            stackmatDeviceRow.style.display = isStackmatMode ? '' : 'none';
+        }
+        if (getSelectedTimeEntryMode() === TIME_ENTRY_MODE_STACKMAT) {
+            void syncStackmatDeviceControls();
+        }
+        updateBackgroundSpacebarVisibility();
         syncSettingsRowSeparators();
     };
 
@@ -10441,6 +10523,20 @@ function initSettingsPanel() {
     hardwareInputButton?.addEventListener('click', () => {
         void onHardwareInputActionButtonClick();
     });
+
+    if (stackmatInputSelect) {
+        stackmatInputSelect.value = String(settings.get('stackmatInputDeviceId') || '');
+        stackmatInputSelect.addEventListener('change', () => {
+            settings.set('stackmatInputDeviceId', stackmatInputSelect.value);
+            if (getSelectedTimeEntryMode() === TIME_ENTRY_MODE_STACKMAT && stackmatInput.isConnected()) {
+                currentHardwareSelectionTask += 1;
+                void connectHardwareInput(TIME_ENTRY_MODE_STACKMAT, { selectionTaskId: currentHardwareSelectionTask });
+            } else {
+                void syncStackmatDeviceControls();
+            }
+            stackmatInputSelect.blur();
+        });
+    }
 
     const displayFontSelect = document.getElementById('setting-display-font');
     if (displayFontSelect) {
