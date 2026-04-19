@@ -1,5 +1,6 @@
-import { load, save } from './storage.js?v=2026041801';
-import { EventEmitter } from './utils.js?v=2026041801';
+import { load, save } from './storage.js?v=2026041901';
+import { normalizeTimeEntryMode, TIME_ENTRY_MODE_TIMER, TIME_ENTRY_MODE_TYPING } from './time-entry.js?v=2026041901';
+import { EventEmitter } from './utils.js?v=2026041901';
 
 export const THEME_DEFAULT_ID = 'default';
 export const THEME_OLED_ID = 'oled';
@@ -394,7 +395,8 @@ const DEFAULTS = {
     inspectionTime: 'off',  // 'off', '15s'
     inspectionAlerts: 'off', // 'off', 'voice', 'screen', 'both'
     timerUpdate: '0.01s',   // 'none', 'inspection', '1s', '0.1s', '0.01s'
-    timeEntryMode: 'timer', // 'timer', 'typing'
+    timeEntryMode: TIME_ENTRY_MODE_TIMER, // 'timer', 'typing', 'stackmat', 'bluetooth'
+    stackmatInputDeviceId: '',
     holdDuration: 300,       // ms
     animationMode: 'auto',   // 'auto', 'on', 'off'
     animationsEnabled: true, // Legacy effective boolean kept for backwards compatibility.
@@ -917,6 +919,16 @@ class Settings extends EventEmitter {
             return;
         }
 
+        if (key === 'timeEntryMode') {
+            const nextTimeEntryMode = normalizeTimeEntryMode(value);
+            if (this._settings.timeEntryMode === nextTimeEntryMode) return;
+
+            this._settings.timeEntryMode = nextTimeEntryMode;
+            this._saveAndApply();
+            this.emit('change', 'timeEntryMode', nextTimeEntryMode);
+            return;
+        }
+
         if (key === 'animationMode') {
             const nextAnimationMode = this._normalizeAnimationMode(value);
             if (this._settings.animationMode === nextAnimationMode) return;
@@ -1022,8 +1034,11 @@ class Settings extends EventEmitter {
 
         document.body.classList.toggle('no-animations', !this._settings.animationsEnabled);
         document.body.classList.toggle('high-contrast-mode', this._settings.theme === THEME_OLED_ID);
-        document.body.classList.toggle('typing-entry-mode', this._settings.timeEntryMode === 'typing');
-        document.body.classList.toggle('background-spacebar-enabled', Boolean(this._settings.backgroundSpacebarEnabled));
+        document.body.classList.toggle('typing-entry-mode', this._settings.timeEntryMode === TIME_ENTRY_MODE_TYPING);
+        document.body.classList.toggle(
+            'background-spacebar-enabled',
+            Boolean(this._settings.backgroundSpacebarEnabled) && this._settings.timeEntryMode === TIME_ENTRY_MODE_TIMER,
+        );
 
         document.body.classList.remove('pill-size-small', 'pill-size-medium', 'pill-size-large', 'pill-size-hidden');
         document.body.classList.add(`pill-size-${this._settings.pillSize}`);

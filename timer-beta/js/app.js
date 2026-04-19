@@ -1,16 +1,19 @@
-import { timer } from './timer.js?v=2026041801';
-import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=2026041801';
-import { sessionManager } from './session.js?v=2026041801';
-import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=2026041801';
-import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=2026041801';
-import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, parseTimeInputToMs, truncateTimeDisplay } from './utils.js?v=2026041801';
-import { initModal, showSolveDetail, showAverageDetail, closeModal, closeMoveSessionMenus, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=2026041801';
-import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=2026041801';
-import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=2026041801';
-import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionData, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=2026041801';
-import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=2026041801';
-import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=2026041801';
-import { dailyStreakStore, normalizeDailyStreakGoal } from './streaks.js?v=2026041801';
+import { timer, State as TimerState } from './timer.js?v=2026041901';
+import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=2026041901';
+import { sessionManager } from './session.js?v=2026041901';
+import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=2026041901';
+import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=2026041901';
+import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, parseTimeInputToMs, truncateTimeDisplay } from './utils.js?v=2026041901';
+import { initModal, showSolveDetail, showAverageDetail, closeModal, closeMoveSessionMenus, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=2026041901';
+import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=2026041901';
+import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=2026041901';
+import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionData, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=2026041901';
+import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=2026041901';
+import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=2026041901';
+import { dailyStreakStore, normalizeDailyStreakGoal } from './streaks.js?v=2026041901';
+import { bluetoothTimerInput, BluetoothTimerState } from './hardware-bluetooth-timer.js?v=2026041901';
+import { stackmatInput } from './hardware-stackmat.js?v=2026041901';
+import { isHardwareTimeEntryMode, isTypingTimeEntryMode, normalizeTimeEntryMode, TIME_ENTRY_MODE_BLUETOOTH, TIME_ENTRY_MODE_STACKMAT, TIME_ENTRY_MODE_TIMER } from './time-entry.js?v=2026041901';
 
 let currentScramble = '';
 let currentSortCol = null;
@@ -243,7 +246,7 @@ async function registerServiceWorker() {
     if (window.location?.protocol === 'file:') return;
 
     try {
-        const serviceWorkerUrl = new URL('../sw.js?v=2026041801', import.meta.url);
+        const serviceWorkerUrl = new URL('../sw.js?v=2026041901', import.meta.url);
         await navigator.serviceWorker.register(serviceWorkerUrl);
     } catch (error) {
         console.warn('Service worker registration failed:', error);
@@ -260,15 +263,38 @@ const popupState = {
     inspection: { elementId: 'inspection-alert', hideTimeout: null, clearTimeout: null },
     newBest: { elementId: 'new-best-alert', hideTimeout: null, clearTimeout: null },
     penaltyShortcut: { elementId: 'penalty-shortcut-alert', hideTimeout: null, clearTimeout: null },
+    hardwareTimer: { elementId: 'hardware-timer-alert', hideTimeout: null, clearTimeout: null },
 };
 const TIMER_POPUP_ACTIVE_CLASS = 'timer-popup-active';
 const TIMER_POPUP_ELEMENT_IDS = [
     'inspection-alert',
     'new-best-alert',
     'penalty-shortcut-alert',
+    'hardware-timer-alert',
     'cubing-warmup-alert',
     'import-progress',
 ];
+
+const hardwareInputUiState = {
+    activeMode: null,
+    busy: false,
+    connected: false,
+    error: false,
+    message: '',
+    deviceName: '',
+};
+
+const stackmatSessionState = {
+    streamConnected: false,
+    sawSignal: false,
+    lastPacket: null,
+};
+
+const bluetoothSessionState = {
+    lastStopSignature: '',
+};
+
+let currentHardwareSelectionTask = 0;
 
 function syncTimerPopupStacking() {
     const hasVisiblePopup = TIMER_POPUP_ELEMENT_IDS.some((elementId) =>
@@ -1099,6 +1125,136 @@ function getEl(id) {
     return domCache.get(id);
 }
 
+function getSelectedTimeEntryMode() {
+    return normalizeTimeEntryMode(settings.get('timeEntryMode'));
+}
+
+function getHardwareModeLabel(mode = getSelectedTimeEntryMode()) {
+    if (mode === TIME_ENTRY_MODE_STACKMAT) return 'Stackmat';
+    if (mode === TIME_ENTRY_MODE_BLUETOOTH) return 'Bluetooth timer';
+    return 'Hardware timer';
+}
+
+function getActiveHardwareInput(mode = getSelectedTimeEntryMode()) {
+    if (mode === TIME_ENTRY_MODE_STACKMAT) return stackmatInput;
+    if (mode === TIME_ENTRY_MODE_BLUETOOTH) return bluetoothTimerInput;
+    return null;
+}
+
+function formatHardwareTimeDisplay(timeMs) {
+    return formatTime(Math.max(0, Number(timeMs) || 0));
+}
+
+function setHardwareInputStatus(message, {
+    mode = getSelectedTimeEntryMode(),
+    connected = false,
+    error = false,
+    busy = false,
+    deviceName = '',
+} = {}) {
+    hardwareInputUiState.activeMode = isHardwareTimeEntryMode(mode) ? mode : null;
+    hardwareInputUiState.busy = busy;
+    hardwareInputUiState.connected = connected;
+    hardwareInputUiState.error = error;
+    hardwareInputUiState.message = message;
+    hardwareInputUiState.deviceName = deviceName;
+    syncHardwareInputControls();
+}
+
+function syncHardwareInputControls() {
+    const row = getEl('setting-hardware-input-row');
+    const title = getEl('setting-hardware-input-title');
+    const status = getEl('setting-hardware-input-status');
+    const button = getEl('setting-hardware-input-btn');
+
+    if (!row || !title || !status || !button) return;
+
+    const mode = getSelectedTimeEntryMode();
+    const isHardwareMode = isHardwareTimeEntryMode(mode);
+    row.hidden = !isHardwareMode;
+    row.style.display = isHardwareMode ? '' : 'none';
+    syncSettingsRowSeparators();
+
+    if (!isHardwareMode) return;
+
+    const label = getHardwareModeLabel(mode);
+    title.textContent = label;
+    status.textContent = hardwareInputUiState.message
+        || (mode === TIME_ENTRY_MODE_STACKMAT
+            ? 'Connect the microphone input from your Stackmat cable.'
+            : 'Connect a supported Bluetooth timer in a Chromium-based browser.');
+    status.classList.toggle('is-error', hardwareInputUiState.error);
+
+    button.disabled = hardwareInputUiState.busy;
+    if (hardwareInputUiState.busy) {
+        button.textContent = 'Connecting...';
+    } else if (hardwareInputUiState.connected) {
+        button.textContent = 'Disconnect';
+    } else {
+        button.textContent = hardwareInputUiState.error ? 'Reconnect' : 'Connect';
+    }
+    button.setAttribute('aria-label', `${button.textContent} ${label}`);
+}
+
+async function syncStackmatDeviceControls() {
+    const row = getEl('setting-stackmat-device-row');
+    const select = getEl('setting-stackmat-input-select');
+    const status = getEl('setting-stackmat-device-status');
+
+    if (!row || !select || !status) return;
+
+    const isStackmatMode = getSelectedTimeEntryMode() === TIME_ENTRY_MODE_STACKMAT;
+    row.hidden = !isStackmatMode;
+    row.style.display = isStackmatMode ? '' : 'none';
+    if (!isStackmatMode) {
+        syncSettingsRowSeparators();
+        return;
+    }
+
+    const savedDeviceId = String(settings.get('stackmatInputDeviceId') || '');
+    const previousValue = select.value;
+    const preferredValue = savedDeviceId || previousValue || '';
+
+    let devices = [];
+    let hasError = false;
+    try {
+        devices = await stackmatInput.listInputDevices();
+    } catch {
+        hasError = true;
+    }
+
+    const optionMarkup = ['<option value="">Default microphone</option>']
+        .concat(devices.map((device) => {
+            const escapedId = device.id.replace(/"/g, '&quot;');
+            const escapedLabel = String(device.label || 'Microphone').replace(/[&<>"]/g, (char) => (
+                char === '&' ? '&amp;'
+                    : char === '<' ? '&lt;'
+                        : char === '>' ? '&gt;'
+                            : '&quot;'
+            ));
+            return `<option value="${escapedId}">${escapedLabel}</option>`;
+        }))
+        .join('');
+    select.innerHTML = optionMarkup;
+
+    const hasPreferredDevice = preferredValue && devices.some((device) => device.id === preferredValue);
+    select.value = hasPreferredDevice ? preferredValue : '';
+
+    status.classList.toggle('is-error', hasError);
+    if (hasError) {
+        status.textContent = 'Could not list microphones. Connect once to grant audio permission, then try again.';
+    } else if (devices.length === 0) {
+        status.textContent = 'No microphones found yet. Connect once to grant audio permission if needed.';
+    } else if (stackmatInput.isConnected()) {
+        status.textContent = 'Choose the Stackmat microphone. Changing it reconnects the audio input.';
+    } else {
+        status.textContent = 'Choose the audio input used for the Stackmat signal.';
+    }
+
+    select.disabled = hasError || hardwareInputUiState.busy;
+    syncSettingsRowSeparators();
+}
+
 function isMobileTimerPanelActive() {
     return mobileViewportQuery.matches && document.body.dataset.mobilePanel === 'timer';
 }
@@ -1109,7 +1265,7 @@ function isQuickActionsSwipeOpenState(state) {
 }
 
 function isDesktopTypingEntryModeEnabled() {
-    return settings.get('timeEntryMode') === 'typing' && !coarsePointerQuery.matches;
+    return isTypingTimeEntryMode(getSelectedTimeEntryMode()) && !coarsePointerQuery.matches;
 }
 
 function isManualTimeEntryActive() {
@@ -2324,12 +2480,12 @@ function syncMobilePanelState() {
     setActiveMobilePanel(activePanel);
     syncInspectionCancelControl();
 
-    if (!isCoarsePointer && quickActionsState.manualEntryActive && settings.get('timeEntryMode') !== 'typing') {
+    if (!isCoarsePointer && quickActionsState.manualEntryActive && !isTypingTimeEntryMode(settings.get('timeEntryMode'))) {
         closeManualTimeEntry({ restoreQuickActions: false });
         return;
     }
 
-    if (isCoarsePointer && settings.get('timeEntryMode') === 'typing' && quickActionsState.manualEntryActive) {
+    if (isCoarsePointer && isTypingTimeEntryMode(settings.get('timeEntryMode')) && quickActionsState.manualEntryActive) {
         closeManualTimeEntry({ restoreQuickActions: false });
     }
 }
@@ -3078,6 +3234,67 @@ async function init() {
         }
     });
 
+    bluetoothTimerInput.setMacPromptHandler(async ({
+        message,
+        defaultValue = '',
+        title = 'Bluetooth timer MAC address',
+        placeholder = '',
+    } = {}) => customPrompt(message, defaultValue, 17, title, placeholder));
+
+    stackmatInput.on('connected', () => {
+        resetStackmatSession({ preserveStreamConnected: true });
+        if (getSelectedTimeEntryMode() === TIME_ENTRY_MODE_STACKMAT) {
+            refreshHardwareInputStatus();
+            void syncStackmatDeviceControls();
+        }
+    });
+    stackmatInput.on('disconnected', () => {
+        resetStackmatSession({ preserveStreamConnected: false });
+        if (getSelectedTimeEntryMode() === TIME_ENTRY_MODE_STACKMAT) {
+            setHardwareInputStatus('Stackmat microphone disconnected.', {
+                mode: TIME_ENTRY_MODE_STACKMAT,
+                connected: false,
+                error: false,
+                busy: false,
+            });
+            void syncStackmatDeviceControls();
+        }
+    });
+    stackmatInput.on('packet', handleStackmatPacket);
+
+    bluetoothTimerInput.on('connected', (info) => {
+        resetBluetoothSession();
+        if (getSelectedTimeEntryMode() === TIME_ENTRY_MODE_BLUETOOTH) {
+            setHardwareInputStatus(`${info?.name || 'Bluetooth timer'} connected.`, {
+                mode: TIME_ENTRY_MODE_BLUETOOTH,
+                connected: true,
+                error: false,
+                busy: false,
+                deviceName: info?.name || '',
+            });
+        }
+    });
+    bluetoothTimerInput.on('disconnected', ({ expected } = {}) => {
+        resetBluetoothSession();
+        if (getSelectedTimeEntryMode() === TIME_ENTRY_MODE_BLUETOOTH) {
+            setHardwareInputStatus(
+                expected
+                    ? 'Bluetooth timer disconnected.'
+                    : 'Bluetooth timer disconnected. Press Reconnect to pair again.',
+                {
+                    mode: TIME_ENTRY_MODE_BLUETOOTH,
+                    connected: false,
+                    error: !expected,
+                    busy: false,
+                },
+            );
+        }
+        if (expected === false) {
+            showHardwareTimerAlert('Bluetooth timer disconnected', { isError: true, duration: 3000 });
+        }
+    });
+    bluetoothTimerInput.on('event', handleBluetoothTimerEvent);
+
     sessionManager.on('solveAdded', (solve) => {
         dailyStreakStore.upsertSolve(solve);
         refreshSessionList();
@@ -3132,17 +3349,24 @@ async function init() {
         if (key === 'timeEntryMode') {
             clearPenaltyShortcutAlert();
             syncPersistentManualEntryMode();
+            void reconcileHardwareTimeEntryMode();
         }
         if (key === 'centerTimer' || key === 'displayFont' || key === 'pillSize' || key === 'largeScrambleText') {
             scheduleViewportLayoutSync();
             if (key === 'pillSize') syncDesktopTimerInfoPills();
         }
     });
+    settings.on('reset', () => {
+        clearPenaltyShortcutAlert();
+        syncPersistentManualEntryMode();
+        void reconcileHardwareTimeEntryMode();
+    });
 
     // Init UI
     initCustomSelectMenus();
     refreshSessionList();
     rebuildStatsCache();
+    refreshHardwareInputStatus();
     refreshUI();
     initSettingsPanel();
     initInspectionSpeechUnlockPrompt();
@@ -3332,7 +3556,7 @@ function initTimerClick() {
 
     timerDisplay.addEventListener('click', () => {
         if (mobileViewportQuery.matches) return;
-        if (settings.get('backgroundSpacebarEnabled')) return;
+        if (settings.get('backgroundSpacebarEnabled') && getSelectedTimeEntryMode() === TIME_ENTRY_MODE_TIMER) return;
         const state = timer.getState();
         // Open modal when timer is not actively solving.
         if (state === 'idle' || state === 'stopped') {
@@ -5655,6 +5879,337 @@ function initKeyboardShortcuts() {
     });
 }
 
+function resetStackmatSession({ preserveStreamConnected = stackmatSessionState.streamConnected } = {}) {
+    stackmatSessionState.streamConnected = preserveStreamConnected;
+    stackmatSessionState.sawSignal = false;
+    stackmatSessionState.lastPacket = null;
+}
+
+function resetBluetoothSession() {
+    bluetoothSessionState.lastStopSignature = '';
+}
+
+function getDefaultHardwareStatusMessage(mode = getSelectedTimeEntryMode()) {
+    if (mode === TIME_ENTRY_MODE_STACKMAT) {
+        return stackmatSessionState.streamConnected
+            ? (stackmatSessionState.sawSignal
+                ? 'Stackmat microphone connected.'
+                : 'Stackmat microphone connected. Waiting for timer signal.')
+            : 'Connect the microphone input from your Stackmat cable.';
+    }
+
+    if (mode === TIME_ENTRY_MODE_BLUETOOTH) {
+        const info = bluetoothTimerInput.getConnectionInfo();
+        return info?.name
+            ? `${info.name} connected.`
+            : 'Connect a supported Bluetooth timer (GAN or QiYi/QY).';
+    }
+
+    return '';
+}
+
+function refreshHardwareInputStatus() {
+    const mode = getSelectedTimeEntryMode();
+    if (!isHardwareTimeEntryMode(mode)) {
+        setHardwareInputStatus('', { mode, connected: false, error: false, busy: false });
+        return;
+    }
+
+    const input = getActiveHardwareInput(mode);
+    const info = typeof input?.getConnectionInfo === 'function' ? input.getConnectionInfo() : null;
+    setHardwareInputStatus(getDefaultHardwareStatusMessage(mode), {
+        mode,
+        connected: Boolean(input?.isConnected?.()),
+        error: false,
+        busy: false,
+        deviceName: info?.name || '',
+    });
+}
+
+async function disconnectHardwareInput(mode, { emitDisconnected = false } = {}) {
+    if (mode === TIME_ENTRY_MODE_STACKMAT) {
+        if (stackmatInput.isConnected()) {
+            stackmatInput.disconnect();
+        } else {
+            resetStackmatSession({ preserveStreamConnected: false });
+        }
+        return;
+    }
+
+    if (mode === TIME_ENTRY_MODE_BLUETOOTH) {
+        if (bluetoothTimerInput.isConnected()) {
+            await bluetoothTimerInput.disconnect({ emitDisconnected });
+        }
+        resetBluetoothSession();
+    }
+}
+
+async function connectHardwareInput(mode, { selectionTaskId = currentHardwareSelectionTask } = {}) {
+    if (!isHardwareTimeEntryMode(mode)) return false;
+
+    const modeLabel = getHardwareModeLabel(mode);
+    setHardwareInputStatus(
+        mode === TIME_ENTRY_MODE_STACKMAT ? 'Requesting microphone access...' : 'Choose a Bluetooth timer to connect.',
+        { mode, connected: false, error: false, busy: true },
+    );
+
+    try {
+        if (mode === TIME_ENTRY_MODE_STACKMAT) {
+            const selectedDeviceId = String(settings.get('stackmatInputDeviceId') || '').trim();
+            await stackmatInput.connect(selectedDeviceId ? { deviceId: selectedDeviceId } : {});
+        } else {
+            await bluetoothTimerInput.connect();
+            resetBluetoothSession();
+        }
+    } catch (error) {
+        if (selectionTaskId !== currentHardwareSelectionTask || getSelectedTimeEntryMode() !== mode) {
+            return false;
+        }
+
+        const message = error instanceof Error && error.message ? error.message : `Could not connect ${modeLabel}.`;
+        setHardwareInputStatus(message, {
+            mode,
+            connected: false,
+            error: true,
+            busy: false,
+        });
+        showHardwareTimerAlert(message, { isError: true, duration: 3200 });
+        return false;
+    }
+
+    if (selectionTaskId !== currentHardwareSelectionTask || getSelectedTimeEntryMode() !== mode) {
+        await disconnectHardwareInput(mode, { emitDisconnected: false });
+        return false;
+    }
+
+    refreshHardwareInputStatus();
+    if (mode === TIME_ENTRY_MODE_STACKMAT) {
+        void syncStackmatDeviceControls();
+    }
+    showHardwareTimerAlert(`${modeLabel} connected`, { isSuccess: true });
+    return true;
+}
+
+async function reconcileHardwareTimeEntryMode({ attemptConnect = false } = {}) {
+    const selectionTaskId = ++currentHardwareSelectionTask;
+    const mode = getSelectedTimeEntryMode();
+
+    if (mode !== TIME_ENTRY_MODE_STACKMAT) {
+        await disconnectHardwareInput(TIME_ENTRY_MODE_STACKMAT, { emitDisconnected: false });
+    }
+    if (mode !== TIME_ENTRY_MODE_BLUETOOTH) {
+        await disconnectHardwareInput(TIME_ENTRY_MODE_BLUETOOTH, { emitDisconnected: false });
+    }
+
+    if (selectionTaskId !== currentHardwareSelectionTask) return;
+
+    if (!isHardwareTimeEntryMode(mode)) {
+        if (isInspectionState(timer.getState())) {
+            timer.cancelInspection();
+        } else if (timer.getState() !== TimerState.RUNNING && timer.getState() !== TimerState.STOPPED) {
+            timer.resetDisplay();
+        }
+        refreshHardwareInputStatus();
+        void syncStackmatDeviceControls();
+        return;
+    }
+
+    if (attemptConnect) {
+        await connectHardwareInput(mode, { selectionTaskId });
+        return;
+    }
+
+    if (!getActiveHardwareInput(mode)?.isConnected?.() && timer.getState() !== TimerState.RUNNING && !isInspectionState(timer.getState())) {
+        timer.setExternalState(TimerState.IDLE, { displayText: '0.00' });
+    }
+    refreshHardwareInputStatus();
+    if (mode === TIME_ENTRY_MODE_STACKMAT) {
+        void syncStackmatDeviceControls();
+    }
+}
+
+async function onHardwareInputActionButtonClick() {
+    if (hardwareInputUiState.busy) return;
+
+    const mode = getSelectedTimeEntryMode();
+    if (!isHardwareTimeEntryMode(mode)) return;
+
+    const input = getActiveHardwareInput(mode);
+    if (input?.isConnected?.()) {
+        await disconnectHardwareInput(mode, { emitDisconnected: false });
+        refreshHardwareInputStatus();
+        showHardwareTimerAlert(`${getHardwareModeLabel(mode)} disconnected`, { isSuccess: true });
+        return;
+    }
+
+    currentHardwareSelectionTask += 1;
+    await connectHardwareInput(mode, { selectionTaskId: currentHardwareSelectionTask });
+}
+
+function handleStackmatPacket(packet) {
+    const previousPacket = stackmatSessionState.lastPacket;
+    stackmatSessionState.lastPacket = packet;
+
+    if (getSelectedTimeEntryMode() !== TIME_ENTRY_MODE_STACKMAT) return;
+
+    if (!packet.on) {
+        setHardwareInputStatus(
+            stackmatSessionState.sawSignal
+                ? 'Stackmat signal lost. Check the cable or timer output.'
+                : getDefaultHardwareStatusMessage(TIME_ENTRY_MODE_STACKMAT),
+            {
+                mode: TIME_ENTRY_MODE_STACKMAT,
+                connected: stackmatSessionState.streamConnected,
+                error: stackmatSessionState.sawSignal,
+                busy: false,
+            },
+        );
+
+        if (timer.getState() !== TimerState.RUNNING && timer.getState() !== TimerState.STOPPED) {
+            timer.setExternalState(TimerState.IDLE, { displayText: '0.00' });
+        }
+        return;
+    }
+
+    stackmatSessionState.sawSignal = true;
+    setHardwareInputStatus('Stackmat signal detected.', {
+        mode: TIME_ENTRY_MODE_STACKMAT,
+        connected: true,
+        error: false,
+        busy: false,
+    });
+
+    const wasRunning = Boolean(previousPacket?.running);
+
+    if (wasRunning && !packet.running && packet.timeMs > 0) {
+        timer.stopExternalTimer(packet.timeMs);
+        return;
+    }
+
+    if (packet.running) {
+        if (timer.getState() !== TimerState.RUNNING) {
+            timer.startExternalTimer({ elapsedMs: packet.timeMs });
+        } else {
+            timer.syncExternalRunningTime(packet.timeMs);
+        }
+        return;
+    }
+
+    const inspectionEnabled = settings.get('inspectionTime') === '15s';
+    const timerState = timer.getState();
+    const displayText = formatHardwareTimeDisplay(packet.timeMs);
+
+    if (inspectionEnabled) {
+        if ((timerState === TimerState.IDLE || timerState === TimerState.STOPPED)
+            && packet.timeMs === 0
+            && (packet.signalHeader === 'L' || packet.signalHeader === 'R')) {
+            timer.startExternalInspection();
+            return;
+        }
+
+        if (isInspectionState(timerState)) {
+            const inspectionState = packet.greenLight
+                ? TimerState.INSPECTION_READY
+                : (packet.leftHand && packet.rightHand)
+                    ? TimerState.INSPECTION_HOLDING
+                    : TimerState.INSPECTING;
+            timer.syncExternalInspection({ state: inspectionState });
+            return;
+        }
+    }
+
+    if (packet.timeMs > 0) {
+        timer.setExternalState(TimerState.STOPPED, { displayText });
+        return;
+    }
+
+    if (packet.greenLight) {
+        timer.setExternalState(TimerState.READY, { displayText });
+        return;
+    }
+
+    if (packet.leftHand && packet.rightHand) {
+        timer.setExternalState(TimerState.HOLDING, { displayText });
+        return;
+    }
+
+    timer.setExternalState(TimerState.IDLE, { displayText });
+}
+
+function handleBluetoothTimerEvent(event) {
+    if (getSelectedTimeEntryMode() !== TIME_ENTRY_MODE_BLUETOOTH) return;
+
+    const eventState = event?.state;
+    const solveTime = Math.max(0, Number(event?.solveTime) || 0);
+
+    switch (eventState) {
+        case BluetoothTimerState.HANDS_ON:
+            if (isInspectionState(timer.getState())) {
+                timer.syncExternalInspection({ state: TimerState.INSPECTION_HOLDING });
+            } else {
+                timer.setExternalState(TimerState.HOLDING, { displayText: '0.00' });
+            }
+            break;
+        case BluetoothTimerState.HANDS_OFF:
+            if (isInspectionState(timer.getState())) {
+                timer.syncExternalInspection({ state: TimerState.INSPECTING });
+            } else if (timer.getState() !== TimerState.RUNNING) {
+                timer.setExternalState(TimerState.IDLE, { displayText: '0.00' });
+            }
+            break;
+        case BluetoothTimerState.GET_SET:
+            if (isInspectionState(timer.getState())) {
+                timer.syncExternalInspection({ state: TimerState.INSPECTION_READY });
+            } else {
+                timer.setExternalState(TimerState.READY, { displayText: formatHardwareTimeDisplay(solveTime) });
+            }
+            break;
+        case BluetoothTimerState.INSPECTION:
+            timer.startExternalInspection({ elapsedMs: solveTime });
+            break;
+        case BluetoothTimerState.GAN_RESET:
+            if (settings.get('inspectionTime') === '15s' && (timer.getState() === TimerState.IDLE || timer.getState() === TimerState.STOPPED)) {
+                timer.startExternalInspection();
+            } else if (timer.getState() !== TimerState.RUNNING) {
+                timer.setExternalState(TimerState.IDLE, { displayText: '0.00' });
+            }
+            break;
+        case BluetoothTimerState.IDLE:
+            if (timer.getState() !== TimerState.RUNNING) {
+                timer.setExternalState(TimerState.IDLE, { displayText: '0.00' });
+            }
+            break;
+        case BluetoothTimerState.RUNNING:
+            resetBluetoothSession();
+            if (timer.getState() !== TimerState.RUNNING) {
+                timer.startExternalTimer({ elapsedMs: solveTime });
+            } else if (Number.isFinite(event?.solveTime)) {
+                timer.syncExternalRunningTime(solveTime);
+            }
+            break;
+        case BluetoothTimerState.STOPPED: {
+            const stopSignature = `${solveTime}:${event?.inspectTime ?? ''}`;
+            if (bluetoothSessionState.lastStopSignature === stopSignature) break;
+            bluetoothSessionState.lastStopSignature = stopSignature;
+
+            if (timer.getState() === TimerState.RUNNING) {
+                timer.stopExternalTimer(solveTime);
+            } else {
+                timer.setExternalState(TimerState.STOPPED, { displayText: formatHardwareTimeDisplay(solveTime) });
+            }
+            break;
+        }
+        case BluetoothTimerState.FINISHED:
+            break;
+        case BluetoothTimerState.DISCONNECT:
+            resetBluetoothSession();
+            if (timer.getState() !== TimerState.RUNNING) {
+                timer.setExternalState(TimerState.IDLE, { displayText: '0.00' });
+            }
+            break;
+    }
+}
+
 // ──── Timer Events ────
 async function onSolveComplete(elapsed, penalty = null) {
     backToDismiss();
@@ -5803,6 +6358,15 @@ function clearPopup(kind) {
 
 function showInspectionAlert(text) {
     showPopup('inspection', text);
+}
+
+function showHardwareTimerAlert(text, { isSuccess = false, isError = false, duration = 2400 } = {}) {
+    const alertEl = document.getElementById(popupState.hardwareTimer.elementId);
+    if (!alertEl) return;
+
+    alertEl.classList.toggle('timer-popup-success', isSuccess);
+    alertEl.classList.toggle('timer-popup-danger', isError);
+    showPopup('hardwareTimer', text, duration);
 }
 
 function showNewBestAlert(text) {
@@ -8155,9 +8719,11 @@ function initSettingsPanel() {
 
     const timeEntryModeSelect = document.getElementById('setting-time-entry-mode');
     if (timeEntryModeSelect) {
-        timeEntryModeSelect.value = settings.get('timeEntryMode');
+        timeEntryModeSelect.value = normalizeTimeEntryMode(settings.get('timeEntryMode'));
         timeEntryModeSelect.onchange = () => {
             settings.set('timeEntryMode', timeEntryModeSelect.value);
+            updateTimeEntryVisibility();
+            void reconcileHardwareTimeEntryMode({ attemptConnect: isHardwareTimeEntryMode(timeEntryModeSelect.value) });
             timeEntryModeSelect.blur();
         };
     }
@@ -9788,6 +10354,9 @@ function initSettingsPanel() {
     const backgroundSpacebarToggle = document.getElementById('setting-background-spacebar');
     const backgroundSpacebarRow = backgroundSpacebarToggle?.closest('.setting-row') ?? null;
     const timeEntryRow = document.getElementById('setting-time-entry-row');
+    const hardwareInputButton = document.getElementById('setting-hardware-input-btn');
+    const stackmatDeviceRow = document.getElementById('setting-stackmat-device-row');
+    const stackmatInputSelect = document.getElementById('setting-stackmat-input-select');
     const swipeDownGestureToggle = document.getElementById('setting-swipe-down-gesture');
     const swipeDownGestureRow = document.getElementById('setting-swipe-down-gesture-row');
     const settingsGroupEls = Array.from(settingsOverlayEl?.querySelectorAll('.setting-group') || []);
@@ -9870,13 +10439,23 @@ function initSettingsPanel() {
 
     const updateBackgroundSpacebarVisibility = () => {
         if (!backgroundSpacebarRow) return;
-        backgroundSpacebarRow.style.display = finePointerQuery.matches ? '' : 'none';
+        backgroundSpacebarRow.style.display = finePointerQuery.matches && getSelectedTimeEntryMode() === TIME_ENTRY_MODE_TIMER ? '' : 'none';
         syncSettingsRowSeparators();
     };
 
     const updateTimeEntryVisibility = () => {
         if (!timeEntryRow) return;
-        timeEntryRow.style.display = coarsePointerQuery.matches ? 'none' : '';
+        timeEntryRow.style.display = '';
+        syncHardwareInputControls();
+        if (stackmatDeviceRow) {
+            const isStackmatMode = getSelectedTimeEntryMode() === TIME_ENTRY_MODE_STACKMAT;
+            stackmatDeviceRow.hidden = !isStackmatMode;
+            stackmatDeviceRow.style.display = isStackmatMode ? '' : 'none';
+        }
+        if (getSelectedTimeEntryMode() === TIME_ENTRY_MODE_STACKMAT) {
+            void syncStackmatDeviceControls();
+        }
+        updateBackgroundSpacebarVisibility();
         syncSettingsRowSeparators();
     };
 
@@ -9939,6 +10518,24 @@ function initSettingsPanel() {
     if (swipeDownGestureToggle) {
         swipeDownGestureToggle.checked = settings.get('swipeDownGestureEnabled');
         swipeDownGestureToggle.onchange = () => settings.set('swipeDownGestureEnabled', swipeDownGestureToggle.checked);
+    }
+
+    hardwareInputButton?.addEventListener('click', () => {
+        void onHardwareInputActionButtonClick();
+    });
+
+    if (stackmatInputSelect) {
+        stackmatInputSelect.value = String(settings.get('stackmatInputDeviceId') || '');
+        stackmatInputSelect.addEventListener('change', () => {
+            settings.set('stackmatInputDeviceId', stackmatInputSelect.value);
+            if (getSelectedTimeEntryMode() === TIME_ENTRY_MODE_STACKMAT && stackmatInput.isConnected()) {
+                currentHardwareSelectionTask += 1;
+                void connectHardwareInput(TIME_ENTRY_MODE_STACKMAT, { selectionTaskId: currentHardwareSelectionTask });
+            } else {
+                void syncStackmatDeviceControls();
+            }
+            stackmatInputSelect.blur();
+        });
     }
 
     const displayFontSelect = document.getElementById('setting-display-font');
