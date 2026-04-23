@@ -536,6 +536,23 @@
         top: calc(var(--space-lg) + ((var(--space-2xl) - 28px) / 2));
     }
 
+    body.camera-background-active #btn-scramble-preview {
+        display: inline-flex;
+        position: absolute;
+        top: calc(var(--space-lg) + ((var(--space-2xl) - 28px) / 2));
+        right: calc(var(--space-md) + 36px);
+        width: 28px;
+        height: 28px;
+        align-items: center;
+        justify-content: center;
+        opacity: 0.72;
+    }
+
+    body.camera-background-active #btn-scramble-preview .scramble-preview-face-icon {
+        width: 17px;
+        height: 17px;
+    }
+
     #scramble-container {
         --desktop-scramble-text-width: 730px;
         --desktop-scramble-text-half-width: 365px;

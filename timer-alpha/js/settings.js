@@ -1,6 +1,6 @@
-import { load, save } from './storage.js?v=2026041901';
-import { normalizeTimeEntryMode, TIME_ENTRY_MODE_TIMER, TIME_ENTRY_MODE_TYPING } from './time-entry.js?v=2026041901';
-import { EventEmitter } from './utils.js?v=2026041901';
+import { load, save } from './storage.js?v=2026042301';
+import { normalizeTimeEntryMode, TIME_ENTRY_MODE_TIMER, TIME_ENTRY_MODE_TYPING } from './time-entry.js?v=2026042301';
+import { EventEmitter } from './utils.js?v=2026042301';
 
 export const THEME_DEFAULT_ID = 'default';
 export const THEME_OLED_ID = 'oled';
@@ -442,6 +442,7 @@ const DEFAULTS = {
     centerTimer: true,
     hideUIWhileSolving: true,
     backgroundSpacebarEnabled: false,
+    cameraBackgroundEnabled: false,
     // Legacy global background fields kept for migration and older imports.
     backgroundImageSource: 'none',
     backgroundImageUrl: '',
@@ -596,6 +597,17 @@ function withAlpha(value, alpha, fallback = 'rgba(0, 0, 0, 1)') {
     const parsed = parseThemeColorValue(value);
     if (!parsed) return fallback;
     return `rgba(${parsed.r}, ${parsed.g}, ${parsed.b}, ${trimAlpha(normalizeAlpha(alpha))})`;
+}
+
+function mixThemeColors(baseValue, accentValue, accentAmount, alpha = 1, fallback = 'rgba(0, 0, 0, 1)') {
+    const base = parseThemeColorValue(baseValue);
+    const accent = parseThemeColorValue(accentValue);
+    if (!base || !accent) return fallback;
+
+    const amount = clamp(Number(accentAmount) || 0, 0, 1);
+    const mixChannel = (start, end) => Math.round(start + ((end - start) * amount));
+
+    return `rgba(${mixChannel(base.r, accent.r)}, ${mixChannel(base.g, accent.g)}, ${mixChannel(base.b, accent.b)}, ${trimAlpha(normalizeAlpha(alpha))})`;
 }
 
 function normalizeThemeId(value) {
@@ -1058,6 +1070,7 @@ class Settings extends EventEmitter {
         document.documentElement.style.setProperty('--danger', themeColors.dangerPenalty);
         document.documentElement.style.setProperty('--success', themeColors.statBest);
         document.documentElement.style.setProperty('--new-best-popup-border', withAlpha(themeColors.newBestPopup, 0.45, 'rgba(63, 185, 80, 0.45)'));
+        document.documentElement.style.setProperty('--danger-popup-surface', mixThemeColors(themeColors.bgPrimary, themeColors.dangerPenalty, 0.18, 0.94, 'rgba(55, 29, 32, 0.94)'));
         document.documentElement.style.setProperty('--danger-bg-soft', withAlpha(themeColors.dangerPenalty, 0.1, 'rgba(248, 81, 73, 0.1)'));
         document.documentElement.style.setProperty('--danger-bg-strong', withAlpha(themeColors.dangerPenalty, 0.15, 'rgba(248, 81, 73, 0.15)'));
         document.documentElement.style.setProperty('--danger-bg-hover', withAlpha(themeColors.dangerPenalty, 0.2, 'rgba(248, 81, 73, 0.2)'));

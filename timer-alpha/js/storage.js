@@ -1,4 +1,4 @@
-import * as db from './db.js?v=2026041901';
+import * as db from './db.js?v=2026042301';
 
 const STORAGE_PREFIX = 'cubetimer_';
 const STORAGE_VERSION = 1;
@@ -555,6 +555,7 @@ const CSTIMER_EXPORT_SETTING_DEFAULTS = Object.freeze({
     hideUIWhileSolving: true,
     pillSize: 'medium',
     showDelta: false,
+    cameraBackgroundEnabled: false,
     theme: 'default',
     backgroundImageSource: 'none',
     backgroundImageUrl: '',
