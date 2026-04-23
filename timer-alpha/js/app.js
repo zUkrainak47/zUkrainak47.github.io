@@ -3868,6 +3868,7 @@ function initTimerQuickActions() {
     const manualEntryEl = getEl('manual-time-entry');
     const hiddenInput = getEl('manual-time-hidden-input');
     const submitBtn = getEl('manual-time-submit');
+    const quickActionsEl = getEl('timer-quick-actions');
     const plus2Btn = getEl('timer-action-plus2');
     const dnfBtn = getEl('timer-action-dnf');
     const deleteBtn = getEl('timer-action-delete');
