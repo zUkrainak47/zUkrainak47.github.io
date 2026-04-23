@@ -2613,7 +2613,9 @@ function syncViewportLayout() {
         && scrambleContainer
         && scrambleTextWrapper
         && zenButton;
-    const shouldFreezeMobileManualEntryLayout = isMobileTimerView && quickActionsState.manualEntryActive;
+    const shouldFreezeMobileManualEntryLayout = isMobileTimerView
+        && quickActionsState.manualEntryActive
+        && !isPersistentTypingEntryModeEnabled();
 
     let targetTimerCenterY = null;
     let targetTimerCenterX = null;
