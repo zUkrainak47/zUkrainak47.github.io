@@ -9,13 +9,29 @@
 
 body.solving #scramble-bar,
 body.solving #left-panel,
-body.solving #right-panel,
 body.solving #timer-info,
 body.solving #mobile-panel-tabs,
 body.solving #btn-settings {
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
+}
+
+body.solving:not(.camera-background-active) #right-panel,
+body.solving.mobile-viewport #right-panel {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+body.solving.camera-background-active:not(.mobile-viewport) #right-panel > :not(#cube-panel):not(#graph-panel) {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+body.solving.camera-background-active:not(.mobile-viewport) #graph-panel {
+    display: none;
 }
 
 #app-layout {
@@ -63,6 +79,13 @@ body.solving #btn-settings {
     z-index: 0;
 }
 
+#center-panel-timer-slot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
 #right-panel {
     grid-area: right;
     display: flex;
@@ -89,6 +112,10 @@ body.solving #btn-settings {
         grid-template-rows: var(--scramble-bar-height) minmax(0, 1fr);
     }
 
+    body.camera-background-active #app-layout {
+        grid-template-columns: var(--sidebar-width) minmax(0, 1fr) minmax(var(--right-panel-width), var(--camera-panel-width, var(--right-panel-width)));
+    }
+
     #left-panel,
     #right-panel {
         height: calc(100% / var(--desktop-panel-scale, 1));
@@ -104,6 +131,12 @@ body.solving #btn-settings {
     #right-panel {
         transform-origin: top right;
         justify-self: end;
+    }
+
+    body.camera-background-active #right-panel {
+        width: 100%;
+        min-width: 0;
+        justify-self: stretch;
     }
 }
 

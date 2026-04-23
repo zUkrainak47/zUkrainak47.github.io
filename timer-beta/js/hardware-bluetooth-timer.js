@@ -1,5 +1,5 @@
-import { createAes128 } from './crypto-aes128.js?v=2026041901';
-import { EventEmitter } from './utils.js?v=2026041901';
+import { createAes128 } from './crypto-aes128.js?v=2026042301';
+import { EventEmitter } from './utils.js?v=2026042301';
 
 const STORAGE_KEY_MAC_MAP = 'ukratimer-bluetooth-timer-mac-map-v1';
 

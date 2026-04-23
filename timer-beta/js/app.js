@@ -1,19 +1,19 @@
-import { timer, State as TimerState } from './timer.js?v=2026041901';
-import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=2026041901';
-import { sessionManager } from './session.js?v=2026041901';
-import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=2026041901';
-import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=2026041901';
-import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, parseTimeInputToMs, truncateTimeDisplay } from './utils.js?v=2026041901';
-import { initModal, showSolveDetail, showAverageDetail, closeModal, closeMoveSessionMenus, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=2026041901';
-import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=2026041901';
-import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=2026041901';
-import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionData, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=2026041901';
-import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=2026041901';
-import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=2026041901';
-import { dailyStreakStore, normalizeDailyStreakGoal } from './streaks.js?v=2026041901';
-import { bluetoothTimerInput, BluetoothTimerState } from './hardware-bluetooth-timer.js?v=2026041901';
-import { stackmatInput } from './hardware-stackmat.js?v=2026041901';
-import { isHardwareTimeEntryMode, isTypingTimeEntryMode, normalizeTimeEntryMode, TIME_ENTRY_MODE_BLUETOOTH, TIME_ENTRY_MODE_STACKMAT, TIME_ENTRY_MODE_TIMER } from './time-entry.js?v=2026041901';
+import { timer, State as TimerState } from './timer.js?v=2026042301';
+import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=2026042301';
+import { sessionManager } from './session.js?v=2026042301';
+import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=2026042301';
+import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=2026042301';
+import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, parseTimeInputToMs, truncateTimeDisplay } from './utils.js?v=2026042301';
+import { initModal, showSolveDetail, showAverageDetail, closeModal, closeMoveSessionMenus, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=2026042301';
+import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=2026042301';
+import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=2026042301';
+import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionData, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=2026042301';
+import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=2026042301';
+import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=2026042301';
+import { dailyStreakStore, normalizeDailyStreakGoal } from './streaks.js?v=2026042301';
+import { bluetoothTimerInput, BluetoothTimerState } from './hardware-bluetooth-timer.js?v=2026042301';
+import { stackmatInput } from './hardware-stackmat.js?v=2026042301';
+import { isHardwareTimeEntryMode, isTypingTimeEntryMode, normalizeTimeEntryMode, TIME_ENTRY_MODE_BLUETOOTH, TIME_ENTRY_MODE_STACKMAT, TIME_ENTRY_MODE_TIMER } from './time-entry.js?v=2026042301';
 
 let currentScramble = '';
 let currentSortCol = null;
@@ -246,7 +246,7 @@ async function registerServiceWorker() {
     if (window.location?.protocol === 'file:') return;
 
     try {
-        const serviceWorkerUrl = new URL('../sw.js?v=2026041901', import.meta.url);
+        const serviceWorkerUrl = new URL('../sw.js?v=2026042301', import.meta.url);
         await navigator.serviceWorker.register(serviceWorkerUrl);
     } catch (error) {
         console.warn('Service worker registration failed:', error);
@@ -301,6 +301,7 @@ function syncTimerPopupStacking() {
         document.getElementById(elementId)?.classList.contains('visible'),
     );
     document.getElementById('center-panel')?.classList.toggle(TIMER_POPUP_ACTIVE_CLASS, hasVisiblePopup);
+    document.getElementById('timer-popup-overlay')?.classList.toggle(TIMER_POPUP_ACTIVE_CLASS, hasVisiblePopup);
     document.getElementById('timer-display-wrapper')?.classList.toggle(TIMER_POPUP_ACTIVE_CLASS, hasVisiblePopup);
 }
 const SUMMARY_STAT_PRESETS = {
@@ -822,6 +823,7 @@ const viewportLayoutState = {
     timerTransform: null,
     scrambleTransform: null,
     modeKey: null,
+    cameraPanelWidth: null,
 };
 const mobileScrambleFreezeState = {
     hasSnapshot: false,
@@ -855,6 +857,22 @@ const mobileLandscapeQuery = window.matchMedia('(max-width: 1100px) and (orienta
 const touchPrimaryQuery = window.matchMedia('(hover: none) and (pointer: coarse)');
 const coarsePointerQuery = window.matchMedia('(pointer: coarse)');
 const finePointerQuery = window.matchMedia('(pointer: fine)');
+const cameraBackgroundLayoutQuery = window.matchMedia('(min-width: 1101px) and (pointer: fine)');
+const CAMERA_BACKGROUND_TIMER_NODE_IDS = Object.freeze(['timer-display-wrapper', 'inspection-cancel-wrap', 'timer-info']);
+const CAMERA_BACKGROUND_CONSTRAINTS = Object.freeze({
+    audio: false,
+    video: {
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
+    },
+});
+const cameraBackgroundState = {
+    stream: null,
+    pending: false,
+    error: '',
+    taskId: 0,
+    displayLayoutKey: '',
+};
 const inspectionSpeechUnlockState = {
     required: false,
     unlocked: false,
@@ -1253,6 +1271,193 @@ async function syncStackmatDeviceControls() {
 
     select.disabled = hasError || hardwareInputUiState.busy;
     syncSettingsRowSeparators();
+}
+
+function isCameraBackgroundEligible() {
+    return cameraBackgroundLayoutQuery.matches;
+}
+
+function wantsCameraBackground() {
+    return settings.get('cameraBackgroundEnabled') === true && isCameraBackgroundEligible();
+}
+
+function getCameraBackgroundVideoEl() {
+    return getEl('camera-background-video');
+}
+
+function describeCameraBackgroundError(error) {
+    const name = String(error?.name || '');
+    if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+        return 'Camera access was denied.';
+    }
+    if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+        return 'No camera was found.';
+    }
+    if (name === 'NotReadableError' || name === 'TrackStartError') {
+        return 'The camera is already in use by another app.';
+    }
+    if (name === 'OverconstrainedError' || name === 'ConstraintNotSatisfiedError') {
+        return 'The selected camera could not satisfy the requested resolution.';
+    }
+    return 'Could not start the camera background.';
+}
+
+function stopMediaStreamTracks(stream) {
+    stream?.getTracks?.().forEach((track) => track.stop());
+}
+
+function stopCameraBackgroundStream({ preserveError = false } = {}) {
+    cameraBackgroundState.taskId += 1;
+    cameraBackgroundState.pending = false;
+    cameraBackgroundState.displayLayoutKey = '';
+    if (!preserveError) {
+        cameraBackgroundState.error = '';
+    }
+
+    const videoEl = getCameraBackgroundVideoEl();
+    if (videoEl) {
+        videoEl.hidden = true;
+        videoEl.pause();
+        videoEl.srcObject = null;
+    }
+
+    if (cameraBackgroundState.stream) {
+        stopMediaStreamTracks(cameraBackgroundState.stream);
+        cameraBackgroundState.stream = null;
+    }
+
+    document.body.classList.remove('camera-background-live');
+}
+
+function syncCameraBackgroundTimerPlacement() {
+    const centerSlot = getEl('center-panel-timer-slot');
+    const cubeSlot = getEl('cube-camera-timer-slot');
+    const cubePanel = getEl('cube-panel');
+    if (!centerSlot || !cubeSlot || !cubePanel) return;
+
+    const useCubeTimerSlot = wantsCameraBackground();
+    const targetSlot = useCubeTimerSlot ? cubeSlot : centerSlot;
+
+    CAMERA_BACKGROUND_TIMER_NODE_IDS.forEach((id) => {
+        const node = getEl(id);
+        if (!node || node.parentElement === targetSlot) return;
+        targetSlot.appendChild(node);
+    });
+
+    cubeSlot.hidden = !useCubeTimerSlot;
+    cubePanel.classList.toggle('camera-background-hosting-timer', useCubeTimerSlot);
+    document.body.classList.toggle('camera-background-active', useCubeTimerSlot);
+}
+
+function syncCameraBackgroundSettingControls() {
+    const row = getEl('setting-camera-background-row');
+    const toggle = getEl('setting-camera-background');
+    const status = getEl('setting-camera-background-status');
+    if (!row || !toggle || !status) return;
+
+    const eligible = isCameraBackgroundEligible();
+    row.hidden = !eligible;
+    row.style.display = eligible ? '' : 'none';
+    toggle.checked = settings.get('cameraBackgroundEnabled') === true;
+    toggle.disabled = !eligible;
+
+    status.classList.toggle('is-error', Boolean(cameraBackgroundState.error));
+    if (cameraBackgroundState.error) {
+        status.textContent = cameraBackgroundState.error;
+    } else if (cameraBackgroundState.pending) {
+        status.textContent = 'Requesting camera access...';
+    } else if (document.body.classList.contains('camera-background-live')) {
+        status.textContent = 'Live camera feed is active.';
+    } else {
+        status.textContent = 'Show a live camera feed behind the timer layout.';
+    }
+
+    syncSettingsRowSeparators();
+}
+
+function getCameraBackgroundDisplayLayoutKey(displayText) {
+    return String(displayText || '').replace(/\d/g, '0');
+}
+
+function onTimerDisplayChange({ displayText } = {}) {
+    if (!document.body.classList.contains('camera-background-active')) return;
+
+    const nextLayoutKey = getCameraBackgroundDisplayLayoutKey(displayText);
+    if (nextLayoutKey === cameraBackgroundState.displayLayoutKey) return;
+
+    cameraBackgroundState.displayLayoutKey = nextLayoutKey;
+    scheduleViewportLayoutSync();
+}
+
+async function syncCameraBackgroundMode() {
+    syncCameraBackgroundTimerPlacement();
+    syncCameraBackgroundSettingControls();
+
+    if (!wantsCameraBackground()) {
+        stopCameraBackgroundStream({ preserveError: Boolean(cameraBackgroundState.error) });
+        syncCameraBackgroundSettingControls();
+        scheduleViewportLayoutSync();
+        return;
+    }
+
+    const videoEl = getCameraBackgroundVideoEl();
+    if (!videoEl || !navigator.mediaDevices?.getUserMedia) {
+        cameraBackgroundState.error = 'Camera background is not supported in this browser.';
+        syncCameraBackgroundSettingControls();
+        if (settings.get('cameraBackgroundEnabled') === true) {
+            settings.set('cameraBackgroundEnabled', false);
+        }
+        return;
+    }
+
+    if (cameraBackgroundState.stream) {
+        videoEl.srcObject = cameraBackgroundState.stream;
+        videoEl.hidden = false;
+        document.body.classList.add('camera-background-live');
+        syncCameraBackgroundSettingControls();
+        scheduleViewportLayoutSync();
+        return;
+    }
+
+    cameraBackgroundState.pending = true;
+    cameraBackgroundState.error = '';
+    syncCameraBackgroundSettingControls();
+    const requestTaskId = ++cameraBackgroundState.taskId;
+
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia(CAMERA_BACKGROUND_CONSTRAINTS);
+        if (requestTaskId !== cameraBackgroundState.taskId || !wantsCameraBackground()) {
+            stopMediaStreamTracks(stream);
+            return;
+        }
+
+        cameraBackgroundState.stream = stream;
+        cameraBackgroundState.pending = false;
+        videoEl.srcObject = stream;
+        videoEl.hidden = false;
+        document.body.classList.add('camera-background-live');
+        try {
+            await videoEl.play();
+        } catch {
+            // Browsers may reject autoplay until the first frame is ready; srcObject is enough.
+        }
+    } catch (error) {
+        if (requestTaskId !== cameraBackgroundState.taskId) return;
+
+        cameraBackgroundState.pending = false;
+        cameraBackgroundState.error = describeCameraBackgroundError(error);
+        stopCameraBackgroundStream({ preserveError: true });
+        syncCameraBackgroundSettingControls();
+        if (settings.get('cameraBackgroundEnabled') === true) {
+            settings.set('cameraBackgroundEnabled', false);
+        }
+        return;
+    }
+
+    syncCameraBackgroundTimerPlacement();
+    syncCameraBackgroundSettingControls();
+    cameraBackgroundState.displayLayoutKey = getCameraBackgroundDisplayLayoutKey(getEl('timer-display')?.textContent);
+    scheduleViewportLayoutSync();
 }
 
 function isMobileTimerPanelActive() {
@@ -1702,6 +1907,7 @@ function updateManualTimeEntryUI() {
     if (hiddenInput) hiddenInput.value = quickActionsState.manualDigits;
     if (formattedEl) formattedEl.innerHTML = renderManualTimeMarkup(quickActionsState.manualDigits);
     if (submitBtn) submitBtn.disabled = !hasValue;
+    scheduleViewportLayoutSync();
 }
 
 function updateQuickActionButtons() {
@@ -1914,6 +2120,69 @@ function applyCachedTransform(el, stateKey, transform) {
     if (!el || viewportLayoutState[stateKey] === normalizedTransform) return;
     el.style.transform = normalizedTransform;
     viewportLayoutState[stateKey] = normalizedTransform;
+}
+
+function applyCachedRootStyle(stateKey, propertyName, value) {
+    const root = document.documentElement;
+    const normalizedValue = value || '';
+    if (!root || viewportLayoutState[stateKey] === normalizedValue) return;
+    if (normalizedValue) {
+        root.style.setProperty(propertyName, normalizedValue);
+    } else {
+        root.style.removeProperty(propertyName);
+    }
+    viewportLayoutState[stateKey] = normalizedValue;
+}
+
+function syncCameraBackgroundPanelWidth() {
+    const isDesktopCameraLayout = !mobileViewportQuery.matches && document.body.classList.contains('camera-background-active');
+    if (!isDesktopCameraLayout) {
+        applyCachedRootStyle('cameraPanelWidth', '--camera-panel-width', '');
+        return;
+    }
+
+    const cubeSlot = getEl('cube-camera-timer-slot');
+    const timerDisplay = getEl('timer-display');
+    const timerDisplayWrapper = getEl('timer-display-wrapper');
+    const timerInfo = getEl('timer-info');
+    const manualEntry = getEl('manual-time-entry');
+    const manualEntryDisplay = getEl('manual-time-entry-display');
+    const manualFormatted = getEl('manual-time-formatted');
+    if (!cubeSlot || !timerDisplayWrapper) {
+        applyCachedRootStyle('cameraPanelWidth', '--camera-panel-width', '');
+        return;
+    }
+
+    const rootStyles = getComputedStyle(document.documentElement);
+    const slotStyles = getComputedStyle(cubeSlot);
+    const defaultPanelWidth = parseFloat(rootStyles.getPropertyValue('--right-panel-width')) || 300;
+    const paddingLeft = parseFloat(slotStyles.paddingLeft) || 0;
+    const paddingRight = parseFloat(slotStyles.paddingRight) || 0;
+    const horizontalPadding = paddingLeft + paddingRight;
+    const isDesktopTypingEntryActive = document.body.classList.contains('typing-entry-mode')
+        && document.body.classList.contains('manual-time-entry-active');
+    const manualEntryWidth = Math.max(
+        Math.ceil(manualEntry?.scrollWidth || 0),
+        Math.ceil(manualEntry?.getBoundingClientRect?.().width || 0),
+        Math.ceil(manualEntryDisplay?.scrollWidth || 0),
+        Math.ceil(manualEntryDisplay?.getBoundingClientRect?.().width || 0) + 18,
+        Math.ceil(manualFormatted?.scrollWidth || 0),
+        Math.ceil(manualFormatted?.getBoundingClientRect?.().width || 0),
+    );
+    const timerDisplayWidth = isDesktopTypingEntryActive
+        ? 0
+        : Math.max(
+            Math.ceil(timerDisplay?.scrollWidth || 0),
+            Math.ceil(timerDisplay?.getBoundingClientRect?.().width || 0),
+            Math.ceil(timerDisplayWrapper.scrollWidth || timerDisplayWrapper.getBoundingClientRect().width || 0),
+        );
+    const contentWidth = Math.max(
+        timerDisplayWidth,
+        Math.ceil(timerInfo?.scrollWidth || 0),
+        manualEntryWidth,
+    );
+    const targetWidth = Math.max(defaultPanelWidth, Math.ceil(contentWidth + horizontalPadding + 2));
+    applyCachedRootStyle('cameraPanelWidth', '--camera-panel-width', `${targetWidth}px`);
 }
 
 function getViewportLayoutModeKey() {
@@ -2158,6 +2427,11 @@ function syncDesktopLargeScrambleTextFit() {
         return;
     }
 
+    if (document.body.classList.contains('camera-background-active')) {
+        clearDesktopLargeScrambleTextFit(scrambleText, scrambleInput);
+        return;
+    }
+
     if (scrambleInput.style.display !== 'none') {
         const currentFontSizePx = parseFloat(scrambleText.style.fontSize) || parseFloat(getComputedStyle(scrambleText).fontSize) || 0;
         if (currentFontSizePx > 0) {
@@ -2285,6 +2559,7 @@ function syncLandscapeMobileScrambleSingleLineFit() {
 }
 
 function syncViewportLayout() {
+    syncCameraBackgroundPanelWidth();
     syncViewportLayoutModeState();
     syncDesktopPanelScale();
     syncDesktopScrambleBounds();
@@ -2298,12 +2573,15 @@ function syncViewportLayout() {
     const quickActions = getEl('timer-quick-actions');
     const rightPanel = getEl('right-panel');
     const zenButton = getEl('btn-zen');
+    const cubeTimerSlot = getEl('cube-camera-timer-slot');
 
     if (!timerDisplayWrapper) return;
 
     const state = timer.getState();
     const isZen = document.body.classList.contains('zen');
     const isSolving = document.body.classList.contains('solving');
+    const isCameraTimerHost = document.body.classList.contains('camera-background-active')
+        && cubeTimerSlot?.contains(timerDisplayWrapper);
     const isMobileTimerView = mobileViewportQuery.matches && document.body.dataset.mobilePanel === 'timer';
     const centerTimerEnabled = settings.get('centerTimer');
     const hideUIWhileSolving = settings.get('hideUIWhileSolving');
@@ -2327,8 +2605,19 @@ function syncViewportLayout() {
     if (shouldFreezeMobileManualEntryLayout) return;
 
     if (shouldViewportCenterTimer) {
-        if (isMobileTimerView) targetTimerCenterX = window.innerWidth / 2;
-        targetTimerCenterY = window.innerHeight / 2;
+        if (!isMobileTimerView && isCameraTimerHost) {
+            const hostRect = getLayoutRect(cubeTimerSlot);
+            if (hostRect) {
+                targetTimerCenterX = hostRect.left + hostRect.width / 2;
+                targetTimerCenterY = hostRect.top + hostRect.height / 2;
+                targetTimerRect = getLayoutRect(timerDisplay || timerDisplayWrapper);
+            } else {
+                targetTimerCenterY = window.innerHeight / 2;
+            }
+        } else {
+            if (isMobileTimerView) targetTimerCenterX = window.innerWidth / 2;
+            targetTimerCenterY = window.innerHeight / 2;
+        }
     } else if (isMobileTimerView && !shouldFocusTimer) {
         const rightRect = rightPanel?.getBoundingClientRect();
         const zenRect = zenButton?.getBoundingClientRect();
@@ -3227,6 +3516,7 @@ async function init() {
     timer.on('started', onTimerStarted);
     timer.on('started', closeDailyStreakMobilePopup);
     timer.on('stateChange', onTimerStateChange);
+    timer.on('displayChange', onTimerDisplayChange);
     timer.on('inspectionAlert', onInspectionAlert);
     timer.on('typingInspectionDone', () => {
         if (isDesktopTypingEntryModeEnabled()) {
@@ -3351,6 +3641,9 @@ async function init() {
             syncPersistentManualEntryMode();
             void reconcileHardwareTimeEntryMode();
         }
+        if (key === 'cameraBackgroundEnabled') {
+            void syncCameraBackgroundMode();
+        }
         if (key === 'centerTimer' || key === 'displayFont' || key === 'pillSize' || key === 'largeScrambleText') {
             scheduleViewportLayoutSync();
             if (key === 'pillSize') syncDesktopTimerInfoPills();
@@ -3360,6 +3653,7 @@ async function init() {
         clearPenaltyShortcutAlert();
         syncPersistentManualEntryMode();
         void reconcileHardwareTimeEntryMode();
+        void syncCameraBackgroundMode();
     });
 
     // Init UI
@@ -3369,6 +3663,7 @@ async function init() {
     refreshHardwareInputStatus();
     refreshUI();
     initSettingsPanel();
+    void syncCameraBackgroundMode();
     initInspectionSpeechUnlockPrompt();
     initInspectionCancelControl();
     initShortcutsOverlay();
@@ -6503,7 +6798,10 @@ function onTimerStateChange(state) {
     // Hide delta when timer is ready, running, or in inspection
     if (deltaEl) {
         if (state === 'running' || state === 'ready' || isInspectionState(state)) {
+            const shouldReserveDeltaSpace = Boolean(settings.get('showDelta')) || deltaEl.classList.contains('visible');
             deltaEl.classList.remove('visible');
+            timerDisplayWrapper?.classList.remove('delta-visible');
+            timerDisplayWrapper?.classList.toggle('delta-reserved', shouldReserveDeltaSpace);
         } else if (state === 'idle' || state === 'stopped') {
             updateDelta(sessionManager.getFilteredSolves());
         }
@@ -6981,7 +7279,13 @@ function updateDailyStreakUI() {
 
 function updateDelta(solves) {
     const deltaEl = document.getElementById('timer-delta');
+    const timerDisplayWrapper = document.getElementById('timer-display-wrapper');
     if (!deltaEl) return;
+
+    const syncDeltaLayoutState = (isVisible, reserveSpace = settings.get('showDelta')) => {
+        timerDisplayWrapper?.classList.toggle('delta-visible', Boolean(isVisible));
+        timerDisplayWrapper?.classList.toggle('delta-reserved', Boolean(reserveSpace));
+    };
 
     const state = timer.getState();
     const showDelta = settings.get('showDelta');
@@ -6996,10 +7300,12 @@ function updateDelta(solves) {
             deltaEl.textContent = '(DNF)';
             deltaEl.classList.remove('delta-negative', 'delta-zero');
             deltaEl.classList.add('delta-positive', 'visible');
+            syncDeltaLayoutState(true, true);
             return;
         }
 
         deltaEl.classList.remove('visible');
+        syncDeltaLayoutState(false, showDelta);
         return;
     }
 
@@ -7011,6 +7317,7 @@ function updateDelta(solves) {
         deltaEl.textContent = '(DNF)';
         deltaEl.classList.remove('delta-negative', 'delta-zero');
         deltaEl.classList.add('delta-positive', 'visible');
+        syncDeltaLayoutState(true, true);
         return;
     }
 
@@ -7034,6 +7341,7 @@ function updateDelta(solves) {
     // Hide if either side is unavailable or DNF.
     if (curTime === Infinity || referenceTime == null || referenceTime === Infinity) {
         deltaEl.classList.remove('visible');
+        syncDeltaLayoutState(false, true);
         return;
     }
 
@@ -7048,6 +7356,7 @@ function updateDelta(solves) {
     else deltaEl.classList.add('delta-zero');
 
     deltaEl.classList.add('visible');
+    syncDeltaLayoutState(true, true);
 }
 
 function getRollingStatConfig(type) {
@@ -10353,6 +10662,7 @@ function initSettingsPanel() {
     const centerTimerToggle = document.getElementById('setting-center-timer');
     const backgroundSpacebarToggle = document.getElementById('setting-background-spacebar');
     const backgroundSpacebarRow = backgroundSpacebarToggle?.closest('.setting-row') ?? null;
+    const cameraBackgroundToggle = document.getElementById('setting-camera-background');
     const timeEntryRow = document.getElementById('setting-time-entry-row');
     const hardwareInputButton = document.getElementById('setting-hardware-input-btn');
     const stackmatDeviceRow = document.getElementById('setting-stackmat-device-row');
@@ -10447,6 +10757,7 @@ function initSettingsPanel() {
         if (!timeEntryRow) return;
         timeEntryRow.style.display = '';
         syncHardwareInputControls();
+        syncCameraBackgroundSettingControls();
         if (stackmatDeviceRow) {
             const isStackmatMode = getSelectedTimeEntryMode() === TIME_ENTRY_MODE_STACKMAT;
             stackmatDeviceRow.hidden = !isStackmatMode;
@@ -10474,12 +10785,14 @@ function initSettingsPanel() {
     updateSwipeDownGestureVisibility();
     updateBackgroundSpacebarVisibility();
     updateTimeEntryVisibility();
+    syncCameraBackgroundSettingControls();
 
     const handleSettingsViewportChange = () => {
         updateCenterTimerState();
         updateSwipeDownGestureVisibility();
         updateBackgroundSpacebarVisibility();
         updateTimeEntryVisibility();
+        void syncCameraBackgroundMode();
         syncSettingsRowSeparators();
     };
 
@@ -10512,6 +10825,15 @@ function initSettingsPanel() {
         backgroundSpacebarToggle.onchange = () => {
             settings.set('backgroundSpacebarEnabled', backgroundSpacebarToggle.checked);
             backgroundSpacebarToggle.blur();
+        };
+    }
+
+    if (cameraBackgroundToggle) {
+        cameraBackgroundToggle.checked = settings.get('cameraBackgroundEnabled') === true;
+        cameraBackgroundToggle.onchange = () => {
+            cameraBackgroundState.error = '';
+            settings.set('cameraBackgroundEnabled', cameraBackgroundToggle.checked);
+            cameraBackgroundToggle.blur();
         };
     }
 

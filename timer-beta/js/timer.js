@@ -1,6 +1,6 @@
-import { settings } from './settings.js?v=2026041901';
-import { isHardwareTimeEntryMode, TIME_ENTRY_MODE_TIMER, TIME_ENTRY_MODE_TYPING } from './time-entry.js?v=2026041901';
-import { EventEmitter, formatTime, truncateTimeDisplay } from './utils.js?v=2026041901';
+import { settings } from './settings.js?v=2026042301';
+import { isHardwareTimeEntryMode, TIME_ENTRY_MODE_TIMER, TIME_ENTRY_MODE_TYPING } from './time-entry.js?v=2026042301';
+import { EventEmitter, formatTime, truncateTimeDisplay } from './utils.js?v=2026042301';
 
 const State = {
     IDLE: 'idle',
@@ -998,6 +998,11 @@ class Timer extends EventEmitter {
         if (this._displayEl.textContent !== displayStr) {
             this._displayEl.textContent = displayStr;
         }
+
+        this.emit('displayChange', {
+            fullText: text,
+            displayText: displayStr,
+        });
     }
 
     setDisplay(text) {

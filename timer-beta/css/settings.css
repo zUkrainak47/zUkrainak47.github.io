@@ -162,7 +162,8 @@
 }
 
 #setting-hardware-input-row[hidden],
-#setting-stackmat-device-row[hidden] {
+#setting-stackmat-device-row[hidden],
+#setting-camera-background-row[hidden] {
     display: none !important;
 }
 
@@ -201,6 +202,10 @@ body.mobile-viewport #setting-large-scramble-text-row {
 }
 
 #setting-stackmat-device-status.is-error {
+    color: var(--danger);
+}
+
+#setting-camera-background-status.is-error {
     color: var(--danger);
 }
 

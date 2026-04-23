@@ -26,6 +26,28 @@ body {
     -moz-osx-font-smoothing: grayscale;
 }
 
+#camera-background-video {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    object-fit: cover;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 0;
+    background: #000;
+    transition: opacity var(--transition-base);
+}
+
+body.camera-background-live #camera-background-video {
+    opacity: 1;
+}
+
+body.camera-background-live #app-layout {
+    position: relative;
+    z-index: 1;
+}
+
 @media (hover: none) and (pointer: coarse) {
 
     html,
@@ -431,7 +453,14 @@ body.coarse-pointer #shortcut-tooltip {
 
 /* Zen mode — hide panels but keep grid intact so timer doesn't shift */
 body.zen #left-panel,
-body.zen #right-panel {
+body.zen:not(.camera-background-active) #right-panel,
+body.zen.mobile-viewport #right-panel {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+body.zen.camera-background-active:not(.mobile-viewport) #right-panel > :not(#cube-panel) {
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.3s ease;
