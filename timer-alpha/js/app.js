@@ -1329,6 +1329,25 @@ function stopCameraBackgroundStream({ preserveError = false } = {}) {
     document.body.classList.remove('camera-background-live');
 }
 
+function syncTimerPopupOverlayPlacement() {
+    const centerPanel = getEl('center-panel');
+    const timerDisplayWrapper = getEl('timer-display-wrapper');
+    const timerDisplayStack = getEl('timer-display-stack');
+    const overlay = getEl('timer-popup-overlay');
+    if (!centerPanel || !timerDisplayWrapper || !timerDisplayStack || !overlay) return;
+
+    const shouldDetachOverlay = wantsCameraBackground();
+    const targetParent = shouldDetachOverlay ? centerPanel : timerDisplayWrapper;
+
+    if (overlay.parentElement !== targetParent) {
+        if (shouldDetachOverlay) {
+            centerPanel.insertBefore(overlay, getEl('center-panel-timer-slot') || null);
+        } else {
+            timerDisplayWrapper.insertBefore(overlay, timerDisplayStack);
+        }
+    }
+}
+
 function syncCameraBackgroundTimerPlacement() {
     const centerSlot = getEl('center-panel-timer-slot');
     const cubeSlot = getEl('cube-camera-timer-slot');
@@ -1347,6 +1366,7 @@ function syncCameraBackgroundTimerPlacement() {
     cubeSlot.hidden = !useCubeTimerSlot;
     cubePanel.classList.toggle('camera-background-hosting-timer', useCubeTimerSlot);
     document.body.classList.toggle('camera-background-active', useCubeTimerSlot);
+    syncTimerPopupOverlayPlacement();
 }
 
 function syncCameraBackgroundSettingControls() {

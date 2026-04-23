@@ -18,13 +18,17 @@
 #timer-popup-overlay {
     position: absolute;
     left: 50%;
-    top: 25%;
+    top: 0;
     width: 0;
     height: 0;
     font-size: var(--text-timer);
     overflow: visible;
     pointer-events: none;
     z-index: 60;
+}
+
+body.camera-background-active #center-panel > #timer-popup-overlay {
+    top: 25%;
 }
 
 #timer-delta {
