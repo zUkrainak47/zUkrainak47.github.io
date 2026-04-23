@@ -550,16 +550,6 @@ body:not(.mobile-viewport) #inspection-cancel-wrap {
     background: rgba(248, 81, 73, 0.14);
 }
 
-.timer-action-add {
-    color: rgba(88, 166, 255, 0.58);
-}
-
-.timer-action-add.is-active,
-.timer-action-add:not(:disabled):active {
-    color: #79c0ff;
-    background: rgba(56, 139, 253, 0.16);
-}
-
 .timer-action-comment {
     color: rgba(63, 185, 80, 0.56);
 }
