@@ -1,6 +1,6 @@
-import { settings } from './settings.js?v=2026042501';
-import { isHardwareTimeEntryMode, TIME_ENTRY_MODE_TIMER, TIME_ENTRY_MODE_TYPING } from './time-entry.js?v=2026042501';
-import { EventEmitter, formatTime, truncateTimeDisplay } from './utils.js?v=2026042501';
+import { settings } from './settings.js?v=2026042502';
+import { isHardwareTimeEntryMode, TIME_ENTRY_MODE_TIMER, TIME_ENTRY_MODE_TYPING } from './time-entry.js?v=2026042502';
+import { EventEmitter, formatTime, truncateTimeDisplay } from './utils.js?v=2026042502';
 
 const State = {
     IDLE: 'idle',

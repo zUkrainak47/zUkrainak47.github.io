@@ -856,10 +856,18 @@ body.camera-background-active.typing-entry-mode:not(.coarse-pointer) #cube-camer
     display: none;
 }
 
+#mobile-summary-card > .panel-shell {
+    height: 100%;
+    min-height: 0;
+}
+
 .mobile-summary-grid {
     position: relative;
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: repeat(2, minmax(0, 1fr));
+    flex: 1 1 auto;
+    min-height: 0;
     height: 100%;
 }
 
