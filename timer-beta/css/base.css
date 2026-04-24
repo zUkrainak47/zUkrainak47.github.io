@@ -180,11 +180,22 @@ select {
     background:
         linear-gradient(180deg, var(--panel-sheen), var(--panel-sheen-fade)),
         var(--surface-elevated);
-    border: 1px solid var(--surface-border);
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
     pointer-events: none;
     z-index: 0;
+    transition: opacity var(--transition-base), visibility var(--transition-base);
+}
+
+.panel::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    box-sizing: border-box;
+    border-radius: inherit;
+    border: 1px solid var(--surface-border);
+    pointer-events: none;
+    z-index: 2;
     transition: opacity var(--transition-base), visibility var(--transition-base), border-color var(--transition-base);
 }
 

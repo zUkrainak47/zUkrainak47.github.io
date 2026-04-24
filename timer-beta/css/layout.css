@@ -68,16 +68,22 @@ body.zen.camera-background-active:not(.mobile-viewport) #cube-panel {
 }
 
 body.solving #stats-panel::before,
+body.solving #stats-panel::after,
 body.solving #stats-panel > .panel-shell,
 body.zen #stats-panel::before,
+body.zen #stats-panel::after,
 body.zen #stats-panel > .panel-shell,
 body.solving:not(.camera-background-active) #right-panel .panel::before,
+body.solving:not(.camera-background-active) #right-panel .panel::after,
 body.solving:not(.camera-background-active) #right-panel .panel > .panel-shell,
 body.solving.mobile-viewport #right-panel .panel::before,
+body.solving.mobile-viewport #right-panel .panel::after,
 body.solving.mobile-viewport #right-panel .panel > .panel-shell,
 body.zen:not(.camera-background-active) #right-panel .panel::before,
+body.zen:not(.camera-background-active) #right-panel .panel::after,
 body.zen:not(.camera-background-active) #right-panel .panel > .panel-shell,
 body.zen.mobile-viewport #right-panel .panel::before,
+body.zen.mobile-viewport #right-panel .panel::after,
 body.zen.mobile-viewport #right-panel .panel > .panel-shell {
     opacity: 0;
     visibility: hidden;
@@ -94,8 +100,10 @@ body.zen.mobile-viewport #right-panel .panel {
 }
 
 body.solving.camera-background-active:not(.mobile-viewport) #right-panel > :not(#cube-panel):not(#graph-panel).panel::before,
+body.solving.camera-background-active:not(.mobile-viewport) #right-panel > :not(#cube-panel):not(#graph-panel).panel::after,
 body.solving.camera-background-active:not(.mobile-viewport) #right-panel > :not(#cube-panel):not(#graph-panel).panel > .panel-shell,
 body.zen.camera-background-active:not(.mobile-viewport) #right-panel > :not(#cube-panel).panel::before,
+body.zen.camera-background-active:not(.mobile-viewport) #right-panel > :not(#cube-panel).panel::after,
 body.zen.camera-background-active:not(.mobile-viewport) #right-panel > :not(#cube-panel).panel > .panel-shell {
     opacity: 0;
     visibility: hidden;
