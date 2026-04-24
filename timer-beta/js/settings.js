@@ -443,6 +443,7 @@ const DEFAULTS = {
     hideUIWhileSolving: true,
     backgroundSpacebarEnabled: false,
     cameraBackgroundEnabled: false,
+    cameraBackgroundSuspended: false,
     // Legacy global background fields kept for migration and older imports.
     backgroundImageSource: 'none',
     backgroundImageUrl: '',

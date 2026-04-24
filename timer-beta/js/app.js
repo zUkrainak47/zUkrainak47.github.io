@@ -872,7 +872,6 @@ const cameraBackgroundState = {
     error: '',
     taskId: 0,
     displayLayoutKey: '',
-    suspended: false,
 };
 const inspectionSpeechUnlockState = {
     required: false,
@@ -1283,7 +1282,11 @@ function shouldShowCameraBackgroundToggleButton() {
 }
 
 function isCameraBackgroundSuspended() {
-    return cameraBackgroundState.suspended === true;
+    return settings.get('cameraBackgroundSuspended') === true;
+}
+
+function setCameraBackgroundSuspended(suspended) {
+    settings.set('cameraBackgroundSuspended', suspended === true);
 }
 
 function wantsCameraBackground() {
@@ -1460,8 +1463,8 @@ async function syncCameraBackgroundMode() {
         syncCameraBackgroundSettingControls();
         syncCameraBackgroundToggleButtonState();
         if (settings.get('cameraBackgroundEnabled') === true) {
-            cameraBackgroundState.suspended = false;
             settings.set('cameraBackgroundEnabled', false);
+            setCameraBackgroundSuspended(false);
         }
         return;
     }
@@ -1508,8 +1511,8 @@ async function syncCameraBackgroundMode() {
         syncCameraBackgroundSettingControls();
         syncCameraBackgroundToggleButtonState();
         if (settings.get('cameraBackgroundEnabled') === true) {
-            cameraBackgroundState.suspended = false;
             settings.set('cameraBackgroundEnabled', false);
+            setCameraBackgroundSuspended(false);
         }
         return;
     }
@@ -3775,7 +3778,7 @@ async function init() {
             syncPersistentManualEntryMode();
             void reconcileHardwareTimeEntryMode();
         }
-        if (key === 'cameraBackgroundEnabled') {
+        if (key === 'cameraBackgroundEnabled' || key === 'cameraBackgroundSuspended') {
             void syncCameraBackgroundMode();
         }
         if (key === 'centerTimer' || key === 'displayFont' || key === 'pillSize' || key === 'largeScrambleText') {
@@ -3787,7 +3790,6 @@ async function init() {
         clearPenaltyShortcutAlert();
         syncPersistentManualEntryMode();
         void reconcileHardwareTimeEntryMode();
-        cameraBackgroundState.suspended = false;
         void syncCameraBackgroundMode();
     });
 
@@ -4316,8 +4318,7 @@ function initCameraBackgroundToggleButton() {
 
     btn?.addEventListener('click', () => {
         if (!shouldShowCameraBackgroundToggleButton()) return;
-        cameraBackgroundState.suspended = !cameraBackgroundState.suspended;
-        void syncCameraBackgroundMode();
+        setCameraBackgroundSuspended(!isCameraBackgroundSuspended());
         btn.blur();
     });
 }
@@ -10983,8 +10984,8 @@ function initSettingsPanel() {
         cameraBackgroundToggle.checked = settings.get('cameraBackgroundEnabled') === true;
         cameraBackgroundToggle.onchange = () => {
             cameraBackgroundState.error = '';
-            cameraBackgroundState.suspended = false;
             settings.set('cameraBackgroundEnabled', cameraBackgroundToggle.checked);
+            setCameraBackgroundSuspended(false);
             cameraBackgroundToggle.blur();
         };
     }

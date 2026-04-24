@@ -556,6 +556,7 @@ const CSTIMER_EXPORT_SETTING_DEFAULTS = Object.freeze({
     pillSize: 'medium',
     showDelta: false,
     cameraBackgroundEnabled: false,
+    cameraBackgroundSuspended: false,
     theme: 'default',
     backgroundImageSource: 'none',
     backgroundImageUrl: '',
