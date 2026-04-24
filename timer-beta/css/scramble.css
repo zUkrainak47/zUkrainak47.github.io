@@ -633,6 +633,20 @@ body.solving #btn-next-scramble {
         opacity: 0.72;
     }
 
+    body.solving #btn-camera-background-toggle,
+    body.solving #btn-zen,
+    body.solving #btn-scramble-preview {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transition:
+            opacity var(--transition-base),
+            background var(--transition-fast),
+            border-color var(--transition-fast),
+            color var(--transition-fast),
+            visibility 0s linear 0.3s;
+    }
+
     body.camera-background-active #btn-scramble-preview {
         display: inline-flex;
         position: absolute;
@@ -641,6 +655,9 @@ body.solving #btn-next-scramble {
         height: 28px;
         align-items: center;
         justify-content: center;
+    }
+
+    body.camera-background-active:not(.solving) #btn-scramble-preview {
         opacity: 0.72;
     }
 
