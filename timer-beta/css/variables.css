@@ -197,7 +197,9 @@
 }
 
 body.no-animations,
-body.no-animations * {
+body.no-animations *,
+body.no-animations *::before,
+body.no-animations *::after {
   transition: none !important;
   animation: none !important;
 }
