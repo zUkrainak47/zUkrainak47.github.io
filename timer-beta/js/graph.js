@@ -525,6 +525,7 @@ export function initGraph(canvas) {
                     if (panel) {
                         panel.classList.add('overflow-visible');
                         panel.classList.add('drawer-open');
+                        panel.classList.add('tools-open');
                     }
                 } else {
                     // Closing
@@ -532,7 +533,10 @@ export function initGraph(canvas) {
                     toggleBtn.classList.remove('active');
                     const body = document.getElementById('graph-body');
                     const panel = document.getElementById('graph-panel');
-                    if (panel) panel.classList.remove('drawer-open');
+                    if (panel) {
+                        panel.classList.remove('drawer-open');
+                        panel.classList.remove('tools-open');
+                    }
                     setTimeout(() => {
                         if (body) body.classList.remove('overflow-visible');
                         if (panel) panel.classList.remove('overflow-visible');

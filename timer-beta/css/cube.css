@@ -85,6 +85,10 @@ body.camera-background-active #graph-panel {
     align-self: stretch;
 }
 
+body.camera-background-active:not(.mobile-viewport) #graph-panel.tools-open {
+    z-index: 2;
+}
+
 body.camera-background-active #cube-panel {
     order: 2;
     width: 100%;
