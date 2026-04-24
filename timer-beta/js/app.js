@@ -872,6 +872,7 @@ const cameraBackgroundState = {
     error: '',
     taskId: 0,
     displayLayoutKey: '',
+    suspended: false,
 };
 const inspectionSpeechUnlockState = {
     required: false,
@@ -1277,8 +1278,16 @@ function isCameraBackgroundEligible() {
     return cameraBackgroundLayoutQuery.matches;
 }
 
-function wantsCameraBackground() {
+function shouldShowCameraBackgroundToggleButton() {
     return settings.get('cameraBackgroundEnabled') === true && isCameraBackgroundEligible();
+}
+
+function isCameraBackgroundSuspended() {
+    return cameraBackgroundState.suspended === true;
+}
+
+function wantsCameraBackground() {
+    return shouldShowCameraBackgroundToggleButton() && !isCameraBackgroundSuspended();
 }
 
 function getCameraBackgroundVideoEl() {
@@ -1386,6 +1395,8 @@ function syncCameraBackgroundSettingControls() {
         status.textContent = cameraBackgroundState.error;
     } else if (cameraBackgroundState.pending) {
         status.textContent = 'Requesting camera access...';
+    } else if (shouldShowCameraBackgroundToggleButton() && isCameraBackgroundSuspended()) {
+        status.textContent = 'Camera background is enabled, but the live feed is temporarily hidden.';
     } else if (document.body.classList.contains('camera-background-live')) {
         status.textContent = 'Live camera feed is active.';
     } else {
@@ -1393,6 +1404,27 @@ function syncCameraBackgroundSettingControls() {
     }
 
     syncSettingsRowSeparators();
+}
+
+function syncCameraBackgroundToggleButtonState() {
+    const btn = getEl('btn-camera-background-toggle');
+    const icon = getEl('icon-camera-background-toggle');
+    if (!btn || !icon) return;
+
+    const shouldShow = shouldShowCameraBackgroundToggleButton();
+    btn.hidden = !shouldShow;
+    if (!shouldShow) return;
+
+    const isActive = wantsCameraBackground();
+    const label = isActive ? 'Turn camera background off' : 'Turn camera background on';
+
+    btn.classList.toggle('is-active', isActive);
+    btn.setAttribute('aria-label', label);
+    btn.setAttribute('title', label);
+    btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+
+    icon.classList.toggle('icon-mask-camera-video', isActive);
+    icon.classList.toggle('icon-mask-camera-video-off', !isActive);
 }
 
 function getCameraBackgroundDisplayLayoutKey(displayText) {
@@ -1412,10 +1444,12 @@ function onTimerDisplayChange({ displayText } = {}) {
 async function syncCameraBackgroundMode() {
     syncCameraBackgroundTimerPlacement();
     syncCameraBackgroundSettingControls();
+    syncCameraBackgroundToggleButtonState();
 
     if (!wantsCameraBackground()) {
         stopCameraBackgroundStream({ preserveError: Boolean(cameraBackgroundState.error) });
         syncCameraBackgroundSettingControls();
+        syncCameraBackgroundToggleButtonState();
         scheduleViewportLayoutSync();
         return;
     }
@@ -1424,7 +1458,9 @@ async function syncCameraBackgroundMode() {
     if (!videoEl || !navigator.mediaDevices?.getUserMedia) {
         cameraBackgroundState.error = 'Camera background is not supported in this browser.';
         syncCameraBackgroundSettingControls();
+        syncCameraBackgroundToggleButtonState();
         if (settings.get('cameraBackgroundEnabled') === true) {
+            cameraBackgroundState.suspended = false;
             settings.set('cameraBackgroundEnabled', false);
         }
         return;
@@ -1435,6 +1471,7 @@ async function syncCameraBackgroundMode() {
         videoEl.hidden = false;
         document.body.classList.add('camera-background-live');
         syncCameraBackgroundSettingControls();
+        syncCameraBackgroundToggleButtonState();
         scheduleViewportLayoutSync();
         return;
     }
@@ -1442,6 +1479,7 @@ async function syncCameraBackgroundMode() {
     cameraBackgroundState.pending = true;
     cameraBackgroundState.error = '';
     syncCameraBackgroundSettingControls();
+    syncCameraBackgroundToggleButtonState();
     const requestTaskId = ++cameraBackgroundState.taskId;
 
     try {
@@ -1468,7 +1506,9 @@ async function syncCameraBackgroundMode() {
         cameraBackgroundState.error = describeCameraBackgroundError(error);
         stopCameraBackgroundStream({ preserveError: true });
         syncCameraBackgroundSettingControls();
+        syncCameraBackgroundToggleButtonState();
         if (settings.get('cameraBackgroundEnabled') === true) {
+            cameraBackgroundState.suspended = false;
             settings.set('cameraBackgroundEnabled', false);
         }
         return;
@@ -1476,6 +1516,7 @@ async function syncCameraBackgroundMode() {
 
     syncCameraBackgroundTimerPlacement();
     syncCameraBackgroundSettingControls();
+    syncCameraBackgroundToggleButtonState();
     cameraBackgroundState.displayLayoutKey = getCameraBackgroundDisplayLayoutKey(getEl('timer-display')?.textContent);
     scheduleViewportLayoutSync();
 }
@@ -2353,6 +2394,7 @@ function syncDesktopInlineScrambleInputHeight(scrambleInput = getEl('scramble-in
     const topInset = (parseFloat(inputStyles.borderTopWidth) || 0) + (parseFloat(inputStyles.paddingTop) || 0);
     const firstLineOffset = Math.round(((((rowHeight - lineHeight) / 2) - topInset) * 10)) / 10;
     scrambleTextWrapper?.style.setProperty('--desktop-scramble-input-offset-y', `${firstLineOffset}px`);
+    syncScrambleSurfaceFrame(scrambleTextWrapper, getEl('scramble-text'), scrambleInput);
 }
 
 function setDesktopLargeScrambleFontSize(fontSizePx, scrambleText = getEl('scramble-text'), scrambleInput = getEl('scramble-input'), scrambleTextWrapper = getEl('scramble-text-wrapper')) {
@@ -2413,10 +2455,49 @@ function getTransformTranslate(transformValue) {
     return { x: 0, y: 0 };
 }
 
-function doesDesktopLargeScrambleTextFit(scrambleText, timerDisplay, timerDisplayWrapper = getEl('timer-display-wrapper')) {
+function isDesktopCameraBackgroundLive() {
+    return !mobileViewportQuery.matches && document.body.classList.contains('camera-background-live');
+}
+
+function syncScrambleSurfaceFrame(
+    scrambleTextWrapper = getEl('scramble-text-wrapper'),
+    scrambleText = getEl('scramble-text'),
+    scrambleInput = getEl('scramble-input'),
+) {
+    if (!scrambleTextWrapper) return;
+
+    const activeEl = scrambleInput && scrambleInput.style.display !== 'none'
+        ? scrambleInput
+        : scrambleText;
+
+    if (!(activeEl instanceof HTMLElement) || activeEl.style.display === 'none') {
+        scrambleTextWrapper.style.removeProperty('--scramble-surface-frame-top');
+        scrambleTextWrapper.style.removeProperty('--scramble-surface-frame-bottom');
+        return;
+    }
+
+    if (!isDesktopCameraBackgroundLive()) {
+        scrambleTextWrapper.style.removeProperty('--scramble-surface-frame-top');
+        scrambleTextWrapper.style.removeProperty('--scramble-surface-frame-bottom');
+        return;
+    }
+
+    scrambleTextWrapper.style.setProperty('--scramble-surface-frame-top', '0px');
+    scrambleTextWrapper.style.setProperty('--scramble-surface-frame-bottom', '0px');
+}
+
+function doesDesktopLargeScrambleTextFit(
+    scrambleText,
+    timerDisplay,
+    timerDisplayWrapper = getEl('timer-display-wrapper'),
+    scrambleTextWrapper = getEl('scramble-text-wrapper'),
+) {
     if (!scrambleText || !timerDisplay) return true;
 
-    const scrambleRect = scrambleText.getBoundingClientRect();
+    const fitTarget = isDesktopCameraBackgroundLive() && scrambleTextWrapper
+        ? scrambleTextWrapper
+        : scrambleText;
+    const scrambleRect = fitTarget.getBoundingClientRect();
     const timerRect = timerDisplay.getBoundingClientRect();
     const wrapperTransform = timerDisplayWrapper ? getComputedStyle(timerDisplayWrapper).transform : 'none';
     const timerTransform = getComputedStyle(timerDisplay).transform;
@@ -2441,11 +2522,6 @@ function syncDesktopLargeScrambleTextFit() {
     if (!scrambleText || !scrambleInput || !timerDisplay) return;
 
     if (mobileViewportQuery.matches) {
-        clearDesktopLargeScrambleTextFit(scrambleText, scrambleInput);
-        return;
-    }
-
-    if (document.body.classList.contains('camera-background-active')) {
         clearDesktopLargeScrambleTextFit(scrambleText, scrambleInput);
         return;
     }
@@ -2693,6 +2769,7 @@ function syncViewportLayout() {
     }
 
     syncDesktopLargeScrambleTextFit();
+    syncScrambleSurfaceFrame(scrambleTextWrapper);
 
     if (shouldApplyFrozenMobileScrambleLayout()) {
         applyCachedTransform(scrambleContainer, 'scrambleTransform', mobileScrambleFreezeState.transform);
@@ -3671,6 +3748,7 @@ async function init() {
         clearPenaltyShortcutAlert();
         syncPersistentManualEntryMode();
         void reconcileHardwareTimeEntryMode();
+        cameraBackgroundState.suspended = false;
         void syncCameraBackgroundMode();
     });
 
@@ -3690,6 +3768,7 @@ async function init() {
     initSearchMenu();
     initCollapsiblePanels();
     initZenMode();
+    initCameraBackgroundToggleButton();
     initScrambleControls();
     initDailyStreakMobileControl();
     initTimerInfoControls();
@@ -4188,6 +4267,18 @@ function initZenMode() {
 
     btn?.addEventListener('click', () => {
         toggleZenMode();
+        btn.blur();
+    });
+}
+
+function initCameraBackgroundToggleButton() {
+    const btn = getEl('btn-camera-background-toggle');
+    syncCameraBackgroundToggleButtonState();
+
+    btn?.addEventListener('click', () => {
+        if (!shouldShowCameraBackgroundToggleButton()) return;
+        cameraBackgroundState.suspended = !cameraBackgroundState.suspended;
+        void syncCameraBackgroundMode();
         btn.blur();
     });
 }
@@ -5125,6 +5216,7 @@ function initScrambleControls() {
         inputEl.style.height = 'auto';
         inputEl.style.height = inputEl.scrollHeight + 'px';
         syncDesktopLargeScrambleTextFit();
+        syncScrambleSurfaceFrame(textWrapperEl, textEl, inputEl);
         inputEl.focus();
         // Pause timer keys optionally, but timer.js ignores input tags.
     }
@@ -5164,6 +5256,7 @@ function initScrambleControls() {
     inputEl.addEventListener('input', (e) => {
         inputEl.style.height = 'auto';
         inputEl.style.height = inputEl.scrollHeight + 'px';
+        syncScrambleSurfaceFrame(textWrapperEl, textEl, inputEl);
         renderScramblePreviewDisplays(e.target.value);
     });
 
@@ -10851,6 +10944,7 @@ function initSettingsPanel() {
         cameraBackgroundToggle.checked = settings.get('cameraBackgroundEnabled') === true;
         cameraBackgroundToggle.onchange = () => {
             cameraBackgroundState.error = '';
+            cameraBackgroundState.suspended = false;
             settings.set('cameraBackgroundEnabled', cameraBackgroundToggle.checked);
             cameraBackgroundToggle.blur();
         };

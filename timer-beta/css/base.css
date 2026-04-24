@@ -161,15 +161,40 @@ select {
 }
 
 .panel {
-    background:
-        linear-gradient(180deg, var(--panel-sheen), var(--panel-sheen-fade)),
-        var(--surface-elevated);
+    position: relative;
+    isolation: isolate;
+    background: transparent;
     border: 1px solid var(--surface-border);
     border-radius: 12px;
     overflow: hidden;
-    transition: border-radius 0.2s ease;
-    backdrop-filter: blur(18px);
+    transition: border-radius 0.2s ease, border-color var(--transition-base);
     /* box-shadow: var(--shadow-card); */
+}
+
+.panel::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background:
+        linear-gradient(180deg, var(--panel-sheen), var(--panel-sheen-fade)),
+        var(--surface-elevated);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    pointer-events: none;
+    z-index: 0;
+    transition: opacity var(--transition-base), visibility var(--transition-base);
+}
+
+.panel-shell {
+    flex: 1 1 auto;
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 100%;
+    transition: opacity var(--transition-base), visibility var(--transition-base);
 }
 
 .panel.overflow-visible {
@@ -202,12 +227,12 @@ select {
 }
 
 /* Collapsible panels */
-.panel.collapsible>.panel-header {
+.panel.collapsible .panel-header {
     cursor: pointer;
     transition: background var(--transition-fast);
 }
 
-.panel.collapsible>.panel-header:hover {
+.panel.collapsible .panel-header:hover {
     background: var(--surface-hover);
 }
 
@@ -222,7 +247,7 @@ select {
     transform: rotate(-90deg);
 }
 
-.panel.collapsed>.panel-header {
+.panel.collapsed .panel-header {
     border-bottom: none;
 }
 
@@ -340,6 +365,16 @@ select {
 .icon-mask-search {
     -webkit-mask-image: url('../resources/search.svg');
     mask-image: url('../resources/search.svg');
+}
+
+.icon-mask-camera-video {
+    -webkit-mask-image: url('../resources/camera-video.svg');
+    mask-image: url('../resources/camera-video.svg');
+}
+
+.icon-mask-camera-video-off {
+    -webkit-mask-image: url('../resources/camera-video-off.svg');
+    mask-image: url('../resources/camera-video-off.svg');
 }
 
 @media (min-width: 1101px) and (pointer: fine) {

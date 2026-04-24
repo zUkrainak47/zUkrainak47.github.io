@@ -7,6 +7,10 @@
     transition: opacity var(--transition-base), visibility var(--transition-base);
 }
 
+#inspection-voice-unlock-wrap {
+    transition: opacity var(--transition-base), visibility var(--transition-base);
+}
+
 body.solving #scramble-bar,
 body.solving #left-panel,
 body.solving #timer-info,
@@ -32,6 +36,72 @@ body.solving.camera-background-active:not(.mobile-viewport) #right-panel > :not(
 
 body.solving.camera-background-active:not(.mobile-viewport) #graph-panel {
     display: none;
+}
+
+body.solving #scramble-bar,
+body.solving #left-panel,
+body.solving:not(.camera-background-active) #right-panel,
+body.solving.mobile-viewport #right-panel,
+body.solving.camera-background-active:not(.mobile-viewport) #right-panel,
+body.zen #left-panel,
+body.zen:not(.camera-background-active) #right-panel,
+body.zen.mobile-viewport #right-panel,
+body.zen.camera-background-active:not(.mobile-viewport) #right-panel {
+    opacity: 1;
+    visibility: visible;
+}
+
+body.solving.camera-background-active:not(.mobile-viewport) #right-panel > :not(#cube-panel):not(#graph-panel),
+body.zen.camera-background-active:not(.mobile-viewport) #right-panel > :not(#cube-panel) {
+    opacity: 1;
+    visibility: visible;
+}
+
+body.solving #stats-panel::before,
+body.solving #stats-panel > .panel-shell,
+body.zen #stats-panel::before,
+body.zen #stats-panel > .panel-shell,
+body.solving:not(.camera-background-active) #right-panel .panel::before,
+body.solving:not(.camera-background-active) #right-panel .panel > .panel-shell,
+body.solving.mobile-viewport #right-panel .panel::before,
+body.solving.mobile-viewport #right-panel .panel > .panel-shell,
+body.zen:not(.camera-background-active) #right-panel .panel::before,
+body.zen:not(.camera-background-active) #right-panel .panel > .panel-shell,
+body.zen.mobile-viewport #right-panel .panel::before,
+body.zen.mobile-viewport #right-panel .panel > .panel-shell {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+body.solving #stats-panel,
+body.zen #stats-panel,
+body.solving:not(.camera-background-active) #right-panel .panel,
+body.solving.mobile-viewport #right-panel .panel,
+body.zen:not(.camera-background-active) #right-panel .panel,
+body.zen.mobile-viewport #right-panel .panel {
+    border-color: transparent;
+}
+
+body.solving.camera-background-active:not(.mobile-viewport) #right-panel > :not(#cube-panel):not(#graph-panel).panel::before,
+body.solving.camera-background-active:not(.mobile-viewport) #right-panel > :not(#cube-panel):not(#graph-panel).panel > .panel-shell,
+body.zen.camera-background-active:not(.mobile-viewport) #right-panel > :not(#cube-panel).panel::before,
+body.zen.camera-background-active:not(.mobile-viewport) #right-panel > :not(#cube-panel).panel > .panel-shell {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+body.solving.camera-background-active:not(.mobile-viewport) #right-panel > :not(#cube-panel):not(#graph-panel).panel,
+body.zen.camera-background-active:not(.mobile-viewport) #right-panel > :not(#cube-panel).panel {
+    border-color: transparent;
+}
+
+body.solving #inspection-voice-unlock-wrap,
+body.zen #inspection-voice-unlock-wrap {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
 }
 
 #app-layout {
