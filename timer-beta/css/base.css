@@ -508,7 +508,7 @@ body.zen.mobile-viewport #right-panel {
     transition: opacity 0.3s ease;
 }
 
-body.zen.camera-background-active:not(.mobile-viewport) #right-panel > :not(#cube-panel) {
+body.zen.camera-background-active:not(.mobile-viewport) #right-panel > :not(#cube-panel):not(#graph-panel) {
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.3s ease;
