@@ -52,6 +52,10 @@
     z-index: 70;
 }
 
+#btn-camera-background-toggle[hidden] {
+    display: none !important;
+}
+
 #btn-scramble-preview {
     display: none;
 }
@@ -381,6 +385,8 @@
 }
 
 #scramble-text {
+    display: block;
+    width: 100%;
     font-family: var(--font-mono);
     font-size: var(--text-lg);
     font-weight: 500;
@@ -391,6 +397,7 @@
     word-spacing: 4px;
     cursor: pointer;
     border-radius: var(--radius-sm);
+    margin-inline: auto;
     padding: 0 var(--space-xs);
     transition: background var(--transition-fast);
     overflow-wrap: break-word;
@@ -450,6 +457,7 @@
     z-index: 1;
     display: block;
     width: 100%;
+    min-width: 0;
     transition: opacity var(--transition-base), visibility var(--transition-base);
 }
 
@@ -484,6 +492,12 @@ body.camera-background-live #scramble-input {
     background: transparent;
     border-color: transparent;
     box-shadow: none;
+}
+
+body.camera-background-live #scramble-input {
+    border-width: 0;
+    min-height: 0;
+    padding: 0 var(--space-xs);
 }
 
 body.camera-background-live #scramble-text-wrapper:hover::before {
@@ -527,6 +541,7 @@ body.solving #btn-next-scramble {
     background: var(--surface);
     border: 1px solid var(--accent);
     color: var(--scramble-top-text);
+    margin-inline: auto;
     padding: 3px;
     resize: none;
     overflow: hidden;

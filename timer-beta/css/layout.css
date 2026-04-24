@@ -51,10 +51,17 @@ body.zen.camera-background-active:not(.mobile-viewport) #right-panel {
     visibility: visible;
 }
 
-body.solving.camera-background-active:not(.mobile-viewport) #right-panel > :not(#cube-panel):not(#graph-panel),
-body.zen.camera-background-active:not(.mobile-viewport) #right-panel > :not(#cube-panel) {
+body.solving.camera-background-active:not(.mobile-viewport) #right-panel > :not(#cube-panel):not(#graph-panel) {
     opacity: 1;
     visibility: visible;
+}
+
+body.zen.camera-background-active:not(.mobile-viewport) #right-panel {
+    pointer-events: none;
+}
+
+body.zen.camera-background-active:not(.mobile-viewport) #cube-panel {
+    pointer-events: auto;
 }
 
 body.solving #stats-panel::before,

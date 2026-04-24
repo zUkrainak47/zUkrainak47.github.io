@@ -2355,7 +2355,46 @@ function syncDesktopScrambleBounds() {
     const isZen = document.body.classList.contains('zen');
     let nextWidth = Math.min(scrambleBarInnerWidth, Math.round(window.innerWidth * 0.8));
 
-    if (!isZen) {
+    if (isZen) {
+        const scrambleBarRect = scrambleBar.getBoundingClientRect();
+        const centerX = scrambleBarRect.left + (scrambleBarRect.width / 2);
+        const controlGap = 16;
+        const leftLimit = scrambleBarRect.left + paddingLeft;
+        const rightLimit = scrambleBarRect.right - paddingRight;
+        const zenControls = ['btn-zen', 'btn-camera-background-toggle', 'btn-scramble-preview']
+            .map((id) => getEl(id))
+            .filter((el) => (
+                el instanceof HTMLElement
+                && !el.hidden
+                && getComputedStyle(el).display !== 'none'
+                && getComputedStyle(el).visibility !== 'hidden'
+            ));
+
+        let leftContentLimit = leftLimit;
+        let rightContentLimit = rightLimit;
+
+        zenControls.forEach((controlEl) => {
+            const controlRect = controlEl.getBoundingClientRect();
+            if (controlRect.width <= 0 || controlRect.height <= 0) return;
+
+            if (controlRect.right <= centerX) {
+                leftContentLimit = Math.max(leftContentLimit, controlRect.right + controlGap);
+                return;
+            }
+
+            if (controlRect.left >= centerX) {
+                rightContentLimit = Math.min(rightContentLimit, controlRect.left - controlGap);
+            }
+        });
+
+        const halfWidthLimit = Math.max(
+            0,
+            Math.min(centerX - leftContentLimit, rightContentLimit - centerX),
+        );
+        if (halfWidthLimit > 0) {
+            nextWidth = Math.min(nextWidth, Math.floor(halfWidthLimit * 2));
+        }
+    } else {
         const leftRect = getEl('left-panel')?.getBoundingClientRect();
         const rightRect = getEl('right-panel')?.getBoundingClientRect();
         const panelMargin = 24;
