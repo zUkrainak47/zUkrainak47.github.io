@@ -1,6 +1,6 @@
-import { formatTime, getEffectiveTime, EventEmitter } from './utils.js?v=2026042302';
-import { settings } from './settings.js?v=2026042302';
-import { parseGraphStatType } from './stats.js?v=2026042302';
+import { formatTime, getEffectiveTime, EventEmitter } from './utils.js?v=2026042401';
+import { settings } from './settings.js?v=2026042401';
+import { parseGraphStatType } from './stats.js?v=2026042401';
 
 /**
  * Time trend graph with pan/zoom controls.
