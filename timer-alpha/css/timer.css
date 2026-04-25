@@ -173,6 +173,23 @@ body.camera-background-active #center-panel > #timer-popup-overlay {
     color: #3fb950;
 }
 
+.timer-popup-info {
+    display: inline-block;
+    width: max-content;
+    max-width: min(92vw, 26em);
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    text-align: center;
+    line-height: 1.3;
+    text-transform: none;
+    letter-spacing: 0.03em;
+    font-weight: 600;
+    color: var(--accent-hover);
+    border-color: rgba(88, 166, 255, 0.45);
+    background: rgba(12, 29, 48, 0.94);
+}
+
 #timer-delta.visible {
     opacity: 1;
 }

@@ -1,19 +1,19 @@
-import { timer, State as TimerState } from './timer.js?v=2026042503';
-import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=2026042503';
-import { sessionManager } from './session.js?v=2026042503';
-import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=2026042503';
-import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=2026042503';
-import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, parseTimeInputToMs, truncateTimeDisplay } from './utils.js?v=2026042503';
-import { initModal, showSolveDetail, showAverageDetail, closeModal, closeMoveSessionMenus, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=2026042503';
-import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=2026042503';
-import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=2026042503';
-import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionData, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=2026042503';
-import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=2026042503';
-import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=2026042503';
-import { dailyStreakStore, normalizeDailyStreakGoal } from './streaks.js?v=2026042503';
-import { bluetoothTimerInput, BluetoothTimerState } from './hardware-bluetooth-timer.js?v=2026042503';
-import { stackmatInput } from './hardware-stackmat.js?v=2026042503';
-import { isHardwareTimeEntryMode, isTypingTimeEntryMode, normalizeTimeEntryMode, TIME_ENTRY_MODE_BLUETOOTH, TIME_ENTRY_MODE_STACKMAT, TIME_ENTRY_MODE_TIMER } from './time-entry.js?v=2026042503';
+import { timer, State as TimerState } from './timer.js?v=2026042504';
+import { SCRAMBLE_TYPE_OPTIONS, getScramble, getCurrentScramble, getCurrentScrambleType, getPrevScramble, getNextScramble, getSelectedScrambleType, setCurrentScramble, setScrambleType, isCurrentScrambleManual, hasPrevScramble, isViewingPreviousScramble, preloadScrambleEngines, needsCubingWarmup, runCubingWarmup } from './scramble.js?v=2026042504';
+import { sessionManager } from './session.js?v=2026042504';
+import { settings, DEFAULTS, THEME_OPTIONS, THEME_COLOR_SECTIONS, THEME_DEFAULT_ID, THEME_OLED_ID, THEME_CUSTOM_IDS, composeThemeColor, decomposeThemeColor, getThemePresetColors, isCustomThemeId } from './settings.js?v=2026042504';
+import { parseGraphStatType, parseRollingStatType, rollingStatAt, StatsCache } from './stats.js?v=2026042504';
+import { formatTime, formatSolveTime, formatTimerDisplayTime, getEffectiveTime, formatDate, formatDateTime, parseTimeInputToMs, truncateTimeDisplay } from './utils.js?v=2026042504';
+import { initModal, showSolveDetail, showAverageDetail, closeModal, closeMoveSessionMenus, customConfirm, customPrompt, getModalSelectionContext, setModalStatNavigator, setModalStatButtons, armModalGhostClickGuard } from './modal.js?v=2026042504';
+import { applyMegaminxScramble, applyPyraminxScramble, applyScramble, applySquare1Scramble, applySkewbScramble, applyClockScramble, clearCubeDisplay, drawMegaminxFacePreview, drawSquare1, drawClock, initCubeDisplay, updateCubeDisplay, updateMegaminxDisplay, updatePyraminxDisplay, updateSquare1Display, updateSkewbDisplay, updateClockDisplay } from './cube-display.js?v=2026042504';
+import { initGraph, updateGraph, updateGraphData, setLineVisibility, getLineVisibility, applyAction, graphEvents, getGraphLineDefinitions } from './graph.js?v=2026042504';
+import { closeTimeDistributionModal, initTimeDistributionModal, isTimeDistributionModalOpen, refreshTimeDistributionData, refreshTimeDistributionTheme, showTimeDistributionModal } from './distribution.js?v=2026042504';
+import { exportAll, importAll, isCsTimerFormat, importCsTimer, exportCsTimer, importSessionCsv } from './storage.js?v=2026042504';
+import { connectGoogleDrive, exportBackupToGoogleDrive, getGoogleDriveBackupInfo, hasGoogleDriveSession, importBackupFromGoogleDrive, isGoogleDriveSyncConfigured, restoreGoogleDriveSession, signOutOfGoogleDrive } from './google-drive-sync.js?v=2026042504';
+import { dailyStreakStore, normalizeDailyStreakGoal } from './streaks.js?v=2026042504';
+import { bluetoothTimerInput, BluetoothTimerState } from './hardware-bluetooth-timer.js?v=2026042504';
+import { stackmatInput } from './hardware-stackmat.js?v=2026042504';
+import { isHardwareTimeEntryMode, isTypingTimeEntryMode, normalizeTimeEntryMode, TIME_ENTRY_MODE_BLUETOOTH, TIME_ENTRY_MODE_STACKMAT, TIME_ENTRY_MODE_TIMER } from './time-entry.js?v=2026042504';
 
 let currentScramble = '';
 let currentSortCol = null;
@@ -58,10 +58,10 @@ let importProgressState = {
 };
 let importProgressHideTimeout = null;
 let dailyStreakToastHideTimeout = null;
-
 const statsCache = new StatsCache();
 let _skipSolveAddedRefresh = false; // set true when commitSolve manages the refresh itself
 const DAILY_STREAKS_INTRO_STORAGE_KEY = 'ukratimer_daily_streaks_intro_v1';
+const GOOGLE_DRIVE_BACKUP_REMINDER_INTERVAL_SOLVES = 100;
 const THEME_EDITOR_MODE_SIMPLE = 'simple';
 const THEME_EDITOR_MODE_FULL = 'full';
 const SIMPLE_THEME_COLOR_SECTIONS = Object.freeze([
@@ -246,7 +246,7 @@ async function registerServiceWorker() {
     if (window.location?.protocol === 'file:') return;
 
     try {
-        const serviceWorkerUrl = new URL('../sw.js?v=2026042503', import.meta.url);
+        const serviceWorkerUrl = new URL('../sw.js?v=2026042504', import.meta.url);
         await navigator.serviceWorker.register(serviceWorkerUrl);
     } catch (error) {
         console.warn('Service worker registration failed:', error);
@@ -264,6 +264,7 @@ const popupState = {
     newBest: { elementId: 'new-best-alert', hideTimeout: null, clearTimeout: null },
     penaltyShortcut: { elementId: 'penalty-shortcut-alert', hideTimeout: null, clearTimeout: null },
     hardwareTimer: { elementId: 'hardware-timer-alert', hideTimeout: null, clearTimeout: null },
+    backupReminder: { elementId: 'backup-reminder-alert', hideTimeout: null, clearTimeout: null },
 };
 const TIMER_POPUP_ACTIVE_CLASS = 'timer-popup-active';
 const TIMER_POPUP_ELEMENT_IDS = [
@@ -271,6 +272,7 @@ const TIMER_POPUP_ELEMENT_IDS = [
     'new-best-alert',
     'penalty-shortcut-alert',
     'hardware-timer-alert',
+    'backup-reminder-alert',
     'cubing-warmup-alert',
     'import-progress',
 ];
@@ -341,6 +343,85 @@ function waitForNextPaint() {
 
         setTimeout(resolve, 0);
     });
+}
+
+function normalizeNonNegativeInteger(value, fallback = 0) {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed < 0) return fallback;
+    return Math.floor(parsed);
+}
+
+function getTotalSolveCount() {
+    return sessionManager.getSessions().reduce((total, session) => (
+        total + normalizeNonNegativeInteger(session?.solveCount, 0)
+    ), 0);
+}
+
+function countBackupSolveTotal(data) {
+    return Array.isArray(data?.sessions)
+        ? data.sessions.reduce((total, session) => (
+            total + (Array.isArray(session?.solves) ? session.solves.length : 0)
+        ), 0)
+        : 0;
+}
+
+function getGoogleDriveBackupCheckpointSolveCount() {
+    return normalizeNonNegativeInteger(settings.get('googleDriveBackupCheckpointSolveCount'), 0);
+}
+
+function getGoogleDriveBackupLastReminderSolveCount(checkpointSolveCount = getGoogleDriveBackupCheckpointSolveCount()) {
+    return Math.max(
+        checkpointSolveCount,
+        normalizeNonNegativeInteger(settings.get('googleDriveBackupLastReminderSolveCount'), checkpointSolveCount),
+    );
+}
+
+function buildGoogleDriveBackupCheckpointSettings(baseSettings, totalSolveCount) {
+    const normalizedTotalSolveCount = normalizeNonNegativeInteger(totalSolveCount, 0);
+    return {
+        ...(baseSettings && typeof baseSettings === 'object' ? baseSettings : {}),
+        googleDriveBackupCheckpointSolveCount: normalizedTotalSolveCount,
+        googleDriveBackupLastReminderSolveCount: normalizedTotalSolveCount,
+    };
+}
+
+function stampGoogleDriveBackupCheckpoint(data, totalSolveCount) {
+    const nextData = data && typeof data === 'object' ? data : {};
+    const baseSettings = nextData.settings && typeof nextData.settings === 'object'
+        ? nextData.settings
+        : settings.getAll();
+    return {
+        ...nextData,
+        settings: buildGoogleDriveBackupCheckpointSettings(baseSettings, totalSolveCount),
+    };
+}
+
+function persistGoogleDriveBackupCheckpoint(totalSolveCount = getTotalSolveCount()) {
+    const normalizedTotalSolveCount = normalizeNonNegativeInteger(totalSolveCount, 0);
+    settings.set('googleDriveBackupCheckpointSolveCount', normalizedTotalSolveCount);
+    settings.set('googleDriveBackupLastReminderSolveCount', normalizedTotalSolveCount);
+}
+
+async function maybeShowGoogleDriveBackupReminder() {
+    if (!settings.get('googleDriveBackupReminderEvery100Solves')) return;
+
+    const totalSolveCount = getTotalSolveCount();
+    const checkpointSolveCount = getGoogleDriveBackupCheckpointSolveCount();
+    const solvesSinceCheckpoint = Math.max(0, totalSolveCount - checkpointSolveCount);
+
+    if (solvesSinceCheckpoint < GOOGLE_DRIVE_BACKUP_REMINDER_INTERVAL_SOLVES) return;
+
+    const latestReminderMilestone = checkpointSolveCount
+        + Math.floor(solvesSinceCheckpoint / GOOGLE_DRIVE_BACKUP_REMINDER_INTERVAL_SOLVES) * GOOGLE_DRIVE_BACKUP_REMINDER_INTERVAL_SOLVES;
+
+    if (latestReminderMilestone <= getGoogleDriveBackupLastReminderSolveCount(checkpointSolveCount)) return;
+
+    settings.set('googleDriveBackupLastReminderSolveCount', latestReminderMilestone);
+    showPopup(
+        'backupReminder',
+        `${solvesSinceCheckpoint.toLocaleString()} solves since your last Google Drive backup`,
+        5200,
+    );
 }
 
 function formatBulkActionProgressText(snapshot = bulkActionProgressState) {
@@ -1399,7 +1480,7 @@ function syncCameraBackgroundSettingControls() {
     } else if (cameraBackgroundState.pending) {
         status.textContent = 'Requesting camera access...';
     } else if (shouldShowCameraBackgroundToggleButton() && isCameraBackgroundSuspended()) {
-        status.textContent = 'Camera background is enabled, but the live feed is temporarily hidden.';
+        status.textContent = 'Camera background is enabled, live feed temporarily hidden.';
     } else if (document.body.classList.contains('camera-background-live')) {
         status.textContent = 'Live camera feed is active.';
     } else {
@@ -3726,6 +3807,7 @@ async function init() {
         dailyStreakStore.upsertSolve(solve);
         refreshSessionList();
         if (!_skipSolveAddedRefresh) refreshUI();
+        void maybeShowGoogleDriveBackupReminder();
     });
     sessionManager.on('solveUpdated', (solve) => {
         dailyStreakStore.upsertSolve(solve);
@@ -11310,6 +11392,7 @@ function initSettingsPanel() {
     const googleDriveAccountBtn = document.getElementById('btn-google-drive-account');
     const googleDriveExportBtn = document.getElementById('btn-google-drive-export');
     const googleDriveImportBtn = document.getElementById('btn-google-drive-import');
+    const googleDriveBackupReminderToggle = document.getElementById('setting-google-drive-backup-reminder');
     let googleDriveBusy = false;
 
     const setGoogleDriveStatus = (message, tone = '') => {
@@ -11337,6 +11420,13 @@ function initSettingsPanel() {
         setGoogleDriveStatus('Google Drive needs permission again. Reconnect your account to continue.');
         return false;
     };
+
+    if (googleDriveBackupReminderToggle) {
+        googleDriveBackupReminderToggle.checked = settings.get('googleDriveBackupReminderEvery100Solves') === true;
+        googleDriveBackupReminderToggle.onchange = () => {
+            settings.set('googleDriveBackupReminderEvery100Solves', googleDriveBackupReminderToggle.checked);
+        };
+    }
 
     const syncGoogleDriveAccountButton = () => {
         if (!googleDriveAccountBtn) return;
@@ -11447,8 +11537,10 @@ function initSettingsPanel() {
 
             try {
                 if (!(await ensureGoogleDriveSession())) return;
-                const data = await exportAll();
+                const totalSolveCount = getTotalSolveCount();
+                const data = stampGoogleDriveBackupCheckpoint(await exportAll(), totalSolveCount);
                 const savedFile = await exportBackupToGoogleDrive(data);
+                persistGoogleDriveBackupCheckpoint(totalSolveCount);
                 const modifiedAt = savedFile?.modifiedTime ? Date.parse(savedFile.modifiedTime) : Date.now();
                 setGoogleDriveStatus(`Cloud backup updated ${formatDateTime(modifiedAt)}.`, 'success');
             } catch (error) {
@@ -11481,6 +11573,8 @@ function initSettingsPanel() {
                 if (!data || typeof data !== 'object') {
                     throw new Error('Google Drive backup is missing timer data.');
                 }
+
+                data = stampGoogleDriveBackupCheckpoint(data, countBackupSolveTotal(data));
 
                 closeSettingsPanel({ isPopState: true });
 

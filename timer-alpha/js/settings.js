@@ -1,6 +1,6 @@
-import { load, save } from './storage.js?v=2026042503';
-import { normalizeTimeEntryMode, TIME_ENTRY_MODE_TIMER, TIME_ENTRY_MODE_TYPING } from './time-entry.js?v=2026042503';
-import { EventEmitter } from './utils.js?v=2026042503';
+import { load, save } from './storage.js?v=2026042504';
+import { normalizeTimeEntryMode, TIME_ENTRY_MODE_TIMER, TIME_ENTRY_MODE_TYPING } from './time-entry.js?v=2026042504';
+import { EventEmitter } from './utils.js?v=2026042504';
 
 export const THEME_DEFAULT_ID = 'default';
 export const THEME_OLED_ID = 'oled';
@@ -442,6 +442,9 @@ const DEFAULTS = {
     centerTimer: true,
     hideUIWhileSolving: true,
     backgroundSpacebarEnabled: false,
+    googleDriveBackupReminderEvery100Solves: false,
+    googleDriveBackupCheckpointSolveCount: 0,
+    googleDriveBackupLastReminderSolveCount: 0,
     cameraBackgroundEnabled: false,
     cameraBackgroundSuspended: false,
     // Legacy global background fields kept for migration and older imports.
