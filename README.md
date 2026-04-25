@@ -1,4 +1,4 @@
-# https://zukrainak47.github.io/timer/
+# https://ukratimer.com/
 <!-- ### This calculator will tell you how many more wishes you will need to guarantee any combination of 5-star characters and weapons based on your pity, primogems etc.
 ### You will also be presented a graph showing the probabilities for lower amounts of additional wishes, the odds are calculated based on all possible 50/50 wins/losses combinations. (Capturing radiance makes this 55/45 for the character banner, assumed for simplicity)
 ### There's also support for a 2nd account for those who need that. You can enable it as well as tweak some other parameters in the settings!
