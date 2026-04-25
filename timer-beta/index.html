@@ -342,6 +342,7 @@
         <span id="new-best-alert" class="timer-popup timer-popup-best" aria-live="polite"></span>
         <span id="penalty-shortcut-alert" class="timer-popup timer-popup-danger" aria-live="polite"></span>
         <span id="hardware-timer-alert" class="timer-popup" aria-live="polite"></span>
+        <span id="backup-reminder-alert" class="timer-popup timer-popup-info" aria-live="polite"></span>
         <span id="cubing-warmup-alert" class="timer-popup" aria-live="polite"></span>
         <div id="import-progress" class="timer-popup timer-popup-progress" hidden aria-live="polite">
           <div class="operation-progress-row">
@@ -1234,6 +1235,16 @@
           </button>
           <div class="setting-group-content">
             <div class="setting-row">
+              <div class="setting-label">
+                Google Drive backup reminder
+                <small>Reminder to cloud save every 100 solves</small>
+              </div>
+              <label class="toggle">
+                <input type="checkbox" id="setting-google-drive-backup-reminder">
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+            <div class="setting-row setting-row-no-divider">
               <div class="setting-label">
                 Google Drive backup
                 <small id="google-drive-status">Add a Google OAuth client ID in <code>index.html</code> to enable cloud

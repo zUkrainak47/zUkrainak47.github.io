@@ -442,6 +442,9 @@ const DEFAULTS = {
     centerTimer: true,
     hideUIWhileSolving: true,
     backgroundSpacebarEnabled: false,
+    googleDriveBackupReminderEvery100Solves: false,
+    googleDriveBackupCheckpointSolveCount: 0,
+    googleDriveBackupLastReminderSolveCount: 0,
     cameraBackgroundEnabled: false,
     cameraBackgroundSuspended: false,
     // Legacy global background fields kept for migration and older imports.

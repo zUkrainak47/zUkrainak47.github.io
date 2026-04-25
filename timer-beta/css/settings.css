@@ -161,6 +161,10 @@
     border-bottom: none;
 }
 
+.setting-row.setting-row-no-divider {
+    border-bottom: none;
+}
+
 #setting-hardware-input-row[hidden],
 #setting-stackmat-device-row[hidden],
 #setting-camera-background-row[hidden] {
