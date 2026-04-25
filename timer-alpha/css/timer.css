@@ -65,6 +65,7 @@ body.camera-background-active #center-panel > #timer-popup-overlay {
     text-transform: uppercase;
     transition: opacity var(--transition-base), transform var(--transition-base);
     white-space: nowrap;
+    z-index: 1;
 }
 
 .timer-popup.visible {
@@ -188,6 +189,10 @@ body.camera-background-active #center-panel > #timer-popup-overlay {
     color: var(--accent-hover);
     border-color: rgba(88, 166, 255, 0.45);
     background: rgba(12, 29, 48, 0.94);
+}
+
+#backup-reminder-alert {
+    z-index: 0;
 }
 
 #timer-delta.visible {

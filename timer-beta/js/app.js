@@ -1480,7 +1480,7 @@ function syncCameraBackgroundSettingControls() {
     } else if (cameraBackgroundState.pending) {
         status.textContent = 'Requesting camera access...';
     } else if (shouldShowCameraBackgroundToggleButton() && isCameraBackgroundSuspended()) {
-        status.textContent = 'Camera background is enabled, live feed    temporarily hidden.';
+        status.textContent = 'Camera background is enabled, live feed temporarily hidden.';
     } else if (document.body.classList.contains('camera-background-live')) {
         status.textContent = 'Live camera feed is active.';
     } else {
