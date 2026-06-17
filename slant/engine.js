@@ -246,18 +246,10 @@
   }
 
   function captureThumbnail() {
-    // Compute bounding box across all layers
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    function expand(x1, y1, x2, y2) { minX = Math.min(minX, x1, x2); minY = Math.min(minY, y1, y2); maxX = Math.max(maxX, x1, x2); maxY = Math.max(maxY, y1, y2); }
-    for (const l of layers) {
-      for (const [k] of l.diagonals) { const [cx, cy] = k.split(",").map(Number); expand(cx * CELL, cy * CELL, (cx + 1) * CELL, (cy + 1) * CELL); }
-      for (const [k] of l.numbers) { const [ix, iy] = k.split(",").map(Number); expand(ix * CELL - 12, iy * CELL - 12, ix * CELL + 12, iy * CELL + 12); }
-      for (const [k] of l.highlights) { const [cx, cy] = k.split(",").map(Number); expand(cx * CELL, cy * CELL, (cx + 1) * CELL, (cy + 1) * CELL); }
-      for (const a of l.arrows) { const s = arrowAnchor(a.cx1, a.cy1), e = arrowAnchor(a.cx2, a.cy2); expand(s.wx, s.wy, e.wx, e.wy); }
-    }
-    if (minX === Infinity) return "";
-    const pad = CELL; minX -= pad; minY -= pad; maxX += pad; maxY += pad;
-    const vw = maxX - minX, vh = maxY - minY, c = tc();
+    // Use the current viewport (what you see on screen) as the thumbnail
+    const cw = W / dpr, ch = H / dpr;
+    const minX = camX - cw / (2 * zoom), minY = camY - ch / (2 * zoom);
+    const vw = cw / zoom, vh = ch / zoom, c = tc();
     const parts = [`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${minX} ${minY} ${vw} ${vh}" preserveAspectRatio="xMidYMid meet">`];
     parts.push(`<rect x="${minX}" y="${minY}" width="${vw}" height="${vh}" fill="${c.bg}"/>`);
     // Highlights
