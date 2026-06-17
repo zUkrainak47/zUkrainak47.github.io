@@ -966,7 +966,7 @@
     for (const l of layers) { if (!l.visible) continue; for (const [k, dir] of l.diagonals) { const [cx, cy] = k.split(",").map(Number); const x1 = dir === 1 ? cx * CELL : (cx + 1) * CELL, y1 = cy * CELL, x2 = dir === 1 ? (cx + 1) * CELL : cx * CELL, y2 = (cy + 1) * CELL; parts.push(`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${c.diag}" stroke-width="2.5" stroke-linecap="round"/>`); } }
     // Arrows
     const hl = 10;
-    for (const l of layers) { if (!l.visible) continue; for (const a of l.arrows) { const s = arrowAnchor(a.cx1, a.cy1), e = arrowAnchor(a.cx2, a.cy2); const col = resolveArrowColour(a.colour); const ang = Math.atan2(e.wy - s.wy, e.wx - s.wx); const lex = e.wx - hl * .5 * Math.cos(ang), ley = e.wy - hl * .5 * Math.sin(ang); parts.push(`<line x1="${s.wx}" y1="${s.wy}" x2="${lex}" y2="${ley}" stroke="${col}" stroke-width="2.5" stroke-linecap="round"/>`); const p1x = e.wx - hl * Math.cos(ang - Math.PI / 6), p1y = e.wy - hl * Math.sin(ang - Math.PI / 6), p2x = e.wx - hl * Math.cos(ang + Math.PI / 6), p2y = e.wy - hl * Math.sin(ang + Math.PI / 6); parts.push(`<polygon points="${e.wx},${e.wy} ${p1x},${p1y} ${p2x},${p2y}" fill="${col}"/>`); } }
+    for (const l of layers) { if (!l.visible) continue; for (const a of l.arrows) { const s = arrowAnchor(a.cx1, a.cy1), e = arrowAnchor(a.cx2, a.cy2); const col = resolveArrowColour(a.colour); const ang = Math.atan2(e.wy - s.wy, e.wx - s.wx); const lex = e.wx - hl * Math.cos(ang), ley = e.wy - hl * Math.sin(ang); parts.push(`<line x1="${s.wx}" y1="${s.wy}" x2="${lex}" y2="${ley}" stroke="${col}" stroke-width="2.5" stroke-linecap="round"/>`); const p1x = e.wx - hl * Math.cos(ang - Math.PI / 6), p1y = e.wy - hl * Math.sin(ang - Math.PI / 6), p2x = e.wx - hl * Math.cos(ang + Math.PI / 6), p2y = e.wy - hl * Math.sin(ang + Math.PI / 6); parts.push(`<polygon points="${e.wx},${e.wy} ${p1x},${p1y} ${p2x},${p2y}" fill="${col}" stroke="${col}" stroke-width="1.2" stroke-linejoin="round"/>`); } }
     // Numbers
     for (const l of layers) { if (!l.visible) continue; for (const [k, num] of l.numbers) { const [ix, iy] = k.split(",").map(Number); const x = ix * CELL, y = iy * CELL; if (numberStyle === "slope") { if (num === 0) { parts.push(`<circle cx="${x}" cy="${y}" r="${CELL * 0.1}" fill="${c.diag}"/>`); } else { const slope = NUM_SLOPES[num]; if (slope !== undefined) { let dx, dy; if (Math.abs(slope) <= 1) { dx = CELL / 2; dy = slope * dx; } else { dy = (CELL / 2) * Math.sign(slope); dx = Math.abs(dy / slope); } parts.push(`<line x1="${x - dx}" y1="${y + dy}" x2="${x + dx}" y2="${y - dy}" stroke="${c.diag}" stroke-width="2.5" stroke-linecap="round"/>`); } } } else { const r = 10; parts.push(`<circle cx="${x}" cy="${y}" r="${r}" fill="${c.numBg}" stroke="${c.numBdr}" stroke-width="1"/>`); parts.push(`<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central" fill="${c.num}" font-family="Inter,sans-serif" font-weight="600" font-size="14">${num}</text>`); } } }
     parts.push(`</svg>`);
@@ -1157,14 +1157,17 @@
 
   function drawArrowShape(x1, y1, x2, y2, col, lw) {
     const hl = 10 * Math.min(zoom, 2), ang = Math.atan2(y2 - y1, x2 - x1);
-    // Shorten line so it ends inside the arrowhead, preventing round cap from overshooting
-    const lineEndX = x2 - hl * 0.5 * Math.cos(ang), lineEndY = y2 - hl * 0.5 * Math.sin(ang);
+    // Inset start so round cap doesn't overshoot the anchor (prevents opposing arrow bleed)
+    const startX = x1 + (lw / 2) * Math.cos(ang), startY = y1 + (lw / 2) * Math.sin(ang);
+    // Shorten end to sit firmly inside the arrowhead triangle
+    const baseX = x2 - hl * 0.7 * Math.cos(ang), baseY = y2 - hl * 0.7 * Math.sin(ang);
     ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = lw; ctx.lineCap = "round"; ctx.lineJoin = "round";
-    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(lineEndX, lineEndY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(startX, startY); ctx.lineTo(baseX, baseY); ctx.stroke();
+    // Draw arrowhead triangle (filled + stroked to fully cover any overlapping lines)
     ctx.beginPath(); ctx.moveTo(x2, y2);
     ctx.lineTo(x2 - hl * Math.cos(ang - Math.PI / 6), y2 - hl * Math.sin(ang - Math.PI / 6));
     ctx.lineTo(x2 - hl * Math.cos(ang + Math.PI / 6), y2 - hl * Math.sin(ang + Math.PI / 6));
-    ctx.closePath(); ctx.fill(); ctx.lineCap = "butt";
+    ctx.closePath(); ctx.fill(); ctx.lineWidth = lw * 0.5; ctx.stroke(); ctx.lineCap = "butt";
   }
 
   function resolveArrowColour(c) { return c === "theme" ? themeArrowColor() : c; }
