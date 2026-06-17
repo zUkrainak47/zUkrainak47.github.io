@@ -394,6 +394,13 @@ body {
   font-weight: 400
 }
 
+.tool-btn .tool-hotkey.duplicate {
+  color: var(--danger);
+  opacity: 1;
+  font-weight: 600
+}
+
+
 /* ── Diagonal direction sub-buttons ── */
 .tool-row-diag {
   display: flex;
@@ -834,6 +841,18 @@ body {
   color: var(--accent);
   animation: pulse 1s infinite
 }
+
+.hotkey-row__key.duplicate {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 8%, transparent)
+}
+
+.hotkey-row__key.duplicate:hover {
+  border-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 15%, transparent)
+}
+
 
 @keyframes pulse {
 

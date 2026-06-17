@@ -690,15 +690,27 @@
   // ═══ HOTKEYS ════════════════════════════════════
   function loadHotkeys() { try { const r = localStorage.getItem(STORE_HOTKEYS); if (r) hotkeys = { ...DEFAULT_HOTKEYS, ...JSON.parse(r) }; } catch { } }
   function saveHotkeys() { localStorage.setItem(STORE_HOTKEYS, JSON.stringify(hotkeys)); }
+  function getHotkeyCounts() {
+    const counts = {};
+    for (const act of HOTKEY_ACTIONS) {
+      const val = (hotkeys[act.id] || "").toLowerCase();
+      if (val) counts[val] = (counts[val] || 0) + 1;
+    }
+    return counts;
+  }
   function updateToolTitles() {
+    const counts = getHotkeyCounts();
     document.querySelectorAll(".tool-btn[data-tool]").forEach(b => {
       const t = b.dataset.tool, hk = hotkeys[t];
       b.title = `${b.querySelector("span").textContent} (${hk ? hk.toUpperCase() : "—"})`;
       let badge = b.querySelector(".tool-hotkey");
       if (!badge) { badge = document.createElement("span"); badge.className = "tool-hotkey"; b.appendChild(badge); }
       badge.textContent = hk ? hk.toUpperCase() : "";
+      const isDuplicate = hk && counts[hk.toLowerCase()] > 1;
+      badge.classList.toggle("duplicate", !!isDuplicate);
     });
   }
+
 
 
   function updateToolNamesForShift(isShift) {
@@ -1693,10 +1705,13 @@
   function openHotkeyModal() { populateHotkeyList(); $("hotkey-modal").showModal(); }
   function populateHotkeyList() {
     const list = $("hotkey-list"); list.innerHTML = "";
+    const counts = getHotkeyCounts();
     for (const act of HOTKEY_ACTIONS) {
       const row = document.createElement("div"); row.className = "hotkey-row";
       const label = document.createElement("span"); label.className = "hotkey-row__label"; label.textContent = act.label;
-      const btn = document.createElement("button"); btn.className = "hotkey-row__key" + (recordingAction === act.id ? " recording" : "");
+      const hk = (hotkeys[act.id] || "").toLowerCase();
+      const isDuplicate = hk && counts[hk] > 1;
+      const btn = document.createElement("button"); btn.className = "hotkey-row__key" + (recordingAction === act.id ? " recording" : "") + (isDuplicate ? " duplicate" : "");
       btn.textContent = recordingAction === act.id ? "Press a key…" : (hotkeys[act.id] || "—").toUpperCase();
 
 
