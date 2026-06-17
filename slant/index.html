@@ -101,6 +101,13 @@
           </svg>
           <span>Highlight</span>
         </button>
+        <button class="tool-btn" data-tool="line" title="Place Line">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="4" y1="6" x2="20" y2="6" stroke-linecap="round" />
+            <line x1="18" y1="4" x2="18" y2="20" stroke-linecap="round" />
+          </svg>
+          <span>Line</span>
+        </button>
       </div>
     </div>
 
@@ -156,6 +163,19 @@
         <button class="colour-btn" data-colour="#cc5de8" style="--swatch:#cc5de8" title="Purple"></button>
         <button class="colour-btn" id="arrow-last-colour" data-colour="theme" style="--swatch:#e8e8e8"
           title="White"></button>
+      </div>
+    </div>
+
+    <!-- Line colour sub-panel -->
+    <div class="toolbar-group" id="line-panel" style="display:none;">
+      <label class="toolbar-label">Line Colour</label>
+      <div class="colour-buttons">
+        <button class="colour-btn" data-colour="theme" id="line-theme-colour" style="--swatch:#2a2a3e" title="Default"></button>
+        <button class="colour-btn active" data-colour="#ff6b6b" style="--swatch:#ff6b6b" title="Red"></button>
+        <button class="colour-btn" data-colour="#51cf66" style="--swatch:#51cf66" title="Green"></button>
+        <button class="colour-btn" data-colour="#339af0" style="--swatch:#339af0" title="Blue"></button>
+        <button class="colour-btn" data-colour="#fcc419" style="--swatch:#fcc419" title="Yellow"></button>
+        <button class="colour-btn" data-colour="#cc5de8" style="--swatch:#cc5de8" title="Purple"></button>
       </div>
     </div>
 

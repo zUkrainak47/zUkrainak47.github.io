@@ -29,8 +29,9 @@
     { id: "number", label: "Number" },
     { id: "arrow", label: "Arrow" },
     { id: "highlight", label: "Highlight" },
+    { id: "line", label: "Line" },
   ];
-  const DEFAULT_HOTKEYS = { select: "v", diagonal: "d", diagFwd: "q", diagBwd: "e", flipDiag: "f", number: "n", arrow: "a", highlight: "h" };
+  const DEFAULT_HOTKEYS = { select: "v", diagonal: "d", diagFwd: "q", diagBwd: "e", flipDiag: "f", number: "n", arrow: "a", highlight: "h", line: "l" };
 
   const EYE_OPEN = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
   const EYE_SHUT = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
@@ -49,7 +50,10 @@
   let diagonalDir = null; // null=cycle, 1=\, -1=/
   let highlightColour = "#ff6b6b40";
   let arrowColour = "#ff6b6b";
+  let lineColour = "#ff6b6b";
   function themeArrowColor() { return document.documentElement.dataset.theme !== "light" ? "#e8e8e8" : "#2a2a3e"; }
+  function themeLineColor() { return document.documentElement.dataset.theme !== "light" ? "#e8e8e8" : "#2a2a3e"; }
+  function resolveLineColour(c) { return c === "theme" ? themeLineColor() : c; }
 
   // Layers
   let layers = [];
@@ -64,7 +68,8 @@
   // Drag / pan
   let dragging = false, dragStartX = 0, dragStartY = 0, camStartX = 0, camStartY = 0;
   let pointerDown = false, didDrag = false;
-  let lastPaintedCell = null, lastPaintedHighlight = null;
+  let lastPaintedCell = null, lastPaintedHighlight = null, lastPaintedLine = null, lastPaintedLineCoord = null;
+  let lineDragOrient = null, lineDragFixed = null; // lock orientation+axis during drag
 
   // Canvas management
   let manifest = { activeId: null, canvases: [] };
@@ -79,7 +84,7 @@
     return {
       id: genId(), name: name || `Layer ${layers.length + 1}`,
       visible: true, diagonals: new Map(), numbers: new Map(),
-      highlights: new Map(), arrows: [],
+      highlights: new Map(), arrows: [], lines: new Map(),
     };
   }
   function L() { return layers[activeLayerIdx]; } // active layer shorthand
@@ -118,6 +123,13 @@
       // If active arrow colour is theme-dependent, keep it as sentinel
       if (arrowColour === "theme" || arrowColour === "#e8e8e8" || arrowColour === "#2a2a3e") arrowColour = "theme";
     }
+    // Update line theme colour swatch
+    const lineThemeBtn = $("line-theme-colour");
+    if (lineThemeBtn) {
+      const col = t === "dark" ? "#e8e8e8" : "#2a2a3e";
+      lineThemeBtn.style.setProperty("--swatch", col);
+      lineThemeBtn.title = t === "dark" ? "White" : "Black";
+    }
     requestDraw();
   }
   function toggleTheme() { applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"); }
@@ -125,12 +137,26 @@
   // ═══ HELPERS ════════════════════════════════════
   function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
   function key(a, b) { return `${a},${b}`; }
+  function lineKey(orient, a, b) { return `${orient},${a},${b}`; }
   function screenToWorld(sx, sy) { return { x: (sx - W / (2 * dpr)) / zoom + camX, y: (sy - H / (2 * dpr)) / zoom + camY }; }
   function worldToScreen(wx, wy) { return { x: (wx - camX) * zoom + W / (2 * dpr), y: (wy - camY) * zoom + H / (2 * dpr) }; }
   function nearestInt(wx, wy) { return { ix: Math.round(wx / CELL), iy: Math.round(wy / CELL) }; }
   function worldToCell(wx, wy) { return { cx: Math.floor(wx / CELL), cy: Math.floor(wy / CELL) }; }
   function arrowAnchor(cx, cy) { return { wx: cx * CELL + CELL * ARROW_X, wy: cy * CELL + CELL * ARROW_Y }; }
   function escHtml(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+
+  // Nearest cell edge to a world-space point. Returns { orient: "h"|"v", cx, cy }
+  function nearestEdge(wx, wy) {
+    const cx = Math.floor(wx / CELL), cy = Math.floor(wy / CELL);
+    const fx = (wx / CELL) - cx, fy = (wy / CELL) - cy; // fractional pos within cell
+    // Distances to each edge
+    const dTop = fy, dBot = 1 - fy, dLeft = fx, dRight = 1 - fx;
+    const min = Math.min(dTop, dBot, dLeft, dRight);
+    if (min === dTop) return { orient: "h", cx, cy };       // top edge of this cell
+    if (min === dBot) return { orient: "h", cx, cy: cy + 1 }; // bottom edge = top edge of cell below
+    if (min === dLeft) return { orient: "v", cx, cy };      // left edge of this cell
+    return { orient: "v", cx: cx + 1, cy };                  // right edge = left edge of cell to the right
+  }
 
   // ═══ UNDO / REDO (global) ══════════════════════
   function pushUndo(action) {
@@ -172,11 +198,12 @@
   function saveActiveCanvas() {
     const id = manifest.activeId; if (!id) return;
     const data = {
-      version: 2, camera: { x: camX, y: camY, zoom },
+      version: 3, camera: { x: camX, y: camY, zoom },
       layers: layers.map(l => ({
         id: l.id, name: l.name, visible: l.visible,
         diagonals: [...l.diagonals.entries()], numbers: [...l.numbers.entries()],
-        highlights: [...l.highlights.entries()], arrows: l.arrows.slice()
+        highlights: [...l.highlights.entries()], arrows: l.arrows.slice(),
+        lines: [...l.lines.entries()],
       })),
       activeLayerIdx,
     };
@@ -198,6 +225,7 @@
             if (ld.numbers) for (const [k, v] of ld.numbers) l.numbers.set(k, v);
             if (ld.highlights) for (const [k, v] of ld.highlights) l.highlights.set(k, v);
             if (ld.arrows) l.arrows.push(...ld.arrows);
+            if (ld.lines) for (const [k, v] of ld.lines) l.lines.set(k, v);
             return l;
           });
           activeLayerIdx = d.activeLayerIdx || 0;
@@ -254,6 +282,8 @@
     parts.push(`<rect x="${minX}" y="${minY}" width="${vw}" height="${vh}" fill="${c.bg}"/>`);
     // Highlights
     for (const l of layers) { if (!l.visible) continue; for (const [k, col] of l.highlights) { const [cx, cy] = k.split(",").map(Number); parts.push(`<rect x="${cx * CELL}" y="${cy * CELL}" width="${CELL}" height="${CELL}" fill="${col}"/>`); } }
+    // Lines
+    for (const l of layers) { if (!l.visible) continue; for (const [k, col] of l.lines) { const parts2 = k.split(","); const orient = parts2[0], ex = +parts2[1], ey = +parts2[2]; const rc = col === "theme" ? c.diag : col; if (orient === "h") { parts.push(`<line x1="${ex * CELL}" y1="${ey * CELL}" x2="${(ex + 1) * CELL}" y2="${ey * CELL}" stroke="${rc}" stroke-width="2.5" stroke-linecap="round"/>`); } else { parts.push(`<line x1="${ex * CELL}" y1="${ey * CELL}" x2="${ex * CELL}" y2="${(ey + 1) * CELL}" stroke="${rc}" stroke-width="2.5" stroke-linecap="round"/>`); } } }
     // Diagonals
     for (const l of layers) { if (!l.visible) continue; for (const [k, dir] of l.diagonals) { const [cx, cy] = k.split(",").map(Number); const x1 = dir === 1 ? cx * CELL : (cx + 1) * CELL, y1 = cy * CELL, x2 = dir === 1 ? (cx + 1) * CELL : cx * CELL, y2 = (cy + 1) * CELL; parts.push(`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${c.diag}" stroke-width="2.5" stroke-linecap="round"/>`); } }
     // Arrows
@@ -324,6 +354,7 @@
     drawGrid(c, cw, ch);
     // Per‑layer rendering (bottom to top)
     for (let i = 0; i < layers.length; i++) { const l = layers[i]; if (!l.visible) continue; const dim = isolateLayer && i !== activeLayerIdx; if (dim) ctx.globalAlpha = .15; drawLayerHighlights(l, cw, ch); if (dim) ctx.globalAlpha = 1; }
+    for (let i = 0; i < layers.length; i++) { const l = layers[i]; if (!l.visible) continue; const dim = isolateLayer && i !== activeLayerIdx; if (dim) ctx.globalAlpha = .15; drawLayerLines(c, l, cw, ch); if (dim) ctx.globalAlpha = 1; }
     for (let i = 0; i < layers.length; i++) { const l = layers[i]; if (!l.visible) continue; const dim = isolateLayer && i !== activeLayerIdx; if (dim) ctx.globalAlpha = .15; drawLayerDiagonals(c, l, cw, ch); if (dim) ctx.globalAlpha = 1; }
     for (let i = 0; i < layers.length; i++) { const l = layers[i]; if (!l.visible) continue; const dim = isolateLayer && i !== activeLayerIdx; if (dim) ctx.globalAlpha = .15; drawLayerArrows(l, cw, ch); if (dim) ctx.globalAlpha = 1; }
     for (let i = 0; i < layers.length; i++) { const l = layers[i]; if (!l.visible) continue; const dim = isolateLayer && i !== activeLayerIdx; if (dim) ctx.globalAlpha = .15; drawLayerNumbers(c, l, cw, ch); if (dim) ctx.globalAlpha = 1; }
@@ -340,6 +371,23 @@
   }
 
   function drawLayerHighlights(l, cw, ch) { for (const [k, col] of l.highlights) { const [cx, cy] = k.split(",").map(Number); const sx = (cx * CELL - camX) * zoom + cw / 2, sy = (cy * CELL - camY) * zoom + ch / 2, sz = CELL * zoom; ctx.fillStyle = col; ctx.fillRect(sx, sy, sz, sz); } }
+
+  function drawLayerLines(c, l, cw, ch) {
+    ctx.lineCap = "round"; ctx.lineWidth = Math.max(2, 2.5 * Math.min(zoom, 2));
+    for (const [k, col] of l.lines) {
+      const parts = k.split(","); const orient = parts[0], ex = +parts[1], ey = +parts[2];
+      ctx.strokeStyle = resolveLineColour(col);
+      const sz = CELL * zoom;
+      if (orient === "h") {
+        const sx = (ex * CELL - camX) * zoom + cw / 2, sy = (ey * CELL - camY) * zoom + ch / 2;
+        ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx + sz, sy); ctx.stroke();
+      } else {
+        const sx = (ex * CELL - camX) * zoom + cw / 2, sy = (ey * CELL - camY) * zoom + ch / 2;
+        ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx, sy + sz); ctx.stroke();
+      }
+    }
+    ctx.lineCap = "butt";
+  }
 
   function drawLayerDiagonals(c, l, cw, ch) {
     ctx.strokeStyle = c.diag; ctx.lineCap = "round"; ctx.lineWidth = Math.max(2, 2.5 * Math.min(zoom, 2));
@@ -456,6 +504,27 @@
         ctx.globalAlpha = .5; ctx.fillStyle = highlightColour; ctx.fillRect(sx, sy, sz, sz); ctx.globalAlpha = 1;
         break;
       }
+      case "line": {
+        const edge = nearestEdge(hoverWX, hoverWY);
+        // During a drag, only preview edges on the locked axis
+        if (pointerDown && lineDragOrient !== null) {
+          if (edge.orient !== lineDragOrient) break;
+          if (lineDragOrient === "h" && edge.cy !== lineDragFixed) break;
+          if (lineDragOrient === "v" && edge.cx !== lineDragFixed) break;
+        }
+        const sz = CELL * zoom;
+        ctx.globalAlpha = .4; ctx.strokeStyle = resolveLineColour(lineColour); ctx.lineCap = "round";
+        ctx.lineWidth = Math.max(2, 2.5 * Math.min(zoom, 2));
+        if (edge.orient === "h") {
+          const sx = (edge.cx * CELL - camX) * zoom + cw / 2, sy = (edge.cy * CELL - camY) * zoom + ch / 2;
+          ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx + sz, sy); ctx.stroke();
+        } else {
+          const sx = (edge.cx * CELL - camX) * zoom + cw / 2, sy = (edge.cy * CELL - camY) * zoom + ch / 2;
+          ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx, sy + sz); ctx.stroke();
+        }
+        ctx.lineCap = "butt"; ctx.globalAlpha = 1;
+        break;
+      }
       case "arrow": {
         const { cx, cy } = worldToCell(hoverWX, hoverWY);
         if (arrowStart) {
@@ -490,6 +559,12 @@
     if (e.button === 0) {
       pointerDown = true; didDrag = false;
       const p = getP(e); dragStartX = p.x; dragStartY = p.y;
+      // Lock line drag orientation at the click point (before any movement)
+      if (activeTool === "line") {
+        const w = screenToWorld(p.x, p.y), edge = nearestEdge(w.x, w.y);
+        lineDragOrient = edge.orient;
+        lineDragFixed = edge.orient === "h" ? edge.cy : edge.cx;
+      }
     }
   });
 
@@ -514,6 +589,10 @@
       if (Math.abs(p.x - dragStartX) + Math.abs(p.y - dragStartY) > 3) didDrag = true;
       if (didDrag) handleHighPaint(w);
     }
+    if (pointerDown && activeTool === "line") {
+      didDrag = true;
+      handleLinePaint(w);
+    }
 
     requestDraw(); // for hover preview
   });
@@ -522,7 +601,7 @@
     const p = getP(e), w = screenToWorld(p.x, p.y);
     if (dragging) { dragging = false; pointerDown = false; canvas.style.cursor = getCursor(); scheduleSave(); return; }
     if (e.button === 0 && !didDrag) handleClick(w, e);
-    pointerDown = false; didDrag = false; lastPaintedCell = null; lastPaintedHighlight = null;
+    pointerDown = false; didDrag = false; lastPaintedCell = null; lastPaintedHighlight = null; lastPaintedLine = null; lastPaintedLineCoord = null; lineDragOrient = null; lineDragFixed = null;
   });
 
   canvas.addEventListener("mouseleave", () => { hoverValid = false; requestDraw(); });
@@ -541,6 +620,36 @@
     const al = L(), prev = al.highlights.get(k2), col = highlightColour;
     al.highlights.set(k2, col);
     pushUndo({ redo: () => al.highlights.set(k2, col), undo: () => { if (prev) al.highlights.set(k2, prev); else al.highlights.delete(k2); } });
+    requestDraw();
+  }
+  function handleLinePaint(w) {
+    const edge = nearestEdge(w.x, w.y);
+    // Only allow edges matching the locked orientation and axis (set at pointerdown)
+    if (edge.orient !== lineDragOrient) return;
+    if (lineDragOrient === "h" && edge.cy !== lineDragFixed) return;
+    if (lineDragOrient === "v" && edge.cx !== lineDragFixed) return;
+
+    // The varying coordinate along the locked axis
+    const cur = lineDragOrient === "h" ? edge.cx : edge.cy;
+    const lk = lineKey(edge.orient, edge.cx, edge.cy);
+    if (lastPaintedLine === lk) return;
+
+    // Interpolate from lastPaintedLineCoord to cur to fill gaps from fast drags
+    const al = L(), col = lineColour;
+    let start = cur, end = cur;
+    if (lastPaintedLineCoord !== null) {
+      start = Math.min(lastPaintedLineCoord, cur);
+      end = Math.max(lastPaintedLineCoord, cur);
+    }
+    for (let i = start; i <= end; i++) {
+      const ek = lineDragOrient === "h" ? lineKey("h", i, lineDragFixed) : lineKey("v", lineDragFixed, i);
+      if (!al.lines.has(ek)) {
+        al.lines.set(ek, col);
+        pushUndo({ redo: () => al.lines.set(ek, col), undo: () => al.lines.delete(ek) });
+      }
+    }
+    lastPaintedLine = lk;
+    lastPaintedLineCoord = cur;
     requestDraw();
   }
 
@@ -570,6 +679,13 @@
         const { cx, cy } = worldToCell(w.x, w.y), k2 = key(cx, cy), cur = al.highlights.get(k2), col = highlightColour;
         if (e.shiftKey || cur === col) { if (cur !== undefined) { al.highlights.delete(k2); pushUndo({ redo: () => al.highlights.delete(k2), undo: () => al.highlights.set(k2, cur) }); } }
         else { al.highlights.set(k2, col); pushUndo({ redo: () => al.highlights.set(k2, col), undo: () => { if (cur !== undefined) al.highlights.set(k2, cur); else al.highlights.delete(k2); } }); }
+        requestDraw(); break;
+      }
+      case "line": {
+        const edge = nearestEdge(w.x, w.y), lk = lineKey(edge.orient, edge.cx, edge.cy);
+        const cur = al.lines.get(lk), col = lineColour;
+        if (e.shiftKey || cur === col) { if (cur !== undefined) { al.lines.delete(lk); pushUndo({ redo: () => al.lines.delete(lk), undo: () => al.lines.set(lk, cur) }); } }
+        else { al.lines.set(lk, col); pushUndo({ redo: () => al.lines.set(lk, col), undo: () => { if (cur !== undefined) al.lines.set(lk, cur); else al.lines.delete(lk); } }); }
         requestDraw(); break;
       }
       case "arrow": {
@@ -605,6 +721,7 @@
     if (activeTool === "diagonal") { const { cx, cy } = worldToCell(w.x, w.y), k2 = key(cx, cy), cur = al.diagonals.get(k2); if (cur !== undefined) { al.diagonals.delete(k2); pushUndo({ redo: () => al.diagonals.delete(k2), undo: () => al.diagonals.set(k2, cur) }); requestDraw(); } }
     else if (activeTool === "number") { const { ix, iy } = nearestInt(w.x, w.y), k2 = key(ix, iy), cur = al.numbers.get(k2); if (cur !== undefined) { al.numbers.delete(k2); pushUndo({ redo: () => al.numbers.delete(k2), undo: () => al.numbers.set(k2, cur) }); requestDraw(); } }
     else if (activeTool === "highlight") { const { cx, cy } = worldToCell(w.x, w.y), k2 = key(cx, cy), cur = al.highlights.get(k2); if (cur !== undefined) { al.highlights.delete(k2); pushUndo({ redo: () => al.highlights.delete(k2), undo: () => al.highlights.set(k2, cur) }); requestDraw(); } }
+    else if (activeTool === "line") { const edge = nearestEdge(w.x, w.y), lk = lineKey(edge.orient, edge.cx, edge.cy), cur = al.lines.get(lk); if (cur !== undefined) { al.lines.delete(lk); pushUndo({ redo: () => al.lines.delete(lk), undo: () => al.lines.set(lk, cur) }); requestDraw(); } }
     else if (activeTool === "arrow") { removeArrowNear(w); requestDraw(); }
   });
 
@@ -632,6 +749,7 @@
     $("number-panel").style.display = tool === "number" ? "" : "none";
     $("highlight-panel").style.display = tool === "highlight" ? "" : "none";
     $("arrow-panel").style.display = tool === "arrow" ? "" : "none";
+    $("line-panel").style.display = tool === "line" ? "" : "none";
     canvas.style.cursor = getCursor(); requestDraw();
   }
 
@@ -695,6 +813,7 @@
   document.querySelectorAll(".numstyle-btn").forEach(b => b.classList.toggle("active", b.dataset.style === numberStyle));
   document.querySelectorAll("#highlight-panel .colour-btn").forEach(b => b.addEventListener("click", () => { highlightColour = b.dataset.colour; document.querySelectorAll("#highlight-panel .colour-btn").forEach(x => x.classList.toggle("active", x === b)); }));
   document.querySelectorAll("#arrow-panel .colour-btn").forEach(b => b.addEventListener("click", () => { arrowColour = b.dataset.colour; document.querySelectorAll("#arrow-panel .colour-btn").forEach(x => x.classList.toggle("active", x === b)); }));
+  document.querySelectorAll("#line-panel .colour-btn").forEach(b => b.addEventListener("click", () => { lineColour = b.dataset.colour; document.querySelectorAll("#line-panel .colour-btn").forEach(x => x.classList.toggle("active", x === b)); }));
   $("btn-undo").addEventListener("click", undo);
   $("btn-redo").addEventListener("click", redo);
 
@@ -794,11 +913,12 @@
   // ── Save / Load (file export/import) ──
   function serialise() {
     return JSON.stringify({
-      version: 2, camera: { x: camX, y: camY, zoom },
+      version: 3, camera: { x: camX, y: camY, zoom },
       layers: layers.map(l => ({
         id: l.id, name: l.name, visible: l.visible,
         diagonals: [...l.diagonals.entries()], numbers: [...l.numbers.entries()],
-        highlights: [...l.highlights.entries()], arrows: l.arrows.slice()
+        highlights: [...l.highlights.entries()], arrows: l.arrows.slice(),
+        lines: [...l.lines.entries()],
       })),
       activeLayerIdx,
     }, null, 2);
@@ -808,7 +928,7 @@
     if (d.camera) { camX = d.camera.x || 0; camY = d.camera.y || 0; zoom = d.camera.zoom || 1; }
     layers = [];
     if (d.layers) {
-      layers = d.layers.map(ld => { const l = createLayer(ld.name); l.id = ld.id; l.visible = ld.visible !== false; if (ld.diagonals) for (const [k, v] of ld.diagonals) l.diagonals.set(k, v); if (ld.numbers) for (const [k, v] of ld.numbers) l.numbers.set(k, v); if (ld.highlights) for (const [k, v] of ld.highlights) l.highlights.set(k, v); if (ld.arrows) l.arrows.push(...ld.arrows); return l; });
+      layers = d.layers.map(ld => { const l = createLayer(ld.name); l.id = ld.id; l.visible = ld.visible !== false; if (ld.diagonals) for (const [k, v] of ld.diagonals) l.diagonals.set(k, v); if (ld.numbers) for (const [k, v] of ld.numbers) l.numbers.set(k, v); if (ld.highlights) for (const [k, v] of ld.highlights) l.highlights.set(k, v); if (ld.arrows) l.arrows.push(...ld.arrows); if (ld.lines) for (const [k, v] of ld.lines) l.lines.set(k, v); return l; });
       activeLayerIdx = d.activeLayerIdx || 0;
     } else {
       const l = createLayer("Layer 1");
