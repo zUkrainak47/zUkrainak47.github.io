@@ -1112,7 +1112,7 @@
   }
 
   function drawLayerLines(c, l, cw, ch) {
-    ctx.lineCap = "round"; ctx.lineWidth = Math.max(2, 2.5 * Math.min(zoom, 2));
+    ctx.lineCap = "round"; ctx.lineWidth = Math.max(1, 2.5 * Math.min(zoom, 2));
     for (const [k, col] of l.lines) {
       const parts = k.split(","); const orient = parts[0], ex = +parts[1], ey = +parts[2];
       let drawEx = ex, drawEy = ey;
@@ -1134,7 +1134,7 @@
   }
 
   function drawLayerDiagonals(c, l, cw, ch) {
-    ctx.strokeStyle = c.diag; ctx.lineCap = "round"; ctx.lineWidth = Math.max(2, 2.5 * Math.min(zoom, 2));
+    ctx.strokeStyle = c.diag; ctx.lineCap = "round"; ctx.lineWidth = Math.max(1, 2.5 * Math.min(zoom, 2));
     for (const [k, dir] of l.diagonals) {
       const [cx, cy] = k.split(",").map(Number);
       let drawCx = cx;
@@ -1156,7 +1156,7 @@
   }
 
   function drawArrowShape(x1, y1, x2, y2, col, lw) {
-    const hl = 10 * Math.min(zoom, 2), ang = Math.atan2(y2 - y1, x2 - x1);
+    const hl = 10 * Math.min(zoom, 3), ang = Math.atan2(y2 - y1, x2 - x1);
     // Inset start so round cap doesn't overshoot the anchor (prevents opposing arrow bleed)
     const startX = x1 + (lw / 2) * Math.cos(ang), startY = y1 + (lw / 2) * Math.sin(ang);
     // Shorten end to sit firmly inside the arrowhead triangle
@@ -1173,7 +1173,7 @@
   function resolveArrowColour(c) { return c === "theme" ? themeArrowColor() : c; }
 
   function drawLayerArrows(l, cw, ch) {
-    const lw = Math.max(2, 2.5 * Math.min(zoom, 2));
+    const lw = Math.max(1, 2.5 * Math.min(zoom, 2));
     for (const a of l.arrows) {
       let dcx = 0, dcy = 0;
       if (activeTool === "select" && selection && selection.arrows.has(a) && draggingSelection) {
@@ -1205,7 +1205,7 @@
       }
       ctx.strokeStyle = c.diag;
       ctx.lineCap = "round";
-      ctx.lineWidth = Math.max(2, 2.5 * Math.min(zoom, 2));
+      ctx.lineWidth = Math.max(1, 2.5 * Math.min(zoom, 2));
       ctx.beginPath();
       ctx.moveTo(sx - dx, sy + dy);
       ctx.lineTo(sx + dx, sy - dy);
@@ -1384,7 +1384,7 @@
         if (diagonalDir !== null) dir = cur === diagonalDir ? null : diagonalDir;
         else dir = cur === undefined ? 1 : cur === 1 ? -1 : null;
         if (dir === null) break;
-        ctx.globalAlpha = .3; ctx.strokeStyle = c.diag; ctx.lineCap = "round"; ctx.lineWidth = Math.max(2, 2.5 * Math.min(zoom, 2));
+        ctx.globalAlpha = .3; ctx.strokeStyle = c.diag; ctx.lineCap = "round"; ctx.lineWidth = Math.max(1, 2.5 * Math.min(zoom, 2));
         const sx = (cx * CELL - camX) * zoom + cw / 2, sy = (cy * CELL - camY) * zoom + ch / 2, sz = CELL * zoom;
         ctx.beginPath(); if (dir === 1) { ctx.moveTo(sx, sy); ctx.lineTo(sx + sz, sy + sz); } else { ctx.moveTo(sx + sz, sy); ctx.lineTo(sx, sy + sz); }
         ctx.stroke(); ctx.lineCap = "butt"; ctx.globalAlpha = 1;
@@ -1422,7 +1422,7 @@
         }
         const sz = CELL * zoom;
         ctx.globalAlpha = .4; ctx.strokeStyle = resolveLineColour(lineColour); ctx.lineCap = "round";
-        ctx.lineWidth = Math.max(2, 2.5 * Math.min(zoom, 2));
+        ctx.lineWidth = Math.max(1, 2.5 * Math.min(zoom, 2));
         if (edge.orient === "h") {
           const sx = (edge.cx * CELL - camX) * zoom + cw / 2, sy = (edge.cy * CELL - camY) * zoom + ch / 2;
           ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx + sz, sy); ctx.stroke();
@@ -1440,7 +1440,7 @@
           const ss = worldToScreen(s.wx, s.wy), se = worldToScreen(e.wx, e.wy);
           const rc = resolveArrowColour(arrowColour);
           ctx.globalAlpha = .4;
-          drawArrowShape(ss.x, ss.y, se.x, se.y, rc, Math.max(2, 2.5 * Math.min(zoom, 2)));
+          drawArrowShape(ss.x, ss.y, se.x, se.y, rc, Math.max(1, 2.5 * Math.min(zoom, 2)));
           ctx.globalAlpha = 1;
           // Start dot
           ctx.fillStyle = rc; ctx.globalAlpha = .7; ctx.beginPath(); ctx.arc(ss.x, ss.y, 4 * Math.min(zoom, 2), 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
