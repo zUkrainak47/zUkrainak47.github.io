@@ -25,11 +25,12 @@
     { id: "diagonal", label: "Diagonal (cycle)" },
     { id: "diagFwd", label: "Diagonal \\" },
     { id: "diagBwd", label: "Diagonal /" },
+    { id: "flipDiag", label: "Flip hovered diagonal" },
     { id: "number", label: "Number" },
     { id: "arrow", label: "Arrow" },
     { id: "highlight", label: "Highlight" },
   ];
-  const DEFAULT_HOTKEYS = { select: "v", diagonal: "d", diagFwd: "q", diagBwd: "e", number: "n", arrow: "a", highlight: "h" };
+  const DEFAULT_HOTKEYS = { select: "v", diagonal: "d", diagFwd: "q", diagBwd: "e", flipDiag: "f", number: "n", arrow: "a", highlight: "h" };
 
   const EYE_OPEN = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
   const EYE_SHUT = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
@@ -664,12 +665,25 @@
         if (hotkeys[act.id] === lk) {
           if (act.id === "diagFwd") { setTool("diagonal", 1); return; }
           if (act.id === "diagBwd") { setTool("diagonal", -1); return; }
+          if (act.id === "flipDiag") {
+            if (!hoverValid) return;
+            const al = L(); if (!al || !al.visible) return;
+            const { cx, cy } = worldToCell(hoverWX, hoverWY), k2 = key(cx, cy);
+            const cur = al.diagonals.get(k2);
+            if (cur !== undefined) {
+              const nv = cur === 1 ? -1 : 1;
+              al.diagonals.set(k2, nv);
+              pushUndo({ redo: () => al.diagonals.set(k2, nv), undo: () => al.diagonals.set(k2, cur) });
+              requestDraw();
+            }
+            return;
+          }
           setTool(act.id); return;
         }
       }
     }
 
-    if (lk >= "0" && lk <= "4" && activeTool === "number") { activeNumber = parseInt(lk); document.querySelectorAll(".num-btn").forEach(b => b.classList.toggle("active", b.dataset.num === lk)); return; }
+    if (lk >= "0" && lk <= "4" && !ctrl) { activeNumber = parseInt(lk); setTool("number"); document.querySelectorAll(".num-btn").forEach(b => b.classList.toggle("active", b.dataset.num === lk)); return; }
 
     if (ctrl && e.key.toLowerCase() === "z" && !e.shiftKey) { e.preventDefault(); undo(); return; }
     if (ctrl && e.key.toLowerCase() === "z" && e.shiftKey) { e.preventDefault(); redo(); return; }
