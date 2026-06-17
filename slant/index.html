@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Slant Editor</title>
+  <meta name="description"
+    content="Gokigen Naname / Slant puzzle editor on an infinite canvas. Place diagonals, numbers, arrows and highlights to design logic gates.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <!-- ─── Toolbar ─── -->
+  <aside id="toolbar">
+    <div class="toolbar-group toolbar-title">
+      <span class="logo">⧸</span>
+      <span class="title">Slant</span>
+      <button id="btn-theme" class="icon-btn" title="Toggle theme">
+        <svg id="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+        </svg>
+        <svg id="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
+          <circle cx="12" cy="12" r="5" />
+          <line x1="12" y1="1" x2="12" y2="3" />
+          <line x1="12" y1="21" x2="12" y2="23" />
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+          <line x1="1" y1="12" x2="3" y2="12" />
+          <line x1="21" y1="12" x2="23" y2="12" />
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- Canvas selector -->
+    <div class="toolbar-group">
+      <label class="toolbar-label">Canvas</label>
+      <button id="btn-open-canvases" class="canvas-open-btn">
+        <span id="canvas-name-display">Canvas 1</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </button>
+    </div>
+
+
+
+    <!-- Tools -->
+    <div class="toolbar-group">
+      <label class="toolbar-label">Tools</label>
+      <div class="tool-buttons">
+        <button class="tool-btn active" data-tool="select" title="Select / Pan">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z" />
+          </svg>
+          <span>Select</span>
+        </button>
+        <div class="tool-row-diag">
+          <button class="tool-btn" data-tool="diagonal" title="Place Diagonal">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="4" y1="20" x2="20" y2="4" />
+            </svg>
+            <span>Diagonal</span>
+          </button>
+          <button class="diag-dir-btn" id="btn-diag-fwd" data-dir="1" title="\ diagonal">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+              <line x1="5" y1="5" x2="19" y2="19" />
+            </svg>
+          </button>
+          <button class="diag-dir-btn" id="btn-diag-bwd" data-dir="-1" title="/ diagonal">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+              <line x1="19" y1="5" x2="5" y2="19" />
+            </svg>
+          </button>
+        </div>
+        <button class="tool-btn" data-tool="number" title="Place Number">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="9" /><text x="12" y="16" text-anchor="middle" font-size="12" fill="currentColor"
+              stroke="none" font-family="Inter">3</text>
+          </svg>
+          <span>Number</span>
+        </button>
+        <button class="tool-btn" data-tool="arrow" title="Draw Arrow">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="5" y1="12" x2="19" y2="12" />
+            <polyline points="14 7 19 12 14 17" />
+          </svg>
+          <span>Arrow</span>
+        </button>
+        <button class="tool-btn" data-tool="highlight" title="Highlight Cell">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="4" y="4" width="16" height="16" rx="2" fill="currentColor" opacity="0.2" />
+            <rect x="4" y="4" width="16" height="16" rx="2" />
+          </svg>
+          <span>Highlight</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Number sub-panel -->
+    <div class="toolbar-group" id="number-panel" style="display:none;">
+      <label class="toolbar-label">Number Value</label>
+      <div class="number-buttons">
+        <button class="num-btn active" data-num="0">0</button>
+        <button class="num-btn" data-num="1">1</button>
+        <button class="num-btn" data-num="2">2</button>
+        <button class="num-btn" data-num="3">3</button>
+        <button class="num-btn" data-num="4">4</button>
+      </div>
+    </div>
+
+    <!-- Highlight colour sub-panel -->
+    <div class="toolbar-group" id="highlight-panel" style="display:none;">
+      <label class="toolbar-label">Highlight Colour</label>
+      <div class="colour-buttons">
+        <button class="colour-btn active" data-colour="#ff6b6b40" style="--swatch:#ff6b6b" title="Red"></button>
+        <button class="colour-btn" data-colour="#51cf6640" style="--swatch:#51cf66" title="Green"></button>
+        <button class="colour-btn" data-colour="#339af040" style="--swatch:#339af0" title="Blue"></button>
+        <button class="colour-btn" data-colour="#fcc41940" style="--swatch:#fcc419" title="Yellow"></button>
+        <button class="colour-btn" data-colour="#cc5de840" style="--swatch:#cc5de8" title="Purple"></button>
+        <button class="colour-btn" data-colour="#ff922b40" style="--swatch:#ff922b" title="Orange"></button>
+      </div>
+    </div>
+
+    <!-- Arrow colour sub-panel -->
+    <div class="toolbar-group" id="arrow-panel" style="display:none;">
+      <label class="toolbar-label">Arrow Colour</label>
+      <div class="colour-buttons">
+        <button class="colour-btn active" data-colour="#ff6b6b" style="--swatch:#ff6b6b" title="Red"></button>
+        <button class="colour-btn" data-colour="#51cf66" style="--swatch:#51cf66" title="Green"></button>
+        <button class="colour-btn" data-colour="#339af0" style="--swatch:#339af0" title="Blue"></button>
+        <button class="colour-btn" data-colour="#fcc419" style="--swatch:#fcc419" title="Yellow"></button>
+        <button class="colour-btn" data-colour="#cc5de8" style="--swatch:#cc5de8" title="Purple"></button>
+        <button class="colour-btn" id="arrow-last-colour" data-colour="theme" style="--swatch:#e8e8e8"
+          title="White"></button>
+      </div>
+    </div>
+
+
+
+    <!-- File + Settings -->
+    <div class="toolbar-group">
+      <label class="toolbar-label">File</label>
+      <div class="action-buttons">
+        <div class="undo-redo-row">
+          <button id="btn-undo" class="action-btn" title="Undo (Ctrl+Z)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="1 4 1 10 7 10" />
+              <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+            </svg>
+            Undo
+          </button>
+          <button id="btn-redo" class="action-btn" title="Redo (Ctrl+Shift+Z)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="23 4 23 10 17 10" />
+              <path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10" />
+            </svg>
+            Redo
+          </button>
+        </div>
+        <button id="btn-save" class="action-btn" title="Export to JSON">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+            <polyline points="17 21 17 13 7 13 7 21" />
+            <polyline points="7 3 7 8 15 8" />
+          </svg>
+          Export
+        </button>
+        <button id="btn-load" class="action-btn" title="Import JSON">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+          Import
+        </button>
+        <button id="btn-hotkeys" class="action-btn" title="Keyboard shortcuts">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="4" width="20" height="16" rx="2" />
+            <line x1="6" y1="8" x2="6.01" y2="8" />
+            <line x1="10" y1="8" x2="10.01" y2="8" />
+            <line x1="14" y1="8" x2="14.01" y2="8" />
+            <line x1="18" y1="8" x2="18.01" y2="8" />
+            <line x1="6" y1="12" x2="6.01" y2="12" />
+            <line x1="18" y1="12" x2="18.01" y2="12" />
+            <line x1="8" y1="16" x2="16" y2="16" />
+          </svg>
+          Hotkeys
+        </button>
+        <input type="file" id="file-input" accept=".json" style="display:none">
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="toolbar-group toolbar-footer">
+      <div class="coords" id="coords-display">0, 0</div>
+      <div class="zoom-display" id="zoom-display">100%</div>
+    </div>
+  </aside>
+
+  <!-- ─── Canvas ─── -->
+  <canvas id="canvas"></canvas>
+
+  <!-- ─── Bottom-right panel (layers + actions) ─── -->
+  <aside id="bottom-panel">
+    <div class="bp-header">
+      <span class="toolbar-label" style="margin:0">Layers</span>
+      <div class="bp-actions">
+        <button id="btn-rename-layer" class="sq-btn" title="Rename layer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
+          </svg>
+        </button>
+        <button id="btn-isolate-layer" class="sq-btn" title="Isolate active layer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+            <line x1="12" y1="2" x2="12" y2="6" />
+            <line x1="12" y1="18" x2="12" y2="22" />
+          </svg>
+        </button>
+        <button id="btn-delete-layer" class="sq-btn sq-btn--danger" title="Delete layer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6" />
+            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+            <path d="M10 11v6" />
+            <path d="M14 11v6" />
+          </svg>
+        </button>
+      </div>
+    </div>
+    <div id="layer-list" class="layer-list"></div>
+    <button id="btn-add-layer" class="small-btn" style="width:100%;margin-top:4px">＋ Add Layer</button>
+  </aside>
+
+  <!-- ─── Canvas browser modal ─── -->
+  <dialog id="canvas-modal" class="modal canvas-modal">
+    <div class="modal-header">
+      <h2>Canvases</h2>
+      <button id="canvas-modal-close" class="modal-close">✕</button>
+    </div>
+    <div id="canvas-grid" class="canvas-grid"></div>
+    <button id="btn-new-canvas-modal" class="modal-action-btn">＋ New Canvas</button>
+  </dialog>
+
+  <!-- ─── Hotkey settings modal ─── -->
+  <dialog id="hotkey-modal" class="modal hotkey-modal">
+    <div class="modal-header">
+      <h2>Keyboard Shortcuts</h2>
+      <button id="hotkey-modal-close" class="modal-close">✕</button>
+    </div>
+    <div id="hotkey-list" class="hotkey-list"></div>
+    <button id="btn-reset-hotkeys" class="modal-action-btn modal-action-btn--subtle">Reset to Defaults</button>
+  </dialog>
+
+  <!-- ─── Rename dialog ─── -->
+  <dialog id="rename-dialog" class="rename-dialog">
+    <form method="dialog">
+      <label class="rename-dialog__label" id="rename-dialog-label">Name</label>
+      <input id="rename-input" class="rename-dialog__input" type="text" maxlength="60" autocomplete="off">
+      <div class="rename-dialog__actions">
+        <button type="submit" value="ok" class="rename-dialog__btn rename-dialog__btn--ok">Save</button>
+        <button type="submit" value="cancel" class="rename-dialog__btn">Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- ─── Toast ─── -->
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="engine.js"></script>
+</body>
+
+</html>
