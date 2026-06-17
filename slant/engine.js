@@ -223,6 +223,10 @@
     }
 
     if (!hasItems) return null;
+    // Ensure minimum hitbox size for thin selections (e.g. horizontal lines/arrows)
+    const PAD = CELL / 3;
+    if (maxY - minY < PAD) { minY -= PAD; maxY += PAD; }
+    if (maxX - minX < PAD) { minX -= PAD; maxX += PAD; }
     return { minX, minY, maxX, maxY };
   }
 
