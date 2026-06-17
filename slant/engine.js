@@ -275,17 +275,19 @@
 
   function clearSelection() {
     selection = null;
-    const btn = $("selection-delete-btn");
-    if (btn) btn.style.display = "none";
+    const tb = $("selection-toolbar");
+    if (tb) tb.style.display = "none";
+    dismissLayerPicker();
     requestDraw();
   }
 
   function updateDeleteButtonPosition() {
-    const btn = $("selection-delete-btn");
-    if (!btn) return;
+    const tb = $("selection-toolbar");
+    if (!tb) return;
     const bounds = getSelectionBounds(selection);
     if (!bounds || activeTool !== "select") {
-      btn.style.display = "none";
+      tb.style.display = "none";
+      dismissLayerPicker();
       return;
     }
 
@@ -299,17 +301,16 @@
 
     const s = worldToScreen(topCenterWX, topCenterWY);
 
-    // Clamp coordinates so delete button stays within viewport bounds
-    const btnWidth = btn.offsetWidth || 120;
-    const btnHeight = btn.offsetHeight || 38;
+    const tbWidth = tb.offsetWidth || 120;
+    const tbHeight = tb.offsetHeight || 40;
     const minPadding = 12;
 
-    const left = Math.max(btnWidth / 2 + minPadding, Math.min(innerWidth - btnWidth / 2 - minPadding, s.x));
-    const top = Math.max(btnHeight + minPadding + 44, Math.min(innerHeight - minPadding, s.y - 12));
+    const left = Math.max(tbWidth / 2 + minPadding, Math.min(innerWidth - tbWidth / 2 - minPadding, s.x));
+    const top = Math.max(tbHeight + minPadding + 44, Math.min(innerHeight - minPadding, s.y - 12));
 
-    btn.style.display = "";
-    btn.style.left = `${left}px`;
-    btn.style.top = `${top}px`;
+    tb.style.display = "";
+    tb.style.left = `${left}px`;
+    tb.style.top = `${top}px`;
   }
 
   function updateSelectionFromMarquee() {
@@ -538,6 +539,294 @@
 
     clearSelection();
     toast(`Deleted ${count} items`);
+    scheduleSave();
+    requestDraw();
+  }
+
+  // ═══ COPY / PASTE ═══════════════════════════════
+  let clipboard = null; // { diagonals, numbers, highlights, lines, arrows } stored relative to origin cell
+
+  function copySelection() {
+    if (!selection) return;
+    const al = L();
+    if (!al) return;
+
+    const bounds = getSelectionBounds(selection);
+    if (!bounds) return;
+
+    // Origin cell = top-left cell of bounding box
+    const originCX = Math.floor(bounds.minX / CELL);
+    const originCY = Math.floor(bounds.minY / CELL);
+
+    clipboard = { diagonals: [], numbers: [], highlights: [], lines: [], arrows: [] };
+
+    for (const k of selection.diagonals) {
+      const val = al.diagonals.get(k);
+      if (val !== undefined) {
+        const [cx, cy] = k.split(",").map(Number);
+        clipboard.diagonals.push({ dx: cx - originCX, dy: cy - originCY, val });
+      }
+    }
+    for (const k of selection.numbers) {
+      const val = al.numbers.get(k);
+      if (val !== undefined) {
+        const [ix, iy] = k.split(",").map(Number);
+        clipboard.numbers.push({ dx: ix - originCX, dy: iy - originCY, val });
+      }
+    }
+    for (const k of selection.highlights) {
+      const val = al.highlights.get(k);
+      if (val !== undefined) {
+        const [cx, cy] = k.split(",").map(Number);
+        clipboard.highlights.push({ dx: cx - originCX, dy: cy - originCY, val });
+      }
+    }
+    for (const k of selection.lines) {
+      const val = al.lines.get(k);
+      if (val !== undefined) {
+        const parts = k.split(",");
+        const orient = parts[0], ex = +parts[1], ey = +parts[2];
+        clipboard.lines.push({ orient, dx: ex - originCX, dy: ey - originCY, val });
+      }
+    }
+    for (const a of selection.arrows) {
+      clipboard.arrows.push({
+        dx1: a.cx1 - originCX, dy1: a.cy1 - originCY,
+        dx2: a.cx2 - originCX, dy2: a.cy2 - originCY,
+        colour: a.colour
+      });
+    }
+
+    const count = clipboard.diagonals.length + clipboard.numbers.length + clipboard.highlights.length + clipboard.lines.length + clipboard.arrows.length;
+    toast(`Copied ${count} items`);
+  }
+
+  function pasteClipboard() {
+    if (!clipboard) { toast("Nothing to paste"); return; }
+    const al = L();
+    if (!al) return;
+
+    // Paste at the cell under the cursor
+    const { cx: targetCX, cy: targetCY } = worldToCell(hoverWX, hoverWY);
+
+    const beforeState = snapshotLayerState(al);
+
+    const newSelection = {
+      diagonals: new Set(),
+      numbers: new Set(),
+      highlights: new Set(),
+      arrows: new Set(),
+      lines: new Set()
+    };
+
+    for (const item of clipboard.diagonals) {
+      const newK = key(targetCX + item.dx, targetCY + item.dy);
+      al.diagonals.set(newK, item.val);
+      newSelection.diagonals.add(newK);
+    }
+    for (const item of clipboard.numbers) {
+      const newK = key(targetCX + item.dx, targetCY + item.dy);
+      al.numbers.set(newK, item.val);
+      newSelection.numbers.add(newK);
+    }
+    for (const item of clipboard.highlights) {
+      const newK = key(targetCX + item.dx, targetCY + item.dy);
+      al.highlights.set(newK, item.val);
+      newSelection.highlights.add(newK);
+    }
+    for (const item of clipboard.lines) {
+      const newK = lineKey(item.orient, targetCX + item.dx, targetCY + item.dy);
+      al.lines.set(newK, item.val);
+      newSelection.lines.add(newK);
+    }
+    for (const item of clipboard.arrows) {
+      const newA = {
+        cx1: targetCX + item.dx1, cy1: targetCY + item.dy1,
+        cx2: targetCX + item.dx2, cy2: targetCY + item.dy2,
+        colour: item.colour
+      };
+      al.arrows.push(newA);
+      newSelection.arrows.add(newA);
+    }
+
+    selection = newSelection;
+    const count = clipboard.diagonals.length + clipboard.numbers.length + clipboard.highlights.length + clipboard.lines.length + clipboard.arrows.length;
+
+    const afterState = snapshotLayerState(al);
+    const afterSelection = cloneSelection(selection);
+
+    pushUndo({
+      undo: () => {
+        restoreLayerState(al, beforeState);
+        clearSelection();
+        requestDraw();
+      },
+      redo: () => {
+        restoreLayerStateAndSelection(al, afterState, afterSelection);
+        selection = cloneSelection(afterSelection);
+        requestDraw();
+      }
+    });
+
+    toast(`Pasted ${count} items`);
+    scheduleSave();
+    requestDraw();
+  }
+
+  // ═══ MOVE SELECTION TO LAYER ═══════════════════
+  let layerPickerEl = null;
+
+  function dismissLayerPicker() {
+    if (layerPickerEl) {
+      layerPickerEl.remove();
+      layerPickerEl = null;
+    }
+  }
+
+  function showLayerPicker() {
+    dismissLayerPicker();
+    if (!selection) return;
+
+    const tb = $("selection-toolbar");
+    if (!tb) return;
+    const moveBtn = $("selection-move-layer-btn");
+    if (!moveBtn) return;
+
+    const rect = moveBtn.getBoundingClientRect();
+
+    const picker = document.createElement("div");
+    picker.className = "layer-picker";
+
+    for (let i = layers.length - 1; i >= 0; i--) {
+      const layer = layers[i];
+      const isCurrent = i === activeLayerIdx;
+      const btn = document.createElement("button");
+      btn.className = "layer-picker__item" + (isCurrent ? " current" : "");
+      btn.textContent = layer.name;
+      if (!isCurrent) {
+        const targetIdx = i;
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          moveSelectionToLayer(targetIdx);
+          dismissLayerPicker();
+        });
+      }
+      picker.appendChild(btn);
+    }
+
+    document.body.appendChild(picker);
+    layerPickerEl = picker;
+
+    // Position the picker below the button
+    const pw = picker.offsetWidth;
+    const ph = picker.offsetHeight;
+    let left = rect.left + rect.width / 2 - pw / 2;
+    let top = rect.bottom + 6;
+
+    // Keep in viewport
+    left = Math.max(8, Math.min(innerWidth - pw - 8, left));
+    if (top + ph > innerHeight - 8) top = rect.top - ph - 6;
+
+    picker.style.left = `${left}px`;
+    picker.style.top = `${top}px`;
+
+    // Close when clicking elsewhere
+    setTimeout(() => {
+      document.addEventListener("pointerdown", function handler(e) {
+        if (!picker.contains(e.target)) {
+          dismissLayerPicker();
+          document.removeEventListener("pointerdown", handler);
+        }
+      });
+    }, 0);
+  }
+
+  function moveSelectionToLayer(targetIdx) {
+    if (!selection) return;
+    const srcLayer = L();
+    const dstLayer = layers[targetIdx];
+    if (!srcLayer || !dstLayer || srcLayer === dstLayer) return;
+
+    const beforeSrc = snapshotLayerState(srcLayer);
+    const beforeDst = snapshotLayerState(dstLayer);
+    const beforeSelection = cloneSelection(selection);
+    const prevActiveIdx = activeLayerIdx;
+
+    let count = 0;
+
+    // Move diagonals
+    for (const k of selection.diagonals) {
+      const val = srcLayer.diagonals.get(k);
+      if (val !== undefined) {
+        dstLayer.diagonals.set(k, val);
+        srcLayer.diagonals.delete(k);
+        count++;
+      }
+    }
+    // Move numbers
+    for (const k of selection.numbers) {
+      const val = srcLayer.numbers.get(k);
+      if (val !== undefined) {
+        dstLayer.numbers.set(k, val);
+        srcLayer.numbers.delete(k);
+        count++;
+      }
+    }
+    // Move highlights
+    for (const k of selection.highlights) {
+      const val = srcLayer.highlights.get(k);
+      if (val !== undefined) {
+        dstLayer.highlights.set(k, val);
+        srcLayer.highlights.delete(k);
+        count++;
+      }
+    }
+    // Move lines
+    for (const k of selection.lines) {
+      const val = srcLayer.lines.get(k);
+      if (val !== undefined) {
+        dstLayer.lines.set(k, val);
+        srcLayer.lines.delete(k);
+        count++;
+      }
+    }
+    // Move arrows
+    for (const a of selection.arrows) {
+      const idx = srcLayer.arrows.indexOf(a);
+      if (idx >= 0) {
+        srcLayer.arrows.splice(idx, 1);
+        dstLayer.arrows.push(a);
+        count++;
+      }
+    }
+
+    const afterSrc = snapshotLayerState(srcLayer);
+    const afterDst = snapshotLayerState(dstLayer);
+
+    pushUndo({
+      undo: () => {
+        restoreLayerState(srcLayer, beforeSrc);
+        restoreLayerState(dstLayer, beforeDst);
+        activeLayerIdx = prevActiveIdx;
+        selection = cloneSelection(beforeSelection);
+        populateLayers();
+        requestDraw();
+      },
+      redo: () => {
+        restoreLayerState(srcLayer, afterSrc);
+        restoreLayerState(dstLayer, afterDst);
+        activeLayerIdx = targetIdx;
+        clearSelection();
+        populateLayers();
+        requestDraw();
+      }
+    });
+
+    // Switch to target layer so user sees where items went
+    activeLayerIdx = targetIdx;
+    clearSelection();
+    toast(`Moved ${count} items → ${dstLayer.name}`);
+    populateLayers();
     scheduleSave();
     requestDraw();
   }
@@ -1600,6 +1889,8 @@
     if (ctrl && e.key.toLowerCase() === "z" && !e.shiftKey) { e.preventDefault(); undo(); return; }
     if (ctrl && e.key.toLowerCase() === "z" && e.shiftKey) { e.preventDefault(); redo(); return; }
     if (ctrl && e.key.toLowerCase() === "y") { e.preventDefault(); redo(); return; }
+    if (ctrl && e.key.toLowerCase() === "c") { e.preventDefault(); if (selection) copySelection(); return; }
+    if (ctrl && e.key.toLowerCase() === "v") { e.preventDefault(); pasteClipboard(); return; }
     if (ctrl && e.key.toLowerCase() === "s") { e.preventDefault(); saveToFile(); return; }
     if (ctrl && e.key.toLowerCase() === "o") { e.preventDefault(); $("file-input").click(); return; }
     if (e.key === "Home" || (ctrl && e.key === "0")) { e.preventDefault(); camX = 0; camY = 0; zoom = 1; $("zoom-display").textContent = "100%"; scheduleSave(); requestDraw(); }
@@ -1782,6 +2073,22 @@
     deleteBtn.addEventListener("click", e => {
       e.stopPropagation();
       deleteSelection();
+    });
+  }
+
+  const copyBtn = $("selection-copy-btn");
+  if (copyBtn) {
+    copyBtn.addEventListener("click", e => {
+      e.stopPropagation();
+      copySelection();
+    });
+  }
+
+  const moveLayerBtn = $("selection-move-layer-btn");
+  if (moveLayerBtn) {
+    moveLayerBtn.addEventListener("click", e => {
+      e.stopPropagation();
+      showLayerPicker();
     });
   }
 
