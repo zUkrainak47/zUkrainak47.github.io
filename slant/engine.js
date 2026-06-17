@@ -71,6 +71,16 @@
   let lastPaintedCell = null, lastPaintedHighlight = null, lastPaintedLine = null, lastPaintedLineCoord = null;
   let lineDragOrient = null, lineDragFixed = null; // lock orientation+axis during drag
 
+  // Selection state variables
+  let selection = null;
+  let marqueeActive = false;
+  let marqueeStart = null;
+  let marqueeEnd = null;
+  let draggingSelection = false;
+  let dragSelectionStart = null;
+  let dragSelectionOffset = { dcx: 0, dcy: 0 };
+
+
   // Canvas management
   let manifest = { activeId: null, canvases: [] };
 
@@ -157,6 +167,381 @@
     if (min === dLeft) return { orient: "v", cx, cy };      // left edge of this cell
     return { orient: "v", cx: cx + 1, cy };                  // right edge = left edge of cell to the right
   }
+
+  // ═══ SELECTION HELPERS ══════════════════════════
+  function themeAccentColor() { return document.documentElement.dataset.theme !== "light" ? "#7c6aef" : "#6554d4"; }
+
+  function getSelectionBounds(sel) {
+    if (!sel) return null;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    let hasItems = false;
+
+    // Diagonals
+    for (const k of sel.diagonals) {
+      const [cx, cy] = k.split(",").map(Number);
+      const x1 = cx * CELL, y1 = cy * CELL;
+      const x2 = (cx + 1) * CELL, y2 = (cy + 1) * CELL;
+      minX = Math.min(minX, x1); minY = Math.min(minY, y1);
+      maxX = Math.max(maxX, x2); maxY = Math.max(maxY, y2);
+      hasItems = true;
+    }
+    // Highlights
+    for (const k of sel.highlights) {
+      const [cx, cy] = k.split(",").map(Number);
+      const x1 = cx * CELL, y1 = cy * CELL;
+      const x2 = (cx + 1) * CELL, y2 = (cy + 1) * CELL;
+      minX = Math.min(minX, x1); minY = Math.min(minY, y1);
+      maxX = Math.max(maxX, x2); maxY = Math.max(maxY, y2);
+      hasItems = true;
+    }
+    // Numbers
+    for (const k of sel.numbers) {
+      const [ix, iy] = k.split(",").map(Number);
+      const x = ix * CELL, y = iy * CELL;
+      minX = Math.min(minX, x - 10); minY = Math.min(minY, y - 10);
+      maxX = Math.max(maxX, x + 10); maxY = Math.max(maxY, y + 10);
+      hasItems = true;
+    }
+    // Lines
+    for (const k of sel.lines) {
+      const parts = k.split(",");
+      const orient = parts[0], ex = +parts[1], ey = +parts[2];
+      const x1 = ex * CELL, y1 = ey * CELL;
+      const x2 = (ex + (orient === "h" ? 1 : 0)) * CELL;
+      const y2 = (ey + (orient === "v" ? 1 : 0)) * CELL;
+      minX = Math.min(minX, x1); minY = Math.min(minY, y1);
+      maxX = Math.max(maxX, x2); maxY = Math.max(maxY, y2);
+      hasItems = true;
+    }
+    // Arrows
+    for (const a of sel.arrows) {
+      const s = arrowAnchor(a.cx1, a.cy1);
+      const e = arrowAnchor(a.cx2, a.cy2);
+      minX = Math.min(minX, s.wx, e.wx); minY = Math.min(minY, s.wy, e.wy);
+      maxX = Math.max(maxX, s.wx, e.wx); maxY = Math.max(maxY, s.wy, e.wy);
+      hasItems = true;
+    }
+
+    if (!hasItems) return null;
+    return { minX, minY, maxX, maxY };
+  }
+
+  function cloneSelection(sel) {
+    if (!sel) return null;
+    return {
+      diagonals: new Set(sel.diagonals),
+      numbers: new Set(sel.numbers),
+      highlights: new Set(sel.highlights),
+      arrows: new Set(sel.arrows),
+      lines: new Set(sel.lines)
+    };
+  }
+
+  function snapshotLayerState(al) {
+    const arrowClones = new Map();
+    al.arrows.forEach(a => {
+      arrowClones.set(a, { ...a });
+    });
+    return {
+      diagonals: new Map(al.diagonals),
+      numbers: new Map(al.numbers),
+      highlights: new Map(al.highlights),
+      arrows: arrowClones,
+      lines: new Map(al.lines)
+    };
+  }
+
+  function restoreLayerState(al, snapshot) {
+    al.diagonals = new Map(snapshot.diagonals);
+    al.numbers = new Map(snapshot.numbers);
+    al.highlights = new Map(snapshot.highlights);
+    al.lines = new Map(snapshot.lines);
+    al.arrows = Array.from(snapshot.arrows.values());
+  }
+
+  function restoreLayerStateAndSelection(al, snapshot, selectionToRestore) {
+    restoreLayerState(al, snapshot);
+    if (selectionToRestore) {
+      const newArrows = new Set();
+      for (const a of selectionToRestore.arrows) {
+        const clone = snapshot.arrows.get(a);
+        if (clone) {
+          newArrows.add(clone);
+        }
+      }
+      selectionToRestore.arrows = newArrows;
+    }
+  }
+
+  function clearSelection() {
+    selection = null;
+    const btn = $("selection-delete-btn");
+    if (btn) btn.style.display = "none";
+    requestDraw();
+  }
+
+  function updateDeleteButtonPosition() {
+    const btn = $("selection-delete-btn");
+    if (!btn) return;
+    const bounds = getSelectionBounds(selection);
+    if (!bounds || activeTool !== "select") {
+      btn.style.display = "none";
+      return;
+    }
+
+    let topCenterWX = (bounds.minX + bounds.maxX) / 2;
+    let topCenterWY = bounds.minY;
+
+    if (draggingSelection && dragSelectionOffset) {
+      topCenterWX += dragSelectionOffset.dcx * CELL;
+      topCenterWY += dragSelectionOffset.dcy * CELL;
+    }
+
+    const s = worldToScreen(topCenterWX, topCenterWY);
+
+    // Clamp coordinates so delete button stays within viewport bounds
+    const btnWidth = btn.offsetWidth || 120;
+    const btnHeight = btn.offsetHeight || 38;
+    const minPadding = 12;
+
+    const left = Math.max(btnWidth / 2 + minPadding, Math.min(innerWidth - btnWidth / 2 - minPadding, s.x));
+    const top = Math.max(btnHeight + minPadding + 44, Math.min(innerHeight - minPadding, s.y - 12));
+
+    btn.style.display = "";
+    btn.style.left = `${left}px`;
+    btn.style.top = `${top}px`;
+  }
+
+  function updateSelectionFromMarquee() {
+    if (!marqueeStart || !marqueeEnd) return;
+    const minWX = Math.min(marqueeStart.x, marqueeEnd.x);
+    const maxWX = Math.max(marqueeStart.x, marqueeEnd.x);
+    const minWY = Math.min(marqueeStart.y, marqueeEnd.y);
+    const maxWY = Math.max(marqueeStart.y, marqueeEnd.y);
+
+    const al = L();
+    if (!al) return;
+
+    selection = {
+      diagonals: new Set(),
+      numbers: new Set(),
+      highlights: new Set(),
+      arrows: new Set(),
+      lines: new Set()
+    };
+
+    function overlaps(itemMinX, itemMinY, itemMaxX, itemMaxY) {
+      return !(itemMaxX < minWX || itemMinX > maxWX || itemMaxY < minWY || itemMinY > maxWY);
+    }
+
+    // Diagonals
+    for (const [k, dir] of al.diagonals) {
+      const [cx, cy] = k.split(",").map(Number);
+      if (overlaps(cx * CELL, cy * CELL, (cx + 1) * CELL, (cy + 1) * CELL)) {
+        selection.diagonals.add(k);
+      }
+    }
+
+    // Highlights
+    for (const [k, col] of al.highlights) {
+      const [cx, cy] = k.split(",").map(Number);
+      if (overlaps(cx * CELL, cy * CELL, (cx + 1) * CELL, (cy + 1) * CELL)) {
+        selection.highlights.add(k);
+      }
+    }
+
+    // Numbers (vertices)
+    for (const [k, num] of al.numbers) {
+      const [ix, iy] = k.split(",").map(Number);
+      const x = ix * CELL, y = iy * CELL;
+      if (x >= minWX && x <= maxWX && y >= minWY && y <= maxWY) {
+        selection.numbers.add(k);
+      }
+    }
+
+    // Lines
+    for (const [k, col] of al.lines) {
+      const parts = k.split(",");
+      const orient = parts[0], ex = +parts[1], ey = +parts[2];
+      const x1 = ex * CELL, y1 = ey * CELL;
+      const x2 = (ex + (orient === "h" ? 1 : 0)) * CELL;
+      const y2 = (ey + (orient === "v" ? 1 : 0)) * CELL;
+      if (overlaps(x1, y1, x2, y2)) {
+        selection.lines.add(k);
+      }
+    }
+
+    // Arrows
+    for (const a of al.arrows) {
+      const s = arrowAnchor(a.cx1, a.cy1);
+      const e = arrowAnchor(a.cx2, a.cy2);
+      const minAX = Math.min(s.wx, e.wx);
+      const maxAX = Math.max(s.wx, e.wx);
+      const minAY = Math.min(s.wy, e.wy);
+      const maxAY = Math.max(s.wy, e.wy);
+      if (overlaps(minAX, minAY, maxAX, maxAY)) {
+        selection.arrows.add(a);
+      }
+    }
+
+    // Clear selection if empty
+    if (selection.diagonals.size === 0 &&
+      selection.numbers.size === 0 &&
+      selection.highlights.size === 0 &&
+      selection.arrows.size === 0 &&
+      selection.lines.size === 0) {
+      selection = null;
+    }
+  }
+
+  function moveSelection(dcx, dcy) {
+    if (!selection || (dcx === 0 && dcy === 0)) return;
+    const al = L();
+    if (!al) return;
+
+    const beforeState = snapshotLayerState(al);
+    const beforeSelection = cloneSelection(selection);
+
+    // Extract moved elements
+    const movedDiagonals = [];
+    for (const k of selection.diagonals) {
+      if (al.diagonals.has(k)) {
+        movedDiagonals.push({ key: k, val: al.diagonals.get(k) });
+        al.diagonals.delete(k);
+      }
+    }
+    const movedNumbers = [];
+    for (const k of selection.numbers) {
+      if (al.numbers.has(k)) {
+        movedNumbers.push({ key: k, val: al.numbers.get(k) });
+        al.numbers.delete(k);
+      }
+    }
+    const movedHighlights = [];
+    for (const k of selection.highlights) {
+      if (al.highlights.has(k)) {
+        movedHighlights.push({ key: k, val: al.highlights.get(k) });
+        al.highlights.delete(k);
+      }
+    }
+    const movedLines = [];
+    for (const k of selection.lines) {
+      if (al.lines.has(k)) {
+        movedLines.push({ key: k, val: al.lines.get(k) });
+        al.lines.delete(k);
+      }
+    }
+    const movedArrows = [];
+    for (const a of selection.arrows) {
+      const idx = al.arrows.indexOf(a);
+      if (idx >= 0) {
+        movedArrows.push(a);
+        al.arrows.splice(idx, 1);
+      }
+    }
+
+    // Re-insert at new locations
+    const afterSelection = {
+      diagonals: new Set(),
+      numbers: new Set(),
+      highlights: new Set(),
+      arrows: new Set(),
+      lines: new Set()
+    };
+
+    for (const item of movedDiagonals) {
+      const [cx, cy] = item.key.split(",").map(Number);
+      const newK = key(cx + dcx, cy + dcy);
+      al.diagonals.set(newK, item.val);
+      afterSelection.diagonals.add(newK);
+    }
+    for (const item of movedNumbers) {
+      const [ix, iy] = item.key.split(",").map(Number);
+      const newK = key(ix + dcx, iy + dcy);
+      al.numbers.set(newK, item.val);
+      afterSelection.numbers.add(newK);
+    }
+    for (const item of movedHighlights) {
+      const [cx, cy] = item.key.split(",").map(Number);
+      const newK = key(cx + dcx, cy + dcy);
+      al.highlights.set(newK, item.val);
+      afterSelection.highlights.add(newK);
+    }
+    for (const item of movedLines) {
+      const parts = item.key.split(",");
+      const orient = parts[0], ex = +parts[1], ey = +parts[2];
+      const newK = lineKey(orient, ex + dcx, ey + dcy);
+      al.lines.set(newK, item.val);
+      afterSelection.lines.add(newK);
+    }
+    for (const a of movedArrows) {
+      a.cx1 += dcx; a.cy1 += dcy;
+      a.cx2 += dcx; a.cy2 += dcy;
+      al.arrows.push(a);
+      afterSelection.arrows.add(a);
+    }
+
+    selection = afterSelection;
+    const afterState = snapshotLayerState(al);
+    const afterSelectionClone = cloneSelection(selection);
+
+    pushUndo({
+      undo: () => {
+        restoreLayerStateAndSelection(al, beforeState, beforeSelection);
+        selection = cloneSelection(beforeSelection);
+        requestDraw();
+      },
+      redo: () => {
+        restoreLayerStateAndSelection(al, afterState, afterSelectionClone);
+        selection = cloneSelection(afterSelectionClone);
+        requestDraw();
+      }
+    });
+
+    scheduleSave();
+    requestDraw();
+  }
+
+  function deleteSelection() {
+    if (!selection) return;
+    const al = L();
+    if (!al) return;
+
+    const beforeState = snapshotLayerState(al);
+    const beforeSelection = cloneSelection(selection);
+
+    // Delete elements
+    for (const k of selection.diagonals) al.diagonals.delete(k);
+    for (const k of selection.numbers) al.numbers.delete(k);
+    for (const k of selection.highlights) al.highlights.delete(k);
+    for (const k of selection.lines) al.lines.delete(k);
+    for (const a of selection.arrows) {
+      const idx = al.arrows.indexOf(a);
+      if (idx >= 0) al.arrows.splice(idx, 1);
+    }
+
+    const afterState = snapshotLayerState(al);
+    const count = selection.diagonals.size + selection.numbers.size + selection.highlights.size + selection.lines.size + selection.arrows.size;
+
+    pushUndo({
+      undo: () => {
+        restoreLayerStateAndSelection(al, beforeState, beforeSelection);
+        selection = cloneSelection(beforeSelection);
+        requestDraw();
+      },
+      redo: () => {
+        restoreLayerState(al, afterState);
+        clearSelection();
+        requestDraw();
+      }
+    });
+
+    clearSelection();
+    toast(`Deleted ${count} items`);
+    scheduleSave();
+    requestDraw();
+  }
+
 
   // ═══ UNDO / REDO (global) ══════════════════════
   function pushUndo(action) {
@@ -305,15 +690,39 @@
   // ═══ HOTKEYS ════════════════════════════════════
   function loadHotkeys() { try { const r = localStorage.getItem(STORE_HOTKEYS); if (r) hotkeys = { ...DEFAULT_HOTKEYS, ...JSON.parse(r) }; } catch { } }
   function saveHotkeys() { localStorage.setItem(STORE_HOTKEYS, JSON.stringify(hotkeys)); }
+  function formatHotkey(hk) {
+    if (!hk) return "";
+    return hk.replace("Shift+", "⇧").toUpperCase();
+  }
+
   function updateToolTitles() {
     document.querySelectorAll(".tool-btn[data-tool]").forEach(b => {
       const t = b.dataset.tool, hk = hotkeys[t];
-      b.title = `${b.querySelector("span").textContent} (${hk ? hk.toUpperCase() : "—"})`;
+      const disp = hk ? formatHotkey(hk) : "—";
+      b.title = `${b.querySelector("span").textContent} (${disp})`;
       let badge = b.querySelector(".tool-hotkey");
       if (!badge) { badge = document.createElement("span"); badge.className = "tool-hotkey"; b.appendChild(badge); }
-      badge.textContent = hk ? hk.toUpperCase() : "";
+      badge.textContent = hk ? formatHotkey(hk) : "";
     });
   }
+
+  function updateToolNamesForShift(isShift) {
+    const names = {
+      select: isShift ? "Select" : "Pan",
+      diagonal: isShift ? "Erase Diagonal" : "Diagonal",
+      number: isShift ? "Erase Number" : "Number",
+      highlight: isShift ? "Erase Highlight" : "Highlight",
+      arrow: isShift ? "Erase Arrow" : "Arrow",
+      line: isShift ? "Erase Line" : "Line"
+    };
+    for (const [tool, name] of Object.entries(names)) {
+      const btnSpan = document.querySelector(`.tool-btn[data-tool="${tool}"] span`);
+      if (btnSpan) {
+        btnSpan.textContent = name;
+      }
+    }
+  }
+
 
   // ═══ LAYER UI ═══════════════════════════════════
   function populateLayers() {
@@ -337,7 +746,16 @@
       });
 
       div.appendChild(vis); div.appendChild(nm);
-      div.addEventListener("click", () => { activeLayerIdx = idx; populateLayers(); requestDraw(); });
+      div.addEventListener("click", () => {
+        if (activeLayerIdx !== idx) {
+          clearSelection();
+          activeLayerIdx = idx;
+          populateLayers();
+          requestDraw();
+        }
+      });
+
+
       list.appendChild(div);
     }
   }
@@ -359,6 +777,15 @@
     for (let i = 0; i < layers.length; i++) { const l = layers[i]; if (!l.visible) continue; const dim = isolateLayer && i !== activeLayerIdx; if (dim) ctx.globalAlpha = .15; drawLayerArrows(l, cw, ch); if (dim) ctx.globalAlpha = 1; }
     for (let i = 0; i < layers.length; i++) { const l = layers[i]; if (!l.visible) continue; const dim = isolateLayer && i !== activeLayerIdx; if (dim) ctx.globalAlpha = .15; drawLayerNumbers(c, l, cw, ch); if (dim) ctx.globalAlpha = 1; }
     if (hoverValid) drawHoverPreview(c, cw, ch);
+
+    // Draw selection highlights and bounding box
+    drawSelection(c, cw, ch);
+
+    // Draw marquee selection box
+    drawMarquee(cw, ch);
+
+    // Sync delete button position
+    updateDeleteButtonPosition();
   }
 
   function drawGrid(c, cw, ch) {
@@ -370,19 +797,36 @@
     for (let row = sr; row <= er; row++) { const y = (row * CELL - camY) * zoom + ch / 2; ctx.strokeStyle = (row % 5 === 0) ? c.gridMajor : c.grid; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(cw, y); ctx.stroke(); }
   }
 
-  function drawLayerHighlights(l, cw, ch) { for (const [k, col] of l.highlights) { const [cx, cy] = k.split(",").map(Number); const sx = (cx * CELL - camX) * zoom + cw / 2, sy = (cy * CELL - camY) * zoom + ch / 2, sz = CELL * zoom; ctx.fillStyle = col; ctx.fillRect(sx, sy, sz, sz); } }
+  function drawLayerHighlights(l, cw, ch) {
+    for (const [k, col] of l.highlights) {
+      const [cx, cy] = k.split(",").map(Number);
+      let drawCx = cx;
+      let drawCy = cy;
+      if (activeTool === "select" && selection && selection.highlights.has(k) && draggingSelection) {
+        drawCx += dragSelectionOffset.dcx;
+        drawCy += dragSelectionOffset.dcy;
+      }
+      const sx = (drawCx * CELL - camX) * zoom + cw / 2, sy = (drawCy * CELL - camY) * zoom + ch / 2, sz = CELL * zoom;
+      ctx.fillStyle = col; ctx.fillRect(sx, sy, sz, sz);
+    }
+  }
 
   function drawLayerLines(c, l, cw, ch) {
     ctx.lineCap = "round"; ctx.lineWidth = Math.max(2, 2.5 * Math.min(zoom, 2));
     for (const [k, col] of l.lines) {
       const parts = k.split(","); const orient = parts[0], ex = +parts[1], ey = +parts[2];
+      let drawEx = ex, drawEy = ey;
+      if (activeTool === "select" && selection && selection.lines.has(k) && draggingSelection) {
+        drawEx += dragSelectionOffset.dcx;
+        drawEy += dragSelectionOffset.dcy;
+      }
       ctx.strokeStyle = resolveLineColour(col);
       const sz = CELL * zoom;
       if (orient === "h") {
-        const sx = (ex * CELL - camX) * zoom + cw / 2, sy = (ey * CELL - camY) * zoom + ch / 2;
+        const sx = (drawEx * CELL - camX) * zoom + cw / 2, sy = (drawEy * CELL - camY) * zoom + ch / 2;
         ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx + sz, sy); ctx.stroke();
       } else {
-        const sx = (ex * CELL - camX) * zoom + cw / 2, sy = (ey * CELL - camY) * zoom + ch / 2;
+        const sx = (drawEx * CELL - camX) * zoom + cw / 2, sy = (drawEy * CELL - camY) * zoom + ch / 2;
         ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx, sy + sz); ctx.stroke();
       }
     }
@@ -391,7 +835,23 @@
 
   function drawLayerDiagonals(c, l, cw, ch) {
     ctx.strokeStyle = c.diag; ctx.lineCap = "round"; ctx.lineWidth = Math.max(2, 2.5 * Math.min(zoom, 2));
-    for (const [k, dir] of l.diagonals) { const [cx, cy] = k.split(",").map(Number); const sx = (cx * CELL - camX) * zoom + cw / 2, sy = (cy * CELL - camY) * zoom + ch / 2, sz = CELL * zoom; ctx.beginPath(); if (dir === 1) { ctx.moveTo(sx, sy); ctx.lineTo(sx + sz, sy + sz); } else { ctx.moveTo(sx + sz, sy); ctx.lineTo(sx, sy + sz); } ctx.stroke(); }
+    for (const [k, dir] of l.diagonals) {
+      const [cx, cy] = k.split(",").map(Number);
+      let drawCx = cx;
+      let drawCy = cy;
+      if (activeTool === "select" && selection && selection.diagonals.has(k) && draggingSelection) {
+        drawCx += dragSelectionOffset.dcx;
+        drawCy += dragSelectionOffset.dcy;
+      }
+      const sx = (drawCx * CELL - camX) * zoom + cw / 2, sy = (drawCy * CELL - camY) * zoom + ch / 2, sz = CELL * zoom;
+      ctx.beginPath();
+      if (dir === 1) {
+        ctx.moveTo(sx, sy); ctx.lineTo(sx + sz, sy + sz);
+      } else {
+        ctx.moveTo(sx + sz, sy); ctx.lineTo(sx, sy + sz);
+      }
+      ctx.stroke();
+    }
     ctx.lineCap = "butt";
   }
 
@@ -412,7 +872,12 @@
   function drawLayerArrows(l, cw, ch) {
     const lw = Math.max(2, 2.5 * Math.min(zoom, 2));
     for (const a of l.arrows) {
-      const s = arrowAnchor(a.cx1, a.cy1), e = arrowAnchor(a.cx2, a.cy2);
+      let dcx = 0, dcy = 0;
+      if (activeTool === "select" && selection && selection.arrows.has(a) && draggingSelection) {
+        dcx = dragSelectionOffset.dcx;
+        dcy = dragSelectionOffset.dcy;
+      }
+      const s = arrowAnchor(a.cx1 + dcx, a.cy1 + dcy), e = arrowAnchor(a.cx2 + dcx, a.cy2 + dcy);
       const ss = worldToScreen(s.wx, s.wy), se = worldToScreen(e.wx, e.wy);
       drawArrowShape(ss.x, ss.y, se.x, se.y, resolveArrowColour(a.colour), lw);
     }
@@ -451,7 +916,13 @@
     ctx.font = `600 ${fs}px 'Inter',sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
     for (const [k, num] of l.numbers) {
       const [ix, iy] = k.split(",").map(Number);
-      const sx = (ix * CELL - camX) * zoom + cw / 2, sy = (iy * CELL - camY) * zoom + ch / 2;
+      let drawIx = ix;
+      let drawIy = iy;
+      if (activeTool === "select" && selection && selection.numbers.has(k) && draggingSelection) {
+        drawIx += dragSelectionOffset.dcx;
+        drawIy += dragSelectionOffset.dcy;
+      }
+      const sx = (drawIx * CELL - camX) * zoom + cw / 2, sy = (drawIy * CELL - camY) * zoom + ch / 2;
       if (numberStyle === "slope") {
         drawSlopeGlyph(ctx, sx, sy, num, c);
       } else {
@@ -462,6 +933,140 @@
       }
     }
   }
+
+  function drawSelection(c, cw, ch) {
+    if (activeTool !== "select" || !selection) return;
+
+    ctx.save();
+    const accent = themeAccentColor();
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = Math.max(1.5, 2 * Math.min(zoom, 1.5));
+    ctx.setLineDash([4, 4]);
+
+    const dcx = draggingSelection ? dragSelectionOffset.dcx : 0;
+    const dcy = draggingSelection ? dragSelectionOffset.dcy : 0;
+
+    // Collect cell boundaries to draw each unique segment exactly once
+    const cellEdgesH = new Set();
+    const cellEdgesV = new Set();
+
+    function addCellEdges(cx, cy) {
+      cellEdgesH.add(`${cx},${cy}`);     // top edge
+      cellEdgesH.add(`${cx},${cy + 1}`); // bottom edge
+      cellEdgesV.add(`${cx},${cy}`);     // left edge
+      cellEdgesV.add(`${cx + 1},${cy}`); // right edge
+    }
+
+    for (const k of selection.diagonals) {
+      const [cx, cy] = k.split(",").map(Number);
+      addCellEdges(cx + dcx, cy + dcy);
+    }
+    for (const k of selection.highlights) {
+      const [cx, cy] = k.split(",").map(Number);
+      addCellEdges(cx + dcx, cy + dcy);
+    }
+
+    // Draw horizontal and vertical edges in a single path to maximize rendering speed
+    ctx.beginPath();
+    for (const edge of cellEdgesH) {
+      const [cx, cy] = edge.split(",").map(Number);
+      const sx = (cx * CELL - camX) * zoom + cw / 2;
+      const sy = (cy * CELL - camY) * zoom + ch / 2;
+      const sz = CELL * zoom;
+      ctx.moveTo(sx, sy);
+      ctx.lineTo(sx + sz, sy);
+    }
+    for (const edge of cellEdgesV) {
+      const [cx, cy] = edge.split(",").map(Number);
+      const sx = (cx * CELL - camX) * zoom + cw / 2;
+      const sy = (cy * CELL - camY) * zoom + ch / 2;
+      const sz = CELL * zoom;
+      ctx.moveTo(sx, sy);
+      ctx.lineTo(sx, sy + sz);
+    }
+    ctx.stroke();
+
+
+
+
+    // Numbers
+    for (const k of selection.numbers) {
+      const [ix, iy] = k.split(",").map(Number);
+      const sx = ((ix + dcx) * CELL - camX) * zoom + cw / 2;
+      const sy = ((iy + dcy) * CELL - camY) * zoom + ch / 2;
+      const r = (14 * Math.min(zoom, 2)) + 4;
+      ctx.beginPath();
+      ctx.arc(sx, sy, r, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // Lines
+    for (const k of selection.lines) {
+      const parts = k.split(",");
+      const orient = parts[0], ex = +parts[1], ey = +parts[2];
+      const sx = ((ex + dcx) * CELL - camX) * zoom + cw / 2;
+      const sy = ((ey + dcy) * CELL - camY) * zoom + ch / 2;
+      const sz = CELL * zoom;
+      if (orient === "h") {
+        ctx.strokeRect(sx - 2, sy - 4, sz + 4, 8);
+      } else {
+        ctx.strokeRect(sx - 4, sy - 2, 8, sz + 4);
+      }
+    }
+
+    // Arrows
+    for (const a of selection.arrows) {
+      const s = arrowAnchor(a.cx1 + dcx, a.cy1 + dcy);
+      const e = arrowAnchor(a.cx2 + dcx, a.cy2 + dcy);
+      const ss = worldToScreen(s.wx, s.wy);
+      const se = worldToScreen(e.wx, e.wy);
+      const minX = Math.min(ss.x, se.x) - 6;
+      const maxX = Math.max(ss.x, se.x) + 6;
+      const minY = Math.min(ss.y, se.y) - 6;
+      const maxY = Math.max(ss.y, se.y) + 6;
+      ctx.strokeRect(minX, minY, maxX - minX, maxY - minY);
+    }
+
+    // Outer boundary box for the whole selection
+    const bounds = getSelectionBounds(selection);
+    if (bounds) {
+      const minS = worldToScreen(bounds.minX, bounds.minY);
+      const maxS = worldToScreen(bounds.maxX, bounds.maxY);
+      const sx = minS.x + dcx * CELL * zoom;
+      const sy = minS.y + dcy * CELL * zoom;
+      const sw = (maxS.x - minS.x);
+      const sh = (maxS.y - minS.y);
+
+      // Draw bounding box
+      ctx.strokeStyle = accent + "66"; // 40% opacity
+      ctx.lineWidth = 1;
+      ctx.setLineDash([6, 3]);
+      ctx.strokeRect(sx - 6, sy - 6, sw + 12, sh + 12);
+
+      ctx.fillStyle = accent + "08"; // ~3% opacity
+      ctx.fillRect(sx - 6, sy - 6, sw + 12, sh + 12);
+    }
+
+    ctx.restore();
+  }
+
+  function drawMarquee(cw, ch) {
+    if (activeTool === "select" && marqueeActive && marqueeStart && marqueeEnd) {
+      const sStart = worldToScreen(marqueeStart.x, marqueeStart.y);
+      const sEnd = worldToScreen(marqueeEnd.x, marqueeEnd.y);
+      ctx.save();
+      const accent = themeAccentColor();
+      ctx.strokeStyle = accent + "cc"; // 80% opacity
+      ctx.lineWidth = 1.5;
+      ctx.fillStyle = accent + "1a"; // 10% opacity
+      ctx.beginPath();
+      ctx.rect(sStart.x, sStart.y, sEnd.x - sStart.x, sEnd.y - sStart.y);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
 
   // ── Hover preview ──
   function drawHoverPreview(c, cw, ch) {
@@ -550,15 +1155,44 @@
   function getP(e) { return { x: e.clientX, y: e.clientY }; }
 
   canvas.addEventListener("pointerdown", e => {
+    const p = getP(e);
+    const w = screenToWorld(p.x, p.y);
+    dragStartX = p.x;
+    dragStartY = p.y;
+
+    if (e.button === 0 && activeTool === "select") {
+      if (e.shiftKey) {
+        marqueeActive = true;
+        pointerDown = true;
+        didDrag = false;
+        marqueeStart = w;
+        marqueeEnd = w;
+        canvas.style.cursor = "crosshair";
+        canvas.setPointerCapture(e.pointerId);
+        return;
+      }
+
+      const bounds = getSelectionBounds(selection);
+      if (bounds && w.x >= bounds.minX && w.x <= bounds.maxX && w.y >= bounds.minY && w.y <= bounds.maxY) {
+        draggingSelection = true;
+        pointerDown = true;
+        didDrag = false;
+        dragSelectionStart = w;
+        dragSelectionOffset = { dcx: 0, dcy: 0 };
+        canvas.style.cursor = "move";
+        canvas.setPointerCapture(e.pointerId);
+        return;
+      }
+    }
+
     // Pan: middle button, or select tool, or alt+click
     if (e.button === 1 || (e.button === 0 && (e.altKey || activeTool === "select"))) {
       dragging = true; pointerDown = true; didDrag = false;
-      const p = getP(e); dragStartX = p.x; dragStartY = p.y; camStartX = camX; camStartY = camY;
+      camStartX = camX; camStartY = camY;
       canvas.style.cursor = "grabbing"; canvas.setPointerCapture(e.pointerId); return;
     }
     if (e.button === 0) {
       pointerDown = true; didDrag = false;
-      const p = getP(e); dragStartX = p.x; dragStartY = p.y;
       // Lock line drag orientation at the click point (before any movement)
       if (activeTool === "line") {
         const w = screenToWorld(p.x, p.y), edge = nearestEdge(w.x, w.y);
@@ -573,6 +1207,32 @@
     hoverWX = w.x; hoverWY = w.y; hoverValid = true;
     const cell = worldToCell(w.x, w.y);
     $("coords-display").textContent = `${cell.cx}, ${cell.cy}`;
+
+    if (activeTool === "select" && !pointerDown) {
+      const bounds = getSelectionBounds(selection);
+      if (bounds && w.x >= bounds.minX && w.x <= bounds.maxX && w.y >= bounds.minY && w.y <= bounds.maxY) {
+        canvas.style.cursor = "move";
+      } else {
+        canvas.style.cursor = getCursor();
+      }
+    }
+
+    if (marqueeActive) {
+      if (Math.abs(p.x - dragStartX) + Math.abs(p.y - dragStartY) > 3) didDrag = true;
+      marqueeEnd = w;
+      updateSelectionFromMarquee();
+      requestDraw();
+      return;
+    }
+
+    if (draggingSelection) {
+      if (Math.abs(p.x - dragStartX) + Math.abs(p.y - dragStartY) > 3) didDrag = true;
+      const dcx = Math.round((w.x - dragSelectionStart.x) / CELL);
+      const dcy = Math.round((w.y - dragSelectionStart.y) / CELL);
+      dragSelectionOffset = { dcx, dcy };
+      requestDraw();
+      return;
+    }
 
     if (dragging) {
       const dx = p.x - dragStartX, dy = p.y - dragStartY;
@@ -599,10 +1259,39 @@
 
   canvas.addEventListener("pointerup", e => {
     const p = getP(e), w = screenToWorld(p.x, p.y);
-    if (dragging) { dragging = false; pointerDown = false; canvas.style.cursor = getCursor(); scheduleSave(); return; }
+
+    if (marqueeActive) {
+      marqueeActive = false;
+      pointerDown = false;
+      canvas.style.cursor = getCursor();
+      updateDeleteButtonPosition();
+      requestDraw();
+      return;
+    }
+
+    if (draggingSelection) {
+      draggingSelection = false;
+      pointerDown = false;
+      canvas.style.cursor = getCursor();
+      if (dragSelectionOffset.dcx !== 0 || dragSelectionOffset.dcy !== 0) {
+        moveSelection(dragSelectionOffset.dcx, dragSelectionOffset.dcy);
+      }
+      dragSelectionOffset = { dcx: 0, dcy: 0 };
+      updateDeleteButtonPosition();
+      requestDraw();
+      return;
+    }
+
+    if (dragging) {
+      dragging = false; pointerDown = false; canvas.style.cursor = getCursor(); scheduleSave();
+      if (!didDrag && activeTool === "select") handleClick(w, e);
+      return;
+    }
+
     if (e.button === 0 && !didDrag) handleClick(w, e);
     pointerDown = false; didDrag = false; lastPaintedCell = null; lastPaintedHighlight = null; lastPaintedLine = null; lastPaintedLineCoord = null; lineDragOrient = null; lineDragFixed = null;
   });
+
 
   canvas.addEventListener("mouseleave", () => { hoverValid = false; requestDraw(); });
 
@@ -656,7 +1345,20 @@
   function handleClick(w, e) {
     const al = L();
     switch (activeTool) {
+      case "select": {
+        const bounds = getSelectionBounds(selection);
+        if (bounds) {
+          if (w.x >= bounds.minX && w.x <= bounds.maxX && w.y >= bounds.minY && w.y <= bounds.maxY) {
+            // Clicked inside selection - do nothing
+          } else {
+            // Clicked outside selection - clear it
+            clearSelection();
+          }
+        }
+        break;
+      }
       case "diagonal": {
+
         const { cx, cy } = worldToCell(w.x, w.y), k2 = key(cx, cy), cur = al.diagonals.get(k2);
         if (e.shiftKey) { if (cur !== undefined) { al.diagonals.delete(k2); pushUndo({ redo: () => al.diagonals.delete(k2), undo: () => al.diagonals.set(k2, cur) }); } }
         else if (diagonalDir !== null) {
@@ -741,7 +1443,11 @@
   // ═══ KEYBOARD ═══════════════════════════════════
   function getCursor() { return activeTool === "select" ? "grab" : "crosshair"; }
   function setTool(tool, diagDir) {
+    if (tool !== "select") {
+      clearSelection();
+    }
     activeTool = tool; arrowStart = null;
+
     diagonalDir = (tool === "diagonal" && diagDir !== undefined) ? diagDir : null;
     document.querySelectorAll(".tool-btn").forEach(b => b.classList.toggle("active", b.dataset.tool === tool));
     $("btn-diag-fwd").classList.toggle("active", tool === "diagonal" && diagonalDir === 1);
@@ -758,21 +1464,40 @@
     if (recordingAction) {
       e.preventDefault(); e.stopPropagation();
       if (e.key === "Escape") { recordingAction = null; populateHotkeyList(); return; }
-      hotkeys[recordingAction] = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+      if (e.key === "Shift" || e.key === "Control" || e.key === "Alt" || e.key === "Meta") {
+        return;
+      }
+      let keyStr = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+      if (e.shiftKey) {
+        keyStr = "Shift+" + keyStr;
+      }
+      hotkeys[recordingAction] = keyStr;
       saveHotkeys(); recordingAction = null; populateHotkeyList(); updateToolTitles(); return;
+    }
+
+    if (e.key === "Shift") {
+      if (!e.repeat) updateToolNamesForShift(true);
     }
 
     if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.tagName === "SELECT") return;
     const ctrl = e.ctrlKey || e.metaKey;
 
-    // Escape cancels arrow start
-    if (e.key === "Escape" && arrowStart) { arrowStart = null; requestDraw(); return; }
+    // Escape cancels arrow start or selection
+    if (e.key === "Escape") {
+      if (arrowStart) { arrowStart = null; requestDraw(); return; }
+      if (selection) { clearSelection(); return; }
+    }
+
 
     // Tool hotkeys
-    const lk = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+    let matchKey = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+    if (e.shiftKey && e.key !== "Shift" && !ctrl) {
+      matchKey = "Shift+" + matchKey;
+    }
+
     if (!ctrl) {
       for (const act of HOTKEY_ACTIONS) {
-        if (hotkeys[act.id] === lk) {
+        if (hotkeys[act.id] === matchKey) {
           if (act.id === "diagFwd") { setTool("diagonal", 1); return; }
           if (act.id === "diagBwd") { setTool("diagonal", -1); return; }
           if (act.id === "flipDiag") {
@@ -793,6 +1518,7 @@
       }
     }
 
+    const lk = e.key.length === 1 ? e.key.toLowerCase() : e.key;
     if (lk >= "0" && lk <= "4" && !ctrl) { activeNumber = parseInt(lk); setTool("number"); document.querySelectorAll(".num-btn").forEach(b => b.classList.toggle("active", b.dataset.num === lk)); return; }
 
     if (ctrl && e.key.toLowerCase() === "z" && !e.shiftKey) { e.preventDefault(); undo(); return; }
@@ -802,6 +1528,17 @@
     if (ctrl && e.key.toLowerCase() === "o") { e.preventDefault(); $("file-input").click(); return; }
     if (e.key === "Home" || (ctrl && e.key === "0")) { e.preventDefault(); camX = 0; camY = 0; zoom = 1; $("zoom-display").textContent = "100%"; scheduleSave(); requestDraw(); }
   });
+
+  document.addEventListener("keyup", e => {
+    if (e.key === "Shift") {
+      updateToolNamesForShift(false);
+    }
+  });
+
+  window.addEventListener("blur", () => {
+    updateToolNamesForShift(false);
+  });
+
 
   // ═══ UI EVENT HANDLERS ══════════════════════════
   document.querySelectorAll(".tool-btn").forEach(b => b.addEventListener("click", () => setTool(b.dataset.tool)));
@@ -896,7 +1633,8 @@
       const row = document.createElement("div"); row.className = "hotkey-row";
       const label = document.createElement("span"); label.className = "hotkey-row__label"; label.textContent = act.label;
       const btn = document.createElement("button"); btn.className = "hotkey-row__key" + (recordingAction === act.id ? " recording" : "");
-      btn.textContent = recordingAction === act.id ? "Press a key…" : (hotkeys[act.id] || "—").toUpperCase();
+      btn.textContent = recordingAction === act.id ? "Press a key…" : (hotkeys[act.id] ? formatHotkey(hotkeys[act.id]) : "—");
+
       btn.addEventListener("click", () => { recordingAction = act.id; populateHotkeyList(); });
       row.appendChild(label); row.appendChild(btn); list.appendChild(row);
     }
@@ -958,8 +1696,17 @@
     r.readAsText(file); e.target.value = "";
   });
 
+  const deleteBtn = $("selection-delete-btn");
+  if (deleteBtn) {
+    deleteBtn.addEventListener("click", e => {
+      e.stopPropagation();
+      deleteSelection();
+    });
+  }
+
   // ═══ INIT ═══════════════════════════════════════
   window.addEventListener("resize", resize);
+
   resize();
   initTheme();
   loadHotkeys();
