@@ -68,7 +68,7 @@
   // Drag / pan
   let dragging = false, dragStartX = 0, dragStartY = 0, camStartX = 0, camStartY = 0;
   let pointerDown = false, didDrag = false;
-  let lastPaintedCell = null, lastPaintedHighlight = null, lastPaintedLine = null, lastPaintedLineCoord = null;
+  let lastPaintedCell = null, lastPaintedHighlight = null, lastPaintedLine = null, lastPaintedLineCoord = null, lastPaintedNumber = null;
   let lineDragOrient = null, lineDragFixed = null; // lock orientation+axis during drag
 
   // Selection state variables
@@ -1193,11 +1193,12 @@
     }
     if (e.button === 0) {
       pointerDown = true; didDrag = false;
-      // Lock line drag orientation at the click point (before any movement)
       if (activeTool === "line") {
         const w = screenToWorld(p.x, p.y), edge = nearestEdge(w.x, w.y);
         lineDragOrient = edge.orient;
         lineDragFixed = edge.orient === "h" ? edge.cy : edge.cx;
+        lastPaintedLineCoord = edge.orient === "h" ? edge.cx : edge.cy;
+        lastPaintedLine = null;
       }
     }
   });
@@ -1242,16 +1243,53 @@
     }
 
     if (pointerDown && activeTool === "diagonal") {
+      const wasDragged = didDrag;
       if (Math.abs(p.x - dragStartX) + Math.abs(p.y - dragStartY) > 3) didDrag = true;
-      if (didDrag) handleDiagPaint(w);
+      if (didDrag) {
+        if (!wasDragged) {
+          const wStart = screenToWorld(dragStartX, dragStartY);
+          handleDiagPaint(wStart, e.shiftKey);
+        }
+        handleDiagPaint(w, e.shiftKey);
+      }
     }
     if (pointerDown && activeTool === "highlight") {
+      const wasDragged = didDrag;
       if (Math.abs(p.x - dragStartX) + Math.abs(p.y - dragStartY) > 3) didDrag = true;
-      if (didDrag) handleHighPaint(w);
+      if (didDrag) {
+        if (!wasDragged) {
+          const wStart = screenToWorld(dragStartX, dragStartY);
+          handleHighPaint(wStart, e.shiftKey);
+        }
+        handleHighPaint(w, e.shiftKey);
+      }
+    }
+    if (pointerDown && activeTool === "number") {
+      const wasDragged = didDrag;
+      if (Math.abs(p.x - dragStartX) + Math.abs(p.y - dragStartY) > 3) didDrag = true;
+      if (didDrag) {
+        if (!wasDragged) {
+          const wStart = screenToWorld(dragStartX, dragStartY);
+          handleNumberPaint(wStart, e.shiftKey);
+        }
+        handleNumberPaint(w, e.shiftKey);
+      }
+    }
+    if (pointerDown && activeTool === "arrow") {
+      const wasDragged = didDrag;
+      if (Math.abs(p.x - dragStartX) + Math.abs(p.y - dragStartY) > 3) didDrag = true;
+      if (didDrag && e.shiftKey) {
+        if (!wasDragged) {
+          const wStart = screenToWorld(dragStartX, dragStartY);
+          removeArrowNear(wStart);
+        }
+        removeArrowNear(w);
+        requestDraw();
+      }
     }
     if (pointerDown && activeTool === "line") {
       didDrag = true;
-      handleLinePaint(w);
+      handleLinePaint(w, e.shiftKey);
     }
 
     requestDraw(); // for hover preview
@@ -1289,29 +1327,59 @@
     }
 
     if (e.button === 0 && !didDrag) handleClick(w, e);
-    pointerDown = false; didDrag = false; lastPaintedCell = null; lastPaintedHighlight = null; lastPaintedLine = null; lastPaintedLineCoord = null; lineDragOrient = null; lineDragFixed = null;
+    pointerDown = false; didDrag = false; lastPaintedCell = null; lastPaintedHighlight = null; lastPaintedLine = null; lastPaintedLineCoord = null; lastPaintedNumber = null; lineDragOrient = null; lineDragFixed = null;
   });
 
 
   canvas.addEventListener("mouseleave", () => { hoverValid = false; requestDraw(); });
 
-  function handleDiagPaint(w) {
+  function handleDiagPaint(w, isErase) {
     const { cx, cy } = worldToCell(w.x, w.y), k2 = key(cx, cy); if (lastPaintedCell === k2) return; lastPaintedCell = k2;
-    const al = L(), dir = diagonalDir || 1;
-    if (!al.diagonals.has(k2)) {
-      al.diagonals.set(k2, dir);
-      pushUndo({ redo: () => al.diagonals.set(k2, dir), undo: () => al.diagonals.delete(k2) });
+    const al = L();
+    if (isErase) {
+      const cur = al.diagonals.get(k2);
+      if (cur !== undefined) {
+        al.diagonals.delete(k2);
+        pushUndo({ redo: () => al.diagonals.delete(k2), undo: () => al.diagonals.set(k2, cur) });
+        requestDraw();
+      }
+    } else {
+      const dir = diagonalDir || 1;
+      if (!al.diagonals.has(k2)) {
+        al.diagonals.set(k2, dir);
+        pushUndo({ redo: () => al.diagonals.set(k2, dir), undo: () => al.diagonals.delete(k2) });
+        requestDraw();
+      }
+    }
+  }
+  function handleHighPaint(w, isErase) {
+    const { cx, cy } = worldToCell(w.x, w.y), k2 = key(cx, cy); if (lastPaintedHighlight === k2) return; lastPaintedHighlight = k2;
+    const al = L(), prev = al.highlights.get(k2), col = highlightColour;
+    if (isErase) {
+      if (prev !== undefined) {
+        al.highlights.delete(k2);
+        pushUndo({ redo: () => al.highlights.delete(k2), undo: () => al.highlights.set(k2, prev) });
+        requestDraw();
+      }
+    } else {
+      if (prev !== col) {
+        al.highlights.set(k2, col);
+        pushUndo({ redo: () => al.highlights.set(k2, col), undo: () => { if (prev) al.highlights.set(k2, prev); else al.highlights.delete(k2); } });
+        requestDraw();
+      }
+    }
+  }
+  function handleNumberPaint(w, isErase) {
+    if (!isErase) return;
+    const { ix, iy } = nearestInt(w.x, w.y), k2 = key(ix, iy); if (lastPaintedNumber === k2) return; lastPaintedNumber = k2;
+    const al = L(), cur = al.numbers.get(k2);
+    if (cur !== undefined) {
+      al.numbers.delete(k2);
+      pushUndo({ redo: () => al.numbers.delete(k2), undo: () => al.numbers.set(k2, cur) });
       requestDraw();
     }
   }
-  function handleHighPaint(w) {
-    const { cx, cy } = worldToCell(w.x, w.y), k2 = key(cx, cy); if (lastPaintedHighlight === k2) return; lastPaintedHighlight = k2;
-    const al = L(), prev = al.highlights.get(k2), col = highlightColour;
-    al.highlights.set(k2, col);
-    pushUndo({ redo: () => al.highlights.set(k2, col), undo: () => { if (prev) al.highlights.set(k2, prev); else al.highlights.delete(k2); } });
-    requestDraw();
-  }
-  function handleLinePaint(w) {
+  function handleLinePaint(w, isErase) {
     const edge = nearestEdge(w.x, w.y);
     // Only allow edges matching the locked orientation and axis (set at pointerdown)
     if (edge.orient !== lineDragOrient) return;
@@ -1332,9 +1400,18 @@
     }
     for (let i = start; i <= end; i++) {
       const ek = lineDragOrient === "h" ? lineKey("h", i, lineDragFixed) : lineKey("v", lineDragFixed, i);
-      if (!al.lines.has(ek)) {
-        al.lines.set(ek, col);
-        pushUndo({ redo: () => al.lines.set(ek, col), undo: () => al.lines.delete(ek) });
+      if (isErase) {
+        const prev = al.lines.get(ek);
+        if (prev !== undefined) {
+          al.lines.delete(ek);
+          pushUndo({ redo: () => al.lines.delete(ek), undo: () => al.lines.set(ek, prev) });
+        }
+      } else {
+        const prev = al.lines.get(ek);
+        if (prev !== col) {
+          al.lines.set(ek, col);
+          pushUndo({ redo: () => al.lines.set(ek, col), undo: () => { if (prev !== undefined) al.lines.set(ek, prev); else al.lines.delete(ek); } });
+        }
       }
     }
     lastPaintedLine = lk;
