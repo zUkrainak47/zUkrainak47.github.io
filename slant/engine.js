@@ -690,21 +690,16 @@
   // ═══ HOTKEYS ════════════════════════════════════
   function loadHotkeys() { try { const r = localStorage.getItem(STORE_HOTKEYS); if (r) hotkeys = { ...DEFAULT_HOTKEYS, ...JSON.parse(r) }; } catch { } }
   function saveHotkeys() { localStorage.setItem(STORE_HOTKEYS, JSON.stringify(hotkeys)); }
-  function formatHotkey(hk) {
-    if (!hk) return "";
-    return hk.replace("Shift+", "⇧").toUpperCase();
-  }
-
   function updateToolTitles() {
     document.querySelectorAll(".tool-btn[data-tool]").forEach(b => {
       const t = b.dataset.tool, hk = hotkeys[t];
-      const disp = hk ? formatHotkey(hk) : "—";
-      b.title = `${b.querySelector("span").textContent} (${disp})`;
+      b.title = `${b.querySelector("span").textContent} (${hk ? hk.toUpperCase() : "—"})`;
       let badge = b.querySelector(".tool-hotkey");
       if (!badge) { badge = document.createElement("span"); badge.className = "tool-hotkey"; b.appendChild(badge); }
-      badge.textContent = hk ? formatHotkey(hk) : "";
+      badge.textContent = hk ? hk.toUpperCase() : "";
     });
   }
+
 
   function updateToolNamesForShift(isShift) {
     const names = {
@@ -1541,16 +1536,11 @@
     if (recordingAction) {
       e.preventDefault(); e.stopPropagation();
       if (e.key === "Escape") { recordingAction = null; populateHotkeyList(); return; }
-      if (e.key === "Shift" || e.key === "Control" || e.key === "Alt" || e.key === "Meta") {
-        return;
-      }
-      let keyStr = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-      if (e.shiftKey) {
-        keyStr = "Shift+" + keyStr;
-      }
-      hotkeys[recordingAction] = keyStr;
+      if (e.key === "Shift" || e.shiftKey) { return; }
+      hotkeys[recordingAction] = e.key.length === 1 ? e.key.toLowerCase() : e.key;
       saveHotkeys(); recordingAction = null; populateHotkeyList(); updateToolTitles(); return;
     }
+
 
     if (e.key === "Shift") {
       if (!e.repeat) updateToolNamesForShift(true);
@@ -1567,14 +1557,11 @@
 
 
     // Tool hotkeys
-    let matchKey = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-    if (e.shiftKey && e.key !== "Shift" && !ctrl) {
-      matchKey = "Shift+" + matchKey;
-    }
-
+    const lk = e.key.length === 1 ? e.key.toLowerCase() : e.key;
     if (!ctrl) {
       for (const act of HOTKEY_ACTIONS) {
-        if (hotkeys[act.id] === matchKey) {
+        if (hotkeys[act.id] === lk) {
+
           if (act.id === "diagFwd") { setTool("diagonal", 1); return; }
           if (act.id === "diagBwd") { setTool("diagonal", -1); return; }
           if (act.id === "flipDiag") {
@@ -1595,8 +1582,8 @@
       }
     }
 
-    const lk = e.key.length === 1 ? e.key.toLowerCase() : e.key;
     if (lk >= "0" && lk <= "4" && !ctrl) { activeNumber = parseInt(lk); setTool("number"); document.querySelectorAll(".num-btn").forEach(b => b.classList.toggle("active", b.dataset.num === lk)); return; }
+
 
     if (ctrl && e.key.toLowerCase() === "z" && !e.shiftKey) { e.preventDefault(); undo(); return; }
     if (ctrl && e.key.toLowerCase() === "z" && e.shiftKey) { e.preventDefault(); redo(); return; }
@@ -1710,7 +1697,9 @@
       const row = document.createElement("div"); row.className = "hotkey-row";
       const label = document.createElement("span"); label.className = "hotkey-row__label"; label.textContent = act.label;
       const btn = document.createElement("button"); btn.className = "hotkey-row__key" + (recordingAction === act.id ? " recording" : "");
-      btn.textContent = recordingAction === act.id ? "Press a key…" : (hotkeys[act.id] ? formatHotkey(hotkeys[act.id]) : "—");
+      btn.textContent = recordingAction === act.id ? "Press a key…" : (hotkeys[act.id] || "—").toUpperCase();
+
+
 
       btn.addEventListener("click", () => { recordingAction = act.id; populateHotkeyList(); });
       row.appendChild(label); row.appendChild(btn); list.appendChild(row);
