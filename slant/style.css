@@ -147,6 +147,18 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .num-btn:hover{background:var(--surface-hover);color:var(--text)}
 .num-btn.active{background:var(--accent-glow);border-color:var(--accent);color:var(--text)}
 
+/* ── Number style toggle ── */
+.numstyle-buttons{display:flex;gap:3px}
+.numstyle-btn{
+  display:flex;align-items:center;gap:5px;flex:1;padding:5px 8px;
+  background:transparent;border:1px solid var(--border);border-radius:8px;
+  color:var(--text-dim);font-family:var(--font);font-size:11px;font-weight:500;
+  cursor:pointer;transition:all .15s ease;
+}
+.numstyle-btn svg{width:16px;height:16px;flex-shrink:0}
+.numstyle-btn:hover{background:var(--surface-hover);color:var(--text)}
+.numstyle-btn.active{background:var(--accent-glow);border-color:var(--accent);color:var(--text)}
+
 /* ── Colour swatches ── */
 .colour-buttons{display:flex;gap:5px;flex-wrap:wrap}
 .colour-btn{

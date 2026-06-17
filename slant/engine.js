@@ -15,6 +15,10 @@
   const STORE_PREFIX = "slant-data-";
   const STORE_THEME = "slant-theme";
   const STORE_HOTKEYS = "slant-hotkeys";
+  const STORE_NUM_STYLE = "slant-num-style";
+
+  // Slope values for each number clue (index = clue value)
+  const NUM_SLOPES = [null, 2, 0.5, -0.5, -2]; // 0=filled dot, 1..4=slope
 
   const HOTKEY_ACTIONS = [
     { id: "select", label: "Select / Pan" },
@@ -40,6 +44,7 @@
   let camX = 0, camY = 0, zoom = 1;
   let activeTool = "select";
   let activeNumber = 0;
+  let numberStyle = localStorage.getItem(STORE_NUM_STYLE) || "circle"; // "circle" or "slope"
   let diagonalDir = null; // null=cycle, 1=\, -1=/
   let highlightColour = "#ff6b6b40";
   let arrowColour = "#ff6b6b";
@@ -262,7 +267,7 @@
     const hl = 10;
     for (const l of layers) { if (!l.visible) continue; for (const a of l.arrows) { const s = arrowAnchor(a.cx1, a.cy1), e = arrowAnchor(a.cx2, a.cy2); const col = resolveArrowColour(a.colour); const ang = Math.atan2(e.wy - s.wy, e.wx - s.wx); const lex = e.wx - hl * .5 * Math.cos(ang), ley = e.wy - hl * .5 * Math.sin(ang); parts.push(`<line x1="${s.wx}" y1="${s.wy}" x2="${lex}" y2="${ley}" stroke="${col}" stroke-width="2.5" stroke-linecap="round"/>`); const p1x = e.wx - hl * Math.cos(ang - Math.PI / 6), p1y = e.wy - hl * Math.sin(ang - Math.PI / 6), p2x = e.wx - hl * Math.cos(ang + Math.PI / 6), p2y = e.wy - hl * Math.sin(ang + Math.PI / 6); parts.push(`<polygon points="${e.wx},${e.wy} ${p1x},${p1y} ${p2x},${p2y}" fill="${col}"/>`); } }
     // Numbers
-    for (const l of layers) { if (!l.visible) continue; for (const [k, num] of l.numbers) { const [ix, iy] = k.split(",").map(Number); const x = ix * CELL, y = iy * CELL, r = 10; parts.push(`<circle cx="${x}" cy="${y}" r="${r}" fill="${c.numBg}" stroke="${c.numBdr}" stroke-width="1"/>`); parts.push(`<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central" fill="${c.num}" font-family="Inter,sans-serif" font-weight="600" font-size="14">${num}</text>`); } }
+    for (const l of layers) { if (!l.visible) continue; for (const [k, num] of l.numbers) { const [ix, iy] = k.split(",").map(Number); const x = ix * CELL, y = iy * CELL; if (numberStyle === "slope") { if (num === 0) { parts.push(`<circle cx="${x}" cy="${y}" r="${CELL * 0.1}" fill="${c.diag}"/>`); } else { const slope = NUM_SLOPES[num]; if (slope !== undefined) { let dx, dy; if (Math.abs(slope) <= 1) { dx = CELL / 2; dy = slope * dx; } else { dy = (CELL / 2) * Math.sign(slope); dx = Math.abs(dy / slope); } parts.push(`<line x1="${x - dx}" y1="${y + dy}" x2="${x + dx}" y2="${y - dy}" stroke="${c.diag}" stroke-width="2.5" stroke-linecap="round"/>`); } } } else { const r = 10; parts.push(`<circle cx="${x}" cy="${y}" r="${r}" fill="${c.numBg}" stroke="${c.numBdr}" stroke-width="1"/>`); parts.push(`<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central" fill="${c.num}" font-family="Inter,sans-serif" font-weight="600" font-size="14">${num}</text>`); } } }
     parts.push(`</svg>`);
     return parts.join("");
   }
@@ -372,15 +377,48 @@
     }
   }
 
+  function drawSlopeGlyph(ctx, sx, sy, num, c) {
+    if (num === 0) {
+      // Filled dot
+      const dotR = CELL * zoom * 0.1;
+      ctx.fillStyle = c.diag;
+      ctx.beginPath(); ctx.arc(sx, sy, dotR, 0, Math.PI * 2); ctx.fill();
+    } else {
+      const slope = NUM_SLOPES[num];
+      if (slope === undefined) return;
+      let dx, dy;
+      if (Math.abs(slope) <= 1) {
+        dx = (CELL / 2) * zoom;
+        dy = slope * dx;
+      } else {
+        dy = (CELL / 2) * zoom * Math.sign(slope);
+        dx = Math.abs(dy / slope);
+      }
+      ctx.strokeStyle = c.diag;
+      ctx.lineCap = "round";
+      ctx.lineWidth = Math.max(2, 2.5 * Math.min(zoom, 2));
+      ctx.beginPath();
+      ctx.moveTo(sx - dx, sy + dy);
+      ctx.lineTo(sx + dx, sy - dy);
+      ctx.stroke();
+      ctx.lineCap = "butt";
+    }
+  }
+
   function drawLayerNumbers(c, l, cw, ch) {
     const fs = Math.max(8, 14 * Math.min(zoom, 2));
     ctx.font = `600 ${fs}px 'Inter',sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
     for (const [k, num] of l.numbers) {
       const [ix, iy] = k.split(",").map(Number);
-      const sx = (ix * CELL - camX) * zoom + cw / 2, sy = (iy * CELL - camY) * zoom + ch / 2, r = fs * .7;
-      ctx.fillStyle = c.numBg; ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = c.numBdr; ctx.lineWidth = 1; ctx.stroke();
-      ctx.fillStyle = c.num; ctx.fillText(String(num), sx, sy + 1);
+      const sx = (ix * CELL - camX) * zoom + cw / 2, sy = (iy * CELL - camY) * zoom + ch / 2;
+      if (numberStyle === "slope") {
+        drawSlopeGlyph(ctx, sx, sy, num, c);
+      } else {
+        const r = fs * .7;
+        ctx.fillStyle = c.numBg; ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = c.numBdr; ctx.lineWidth = 1; ctx.stroke();
+        ctx.fillStyle = c.num; ctx.fillText(String(num), sx, sy + 1);
+      }
     }
   }
 
@@ -406,12 +444,16 @@
       case "number": {
         const { ix, iy } = nearestInt(hoverWX, hoverWY);
         const sx = (ix * CELL - camX) * zoom + cw / 2, sy = (iy * CELL - camY) * zoom + ch / 2;
-        const fs = Math.max(8, 14 * Math.min(zoom, 2)), r = fs * .7;
         ctx.globalAlpha = .3;
-        ctx.fillStyle = c.numBg; ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = c.numBdr; ctx.lineWidth = 1; ctx.stroke();
-        ctx.font = `600 ${fs}px 'Inter',sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-        ctx.fillStyle = c.num; ctx.fillText(String(activeNumber), sx, sy + 1);
+        if (numberStyle === "slope") {
+          drawSlopeGlyph(ctx, sx, sy, activeNumber, c);
+        } else {
+          const fs = Math.max(8, 14 * Math.min(zoom, 2)), r = fs * .7;
+          ctx.fillStyle = c.numBg; ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = c.numBdr; ctx.lineWidth = 1; ctx.stroke();
+          ctx.font = `600 ${fs}px 'Inter',sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.fillStyle = c.num; ctx.fillText(String(activeNumber), sx, sy + 1);
+        }
         ctx.globalAlpha = 1;
         break;
       }
@@ -642,6 +684,9 @@
   $("btn-diag-fwd").addEventListener("click", () => setTool("diagonal", 1));
   $("btn-diag-bwd").addEventListener("click", () => setTool("diagonal", -1));
   document.querySelectorAll(".num-btn").forEach(b => b.addEventListener("click", () => { activeNumber = parseInt(b.dataset.num); document.querySelectorAll(".num-btn").forEach(x => x.classList.toggle("active", x === b)); }));
+  document.querySelectorAll(".numstyle-btn").forEach(b => b.addEventListener("click", () => { numberStyle = b.dataset.style; localStorage.setItem(STORE_NUM_STYLE, numberStyle); document.querySelectorAll(".numstyle-btn").forEach(x => x.classList.toggle("active", x === b)); requestDraw(); }));
+  // Sync numstyle active class on load
+  document.querySelectorAll(".numstyle-btn").forEach(b => b.classList.toggle("active", b.dataset.style === numberStyle));
   document.querySelectorAll("#highlight-panel .colour-btn").forEach(b => b.addEventListener("click", () => { highlightColour = b.dataset.colour; document.querySelectorAll("#highlight-panel .colour-btn").forEach(x => x.classList.toggle("active", x === b)); }));
   document.querySelectorAll("#arrow-panel .colour-btn").forEach(b => b.addEventListener("click", () => { arrowColour = b.dataset.colour; document.querySelectorAll("#arrow-panel .colour-btn").forEach(x => x.classList.toggle("active", x === b)); }));
   $("btn-undo").addEventListener("click", undo);
