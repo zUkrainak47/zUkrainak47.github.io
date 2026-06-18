@@ -1941,6 +1941,7 @@
     if (ctrl && e.key.toLowerCase() === "z" && !e.shiftKey) { e.preventDefault(); undo(); return; }
     if (ctrl && e.key.toLowerCase() === "z" && e.shiftKey) { e.preventDefault(); redo(); return; }
     if (ctrl && e.key.toLowerCase() === "y") { e.preventDefault(); redo(); return; }
+    if (ctrl && e.shiftKey && e.key.toLowerCase() === "c") { e.preventDefault(); if (selection) copySelectionAsImage(); return; }
     if (ctrl && e.key.toLowerCase() === "c") { e.preventDefault(); if (selection) copySelection(); return; }
     if (ctrl && e.key.toLowerCase() === "v") { e.preventDefault(); pasteClipboard(); return; }
     if (ctrl && e.key.toLowerCase() === "s") { e.preventDefault(); saveToFile(); return; }
@@ -2163,6 +2164,14 @@
     copyBtn.addEventListener("click", e => {
       e.stopPropagation();
       copySelection();
+    });
+  }
+
+  const copyImageBtn = $("selection-copy-image-btn");
+  if (copyImageBtn) {
+    copyImageBtn.addEventListener("click", e => {
+      e.stopPropagation();
+      copySelectionAsImage();
     });
   }
 
@@ -2492,18 +2501,12 @@
     toast("Copied to active clipboard");
   }
 
-  async function clipboardCopySelectedAsImage() {
-    const { all } = getOrderedClipboardItems();
-    if (!all.length) return;
-    const item = all[clipboardActiveIdx];
-    if (!item) return;
-
+  async function writeImageToClipboard(d) {
     try {
       if (typeof window.ClipboardItem === 'undefined' || !navigator.clipboard?.write) {
         throw new Error('Image copy unsupported on this browser/device');
       }
 
-      const d = item.data;
       const svgString = renderClipboardSVG(d);
       
       const match = svgString.match(/viewBox="([^"]+)"/);
@@ -2541,11 +2544,80 @@
       ]);
       
       toast("Image copied to device clipboard");
-      closeClipboardPanel();
+      return true;
     } catch (err) {
       console.error(err);
       toast("Failed to copy image: " + err.message);
+      return false;
     }
+  }
+
+  async function clipboardCopySelectedAsImage() {
+    const { all } = getOrderedClipboardItems();
+    if (!all.length) return;
+    const item = all[clipboardActiveIdx];
+    if (!item) return;
+
+    const success = await writeImageToClipboard(item.data);
+    if (success) {
+      closeClipboardPanel();
+    }
+  }
+
+  async function copySelectionAsImage() {
+    if (!selection) return;
+    const al = L();
+    if (!al) return;
+
+    const bounds = getSelectionBounds(selection);
+    if (!bounds) return;
+
+    const originCX = Math.floor(bounds.minX / CELL);
+    const originCY = Math.floor(bounds.minY / CELL);
+
+    const tempClipboard = { diagonals: [], numbers: [], highlights: [], lines: [], arrows: [] };
+
+    for (const k of selection.diagonals) {
+      const val = al.diagonals.get(k);
+      if (val !== undefined) {
+        const [cx, cy] = k.split(",").map(Number);
+        tempClipboard.diagonals.push({ dx: cx - originCX, dy: cy - originCY, val });
+      }
+    }
+    for (const k of selection.numbers) {
+      const val = al.numbers.get(k);
+      if (val !== undefined) {
+        const [ix, iy] = k.split(",").map(Number);
+        tempClipboard.numbers.push({ dx: ix - originCX, dy: iy - originCY, val });
+      }
+    }
+    for (const k of selection.highlights) {
+      const val = al.highlights.get(k);
+      if (val !== undefined) {
+        const [cx, cy] = k.split(",").map(Number);
+        tempClipboard.highlights.push({ dx: cx - originCX, dy: cy - originCY, val });
+      }
+    }
+    for (const k of selection.lines) {
+      const val = al.lines.get(k);
+      if (val !== undefined) {
+        const parts = k.split(",");
+        const orient = parts[0], ex = +parts[1], ey = +parts[2];
+        tempClipboard.lines.push({ orient, dx: ex - originCX, dy: ey - originCY, val });
+      }
+    }
+    for (const a of selection.arrows) {
+      tempClipboard.arrows.push({
+        dx1: a.cx1 - originCX, dy1: a.cy1 - originCY,
+        dx2: a.cx2 - originCX, dy2: a.cy2 - originCY,
+        colour: a.colour
+      });
+    }
+
+    const count = tempClipboard.diagonals.length + tempClipboard.numbers.length + tempClipboard.highlights.length + tempClipboard.lines.length + tempClipboard.arrows.length;
+    if (count === 0) return;
+
+    await writeImageToClipboard(tempClipboard);
   }
 
   function clipboardRenameSelected() {

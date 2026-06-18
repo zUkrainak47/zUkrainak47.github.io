@@ -1039,9 +1039,16 @@ body {
 }
 
 /* ══════════════ Selection Toolbar ══════════════ */
-.selection-toolbar {
+.selection-toolbar-container {
   position: fixed;
   z-index: 150;
+  display: flex;
+  gap: 8px;
+  pointer-events: none;
+  transform: translate(-50%, -100%);
+}
+
+.selection-toolbar {
   display: flex;
   gap: 4px;
   padding: 4px;
@@ -1052,7 +1059,6 @@ body {
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   pointer-events: auto;
-  transform: translate(-50%, -100%);
 }
 
 .sel-tool-btn {
