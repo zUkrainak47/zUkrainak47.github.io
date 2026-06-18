@@ -1315,6 +1315,12 @@ body {
   gap: 14px;
 }
 
+.clipboard-footer-btns {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
 .clipboard-hint {
   display: flex;
   align-items: center;
@@ -1330,6 +1336,7 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 2px;
   min-width: 22px;
   height: 20px;
   padding: 0 5px;
@@ -1429,4 +1436,36 @@ body {
   height: 1px;
   background: var(--border);
   margin: 2px 6px;
+}
+
+/* Keyboard Shortcut SVGs */
+.shortcut-svg {
+  display: inline-block;
+  fill: currentColor;
+  vertical-align: middle;
+}
+
+.shortcut-svg--backspace {
+  width: 10px;
+  height: 10px;
+}
+
+.shortcut-svg--command {
+  width: 9px;
+  height: 9px;
+}
+
+.shortcut-svg--shift {
+  width: 9px;
+  height: 9px;
+}
+
+.shortcut-svg--arrows {
+  width: 10px;
+  height: 10px;
+}
+
+.shortcut-svg--return {
+  width: 10px;
+  height: 10px;
 }

@@ -975,7 +975,7 @@
     for (const l of layers) { if (!l.visible) continue; for (const [k, dir] of l.diagonals) { const [cx, cy] = k.split(",").map(Number); const x1 = dir === 1 ? cx * CELL : (cx + 1) * CELL, y1 = cy * CELL, x2 = dir === 1 ? (cx + 1) * CELL : cx * CELL, y2 = (cy + 1) * CELL; parts.push(`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${c.diag}" stroke-width="2.5" stroke-linecap="round"/>`); } }
     // Arrows
     const hl = 10;
-    for (const l of layers) { if (!l.visible) continue; for (const a of l.arrows) { const s = arrowAnchor(a.cx1, a.cy1), e = arrowAnchor(a.cx2, a.cy2); const col = resolveArrowColour(a.colour); const ang = Math.atan2(e.wy - s.wy, e.wx - s.wx); const lex = e.wx - hl * Math.cos(ang), ley = e.wy - hl * Math.sin(ang); parts.push(`<line x1="${s.wx}" y1="${s.wy}" x2="${lex}" y2="${ley}" stroke="${col}" stroke-width="2.5" stroke-linecap="round"/>`); const p1x = e.wx - hl * Math.cos(ang - Math.PI / 6), p1y = e.wy - hl * Math.sin(ang - Math.PI / 6), p2x = e.wx - hl * Math.cos(ang + Math.PI / 6), p2y = e.wy - hl * Math.sin(ang + Math.PI / 6); parts.push(`<polygon points="${e.wx},${e.wy} ${p1x},${p1y} ${p2x},${p2y}" fill="${col}" stroke="${col}" stroke-width="1.2" stroke-linejoin="round"/>`); } }
+    for (const l of layers) { if (!l.visible) continue; for (const a of l.arrows) { const s = arrowAnchor(a.cx1, a.cy1), e = arrowAnchor(a.cx2, a.cy2); const col = resolveArrowColour(a.colour); const ang = Math.atan2(e.wy - s.wy, e.wx - s.wx); const lsx = s.wx + 1.25 * Math.cos(ang), lsy = s.wy + 1.25 * Math.sin(ang); const lex = e.wx - hl * 0.7 * Math.cos(ang), ley = e.wy - hl * 0.7 * Math.sin(ang); parts.push(`<line x1="${lsx}" y1="${lsy}" x2="${lex}" y2="${ley}" stroke="${col}" stroke-width="2.5" stroke-linecap="round"/>`); const p1x = e.wx - hl * Math.cos(ang - Math.PI / 6), p1y = e.wy - hl * Math.sin(ang - Math.PI / 6), p2x = e.wx - hl * Math.cos(ang + Math.PI / 6), p2y = e.wy - hl * Math.sin(ang + Math.PI / 6); parts.push(`<polygon points="${e.wx},${e.wy} ${p1x},${p1y} ${p2x},${p2y}" fill="${col}" stroke="${col}" stroke-width="1.2" stroke-linejoin="round"/>`); } }
     // Numbers
     for (const l of layers) { if (!l.visible) continue; for (const [k, num] of l.numbers) { const [ix, iy] = k.split(",").map(Number); const x = ix * CELL, y = iy * CELL; if (numberStyle === "slope") { if (num === 0) { parts.push(`<circle cx="${x}" cy="${y}" r="${CELL * 0.1}" fill="${c.diag}"/>`); } else { const slope = NUM_SLOPES[num]; if (slope !== undefined) { let dx, dy; if (Math.abs(slope) <= 1) { dx = CELL / 2; dy = slope * dx; } else { dy = (CELL / 2) * Math.sign(slope); dx = Math.abs(dy / slope); } parts.push(`<line x1="${x - dx}" y1="${y + dy}" x2="${x + dx}" y2="${y - dy}" stroke="${c.diag}" stroke-width="2.5" stroke-linecap="round"/>`); } } } else { const r = 10; parts.push(`<circle cx="${x}" cy="${y}" r="${r}" fill="${c.numBg}" stroke="${c.numBdr}" stroke-width="1"/>`); parts.push(`<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central" fill="${c.num}" font-family="Inter,sans-serif" font-weight="600" font-size="14">${num}</text>`); } } }
     parts.push(`</svg>`);
@@ -2371,8 +2371,9 @@
       const ex = item.dx2 * CELL + CELL * ARROW_X, ey = item.dy2 * CELL + CELL * ARROW_Y;
       const col = item.colour === "theme" ? themeArrowColor() : item.colour;
       const ang = Math.atan2(ey - sy, ex - sx);
-      const lex = ex - hl * Math.cos(ang), ley = ey - hl * Math.sin(ang);
-      parts.push(`<line x1="${sx}" y1="${sy}" x2="${lex}" y2="${ley}" stroke="${col}" stroke-width="2.5" stroke-linecap="round"/>`);
+      const lsx = sx + 1.25 * Math.cos(ang), lsy = sy + 1.25 * Math.sin(ang);
+      const lex = ex - hl * 0.7 * Math.cos(ang), ley = ey - hl * 0.7 * Math.sin(ang);
+      parts.push(`<line x1="${lsx}" y1="${lsy}" x2="${lex}" y2="${ley}" stroke="${col}" stroke-width="2.5" stroke-linecap="round"/>`);
       const p1x = ex - hl * Math.cos(ang - Math.PI / 6), p1y = ey - hl * Math.sin(ang - Math.PI / 6);
       const p2x = ex - hl * Math.cos(ang + Math.PI / 6), p2y = ey - hl * Math.sin(ang + Math.PI / 6);
       parts.push(`<polygon points="${ex},${ey} ${p1x},${p1y} ${p2x},${p2y}" fill="${col}" stroke="${col}" stroke-width="1.2" stroke-linejoin="round"/>`);
@@ -2428,6 +2429,8 @@
     const item = all[clipboardActiveIdx];
     if (!item) return;
     clipboard = JSON.parse(JSON.stringify(item.data));
+    item.timestamp = Date.now();
+    saveClipboardHistory();
     closeClipboardPanel();
     pasteClipboard();
   }
@@ -2438,6 +2441,9 @@
     const item = all[clipboardActiveIdx];
     if (!item) return;
     clipboard = JSON.parse(JSON.stringify(item.data));
+    item.timestamp = Date.now();
+    saveClipboardHistory();
+    closeClipboardPanel();
     toast("Copied to active clipboard");
   }
 
@@ -2473,6 +2479,7 @@
     if (!all.length) return;
     const item = all[clipboardActiveIdx];
     if (!item) return;
+    if (!confirm(`Delete "${item.name}" from clipboard history?`)) return;
     const idx = clipboardHistory.findIndex(e => e.id === item.id);
     if (idx >= 0) clipboardHistory.splice(idx, 1);
     saveClipboardHistory();
@@ -2509,9 +2516,23 @@
     clipboardPanelOpen = false;
     clipboardActionsOpen = false;
   });
-  $("clipboard-actions-btn").addEventListener("click", toggleClipboardActions);
+  $("clipboard-paste-btn").addEventListener("click", () => {
+    clipboardPasteSelected();
+  });
+  $("clipboard-actions-btn").addEventListener("click", (e) => {
+    e.stopPropagation();
+    toggleClipboardActions();
+  });
   document.querySelectorAll("#clipboard-actions-popover .clipboard-action-item").forEach(btn => {
     btn.addEventListener("click", () => handleClipboardAction(btn.dataset.action));
+  });
+  document.addEventListener("click", (e) => {
+    if (clipboardActionsOpen) {
+      const popover = $("clipboard-actions-popover");
+      if (popover && !popover.contains(e.target)) {
+        closeClipboardActions();
+      }
+    }
   });
 
   // ═══ INIT ═══════════════════════════════════════
