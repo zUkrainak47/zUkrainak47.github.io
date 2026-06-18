@@ -1894,6 +1894,7 @@
       if (e.key === "Enter") { e.preventDefault(); clipboardPasteSelected(); return; }
       if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); clipboardDeleteSelected(); return; }
       if (ctrl && e.key.toLowerCase() === "e") { e.preventDefault(); clipboardRenameSelected(); return; }
+      if (ctrl && e.shiftKey && e.key.toLowerCase() === "c") { e.preventDefault(); clipboardCopySelectedAsImage(); return; }
       if (ctrl && e.key.toLowerCase() === "c") { e.preventDefault(); clipboardCopySelected(); return; }
       if (ctrl && e.shiftKey && e.key.toLowerCase() === "p") { e.preventDefault(); clipboardTogglePin(); return; }
       if (ctrl && e.key.toLowerCase() === "k") { e.preventDefault(); toggleClipboardActions(); return; }
@@ -2491,6 +2492,62 @@
     toast("Copied to active clipboard");
   }
 
+  async function clipboardCopySelectedAsImage() {
+    const { all } = getOrderedClipboardItems();
+    if (!all.length) return;
+    const item = all[clipboardActiveIdx];
+    if (!item) return;
+
+    try {
+      if (typeof window.ClipboardItem === 'undefined' || !navigator.clipboard?.write) {
+        throw new Error('Image copy unsupported on this browser/device');
+      }
+
+      const d = item.data;
+      const svgString = renderClipboardSVG(d);
+      
+      const match = svgString.match(/viewBox="([^"]+)"/);
+      if (!match) throw new Error("Could not parse viewBox from preview SVG");
+      const [minX, minY, vw, vh] = match[1].split(/\s+/).map(Number);
+      
+      const svgWithDimensions = svgString.replace('<svg ', `<svg width="${vw}" height="${vh}" `);
+      const svgBlob = new Blob([svgWithDimensions], { type: "image/svg+xml;charset=utf-8" });
+      const url = URL.createObjectURL(svgBlob);
+      
+      const img = new Image();
+      await new Promise((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error("Failed to load SVG preview image"));
+        img.src = url;
+      });
+
+      const canvas = document.createElement("canvas");
+      const scale = 2;
+      canvas.width = vw * scale;
+      canvas.height = vh * scale;
+      const ctx = canvas.getContext("2d");
+      ctx.scale(scale, scale);
+      ctx.drawImage(img, 0, 0);
+      
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+      URL.revokeObjectURL(url);
+
+      if (!blob) throw new Error("Failed to generate image PNG");
+
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'image/png': blob
+        })
+      ]);
+      
+      toast("Image copied to device clipboard");
+      closeClipboardPanel();
+    } catch (err) {
+      console.error(err);
+      toast("Failed to copy image: " + err.message);
+    }
+  }
+
   function clipboardRenameSelected() {
     const { all } = getOrderedClipboardItems();
     if (!all.length) return;
@@ -2548,6 +2605,7 @@
     switch (action) {
       case "paste": clipboardPasteSelected(); break;
       case "copy": clipboardCopySelected(); break;
+      case "copy-image": clipboardCopySelectedAsImage(); break;
       case "rename": clipboardRenameSelected(); break;
       case "pin": clipboardTogglePin(); break;
       case "delete": clipboardDeleteSelected(); break;
