@@ -17,6 +17,10 @@
   const STORE_HOTKEYS = "slant-hotkeys";
   const STORE_NUM_STYLE = "slant-num-style";
   const STORE_CLIPBOARD = "slant-clipboard";
+  const STORE_HIGHLIGHT_COLOUR = "slant-highlight-colour";
+  const STORE_ARROW_COLOUR = "slant-arrow-colour";
+  const STORE_LINE_COLOUR = "slant-line-colour";
+  const STORE_ARROW_SIZE = "slant-arrow-size";
   const MAX_CLIPBOARD_ITEMS = 100;
 
   // Slope values for each number clue (index = clue value)
@@ -50,9 +54,10 @@
   let activeNumber = 0;
   let numberStyle = localStorage.getItem(STORE_NUM_STYLE) || "circle"; // "circle" or "slope"
   let diagonalDir = null; // null=cycle, 1=\, -1=/
-  let highlightColour = "#ff6b6b40";
-  let arrowColour = "#ff6b6b";
-  let lineColour = "#ff6b6b";
+  let highlightColour = localStorage.getItem(STORE_HIGHLIGHT_COLOUR) || "#ff6b6b40";
+  let arrowColour = localStorage.getItem(STORE_ARROW_COLOUR) || "#ff6b6b";
+  let lineColour = localStorage.getItem(STORE_LINE_COLOUR) || "#ff6b6b";
+  let arrowScale = parseFloat(localStorage.getItem(STORE_ARROW_SIZE) || "100") / 100;
   function themeArrowColor() { return document.documentElement.dataset.theme !== "light" ? "#e8e8e8" : "#2a2a3e"; }
   function themeLineColor() { return document.documentElement.dataset.theme !== "light" ? "#e8e8e8" : "#2a2a3e"; }
   function resolveLineColour(c) { return c === "theme" ? themeLineColor() : c; }
@@ -125,6 +130,12 @@
     };
   }
 
+  function syncColourButtons() {
+    document.querySelectorAll("#highlight-panel .colour-btn").forEach(b => b.classList.toggle("active", b.dataset.colour === highlightColour));
+    document.querySelectorAll("#arrow-panel .colour-btn").forEach(b => b.classList.toggle("active", b.dataset.colour === arrowColour));
+    document.querySelectorAll("#line-panel .colour-btn").forEach(b => b.classList.toggle("active", b.dataset.colour === lineColour));
+  }
+
   function initTheme() { applyTheme(localStorage.getItem(STORE_THEME) || "light"); }
   function applyTheme(t) {
     document.documentElement.dataset.theme = t;
@@ -147,7 +158,10 @@
       const col = t === "dark" ? "#e8e8e8" : "#2a2a3e";
       lineThemeBtn.style.setProperty("--swatch", col);
       lineThemeBtn.title = t === "dark" ? "White" : "Black";
+      // If active line colour is theme-dependent, keep it as sentinel
+      if (lineColour === "theme" || lineColour === "#e8e8e8" || lineColour === "#2a2a3e") lineColour = "theme";
     }
+    syncColourButtons();
     requestDraw();
   }
   function toggleTheme() { applyTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"); }
@@ -974,8 +988,8 @@
     // Diagonals
     for (const l of layers) { if (!l.visible) continue; for (const [k, dir] of l.diagonals) { const [cx, cy] = k.split(",").map(Number); const x1 = dir === 1 ? cx * CELL : (cx + 1) * CELL, y1 = cy * CELL, x2 = dir === 1 ? (cx + 1) * CELL : cx * CELL, y2 = (cy + 1) * CELL; parts.push(`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${c.diag}" stroke-width="2.5" stroke-linecap="round"/>`); } }
     // Arrows
-    const hl = 10;
-    for (const l of layers) { if (!l.visible) continue; for (const a of l.arrows) { const s = arrowAnchor(a.cx1, a.cy1), e = arrowAnchor(a.cx2, a.cy2); const col = resolveArrowColour(a.colour); const ang = Math.atan2(e.wy - s.wy, e.wx - s.wx); const lsx = s.wx + 1.25 * Math.cos(ang), lsy = s.wy + 1.25 * Math.sin(ang); const lex = e.wx - hl * 0.7 * Math.cos(ang), ley = e.wy - hl * 0.7 * Math.sin(ang); parts.push(`<line x1="${lsx}" y1="${lsy}" x2="${lex}" y2="${ley}" stroke="${col}" stroke-width="2.5" stroke-linecap="round"/>`); const p1x = e.wx - hl * Math.cos(ang - Math.PI / 6), p1y = e.wy - hl * Math.sin(ang - Math.PI / 6), p2x = e.wx - hl * Math.cos(ang + Math.PI / 6), p2y = e.wy - hl * Math.sin(ang + Math.PI / 6); parts.push(`<polygon points="${e.wx},${e.wy} ${p1x},${p1y} ${p2x},${p2y}" fill="${col}" stroke="${col}" stroke-width="1.2" stroke-linejoin="round"/>`); } }
+    const hl = 10 * arrowScale;
+    for (const l of layers) { if (!l.visible) continue; for (const a of l.arrows) { const s = arrowAnchor(a.cx1, a.cy1), e = arrowAnchor(a.cx2, a.cy2); const col = resolveArrowColour(a.colour); const ang = Math.atan2(e.wy - s.wy, e.wx - s.wx); const lsx = s.wx + 1.25 * Math.cos(ang), lsy = s.wy + 1.25 * Math.sin(ang); const lex = e.wx - hl * 0.7 * Math.cos(ang), ley = e.wy - hl * 0.7 * Math.sin(ang); parts.push(`<line x1="${lsx}" y1="${lsy}" x2="${lex}" y2="${ley}" stroke="${col}" stroke-width="${2.5 * arrowScale}" stroke-linecap="round"/>`); const p1x = e.wx - hl * Math.cos(ang - Math.PI / 6), p1y = e.wy - hl * Math.sin(ang - Math.PI / 6), p2x = e.wx - hl * Math.cos(ang + Math.PI / 6), p2y = e.wy - hl * Math.sin(ang + Math.PI / 6); parts.push(`<polygon points="${e.wx},${e.wy} ${p1x},${p1y} ${p2x},${p2y}" fill="${col}" stroke="${col}" stroke-width="${1.2 * arrowScale}" stroke-linejoin="round"/>`); } }
     // Numbers
     for (const l of layers) { if (!l.visible) continue; for (const [k, num] of l.numbers) { const [ix, iy] = k.split(",").map(Number); const x = ix * CELL, y = iy * CELL; if (numberStyle === "slope") { if (num === 0) { parts.push(`<circle cx="${x}" cy="${y}" r="${CELL * 0.1}" fill="${c.diag}"/>`); } else { const slope = NUM_SLOPES[num]; if (slope !== undefined) { let dx, dy; if (Math.abs(slope) <= 1) { dx = CELL / 2; dy = slope * dx; } else { dy = (CELL / 2) * Math.sign(slope); dx = Math.abs(dy / slope); } parts.push(`<line x1="${x - dx}" y1="${y + dy}" x2="${x + dx}" y2="${y - dy}" stroke="${c.diag}" stroke-width="2.5" stroke-linecap="round"/>`); } } } else { const r = 10; parts.push(`<circle cx="${x}" cy="${y}" r="${r}" fill="${c.numBg}" stroke="${c.numBdr}" stroke-width="1"/>`); parts.push(`<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central" fill="${c.num}" font-family="Inter,sans-serif" font-weight="600" font-size="14">${num}</text>`); } } }
     parts.push(`</svg>`);
@@ -1165,7 +1179,7 @@
   }
 
   function drawArrowShape(x1, y1, x2, y2, col, lw) {
-    const hl = 10 * Math.min(zoom, 3), ang = Math.atan2(y2 - y1, x2 - x1);
+    const hl = 10 * Math.min(Math.max(zoom, 0.3), 3) * arrowScale, ang = Math.atan2(y2 - y1, x2 - x1);
     // Inset start so round cap doesn't overshoot the anchor (prevents opposing arrow bleed)
     const startX = x1 + (lw / 2) * Math.cos(ang), startY = y1 + (lw / 2) * Math.sin(ang);
     // Shorten end to sit firmly inside the arrowhead triangle
@@ -1182,7 +1196,7 @@
   function resolveArrowColour(c) { return c === "theme" ? themeArrowColor() : c; }
 
   function drawLayerArrows(l, cw, ch) {
-    const lw = Math.max(1, 2.5 * Math.min(zoom, 2));
+    const lw = Math.max(1, 2.5 * Math.min(zoom, 2)) * arrowScale;
     for (const a of l.arrows) {
       let dcx = 0, dcy = 0;
       if (activeTool === "select" && selection && selection.arrows.has(a) && draggingSelection) {
@@ -1449,7 +1463,7 @@
           const ss = worldToScreen(s.wx, s.wy), se = worldToScreen(e.wx, e.wy);
           const rc = resolveArrowColour(arrowColour);
           ctx.globalAlpha = .4;
-          drawArrowShape(ss.x, ss.y, se.x, se.y, rc, Math.max(1, 2.5 * Math.min(zoom, 2)));
+          drawArrowShape(ss.x, ss.y, se.x, se.y, rc, Math.max(1, 2.5 * Math.min(zoom, 2)) * arrowScale);
           ctx.globalAlpha = 1;
           // Start dot
           ctx.fillStyle = rc; ctx.globalAlpha = .7; ctx.beginPath(); ctx.arc(ss.x, ss.y, 4 * Math.min(zoom, 2), 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
@@ -1608,6 +1622,7 @@
   });
 
   canvas.addEventListener("pointerup", e => {
+    if (!pointerDown) return;
     const p = getP(e), w = screenToWorld(p.x, p.y);
 
     if (marqueeActive) {
@@ -1952,9 +1967,37 @@
   document.querySelectorAll(".numstyle-btn").forEach(b => b.addEventListener("click", () => { numberStyle = b.dataset.style; localStorage.setItem(STORE_NUM_STYLE, numberStyle); document.querySelectorAll(".numstyle-btn").forEach(x => x.classList.toggle("active", x === b)); requestDraw(); }));
   // Sync numstyle active class on load
   document.querySelectorAll(".numstyle-btn").forEach(b => b.classList.toggle("active", b.dataset.style === numberStyle));
-  document.querySelectorAll("#highlight-panel .colour-btn").forEach(b => b.addEventListener("click", () => { highlightColour = b.dataset.colour; document.querySelectorAll("#highlight-panel .colour-btn").forEach(x => x.classList.toggle("active", x === b)); }));
-  document.querySelectorAll("#arrow-panel .colour-btn").forEach(b => b.addEventListener("click", () => { arrowColour = b.dataset.colour; document.querySelectorAll("#arrow-panel .colour-btn").forEach(x => x.classList.toggle("active", x === b)); }));
-  document.querySelectorAll("#line-panel .colour-btn").forEach(b => b.addEventListener("click", () => { lineColour = b.dataset.colour; document.querySelectorAll("#line-panel .colour-btn").forEach(x => x.classList.toggle("active", x === b)); }));
+
+  // Sync arrow scale slider on load and listen to input
+  const arrowSlider = $("arrow-size-slider");
+  const arrowSliderVal = $("arrow-size-val");
+  if (arrowSlider && arrowSliderVal) {
+    const currentPercent = Math.round(arrowScale * 100);
+    arrowSlider.value = currentPercent;
+    arrowSliderVal.textContent = `${currentPercent}%`;
+    arrowSlider.addEventListener("input", () => {
+      const val = parseInt(arrowSlider.value);
+      arrowSliderVal.textContent = `${val}%`;
+      arrowScale = val / 100;
+      localStorage.setItem(STORE_ARROW_SIZE, val.toString());
+      requestDraw();
+    });
+  }
+  document.querySelectorAll("#highlight-panel .colour-btn").forEach(b => b.addEventListener("click", () => {
+    highlightColour = b.dataset.colour;
+    localStorage.setItem(STORE_HIGHLIGHT_COLOUR, highlightColour);
+    document.querySelectorAll("#highlight-panel .colour-btn").forEach(x => x.classList.toggle("active", x === b));
+  }));
+  document.querySelectorAll("#arrow-panel .colour-btn").forEach(b => b.addEventListener("click", () => {
+    arrowColour = b.dataset.colour;
+    localStorage.setItem(STORE_ARROW_COLOUR, arrowColour);
+    document.querySelectorAll("#arrow-panel .colour-btn").forEach(x => x.classList.toggle("active", x === b));
+  }));
+  document.querySelectorAll("#line-panel .colour-btn").forEach(b => b.addEventListener("click", () => {
+    lineColour = b.dataset.colour;
+    localStorage.setItem(STORE_LINE_COLOUR, lineColour);
+    document.querySelectorAll("#line-panel .colour-btn").forEach(x => x.classList.toggle("active", x === b));
+  }));
   $("btn-undo").addEventListener("click", undo);
   $("btn-redo").addEventListener("click", redo);
 
@@ -2366,7 +2409,7 @@
       parts.push(`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${c.diag}" stroke-width="2.5" stroke-linecap="round"/>`);
     }
     // Arrows
-    const hl = 10;
+    const hl = 10 * arrowScale;
     for (const item of d.arrows) {
       const sx = item.dx1 * CELL + CELL * ARROW_X, sy = item.dy1 * CELL + CELL * ARROW_Y;
       const ex = item.dx2 * CELL + CELL * ARROW_X, ey = item.dy2 * CELL + CELL * ARROW_Y;
@@ -2374,10 +2417,10 @@
       const ang = Math.atan2(ey - sy, ex - sx);
       const lsx = sx + 1.25 * Math.cos(ang), lsy = sy + 1.25 * Math.sin(ang);
       const lex = ex - hl * 0.7 * Math.cos(ang), ley = ey - hl * 0.7 * Math.sin(ang);
-      parts.push(`<line x1="${lsx}" y1="${lsy}" x2="${lex}" y2="${ley}" stroke="${col}" stroke-width="2.5" stroke-linecap="round"/>`);
+      parts.push(`<line x1="${lsx}" y1="${lsy}" x2="${lex}" y2="${ley}" stroke="${col}" stroke-width="${2.5 * arrowScale}" stroke-linecap="round"/>`);
       const p1x = ex - hl * Math.cos(ang - Math.PI / 6), p1y = ey - hl * Math.sin(ang - Math.PI / 6);
       const p2x = ex - hl * Math.cos(ang + Math.PI / 6), p2y = ey - hl * Math.sin(ang + Math.PI / 6);
-      parts.push(`<polygon points="${ex},${ey} ${p1x},${p1y} ${p2x},${p2y}" fill="${col}" stroke="${col}" stroke-width="1.2" stroke-linejoin="round"/>`);
+      parts.push(`<polygon points="${ex},${ey} ${p1x},${p1y} ${p2x},${p2y}" fill="${col}" stroke="${col}" stroke-width="${1.2 * arrowScale}" stroke-linejoin="round"/>`);
     }
     // Numbers
     for (const item of d.numbers) {

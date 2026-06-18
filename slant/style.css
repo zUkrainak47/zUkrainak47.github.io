@@ -539,6 +539,55 @@ body {
   box-shadow: 0 0 8px var(--swatch)
 }
 
+/* ── Arrow size range slider ── */
+.arrow-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  outline: none;
+  margin-top: 6px;
+  cursor: pointer;
+  transition: background-color .15s ease;
+}
+
+.arrow-slider:hover {
+  background: var(--border-active);
+}
+
+.arrow-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  transition: transform .15s ease, background-color .15s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.arrow-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.arrow-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: none;
+  transition: transform .15s ease, background-color .15s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.arrow-slider::-moz-range-thumb:hover {
+  transform: scale(1.2);
+}
+
 /* ── Action buttons ── */
 .action-buttons {
   display: flex;
