@@ -86,6 +86,7 @@
   let draggingSelection = false;
   let dragSelectionStart = null;
   let dragSelectionOffset = { dcx: 0, dcy: 0 };
+  let selectionBeforeDrag = null;
 
 
   // Canvas management
@@ -416,6 +417,7 @@
       }
       selection = null;
     }
+    selectionBeforeDrag = null;
     const tb = $("selection-toolbar");
     if (tb) tb.style.display = "none";
     dismissLayerPicker();
@@ -524,6 +526,15 @@
       if (overlaps(minAX, minAY, maxAX, maxAY)) {
         selection.arrows.add(a);
       }
+    }
+
+    // Union with selectionBeforeDrag
+    if (selectionBeforeDrag) {
+      for (const k of selectionBeforeDrag.diagonals) selection.diagonals.add(k);
+      for (const k of selectionBeforeDrag.numbers) selection.numbers.add(k);
+      for (const k of selectionBeforeDrag.highlights) selection.highlights.add(k);
+      for (const k of selectionBeforeDrag.lines) selection.lines.add(k);
+      for (const a of selectionBeforeDrag.arrows) selection.arrows.add(a);
     }
 
     // Clear selection if empty
@@ -1638,6 +1649,14 @@
         marqueeEnd = w;
         canvas.style.cursor = "crosshair";
         canvas.setPointerCapture(e.pointerId);
+
+        if (selection) {
+          commitSelection();
+          selectionBeforeDrag = selection;
+          selection = null;
+        } else {
+          selectionBeforeDrag = null;
+        }
         return;
       }
 
@@ -1772,7 +1791,16 @@
       marqueeActive = false;
       pointerDown = false;
       canvas.style.cursor = getCursor();
-      liftSelection();
+      if (!didDrag) {
+        selection = selectionBeforeDrag;
+        if (selection) {
+          selection.values = null;
+          liftSelection();
+        }
+      } else {
+        liftSelection();
+      }
+      selectionBeforeDrag = null;
       updateDeleteButtonPosition();
       requestDraw();
       return;
@@ -2049,6 +2077,19 @@
     // Escape cancels arrow start or selection
     if (e.key === "Escape") {
       if (arrowStart) { arrowStart = null; requestDraw(); return; }
+      if (marqueeActive) {
+        marqueeActive = false;
+        pointerDown = false;
+        selection = selectionBeforeDrag;
+        if (selection) {
+          selection.values = null;
+          liftSelection();
+        }
+        selectionBeforeDrag = null;
+        canvas.style.cursor = getCursor();
+        requestDraw();
+        return;
+      }
       if (selection) { clearSelection(); return; }
     }
 
