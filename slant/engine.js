@@ -193,6 +193,88 @@
   // ═══ SELECTION HELPERS ══════════════════════════
   function themeAccentColor() { return document.documentElement.dataset.theme !== "light" ? "#7c6aef" : "#6554d4"; }
 
+  function liftSelection() {
+    if (!selection || selection.values) return;
+    const al = L();
+    if (!al) return;
+
+    selection.values = {
+      diagonals: new Map(),
+      numbers: new Map(),
+      highlights: new Map(),
+      lines: new Map()
+    };
+
+    // Lift diagonals
+    for (const k of selection.diagonals) {
+      if (al.diagonals.has(k)) {
+        selection.values.diagonals.set(k, al.diagonals.get(k));
+        al.diagonals.delete(k);
+      }
+    }
+    // Lift numbers
+    for (const k of selection.numbers) {
+      if (al.numbers.has(k)) {
+        selection.values.numbers.set(k, al.numbers.get(k));
+        al.numbers.delete(k);
+      }
+    }
+    // Lift highlights
+    for (const k of selection.highlights) {
+      if (al.highlights.has(k)) {
+        selection.values.highlights.set(k, al.highlights.get(k));
+        al.highlights.delete(k);
+      }
+    }
+    // Lift lines
+    for (const k of selection.lines) {
+      if (al.lines.has(k)) {
+        selection.values.lines.set(k, al.lines.get(k));
+        al.lines.delete(k);
+      }
+    }
+    // Lift arrows
+    const activeArrows = new Set(al.arrows);
+    const newArrows = new Set();
+    for (const a of selection.arrows) {
+      if (activeArrows.has(a)) {
+        const idx = al.arrows.indexOf(a);
+        if (idx >= 0) {
+          al.arrows.splice(idx, 1);
+        }
+        newArrows.add(a);
+      }
+    }
+    selection.arrows = newArrows;
+  }
+
+  function commitSelection() {
+    if (!selection || !selection.values) return;
+    const al = L();
+    if (!al) return;
+
+    for (const k of selection.diagonals) {
+      const val = selection.values.diagonals.get(k);
+      if (val !== undefined) al.diagonals.set(k, val);
+    }
+    for (const k of selection.numbers) {
+      const val = selection.values.numbers.get(k);
+      if (val !== undefined) al.numbers.set(k, val);
+    }
+    for (const k of selection.highlights) {
+      const val = selection.values.highlights.get(k);
+      if (val !== undefined) al.highlights.set(k, val);
+    }
+    for (const k of selection.lines) {
+      const val = selection.values.lines.get(k);
+      if (val !== undefined) al.lines.set(k, val);
+    }
+    for (const a of selection.arrows) {
+      al.arrows.push(a);
+    }
+    scheduleSave();
+  }
+
   function getSelectionBounds(sel) {
     if (!sel) return null;
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -254,13 +336,22 @@
 
   function cloneSelection(sel) {
     if (!sel) return null;
-    return {
+    const res = {
       diagonals: new Set(sel.diagonals),
       numbers: new Set(sel.numbers),
       highlights: new Set(sel.highlights),
-      arrows: new Set(sel.arrows),
+      arrows: new Set(Array.from(sel.arrows).map(a => ({ ...a }))),
       lines: new Set(sel.lines)
     };
+    if (sel.values) {
+      res.values = {
+        diagonals: new Map(sel.values.diagonals),
+        numbers: new Map(sel.values.numbers),
+        highlights: new Map(sel.values.highlights),
+        lines: new Map(sel.values.lines)
+      };
+    }
+    return res;
   }
 
   function snapshotLayerState(al) {
@@ -300,7 +391,31 @@
   }
 
   function clearSelection() {
-    selection = null;
+    if (selection) {
+      const al = L();
+      if (al) {
+        const beforeState = snapshotLayerState(al);
+        const beforeSelection = cloneSelection(selection);
+        commitSelection();
+        const afterState = snapshotLayerState(al);
+
+        pushUndo({
+          undo: () => {
+            restoreLayerState(al, beforeState);
+            selection = cloneSelection(beforeSelection);
+            populateLayers();
+            requestDraw();
+          },
+          redo: () => {
+            restoreLayerState(al, afterState);
+            selection = null;
+            populateLayers();
+            requestDraw();
+          }
+        });
+      }
+      selection = null;
+    }
     const tb = $("selection-toolbar");
     if (tb) tb.style.display = "none";
     dismissLayerPicker();
@@ -426,100 +541,64 @@
     const al = L();
     if (!al) return;
 
-    const beforeState = snapshotLayerState(al);
+    liftSelection();
+
     const beforeSelection = cloneSelection(selection);
 
-    // Extract moved elements
-    const movedDiagonals = [];
-    for (const k of selection.diagonals) {
-      if (al.diagonals.has(k)) {
-        movedDiagonals.push({ key: k, val: al.diagonals.get(k) });
-        al.diagonals.delete(k);
-      }
-    }
-    const movedNumbers = [];
-    for (const k of selection.numbers) {
-      if (al.numbers.has(k)) {
-        movedNumbers.push({ key: k, val: al.numbers.get(k) });
-        al.numbers.delete(k);
-      }
-    }
-    const movedHighlights = [];
-    for (const k of selection.highlights) {
-      if (al.highlights.has(k)) {
-        movedHighlights.push({ key: k, val: al.highlights.get(k) });
-        al.highlights.delete(k);
-      }
-    }
-    const movedLines = [];
-    for (const k of selection.lines) {
-      if (al.lines.has(k)) {
-        movedLines.push({ key: k, val: al.lines.get(k) });
-        al.lines.delete(k);
-      }
-    }
-    const movedArrows = [];
-    for (const a of selection.arrows) {
-      const idx = al.arrows.indexOf(a);
-      if (idx >= 0) {
-        movedArrows.push(a);
-        al.arrows.splice(idx, 1);
-      }
-    }
-
-    // Re-insert at new locations
     const afterSelection = {
       diagonals: new Set(),
       numbers: new Set(),
       highlights: new Set(),
       arrows: new Set(),
-      lines: new Set()
+      lines: new Set(),
+      values: {
+        diagonals: new Map(),
+        numbers: new Map(),
+        highlights: new Map(),
+        lines: new Map()
+      }
     };
 
-    for (const item of movedDiagonals) {
-      const [cx, cy] = item.key.split(",").map(Number);
+    for (const k of selection.diagonals) {
+      const [cx, cy] = k.split(",").map(Number);
       const newK = key(cx + dcx, cy + dcy);
-      al.diagonals.set(newK, item.val);
       afterSelection.diagonals.add(newK);
+      afterSelection.values.diagonals.set(newK, selection.values.diagonals.get(k));
     }
-    for (const item of movedNumbers) {
-      const [ix, iy] = item.key.split(",").map(Number);
+    for (const k of selection.numbers) {
+      const [ix, iy] = k.split(",").map(Number);
       const newK = key(ix + dcx, iy + dcy);
-      al.numbers.set(newK, item.val);
       afterSelection.numbers.add(newK);
+      afterSelection.values.numbers.set(newK, selection.values.numbers.get(k));
     }
-    for (const item of movedHighlights) {
-      const [cx, cy] = item.key.split(",").map(Number);
+    for (const k of selection.highlights) {
+      const [cx, cy] = k.split(",").map(Number);
       const newK = key(cx + dcx, cy + dcy);
-      al.highlights.set(newK, item.val);
       afterSelection.highlights.add(newK);
+      afterSelection.values.highlights.set(newK, selection.values.highlights.get(k));
     }
-    for (const item of movedLines) {
-      const parts = item.key.split(",");
+    for (const k of selection.lines) {
+      const parts = k.split(",");
       const orient = parts[0], ex = +parts[1], ey = +parts[2];
       const newK = lineKey(orient, ex + dcx, ey + dcy);
-      al.lines.set(newK, item.val);
       afterSelection.lines.add(newK);
+      afterSelection.values.lines.set(newK, selection.values.lines.get(k));
     }
-    for (const a of movedArrows) {
+    for (const a of selection.arrows) {
       a.cx1 += dcx; a.cy1 += dcy;
       a.cx2 += dcx; a.cy2 += dcy;
-      al.arrows.push(a);
       afterSelection.arrows.add(a);
     }
 
     selection = afterSelection;
-    const afterState = snapshotLayerState(al);
     const afterSelectionClone = cloneSelection(selection);
 
     pushUndo({
       undo: () => {
-        restoreLayerStateAndSelection(al, beforeState, beforeSelection);
         selection = cloneSelection(beforeSelection);
         requestDraw();
       },
       redo: () => {
-        restoreLayerStateAndSelection(al, afterState, afterSelectionClone);
         selection = cloneSelection(afterSelectionClone);
         requestDraw();
       }
@@ -534,36 +613,30 @@
     const al = L();
     if (!al) return;
 
+    liftSelection();
+
     const beforeState = snapshotLayerState(al);
     const beforeSelection = cloneSelection(selection);
-
-    // Delete elements
-    for (const k of selection.diagonals) al.diagonals.delete(k);
-    for (const k of selection.numbers) al.numbers.delete(k);
-    for (const k of selection.highlights) al.highlights.delete(k);
-    for (const k of selection.lines) al.lines.delete(k);
-    for (const a of selection.arrows) {
-      const idx = al.arrows.indexOf(a);
-      if (idx >= 0) al.arrows.splice(idx, 1);
-    }
-
-    const afterState = snapshotLayerState(al);
     const count = selection.diagonals.size + selection.numbers.size + selection.highlights.size + selection.lines.size + selection.arrows.size;
 
     pushUndo({
       undo: () => {
-        restoreLayerStateAndSelection(al, beforeState, beforeSelection);
+        restoreLayerState(al, beforeState);
         selection = cloneSelection(beforeSelection);
+        populateLayers();
         requestDraw();
       },
       redo: () => {
-        restoreLayerState(al, afterState);
-        clearSelection();
+        selection = null;
+        populateLayers();
         requestDraw();
       }
     });
 
-    clearSelection();
+    selection = null;
+    const tb = $("selection-toolbar");
+    if (tb) tb.style.display = "none";
+    dismissLayerPicker();
     toast(`Deleted ${count} items`);
     scheduleSave();
     requestDraw();
@@ -574,8 +647,8 @@
 
   function copySelection() {
     if (!selection) return;
-    const al = L();
-    if (!al) return;
+
+    liftSelection();
 
     const bounds = getSelectionBounds(selection);
     if (!bounds) return;
@@ -587,28 +660,28 @@
     clipboard = { diagonals: [], numbers: [], highlights: [], lines: [], arrows: [] };
 
     for (const k of selection.diagonals) {
-      const val = al.diagonals.get(k);
+      const val = selection.values.diagonals.get(k);
       if (val !== undefined) {
         const [cx, cy] = k.split(",").map(Number);
         clipboard.diagonals.push({ dx: cx - originCX, dy: cy - originCY, val });
       }
     }
     for (const k of selection.numbers) {
-      const val = al.numbers.get(k);
+      const val = selection.values.numbers.get(k);
       if (val !== undefined) {
         const [ix, iy] = k.split(",").map(Number);
         clipboard.numbers.push({ dx: ix - originCX, dy: iy - originCY, val });
       }
     }
     for (const k of selection.highlights) {
-      const val = al.highlights.get(k);
+      const val = selection.values.highlights.get(k);
       if (val !== undefined) {
         const [cx, cy] = k.split(",").map(Number);
         clipboard.highlights.push({ dx: cx - originCX, dy: cy - originCY, val });
       }
     }
     for (const k of selection.lines) {
-      const val = al.lines.get(k);
+      const val = selection.values.lines.get(k);
       if (val !== undefined) {
         const parts = k.split(",");
         const orient = parts[0], ex = +parts[1], ey = +parts[2];
@@ -636,35 +709,41 @@
     // Paste at the cell under the cursor
     const { cx: targetCX, cy: targetCY } = worldToCell(hoverWX, hoverWY);
 
-    const beforeState = snapshotLayerState(al);
+    clearSelection();
 
     const newSelection = {
       diagonals: new Set(),
       numbers: new Set(),
       highlights: new Set(),
       arrows: new Set(),
-      lines: new Set()
+      lines: new Set(),
+      values: {
+        diagonals: new Map(),
+        numbers: new Map(),
+        highlights: new Map(),
+        lines: new Map()
+      }
     };
 
     for (const item of clipboard.diagonals) {
       const newK = key(targetCX + item.dx, targetCY + item.dy);
-      al.diagonals.set(newK, item.val);
       newSelection.diagonals.add(newK);
+      newSelection.values.diagonals.set(newK, item.val);
     }
     for (const item of clipboard.numbers) {
       const newK = key(targetCX + item.dx, targetCY + item.dy);
-      al.numbers.set(newK, item.val);
       newSelection.numbers.add(newK);
+      newSelection.values.numbers.set(newK, item.val);
     }
     for (const item of clipboard.highlights) {
       const newK = key(targetCX + item.dx, targetCY + item.dy);
-      al.highlights.set(newK, item.val);
       newSelection.highlights.add(newK);
+      newSelection.values.highlights.set(newK, item.val);
     }
     for (const item of clipboard.lines) {
       const newK = lineKey(item.orient, targetCX + item.dx, targetCY + item.dy);
-      al.lines.set(newK, item.val);
       newSelection.lines.add(newK);
+      newSelection.values.lines.set(newK, item.val);
     }
     for (const item of clipboard.arrows) {
       const newA = {
@@ -672,24 +751,20 @@
         cx2: targetCX + item.dx2, cy2: targetCY + item.dy2,
         colour: item.colour
       };
-      al.arrows.push(newA);
       newSelection.arrows.add(newA);
     }
 
     selection = newSelection;
     const count = clipboard.diagonals.length + clipboard.numbers.length + clipboard.highlights.length + clipboard.lines.length + clipboard.arrows.length;
 
-    const afterState = snapshotLayerState(al);
     const afterSelection = cloneSelection(selection);
 
     pushUndo({
       undo: () => {
-        restoreLayerState(al, beforeState);
-        clearSelection();
+        selection = null;
         requestDraw();
       },
       redo: () => {
-        restoreLayerStateAndSelection(al, afterState, afterSelection);
         selection = cloneSelection(afterSelection);
         requestDraw();
       }
@@ -774,57 +849,33 @@
     const dstLayer = layers[targetIdx];
     if (!srcLayer || !dstLayer || srcLayer === dstLayer) return;
 
+    liftSelection();
+
     const beforeSrc = snapshotLayerState(srcLayer);
     const beforeDst = snapshotLayerState(dstLayer);
     const beforeSelection = cloneSelection(selection);
     const prevActiveIdx = activeLayerIdx;
 
-    let count = 0;
+    let count = selection.diagonals.size + selection.numbers.size + selection.highlights.size + selection.lines.size + selection.arrows.size;
 
-    // Move diagonals
     for (const k of selection.diagonals) {
-      const val = srcLayer.diagonals.get(k);
-      if (val !== undefined) {
-        dstLayer.diagonals.set(k, val);
-        srcLayer.diagonals.delete(k);
-        count++;
-      }
+      const val = selection.values.diagonals.get(k);
+      if (val !== undefined) dstLayer.diagonals.set(k, val);
     }
-    // Move numbers
     for (const k of selection.numbers) {
-      const val = srcLayer.numbers.get(k);
-      if (val !== undefined) {
-        dstLayer.numbers.set(k, val);
-        srcLayer.numbers.delete(k);
-        count++;
-      }
+      const val = selection.values.numbers.get(k);
+      if (val !== undefined) dstLayer.numbers.set(k, val);
     }
-    // Move highlights
     for (const k of selection.highlights) {
-      const val = srcLayer.highlights.get(k);
-      if (val !== undefined) {
-        dstLayer.highlights.set(k, val);
-        srcLayer.highlights.delete(k);
-        count++;
-      }
+      const val = selection.values.highlights.get(k);
+      if (val !== undefined) dstLayer.highlights.set(k, val);
     }
-    // Move lines
     for (const k of selection.lines) {
-      const val = srcLayer.lines.get(k);
-      if (val !== undefined) {
-        dstLayer.lines.set(k, val);
-        srcLayer.lines.delete(k);
-        count++;
-      }
+      const val = selection.values.lines.get(k);
+      if (val !== undefined) dstLayer.lines.set(k, val);
     }
-    // Move arrows
     for (const a of selection.arrows) {
-      const idx = srcLayer.arrows.indexOf(a);
-      if (idx >= 0) {
-        srcLayer.arrows.splice(idx, 1);
-        dstLayer.arrows.push(a);
-        count++;
-      }
+      dstLayer.arrows.push(a);
     }
 
     const afterSrc = snapshotLayerState(srcLayer);
@@ -843,7 +894,7 @@
         restoreLayerState(srcLayer, afterSrc);
         restoreLayerState(dstLayer, afterDst);
         activeLayerIdx = targetIdx;
-        clearSelection();
+        selection = null;
         populateLayers();
         requestDraw();
       }
@@ -896,22 +947,65 @@
   }
   function saveManifest() { localStorage.setItem(STORE_MANIFEST, JSON.stringify(manifest)); }
 
+  function serializeLayers() {
+    return layers.map((l, idx) => {
+      let diagonals = [...l.diagonals.entries()];
+      let numbers = [...l.numbers.entries()];
+      let highlights = [...l.highlights.entries()];
+      let lines = [...l.lines.entries()];
+      let arrows = l.arrows.slice();
+
+      if (selection && selection.values && idx === activeLayerIdx) {
+        const diagMap = new Map(l.diagonals);
+        for (const k of selection.diagonals) {
+          const v = selection.values.diagonals.get(k);
+          if (v !== undefined) diagMap.set(k, v);
+        }
+        diagonals = [...diagMap.entries()];
+
+        const numMap = new Map(l.numbers);
+        for (const k of selection.numbers) {
+          const v = selection.values.numbers.get(k);
+          if (v !== undefined) numMap.set(k, v);
+        }
+        numbers = [...numMap.entries()];
+
+        const highMap = new Map(l.highlights);
+        for (const k of selection.highlights) {
+          const v = selection.values.highlights.get(k);
+          if (v !== undefined) highMap.set(k, v);
+        }
+        highlights = [...highMap.entries()];
+
+        const lineMap = new Map(l.lines);
+        for (const k of selection.lines) {
+          const v = selection.values.lines.get(k);
+          if (v !== undefined) lineMap.set(k, v);
+        }
+        lines = [...lineMap.entries()];
+
+        arrows = arrows.concat(Array.from(selection.arrows));
+      }
+
+      return {
+        id: l.id, name: l.name, visible: l.visible,
+        diagonals, numbers, highlights, lines, arrows
+      };
+    });
+  }
+
   function saveActiveCanvas() {
     const id = manifest.activeId; if (!id) return;
     const data = {
       version: 3, camera: { x: camX, y: camY, zoom },
-      layers: layers.map(l => ({
-        id: l.id, name: l.name, visible: l.visible,
-        diagonals: [...l.diagonals.entries()], numbers: [...l.numbers.entries()],
-        highlights: [...l.highlights.entries()], arrows: l.arrows.slice(),
-        lines: [...l.lines.entries()],
-      })),
+      layers: serializeLayers(),
       activeLayerIdx,
     };
     localStorage.setItem(STORE_PREFIX + id, JSON.stringify(data));
   }
 
   function loadCanvas(id) {
+    clearSelection();
     layers = []; activeLayerIdx = 0; camX = 0; camY = 0; zoom = 1; arrowStart = null;
     undoStack.length = 0; redoStack.length = 0;
     try {
@@ -1123,14 +1217,20 @@
   function drawLayerHighlights(l, cw, ch) {
     for (const [k, col] of l.highlights) {
       const [cx, cy] = k.split(",").map(Number);
-      let drawCx = cx;
-      let drawCy = cy;
-      if (activeTool === "select" && selection && selection.highlights.has(k) && draggingSelection) {
-        drawCx += dragSelectionOffset.dcx;
-        drawCy += dragSelectionOffset.dcy;
-      }
-      const sx = (drawCx * CELL - camX) * zoom + cw / 2, sy = (drawCy * CELL - camY) * zoom + ch / 2, sz = CELL * zoom;
+      const sx = (cx * CELL - camX) * zoom + cw / 2, sy = (cy * CELL - camY) * zoom + ch / 2, sz = CELL * zoom;
       ctx.fillStyle = col; ctx.fillRect(sx, sy, sz, sz);
+    }
+    if (l === L() && selection && selection.values) {
+      const dcx = draggingSelection ? dragSelectionOffset.dcx : 0;
+      const dcy = draggingSelection ? dragSelectionOffset.dcy : 0;
+      for (const k of selection.highlights) {
+        const [cx, cy] = k.split(",").map(Number);
+        const sx = ((cx + dcx) * CELL - camX) * zoom + cw / 2, sy = ((cy + dcy) * CELL - camY) * zoom + ch / 2, sz = CELL * zoom;
+        const col = selection.values.highlights.get(k);
+        if (col !== undefined) {
+          ctx.fillStyle = col; ctx.fillRect(sx, sy, sz, sz);
+        }
+      }
     }
   }
 
@@ -1138,19 +1238,33 @@
     ctx.lineCap = "round"; ctx.lineWidth = Math.max(1, 2.5 * Math.min(zoom, 2));
     for (const [k, col] of l.lines) {
       const parts = k.split(","); const orient = parts[0], ex = +parts[1], ey = +parts[2];
-      let drawEx = ex, drawEy = ey;
-      if (activeTool === "select" && selection && selection.lines.has(k) && draggingSelection) {
-        drawEx += dragSelectionOffset.dcx;
-        drawEy += dragSelectionOffset.dcy;
-      }
       ctx.strokeStyle = resolveLineColour(col);
       const sz = CELL * zoom;
       if (orient === "h") {
-        const sx = (drawEx * CELL - camX) * zoom + cw / 2, sy = (drawEy * CELL - camY) * zoom + ch / 2;
+        const sx = (ex * CELL - camX) * zoom + cw / 2, sy = (ey * CELL - camY) * zoom + ch / 2;
         ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx + sz, sy); ctx.stroke();
       } else {
-        const sx = (drawEx * CELL - camX) * zoom + cw / 2, sy = (drawEy * CELL - camY) * zoom + ch / 2;
+        const sx = (ex * CELL - camX) * zoom + cw / 2, sy = (ey * CELL - camY) * zoom + ch / 2;
         ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx, sy + sz); ctx.stroke();
+      }
+    }
+    if (l === L() && selection && selection.values) {
+      const dcx = draggingSelection ? dragSelectionOffset.dcx : 0;
+      const dcy = draggingSelection ? dragSelectionOffset.dcy : 0;
+      for (const k of selection.lines) {
+        const parts = k.split(","); const orient = parts[0], ex = +parts[1], ey = +parts[2];
+        const col = selection.values.lines.get(k);
+        if (col !== undefined) {
+          ctx.strokeStyle = resolveLineColour(col);
+          const sz = CELL * zoom;
+          if (orient === "h") {
+            const sx = ((ex + dcx) * CELL - camX) * zoom + cw / 2, sy = ((ey + dcy) * CELL - camY) * zoom + ch / 2;
+            ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx + sz, sy); ctx.stroke();
+          } else {
+            const sx = ((ex + dcx) * CELL - camX) * zoom + cw / 2, sy = ((ey + dcy) * CELL - camY) * zoom + ch / 2;
+            ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx, sy + sz); ctx.stroke();
+          }
+        }
       }
     }
     ctx.lineCap = "butt";
@@ -1160,13 +1274,7 @@
     ctx.strokeStyle = c.diag; ctx.lineCap = "round"; ctx.lineWidth = Math.max(1, 2.5 * Math.min(zoom, 2));
     for (const [k, dir] of l.diagonals) {
       const [cx, cy] = k.split(",").map(Number);
-      let drawCx = cx;
-      let drawCy = cy;
-      if (activeTool === "select" && selection && selection.diagonals.has(k) && draggingSelection) {
-        drawCx += dragSelectionOffset.dcx;
-        drawCy += dragSelectionOffset.dcy;
-      }
-      const sx = (drawCx * CELL - camX) * zoom + cw / 2, sy = (drawCy * CELL - camY) * zoom + ch / 2, sz = CELL * zoom;
+      const sx = (cx * CELL - camX) * zoom + cw / 2, sy = (cy * CELL - camY) * zoom + ch / 2, sz = CELL * zoom;
       ctx.beginPath();
       if (dir === 1) {
         ctx.moveTo(sx, sy); ctx.lineTo(sx + sz, sy + sz);
@@ -1174,6 +1282,24 @@
         ctx.moveTo(sx + sz, sy); ctx.lineTo(sx, sy + sz);
       }
       ctx.stroke();
+    }
+    if (l === L() && selection && selection.values) {
+      const dcx = draggingSelection ? dragSelectionOffset.dcx : 0;
+      const dcy = draggingSelection ? dragSelectionOffset.dcy : 0;
+      for (const k of selection.diagonals) {
+        const [cx, cy] = k.split(",").map(Number);
+        const dir = selection.values.diagonals.get(k);
+        if (dir !== undefined) {
+          const sx = ((cx + dcx) * CELL - camX) * zoom + cw / 2, sy = ((cy + dcy) * CELL - camY) * zoom + ch / 2, sz = CELL * zoom;
+          ctx.beginPath();
+          if (dir === 1) {
+            ctx.moveTo(sx, sy); ctx.lineTo(sx + sz, sy + sz);
+          } else {
+            ctx.moveTo(sx + sz, sy); ctx.lineTo(sx, sy + sz);
+          }
+          ctx.stroke();
+        }
+      }
     }
     ctx.lineCap = "butt";
   }
@@ -1198,14 +1324,18 @@
   function drawLayerArrows(l, cw, ch) {
     const lw = Math.max(1, 2.5 * Math.min(zoom, 2)) * arrowScale;
     for (const a of l.arrows) {
-      let dcx = 0, dcy = 0;
-      if (activeTool === "select" && selection && selection.arrows.has(a) && draggingSelection) {
-        dcx = dragSelectionOffset.dcx;
-        dcy = dragSelectionOffset.dcy;
-      }
-      const s = arrowAnchor(a.cx1 + dcx, a.cy1 + dcy), e = arrowAnchor(a.cx2 + dcx, a.cy2 + dcy);
+      const s = arrowAnchor(a.cx1, a.cy1), e = arrowAnchor(a.cx2, a.cy2);
       const ss = worldToScreen(s.wx, s.wy), se = worldToScreen(e.wx, e.wy);
       drawArrowShape(ss.x, ss.y, se.x, se.y, resolveArrowColour(a.colour), lw);
+    }
+    if (l === L() && selection) {
+      const dcx = draggingSelection ? dragSelectionOffset.dcx : 0;
+      const dcy = draggingSelection ? dragSelectionOffset.dcy : 0;
+      for (const a of selection.arrows) {
+        const s = arrowAnchor(a.cx1 + dcx, a.cy1 + dcy), e = arrowAnchor(a.cx2 + dcx, a.cy2 + dcy);
+        const ss = worldToScreen(s.wx, s.wy), se = worldToScreen(e.wx, e.wy);
+        drawArrowShape(ss.x, ss.y, se.x, se.y, resolveArrowColour(a.colour), lw);
+      }
     }
   }
 
@@ -1242,13 +1372,7 @@
     ctx.font = `600 ${fs}px 'Inter',sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
     for (const [k, num] of l.numbers) {
       const [ix, iy] = k.split(",").map(Number);
-      let drawIx = ix;
-      let drawIy = iy;
-      if (activeTool === "select" && selection && selection.numbers.has(k) && draggingSelection) {
-        drawIx += dragSelectionOffset.dcx;
-        drawIy += dragSelectionOffset.dcy;
-      }
-      const sx = (drawIx * CELL - camX) * zoom + cw / 2, sy = (drawIy * CELL - camY) * zoom + ch / 2;
+      const sx = (ix * CELL - camX) * zoom + cw / 2, sy = (iy * CELL - camY) * zoom + ch / 2;
       if (numberStyle === "slope") {
         drawSlopeGlyph(ctx, sx, sy, num, c);
       } else {
@@ -1256,6 +1380,25 @@
         ctx.fillStyle = c.numBg; ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI * 2); ctx.fill();
         ctx.strokeStyle = c.numBdr; ctx.lineWidth = 1; ctx.stroke();
         ctx.fillStyle = c.num; ctx.fillText(String(num), sx, sy + 1);
+      }
+    }
+    if (l === L() && selection && selection.values) {
+      const dcx = draggingSelection ? dragSelectionOffset.dcx : 0;
+      const dcy = draggingSelection ? dragSelectionOffset.dcy : 0;
+      for (const k of selection.numbers) {
+        const [ix, iy] = k.split(",").map(Number);
+        const num = selection.values.numbers.get(k);
+        if (num !== undefined) {
+          const sx = ((ix + dcx) * CELL - camX) * zoom + cw / 2, sy = ((iy + dcy) * CELL - camY) * zoom + ch / 2;
+          if (numberStyle === "slope") {
+            drawSlopeGlyph(ctx, sx, sy, num, c);
+          } else {
+            const r = fs * .7;
+            ctx.fillStyle = c.numBg; ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = c.numBdr; ctx.lineWidth = 1; ctx.stroke();
+            ctx.fillStyle = c.num; ctx.fillText(String(num), sx, sy + 1);
+          }
+        }
       }
     }
   }
@@ -1629,6 +1772,7 @@
       marqueeActive = false;
       pointerDown = false;
       canvas.style.cursor = getCursor();
+      liftSelection();
       updateDeleteButtonPosition();
       requestDraw();
       return;
@@ -2010,24 +2154,26 @@
 
   // Layer management (bottom panel)
   $("btn-add-layer").addEventListener("click", () => {
+    clearSelection();
     const newLayer = createLayer(); layers.push(newLayer); const newIdx = layers.length - 1;
     const prevIdx = activeLayerIdx; activeLayerIdx = newIdx;
     pushUndo({
-      redo: () => { layers.push(newLayer); activeLayerIdx = layers.length - 1; populateLayers(); },
-      undo: () => { const i = layers.indexOf(newLayer); if (i >= 0) layers.splice(i, 1); activeLayerIdx = Math.min(prevIdx, layers.length - 1); populateLayers(); }
+      redo: () => { clearSelection(); layers.push(newLayer); activeLayerIdx = layers.length - 1; populateLayers(); },
+      undo: () => { clearSelection(); const i = layers.indexOf(newLayer); if (i >= 0) layers.splice(i, 1); activeLayerIdx = Math.min(prevIdx, layers.length - 1); populateLayers(); }
     });
     populateLayers(); requestDraw();
   });
 
   $("btn-delete-layer").addEventListener("click", () => {
     if (layers.length <= 1) { toast("Can't delete the last layer"); return; }
+    clearSelection();
     const idx = activeLayerIdx, removed = layers[idx], prevActive = activeLayerIdx;
     layers.splice(idx, 1);
     if (activeLayerIdx >= layers.length) activeLayerIdx = layers.length - 1;
     const newActive = activeLayerIdx;
     pushUndo({
-      redo: () => { const i = layers.indexOf(removed); if (i >= 0) layers.splice(i, 1); if (activeLayerIdx >= layers.length) activeLayerIdx = layers.length - 1; populateLayers(); },
-      undo: () => { layers.splice(idx, 0, removed); activeLayerIdx = prevActive; populateLayers(); }
+      redo: () => { clearSelection(); const i = layers.indexOf(removed); if (i >= 0) layers.splice(i, 1); if (activeLayerIdx >= layers.length) activeLayerIdx = layers.length - 1; populateLayers(); },
+      undo: () => { clearSelection(); layers.splice(idx, 0, removed); activeLayerIdx = prevActive; populateLayers(); }
     });
     populateLayers(); requestDraw(); toast(`Deleted "${removed.name}"`);
   });
@@ -2106,16 +2252,14 @@
   function serialise() {
     return JSON.stringify({
       version: 3, camera: { x: camX, y: camY, zoom },
-      layers: layers.map(l => ({
-        id: l.id, name: l.name, visible: l.visible,
-        diagonals: [...l.diagonals.entries()], numbers: [...l.numbers.entries()],
-        highlights: [...l.highlights.entries()], arrows: l.arrows.slice(),
-        lines: [...l.lines.entries()],
-      })),
+      layers: serializeLayers(),
       activeLayerIdx,
     }, null, 2);
   }
   function deserialise(json) {
+    clearSelection();
+    undoStack.length = 0;
+    redoStack.length = 0;
     const d = JSON.parse(json);
     if (d.camera) { camX = d.camera.x || 0; camY = d.camera.y || 0; zoom = d.camera.zoom || 1; }
     layers = [];
