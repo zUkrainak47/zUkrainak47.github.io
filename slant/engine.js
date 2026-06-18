@@ -2693,12 +2693,18 @@
       });
 
       const canvas = document.createElement("canvas");
-      const scale = 2;
-      canvas.width = vw * scale;
-      canvas.height = vh * scale;
+      // Calculate a scale factor that ensures both width and height are at least 1200px (Option A)
+      let scale = Math.max(2, 1200 / Math.min(vw, vh));
+      // Clamp the scale factor to ensure the maximum dimension does not exceed 4096px
+      const maxDim = Math.max(vw, vh);
+      if (maxDim * scale > 4096) {
+        scale = Math.max(2, 4096 / maxDim);
+      }
+      
+      canvas.width = Math.round(vw * scale);
+      canvas.height = Math.round(vh * scale);
       const ctx = canvas.getContext("2d");
-      ctx.scale(scale, scale);
-      ctx.drawImage(img, 0, 0);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
       
       const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
       URL.revokeObjectURL(url);
