@@ -87,6 +87,8 @@
   let dragSelectionStart = null;
   let dragSelectionOffset = { dcx: 0, dcy: 0 };
   let selectionBeforeDrag = null;
+  let selectionBeforeInteraction = null;
+  let layerStateBeforeInteraction = null;
 
 
   // Canvas management
@@ -389,6 +391,29 @@
       }
       selectionToRestore.arrows = newArrows;
     }
+  }
+
+  function isSelectionEqual(sel1, sel2) {
+    if (!sel1 && !sel2) return true;
+    if (!sel1 || !sel2) return false;
+    if (sel1.diagonals.size !== sel2.diagonals.size) return false;
+    if (sel1.numbers.size !== sel2.numbers.size) return false;
+    if (sel1.highlights.size !== sel2.highlights.size) return false;
+    if (sel1.lines.size !== sel2.lines.size) return false;
+    if (sel1.arrows.size !== sel2.arrows.size) return false;
+
+    for (const k of sel1.diagonals) if (!sel2.diagonals.has(k)) return false;
+    for (const k of sel1.numbers) if (!sel2.numbers.has(k)) return false;
+    for (const k of sel1.highlights) if (!sel2.highlights.has(k)) return false;
+    for (const k of sel1.lines) if (!sel2.lines.has(k)) return false;
+
+    const a1 = Array.from(sel1.arrows);
+    const a2 = Array.from(sel2.arrows);
+    for (const arrow of a1) {
+      const match = a2.some(x => x.cx1 === arrow.cx1 && x.cy1 === arrow.cy1 && x.cx2 === arrow.cx2 && x.cy2 === arrow.cy2);
+      if (!match) return false;
+    }
+    return true;
   }
 
   function clearSelection(pushToUndo = true) {
@@ -1633,6 +1658,10 @@
         canvas.style.cursor = "crosshair";
         canvas.setPointerCapture(e.pointerId);
 
+        const al = L();
+        selectionBeforeInteraction = cloneSelection(selection);
+        layerStateBeforeInteraction = al ? snapshotLayerState(al) : null;
+
         if (selection) {
           commitSelection();
           selectionBeforeDrag = selection;
@@ -1786,6 +1815,32 @@
       selectionBeforeDrag = null;
       updateDeleteButtonPosition();
       requestDraw();
+
+      const afterSelection = cloneSelection(selection);
+      if (!isSelectionEqual(selectionBeforeInteraction, afterSelection)) {
+        const al = L();
+        if (al) {
+          const beforeState = layerStateBeforeInteraction;
+          const beforeSelection = selectionBeforeInteraction;
+          const afterState = snapshotLayerState(al);
+          pushUndo({
+            undo: () => {
+              restoreLayerStateAndSelection(al, beforeState, beforeSelection);
+              selection = cloneSelection(beforeSelection);
+              populateLayers();
+              requestDraw();
+            },
+            redo: () => {
+              restoreLayerStateAndSelection(al, afterState, afterSelection);
+              selection = cloneSelection(afterSelection);
+              populateLayers();
+              requestDraw();
+            }
+          });
+        }
+      }
+      selectionBeforeInteraction = null;
+      layerStateBeforeInteraction = null;
       return;
     }
 
@@ -2069,6 +2124,8 @@
           liftSelection();
         }
         selectionBeforeDrag = null;
+        selectionBeforeInteraction = null;
+        layerStateBeforeInteraction = null;
         canvas.style.cursor = getCursor();
         requestDraw();
         return;
