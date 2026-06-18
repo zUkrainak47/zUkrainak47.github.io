@@ -2754,6 +2754,8 @@
     const al = L();
     if (!al) return;
 
+    liftSelection();
+
     const bounds = getSelectionBounds(selection);
     if (!bounds) return;
 
@@ -2763,28 +2765,28 @@
     const tempClipboard = { diagonals: [], numbers: [], highlights: [], lines: [], arrows: [] };
 
     for (const k of selection.diagonals) {
-      const val = al.diagonals.get(k);
+      const val = selection.values.diagonals.get(k);
       if (val !== undefined) {
         const [cx, cy] = k.split(",").map(Number);
         tempClipboard.diagonals.push({ dx: cx - originCX, dy: cy - originCY, val });
       }
     }
     for (const k of selection.numbers) {
-      const val = al.numbers.get(k);
+      const val = selection.values.numbers.get(k);
       if (val !== undefined) {
         const [ix, iy] = k.split(",").map(Number);
         tempClipboard.numbers.push({ dx: ix - originCX, dy: iy - originCY, val });
       }
     }
     for (const k of selection.highlights) {
-      const val = al.highlights.get(k);
+      const val = selection.values.highlights.get(k);
       if (val !== undefined) {
         const [cx, cy] = k.split(",").map(Number);
         tempClipboard.highlights.push({ dx: cx - originCX, dy: cy - originCY, val });
       }
     }
     for (const k of selection.lines) {
-      const val = al.lines.get(k);
+      const val = selection.values.lines.get(k);
       if (val !== undefined) {
         const parts = k.split(",");
         const orient = parts[0], ex = +parts[1], ey = +parts[2];
