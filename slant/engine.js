@@ -2097,6 +2097,7 @@
     a.download = (entry ? entry.name.replace(/[^a-z0-9]/gi, "-").toLowerCase() : "slant-project") + ".json";
     a.click(); URL.revokeObjectURL(url); toast("Exported to file");
   }
+  $("btn-clipboard").addEventListener("click", openClipboardPanel);
   $("btn-save").addEventListener("click", saveToFile);
   $("btn-load").addEventListener("click", () => $("file-input").click());
   $("file-input").addEventListener("change", e => {

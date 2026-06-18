@@ -569,6 +569,17 @@ body {
   flex-shrink: 0
 }
 
+.action-btn .action-hotkey {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-family: var(--mono);
+  font-size: 10px;
+  opacity: .5;
+  font-weight: 400
+}
+
 .action-btn:hover {
   background: var(--surface-hover);
   color: var(--text)
@@ -1396,6 +1407,7 @@ body {
     opacity: 0;
     transform: translateY(8px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -1468,4 +1480,9 @@ body {
 .shortcut-svg--return {
   width: 10px;
   height: 10px;
+}
+
+.action-hotkey .shortcut-svg--command {
+  width: 9.5px;
+  height: 9.5px;
 }
