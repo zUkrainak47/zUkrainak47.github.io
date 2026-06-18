@@ -334,6 +334,60 @@
     </button>
   </div>
 
+  <!-- ─── Clipboard History Modal ─── -->
+  <dialog id="clipboard-modal" class="modal clipboard-modal">
+    <div class="clipboard-container">
+      <div class="modal-header clipboard-header">
+        <h2>📋 Clipboard History</h2>
+        <button id="clipboard-modal-close" class="modal-close">✕</button>
+      </div>
+      <div class="clipboard-body">
+        <div class="clipboard-list" id="clipboard-list">
+          <div class="clipboard-empty" id="clipboard-empty">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="32" height="32">
+              <rect x="9" y="9" width="13" height="13" rx="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+            <span>No items yet</span>
+            <span class="clipboard-empty-sub">Copy a selection to see it here</span>
+          </div>
+        </div>
+        <div class="clipboard-preview" id="clipboard-preview">
+          <div class="clipboard-preview-empty">Select an item to preview</div>
+        </div>
+      </div>
+      <div class="clipboard-footer">
+        <div class="clipboard-footer-hints">
+          <span class="clipboard-hint"><kbd>↑↓</kbd> Navigate</span>
+          <span class="clipboard-hint"><kbd>⏎</kbd> Paste</span>
+          <span class="clipboard-hint"><kbd>⌫</kbd> Delete</span>
+        </div>
+        <button class="clipboard-actions-btn" id="clipboard-actions-btn">
+          Actions <kbd>⌘K</kbd>
+        </button>
+      </div>
+      <!-- Actions popover -->
+      <div class="clipboard-actions-popover" id="clipboard-actions-popover" style="display:none;">
+        <button class="clipboard-action-item" data-action="paste">
+          <span>Paste</span><kbd>⏎</kbd>
+        </button>
+        <button class="clipboard-action-item" data-action="copy">
+          <span>Copy</span><kbd>⌘C</kbd>
+        </button>
+        <button class="clipboard-action-item" data-action="rename">
+          <span>Rename</span><kbd>⌘E</kbd>
+        </button>
+        <button class="clipboard-action-item" data-action="pin">
+          <span id="clipboard-action-pin-label">Pin</span><kbd>⌘⇧P</kbd>
+        </button>
+        <div class="clipboard-action-divider"></div>
+        <button class="clipboard-action-item clipboard-action-item--danger" data-action="delete">
+          <span>Delete</span><kbd>⌫</kbd>
+        </button>
+      </div>
+    </div>
+  </dialog>
+
   <!-- ─── Toast ─── -->
   <div id="toast" class="toast hidden"></div>
 

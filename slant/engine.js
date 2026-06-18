@@ -16,6 +16,8 @@
   const STORE_THEME = "slant-theme";
   const STORE_HOTKEYS = "slant-hotkeys";
   const STORE_NUM_STYLE = "slant-num-style";
+  const STORE_CLIPBOARD = "slant-clipboard";
+  const MAX_CLIPBOARD_ITEMS = 100;
 
   // Slope values for each number clue (index = clue value)
   const NUM_SLOPES = [null, 2, 0.5, -0.5, -2]; // 0=filled dot, 1..4=slope
@@ -88,6 +90,12 @@
   let hotkeys = { ...DEFAULT_HOTKEYS };
   let recordingAction = null; // action id being recorded, or null
   let isolateLayer = false; // dim non-active layers
+
+  // Clipboard history
+  let clipboardHistory = []; // [{ id, name, data, timestamp, pinned }]
+  let clipboardActiveIdx = 0;
+  let clipboardPanelOpen = false;
+  let clipboardActionsOpen = false;
 
   // ═══ LAYER HELPERS ══════════════════════════════
   function createLayer(name) {
@@ -603,6 +611,7 @@
 
     const count = clipboard.diagonals.length + clipboard.numbers.length + clipboard.highlights.length + clipboard.lines.length + clipboard.arrows.length;
     toast(`Copied ${count} items`);
+    addToClipboardHistory(clipboard);
   }
 
   function pasteClipboard() {
@@ -1857,6 +1866,26 @@
     if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.tagName === "SELECT") return;
     const ctrl = e.ctrlKey || e.metaKey;
 
+    // ── Clipboard panel keyboard handling ──
+    if (clipboardPanelOpen) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        if (clipboardActionsOpen) { closeClipboardActions(); }
+        else { closeClipboardPanel(); }
+        return;
+      }
+      if (e.key === "ArrowDown") { e.preventDefault(); clipboardNavigate(1); return; }
+      if (e.key === "ArrowUp") { e.preventDefault(); clipboardNavigate(-1); return; }
+      if (e.key === "Enter") { e.preventDefault(); clipboardPasteSelected(); return; }
+      if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); clipboardDeleteSelected(); return; }
+      if (ctrl && e.key.toLowerCase() === "e") { e.preventDefault(); clipboardRenameSelected(); return; }
+      if (ctrl && e.key.toLowerCase() === "c") { e.preventDefault(); clipboardCopySelected(); return; }
+      if (ctrl && e.shiftKey && e.key.toLowerCase() === "p") { e.preventDefault(); clipboardTogglePin(); return; }
+      if (ctrl && e.key.toLowerCase() === "k") { e.preventDefault(); toggleClipboardActions(); return; }
+      if (ctrl && e.key.toLowerCase() === "b") { e.preventDefault(); closeClipboardPanel(); return; }
+      return; // swallow all other keys while panel is open
+    }
+
     // Escape cancels arrow start or selection
     if (e.key === "Escape") {
       if (arrowStart) { arrowStart = null; requestDraw(); return; }
@@ -1900,6 +1929,7 @@
     if (ctrl && e.key.toLowerCase() === "v") { e.preventDefault(); pasteClipboard(); return; }
     if (ctrl && e.key.toLowerCase() === "s") { e.preventDefault(); saveToFile(); return; }
     if (ctrl && e.key.toLowerCase() === "o") { e.preventDefault(); $("file-input").click(); return; }
+    if (ctrl && e.key.toLowerCase() === "b") { e.preventDefault(); openClipboardPanel(); return; }
     if (e.key === "Home" || (ctrl && e.key === "0")) { e.preventDefault(); camX = 0; camY = 0; zoom = 1; $("zoom-display").textContent = "100%"; scheduleSave(); requestDraw(); }
   });
 
@@ -2099,6 +2129,391 @@
     });
   }
 
+  // ═══ CLIPBOARD HISTORY ══════════════════════════
+  function loadClipboardHistory() {
+    try {
+      const raw = localStorage.getItem(STORE_CLIPBOARD);
+      if (raw) clipboardHistory = JSON.parse(raw);
+    } catch { }
+    if (!Array.isArray(clipboardHistory)) clipboardHistory = [];
+  }
+
+  function saveClipboardHistory() {
+    localStorage.setItem(STORE_CLIPBOARD, JSON.stringify(clipboardHistory));
+  }
+
+  function addToClipboardHistory(clipData) {
+    const count = clipData.diagonals.length + clipData.numbers.length +
+      clipData.highlights.length + clipData.lines.length + clipData.arrows.length;
+    const entry = {
+      id: genId(),
+      name: `Chunk (${count} items)`,
+      data: JSON.parse(JSON.stringify(clipData)), // deep clone
+      timestamp: Date.now(),
+      pinned: false
+    };
+    clipboardHistory.unshift(entry);
+    // Trim unpinned items to MAX_CLIPBOARD_ITEMS
+    const unpinned = clipboardHistory.filter(e => !e.pinned);
+    if (unpinned.length > MAX_CLIPBOARD_ITEMS) {
+      const toRemove = new Set(unpinned.slice(MAX_CLIPBOARD_ITEMS).map(e => e.id));
+      clipboardHistory = clipboardHistory.filter(e => !toRemove.has(e.id));
+    }
+    saveClipboardHistory();
+  }
+
+  function getOrderedClipboardItems() {
+    // Pinned items first (by timestamp, newest first), then unpinned (newest first)
+    const pinned = clipboardHistory.filter(e => e.pinned).sort((a, b) => b.timestamp - a.timestamp);
+    const unpinned = clipboardHistory.filter(e => !e.pinned).sort((a, b) => b.timestamp - a.timestamp);
+    return { pinned, unpinned, all: [...pinned, ...unpinned] };
+  }
+
+  function openClipboardPanel() {
+    clipboardPanelOpen = true;
+    clipboardActionsOpen = false;
+    clipboardActiveIdx = 0;
+    $("clipboard-actions-popover").style.display = "none";
+    populateClipboardList();
+    $("clipboard-modal").showModal();
+  }
+
+  function closeClipboardPanel() {
+    clipboardPanelOpen = false;
+    clipboardActionsOpen = false;
+    $("clipboard-actions-popover").style.display = "none";
+    $("clipboard-modal").close();
+  }
+
+  function populateClipboardList() {
+    const list = $("clipboard-list");
+    const preview = $("clipboard-preview");
+    const { pinned, unpinned, all } = getOrderedClipboardItems();
+
+    if (all.length === 0) {
+      list.innerHTML = `<div class="clipboard-empty" id="clipboard-empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="32" height="32">
+          <rect x="9" y="9" width="13" height="13" rx="2"/>
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+        </svg>
+        <span>No items yet</span>
+        <span class="clipboard-empty-sub">Copy a selection to see it here</span>
+      </div>`;
+      preview.innerHTML = `<div class="clipboard-preview-empty">Select an item to preview</div>`;
+      return;
+    }
+
+    if (clipboardActiveIdx >= all.length) clipboardActiveIdx = all.length - 1;
+    if (clipboardActiveIdx < 0) clipboardActiveIdx = 0;
+
+    list.innerHTML = "";
+
+    let globalIdx = 0;
+    if (pinned.length > 0) {
+      const label = document.createElement("div");
+      label.className = "clipboard-section-label";
+      label.textContent = "Pinned";
+      list.appendChild(label);
+      for (const item of pinned) {
+        list.appendChild(createClipboardItemEl(item, globalIdx));
+        globalIdx++;
+      }
+    }
+    if (unpinned.length > 0) {
+      if (pinned.length > 0) {
+        const label = document.createElement("div");
+        label.className = "clipboard-section-label";
+        label.textContent = "Recent";
+        list.appendChild(label);
+      }
+      for (const item of unpinned) {
+        list.appendChild(createClipboardItemEl(item, globalIdx));
+        globalIdx++;
+      }
+    }
+
+    renderClipboardPreview(all[clipboardActiveIdx]);
+    // Scroll active item into view
+    const activeEl = list.querySelector(".clipboard-item.active");
+    if (activeEl) activeEl.scrollIntoView({ block: "nearest" });
+  }
+
+  function createClipboardItemEl(item, idx) {
+    const d = item.data;
+    const count = d.diagonals.length + d.numbers.length + d.highlights.length + d.lines.length + d.arrows.length;
+    const el = document.createElement("button");
+    el.className = "clipboard-item" + (idx === clipboardActiveIdx ? " active" : "") + (item.pinned ? " pinned" : "");
+    el.innerHTML = `<span class="clipboard-item__pin">★</span>
+      <span class="clipboard-item__name">${escHtml(item.name)}</span>
+      <span class="clipboard-item__count">${count}</span>`;
+
+    el.addEventListener("click", (e) => {
+      e.stopPropagation();
+      clipboardActiveIdx = idx;
+      populateClipboardList();
+    });
+    el.addEventListener("dblclick", (e) => {
+      e.stopPropagation();
+      clipboardActiveIdx = idx;
+      clipboardPasteSelected();
+    });
+    return el;
+  }
+
+  function renderClipboardPreview(item) {
+    const preview = $("clipboard-preview");
+    if (!item) {
+      preview.innerHTML = `<div class="clipboard-preview-empty">Select an item to preview</div>`;
+      return;
+    }
+
+    const d = item.data;
+    const svg = renderClipboardSVG(d);
+
+    // Build stats
+    const stats = [];
+    if (d.diagonals.length) stats.push(`<span class="clipboard-preview-stat"><span class="stat-val">${d.diagonals.length}</span> diag</span>`);
+    if (d.numbers.length) stats.push(`<span class="clipboard-preview-stat"><span class="stat-val">${d.numbers.length}</span> num</span>`);
+    if (d.highlights.length) stats.push(`<span class="clipboard-preview-stat"><span class="stat-val">${d.highlights.length}</span> hl</span>`);
+    if (d.arrows.length) stats.push(`<span class="clipboard-preview-stat"><span class="stat-val">${d.arrows.length}</span> arr</span>`);
+    if (d.lines.length) stats.push(`<span class="clipboard-preview-stat"><span class="stat-val">${d.lines.length}</span> line</span>`);
+
+    const timeStr = formatTimeAgo(item.timestamp);
+    const pinLabel = item.pinned ? "★ Pinned" : "";
+
+    preview.innerHTML = `<div class="clipboard-preview-content">
+      <div class="clipboard-preview-svg">${svg}</div>
+      <div class="clipboard-preview-info">
+        <div class="clipboard-preview-name">${escHtml(item.name)}${pinLabel ? ` <span style="color:var(--accent);font-size:11px">${pinLabel}</span>` : ""}</div>
+        <div class="clipboard-preview-stats">${stats.join("")}</div>
+        <div class="clipboard-preview-time">Copied ${timeStr}</div>
+      </div>
+    </div>`;
+
+    // Update pin label in actions popover
+    const pinLabelEl = $("clipboard-action-pin-label");
+    if (pinLabelEl) pinLabelEl.textContent = item.pinned ? "Unpin" : "Pin";
+  }
+
+  function renderClipboardSVG(d) {
+    // Compute bounding box of all items
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+    for (const item of d.diagonals) {
+      minX = Math.min(minX, item.dx * CELL); minY = Math.min(minY, item.dy * CELL);
+      maxX = Math.max(maxX, (item.dx + 1) * CELL); maxY = Math.max(maxY, (item.dy + 1) * CELL);
+    }
+    for (const item of d.highlights) {
+      minX = Math.min(minX, item.dx * CELL); minY = Math.min(minY, item.dy * CELL);
+      maxX = Math.max(maxX, (item.dx + 1) * CELL); maxY = Math.max(maxY, (item.dy + 1) * CELL);
+    }
+    for (const item of d.numbers) {
+      minX = Math.min(minX, item.dx * CELL - 12); minY = Math.min(minY, item.dy * CELL - 12);
+      maxX = Math.max(maxX, item.dx * CELL + 12); maxY = Math.max(maxY, item.dy * CELL + 12);
+    }
+    for (const item of d.lines) {
+      const x1 = item.dx * CELL, y1 = item.dy * CELL;
+      const x2 = (item.dx + (item.orient === "h" ? 1 : 0)) * CELL;
+      const y2 = (item.dy + (item.orient === "v" ? 1 : 0)) * CELL;
+      minX = Math.min(minX, x1); minY = Math.min(minY, y1);
+      maxX = Math.max(maxX, x2); maxY = Math.max(maxY, y2);
+    }
+    for (const item of d.arrows) {
+      const s = { wx: item.dx1 * CELL + CELL * ARROW_X, wy: item.dy1 * CELL + CELL * ARROW_Y };
+      const e = { wx: item.dx2 * CELL + CELL * ARROW_X, wy: item.dy2 * CELL + CELL * ARROW_Y };
+      minX = Math.min(minX, s.wx, e.wx); minY = Math.min(minY, s.wy, e.wy);
+      maxX = Math.max(maxX, s.wx, e.wx); maxY = Math.max(maxY, s.wy, e.wy);
+    }
+
+    if (minX === Infinity) {
+      return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"></svg>`;
+    }
+
+    const pad = CELL * 0.5;
+    minX -= pad; minY -= pad; maxX += pad; maxY += pad;
+    const vw = maxX - minX, vh = maxY - minY;
+    const c = tc();
+
+    const parts = [`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${minX} ${minY} ${vw} ${vh}" preserveAspectRatio="xMidYMid meet">`];
+    parts.push(`<rect x="${minX}" y="${minY}" width="${vw}" height="${vh}" fill="${c.bg}" rx="4"/>`);
+
+    // Draw light grid
+    const gs = Math.floor(minX / CELL) - 1, ge = Math.ceil(maxX / CELL) + 1;
+    const grs = Math.floor(minY / CELL) - 1, gre = Math.ceil(maxY / CELL) + 1;
+    for (let col = gs; col <= ge; col++) parts.push(`<line x1="${col * CELL}" y1="${minY}" x2="${col * CELL}" y2="${maxY}" stroke="${c.grid}" stroke-width="0.5"/>`);
+    for (let row = grs; row <= gre; row++) parts.push(`<line x1="${minX}" y1="${row * CELL}" x2="${maxX}" y2="${row * CELL}" stroke="${c.grid}" stroke-width="0.5"/>`);
+
+    // Highlights
+    for (const item of d.highlights) {
+      parts.push(`<rect x="${item.dx * CELL}" y="${item.dy * CELL}" width="${CELL}" height="${CELL}" fill="${item.val}"/>`);
+    }
+    // Lines
+    for (const item of d.lines) {
+      const rc = item.val === "theme" ? c.diag : item.val;
+      if (item.orient === "h") {
+        parts.push(`<line x1="${item.dx * CELL}" y1="${item.dy * CELL}" x2="${(item.dx + 1) * CELL}" y2="${item.dy * CELL}" stroke="${rc}" stroke-width="2.5" stroke-linecap="round"/>`);
+      } else {
+        parts.push(`<line x1="${item.dx * CELL}" y1="${item.dy * CELL}" x2="${item.dx * CELL}" y2="${(item.dy + 1) * CELL}" stroke="${rc}" stroke-width="2.5" stroke-linecap="round"/>`);
+      }
+    }
+    // Diagonals
+    for (const item of d.diagonals) {
+      const x1 = item.val === 1 ? item.dx * CELL : (item.dx + 1) * CELL;
+      const y1 = item.dy * CELL;
+      const x2 = item.val === 1 ? (item.dx + 1) * CELL : item.dx * CELL;
+      const y2 = (item.dy + 1) * CELL;
+      parts.push(`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${c.diag}" stroke-width="2.5" stroke-linecap="round"/>`);
+    }
+    // Arrows
+    const hl = 10;
+    for (const item of d.arrows) {
+      const sx = item.dx1 * CELL + CELL * ARROW_X, sy = item.dy1 * CELL + CELL * ARROW_Y;
+      const ex = item.dx2 * CELL + CELL * ARROW_X, ey = item.dy2 * CELL + CELL * ARROW_Y;
+      const col = item.colour === "theme" ? themeArrowColor() : item.colour;
+      const ang = Math.atan2(ey - sy, ex - sx);
+      const lex = ex - hl * Math.cos(ang), ley = ey - hl * Math.sin(ang);
+      parts.push(`<line x1="${sx}" y1="${sy}" x2="${lex}" y2="${ley}" stroke="${col}" stroke-width="2.5" stroke-linecap="round"/>`);
+      const p1x = ex - hl * Math.cos(ang - Math.PI / 6), p1y = ey - hl * Math.sin(ang - Math.PI / 6);
+      const p2x = ex - hl * Math.cos(ang + Math.PI / 6), p2y = ey - hl * Math.sin(ang + Math.PI / 6);
+      parts.push(`<polygon points="${ex},${ey} ${p1x},${p1y} ${p2x},${p2y}" fill="${col}" stroke="${col}" stroke-width="1.2" stroke-linejoin="round"/>`);
+    }
+    // Numbers
+    for (const item of d.numbers) {
+      const x = item.dx * CELL, y = item.dy * CELL;
+      if (numberStyle === "slope") {
+        if (item.val === 0) {
+          parts.push(`<circle cx="${x}" cy="${y}" r="${CELL * 0.1}" fill="${c.diag}"/>`);
+        } else {
+          const slope = NUM_SLOPES[item.val];
+          if (slope !== undefined) {
+            let ddx, ddy;
+            if (Math.abs(slope) <= 1) { ddx = CELL / 2; ddy = slope * ddx; }
+            else { ddy = (CELL / 2) * Math.sign(slope); ddx = Math.abs(ddy / slope); }
+            parts.push(`<line x1="${x - ddx}" y1="${y + ddy}" x2="${x + ddx}" y2="${y - ddy}" stroke="${c.diag}" stroke-width="2.5" stroke-linecap="round"/>`);
+          }
+        }
+      } else {
+        const r = 10;
+        parts.push(`<circle cx="${x}" cy="${y}" r="${r}" fill="${c.numBg}" stroke="${c.numBdr}" stroke-width="1"/>`);
+        parts.push(`<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central" fill="${c.num}" font-family="Inter,sans-serif" font-weight="600" font-size="14">${item.val}</text>`);
+      }
+    }
+    parts.push(`</svg>`);
+    return parts.join("");
+  }
+
+  function formatTimeAgo(ts) {
+    const diff = Date.now() - ts;
+    const sec = Math.floor(diff / 1000);
+    if (sec < 60) return "just now";
+    const min = Math.floor(sec / 60);
+    if (min < 60) return `${min}m ago`;
+    const hr = Math.floor(min / 60);
+    if (hr < 24) return `${hr}h ago`;
+    const days = Math.floor(hr / 24);
+    if (days < 30) return `${days}d ago`;
+    return new Date(ts).toLocaleDateString();
+  }
+
+  function clipboardNavigate(dir) {
+    const { all } = getOrderedClipboardItems();
+    if (!all.length) return;
+    clipboardActiveIdx = Math.max(0, Math.min(all.length - 1, clipboardActiveIdx + dir));
+    populateClipboardList();
+  }
+
+  function clipboardPasteSelected() {
+    const { all } = getOrderedClipboardItems();
+    if (!all.length) return;
+    const item = all[clipboardActiveIdx];
+    if (!item) return;
+    clipboard = JSON.parse(JSON.stringify(item.data));
+    closeClipboardPanel();
+    pasteClipboard();
+  }
+
+  function clipboardCopySelected() {
+    const { all } = getOrderedClipboardItems();
+    if (!all.length) return;
+    const item = all[clipboardActiveIdx];
+    if (!item) return;
+    clipboard = JSON.parse(JSON.stringify(item.data));
+    toast("Copied to active clipboard");
+  }
+
+  function clipboardRenameSelected() {
+    const { all } = getOrderedClipboardItems();
+    if (!all.length) return;
+    const item = all[clipboardActiveIdx];
+    if (!item) return;
+    showRenameDialog("Entry name", item.name, (n) => {
+      item.name = n;
+      saveClipboardHistory();
+      populateClipboardList();
+    });
+  }
+
+  function clipboardTogglePin() {
+    const { all } = getOrderedClipboardItems();
+    if (!all.length) return;
+    const item = all[clipboardActiveIdx];
+    if (!item) return;
+    item.pinned = !item.pinned;
+    saveClipboardHistory();
+    // Re-order: find the new index of this item
+    const newOrdered = getOrderedClipboardItems().all;
+    const newIdx = newOrdered.findIndex(e => e.id === item.id);
+    if (newIdx >= 0) clipboardActiveIdx = newIdx;
+    populateClipboardList();
+    toast(item.pinned ? "Pinned" : "Unpinned");
+  }
+
+  function clipboardDeleteSelected() {
+    const { all } = getOrderedClipboardItems();
+    if (!all.length) return;
+    const item = all[clipboardActiveIdx];
+    if (!item) return;
+    const idx = clipboardHistory.findIndex(e => e.id === item.id);
+    if (idx >= 0) clipboardHistory.splice(idx, 1);
+    saveClipboardHistory();
+    const newAll = getOrderedClipboardItems().all;
+    if (clipboardActiveIdx >= newAll.length) clipboardActiveIdx = Math.max(0, newAll.length - 1);
+    populateClipboardList();
+    toast("Deleted entry");
+  }
+
+  function toggleClipboardActions() {
+    clipboardActionsOpen = !clipboardActionsOpen;
+    $("clipboard-actions-popover").style.display = clipboardActionsOpen ? "" : "none";
+  }
+
+  function closeClipboardActions() {
+    clipboardActionsOpen = false;
+    $("clipboard-actions-popover").style.display = "none";
+  }
+
+  function handleClipboardAction(action) {
+    closeClipboardActions();
+    switch (action) {
+      case "paste": clipboardPasteSelected(); break;
+      case "copy": clipboardCopySelected(); break;
+      case "rename": clipboardRenameSelected(); break;
+      case "pin": clipboardTogglePin(); break;
+      case "delete": clipboardDeleteSelected(); break;
+    }
+  }
+
+  // Clipboard panel UI events
+  $("clipboard-modal-close").addEventListener("click", closeClipboardPanel);
+  $("clipboard-modal").addEventListener("close", () => {
+    clipboardPanelOpen = false;
+    clipboardActionsOpen = false;
+  });
+  $("clipboard-actions-btn").addEventListener("click", toggleClipboardActions);
+  document.querySelectorAll("#clipboard-actions-popover .clipboard-action-item").forEach(btn => {
+    btn.addEventListener("click", () => handleClipboardAction(btn.dataset.action));
+  });
+
   // ═══ INIT ═══════════════════════════════════════
   window.addEventListener("resize", resize);
 
@@ -2106,6 +2521,7 @@
   initTheme();
   loadHotkeys();
   updateToolTitles();
+  loadClipboardHistory();
   loadManifest();
   loadCanvas(manifest.activeId);
   canvas.style.cursor = getCursor();
