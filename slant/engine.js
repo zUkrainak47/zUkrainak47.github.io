@@ -391,7 +391,7 @@
     }
   }
 
-  function clearSelection() {
+  function clearSelection(pushToUndo = true) {
     if (selection) {
       const al = L();
       if (al) {
@@ -400,20 +400,22 @@
         commitSelection();
         const afterState = snapshotLayerState(al);
 
-        pushUndo({
-          undo: () => {
-            restoreLayerState(al, beforeState);
-            selection = cloneSelection(beforeSelection);
-            populateLayers();
-            requestDraw();
-          },
-          redo: () => {
-            restoreLayerState(al, afterState);
-            selection = null;
-            populateLayers();
-            requestDraw();
-          }
-        });
+        if (pushToUndo) {
+          pushUndo({
+            undo: () => {
+              restoreLayerState(al, beforeState);
+              selection = cloneSelection(beforeSelection);
+              populateLayers();
+              requestDraw();
+            },
+            redo: () => {
+              restoreLayerState(al, afterState);
+              selection = null;
+              populateLayers();
+              requestDraw();
+            }
+          });
+        }
       }
       selection = null;
     }
@@ -869,25 +871,9 @@
 
     let count = selection.diagonals.size + selection.numbers.size + selection.highlights.size + selection.lines.size + selection.arrows.size;
 
-    for (const k of selection.diagonals) {
-      const val = selection.values.diagonals.get(k);
-      if (val !== undefined) dstLayer.diagonals.set(k, val);
-    }
-    for (const k of selection.numbers) {
-      const val = selection.values.numbers.get(k);
-      if (val !== undefined) dstLayer.numbers.set(k, val);
-    }
-    for (const k of selection.highlights) {
-      const val = selection.values.highlights.get(k);
-      if (val !== undefined) dstLayer.highlights.set(k, val);
-    }
-    for (const k of selection.lines) {
-      const val = selection.values.lines.get(k);
-      if (val !== undefined) dstLayer.lines.set(k, val);
-    }
-    for (const a of selection.arrows) {
-      dstLayer.arrows.push(a);
-    }
+    // Switch to target layer so commitSelection() writes to target layer
+    activeLayerIdx = targetIdx;
+    clearSelection(false);
 
     const afterSrc = snapshotLayerState(srcLayer);
     const afterDst = snapshotLayerState(dstLayer);
@@ -911,9 +897,6 @@
       }
     });
 
-    // Switch to target layer so user sees where items went
-    activeLayerIdx = targetIdx;
-    clearSelection();
     toast(`Moved ${count} items → ${dstLayer.name}`);
     populateLayers();
     scheduleSave();
