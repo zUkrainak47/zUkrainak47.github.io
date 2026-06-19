@@ -840,6 +840,28 @@
     const picker = document.createElement("div");
     picker.className = "layer-picker";
 
+    // "+ New Layer" button
+    const newLayerBtn = document.createElement("button");
+    newLayerBtn.className = "layer-picker__item layer-picker__item--new-layer";
+    newLayerBtn.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 12px; height: 12px; vertical-align: middle;">
+        <line x1="12" y1="5" x2="12" y2="19" stroke-linecap="round" />
+        <line x1="5" y1="12" x2="19" y2="12" stroke-linecap="round" />
+      </svg>
+      <span>New Layer</span>
+    `;
+    newLayerBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      moveSelectionToNewLayer();
+      dismissLayerPicker();
+    });
+    picker.appendChild(newLayerBtn);
+
+    // Divider
+    const divider = document.createElement("div");
+    divider.className = "layer-picker__divider";
+    picker.appendChild(divider);
+
     for (let i = layers.length - 1; i >= 0; i--) {
       const layer = layers[i];
       const isCurrent = i === activeLayerIdx;
@@ -926,6 +948,56 @@
     });
 
     toast(`Moved ${count} items → ${dstLayer.name}`);
+    populateLayers();
+    scheduleSave();
+    requestDraw();
+  }
+
+  function moveSelectionToNewLayer() {
+    if (!selection) return;
+    const srcLayer = L();
+    if (!srcLayer) return;
+
+    liftSelection();
+
+    const newLayer = createLayer();
+    const beforeSrc = snapshotLayerState(srcLayer);
+    const beforeSelection = cloneSelection(selection);
+    const prevActiveIdx = activeLayerIdx;
+
+    layers.push(newLayer);
+    const targetIdx = layers.length - 1;
+
+    let count = selection.diagonals.size + selection.numbers.size + selection.highlights.size + selection.lines.size + selection.arrows.size;
+
+    activeLayerIdx = targetIdx;
+    clearSelection(false);
+
+    const afterSrc = snapshotLayerState(srcLayer);
+    const afterDst = snapshotLayerState(newLayer);
+
+    pushUndo({
+      redo: () => {
+        layers.push(newLayer);
+        restoreLayerState(srcLayer, afterSrc);
+        restoreLayerState(newLayer, afterDst);
+        activeLayerIdx = targetIdx;
+        selection = null;
+        populateLayers();
+        requestDraw();
+      },
+      undo: () => {
+        const i = layers.indexOf(newLayer);
+        if (i >= 0) layers.splice(i, 1);
+        restoreLayerState(srcLayer, beforeSrc);
+        activeLayerIdx = prevActiveIdx;
+        selection = cloneSelection(beforeSelection);
+        populateLayers();
+        requestDraw();
+      }
+    });
+
+    toast(`Moved ${count} items → ${newLayer.name}`);
     populateLayers();
     scheduleSave();
     requestDraw();

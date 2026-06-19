@@ -1149,6 +1149,17 @@ body {
   border-color: transparent;
 }
 
+.layer-picker__divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 6px;
+}
+
+.layer-picker__item--new-layer {
+  color: var(--accent);
+  font-weight: 600;
+}
+
 /* ═══════════════ Clipboard History Modal ═══════════════ */
 .clipboard-modal {
   max-width: 840px;
