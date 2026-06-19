@@ -429,6 +429,7 @@
 
         if (pushToUndo) {
           pushUndo({
+            label: "Clear Selection",
             undo: () => {
               restoreLayerState(al, beforeState);
               selection = cloneSelection(beforeSelection);
@@ -634,6 +635,7 @@
     const afterSelectionClone = cloneSelection(selection);
 
     pushUndo({
+      label: "Move Selection",
       undo: () => {
         selection = cloneSelection(beforeSelection);
         requestDraw();
@@ -660,6 +662,7 @@
     const count = selection.diagonals.size + selection.numbers.size + selection.highlights.size + selection.lines.size + selection.arrows.size;
 
     pushUndo({
+      label: "Delete Selection",
       undo: () => {
         restoreLayerState(al, beforeState);
         selection = cloneSelection(beforeSelection);
@@ -800,6 +803,7 @@
     const afterSelection = cloneSelection(selection);
 
     pushUndo({
+      label: "Paste",
       undo: () => {
         selection = null;
         requestDraw();
@@ -929,6 +933,7 @@
     const afterDst = snapshotLayerState(dstLayer);
 
     pushUndo({
+      label: `Move Selection to "${dstLayer.name}"`,
       undo: () => {
         restoreLayerState(srcLayer, beforeSrc);
         restoreLayerState(dstLayer, beforeDst);
@@ -977,6 +982,7 @@
     const afterDst = snapshotLayerState(newLayer);
 
     pushUndo({
+      label: `Move Selection to New Layer "${newLayer.name}"`,
       redo: () => {
         layers.push(newLayer);
         restoreLayerState(srcLayer, afterSrc);
@@ -1011,8 +1017,8 @@
     redoStack.length = 0;
     scheduleSave();
   }
-  function undo() { const a = undoStack.pop(); if (!a) return; a.undo(); redoStack.push(a); scheduleSave(); requestDraw(); populateLayers(); }
-  function redo() { const a = redoStack.pop(); if (!a) return; a.redo(); undoStack.push(a); scheduleSave(); requestDraw(); populateLayers(); }
+  function undo() { const a = undoStack.pop(); if (!a) return; a.undo(); redoStack.push(a); scheduleSave(); requestDraw(); populateLayers(); if (a.label) toast(`Undo: ${a.label}`); else toast("Undo"); }
+  function redo() { const a = redoStack.pop(); if (!a) return; a.redo(); undoStack.push(a); scheduleSave(); requestDraw(); populateLayers(); if (a.label) toast(`Redo: ${a.label}`); else toast("Redo"); }
 
   function ptSegDist(px, py, x1, y1, x2, y2) {
     const dx = x2 - x1, dy = y2 - y1, len2 = dx * dx + dy * dy;
@@ -1269,7 +1275,16 @@
       nm.className = "layer-name"; nm.textContent = layer.name;
       nm.addEventListener("dblclick", (e) => {
         e.stopPropagation();
-        showRenameDialog("Layer name", layer.name, (n) => { layer.name = n; scheduleSave(); populateLayers(); });
+        showRenameDialog("Layer name", layer.name, (n) => {
+          const old = layer.name;
+          layer.name = n;
+          pushUndo({
+            label: `Rename "${old}" to "${n}"`,
+            redo: () => { layer.name = n; populateLayers(); },
+            undo: () => { layer.name = old; populateLayers(); }
+          });
+          populateLayers();
+        });
       });
 
       div.appendChild(vis); div.appendChild(nm);
@@ -1918,6 +1933,7 @@
           const beforeSelection = selectionBeforeInteraction;
           const afterState = snapshotLayerState(al);
           pushUndo({
+            label: "Edit Selection",
             undo: () => {
               restoreLayerStateAndSelection(al, beforeState, beforeSelection);
               selection = cloneSelection(beforeSelection);
@@ -1971,14 +1987,14 @@
       const cur = al.diagonals.get(k2);
       if (cur !== undefined) {
         al.diagonals.delete(k2);
-        pushUndo({ redo: () => al.diagonals.delete(k2), undo: () => al.diagonals.set(k2, cur) });
+        pushUndo({ label: "Erase Diagonal", redo: () => al.diagonals.delete(k2), undo: () => al.diagonals.set(k2, cur) });
         requestDraw();
       }
     } else {
       const dir = diagonalDir || 1;
       if (!al.diagonals.has(k2)) {
         al.diagonals.set(k2, dir);
-        pushUndo({ redo: () => al.diagonals.set(k2, dir), undo: () => al.diagonals.delete(k2) });
+        pushUndo({ label: "Draw Diagonal", redo: () => al.diagonals.set(k2, dir), undo: () => al.diagonals.delete(k2) });
         requestDraw();
       }
     }
@@ -1989,13 +2005,13 @@
     if (isErase) {
       if (prev !== undefined) {
         al.highlights.delete(k2);
-        pushUndo({ redo: () => al.highlights.delete(k2), undo: () => al.highlights.set(k2, prev) });
+        pushUndo({ label: "Erase Highlight", redo: () => al.highlights.delete(k2), undo: () => al.highlights.set(k2, prev) });
         requestDraw();
       }
     } else {
       if (prev !== col) {
         al.highlights.set(k2, col);
-        pushUndo({ redo: () => al.highlights.set(k2, col), undo: () => { if (prev) al.highlights.set(k2, prev); else al.highlights.delete(k2); } });
+        pushUndo({ label: "Draw Highlight", redo: () => al.highlights.set(k2, col), undo: () => { if (prev) al.highlights.set(k2, prev); else al.highlights.delete(k2); } });
         requestDraw();
       }
     }
@@ -2006,7 +2022,7 @@
     const al = L(), cur = al.numbers.get(k2);
     if (cur !== undefined) {
       al.numbers.delete(k2);
-      pushUndo({ redo: () => al.numbers.delete(k2), undo: () => al.numbers.set(k2, cur) });
+      pushUndo({ label: "Erase Number", redo: () => al.numbers.delete(k2), undo: () => al.numbers.set(k2, cur) });
       requestDraw();
     }
   }
@@ -2035,13 +2051,13 @@
         const prev = al.lines.get(ek);
         if (prev !== undefined) {
           al.lines.delete(ek);
-          pushUndo({ redo: () => al.lines.delete(ek), undo: () => al.lines.set(ek, prev) });
+          pushUndo({ label: "Erase Line", redo: () => al.lines.delete(ek), undo: () => al.lines.set(ek, prev) });
         }
       } else {
         const prev = al.lines.get(ek);
         if (prev !== col) {
           al.lines.set(ek, col);
-          pushUndo({ redo: () => al.lines.set(ek, col), undo: () => { if (prev !== undefined) al.lines.set(ek, prev); else al.lines.delete(ek); } });
+          pushUndo({ label: "Draw Line", redo: () => al.lines.set(ek, col), undo: () => { if (prev !== undefined) al.lines.set(ek, prev); else al.lines.delete(ek); } });
         }
       }
     }
@@ -2068,34 +2084,34 @@
       case "diagonal": {
 
         const { cx, cy } = worldToCell(w.x, w.y), k2 = key(cx, cy), cur = al.diagonals.get(k2);
-        if (e.shiftKey) { if (cur !== undefined) { al.diagonals.delete(k2); pushUndo({ redo: () => al.diagonals.delete(k2), undo: () => al.diagonals.set(k2, cur) }); } }
+        if (e.shiftKey) { if (cur !== undefined) { al.diagonals.delete(k2); pushUndo({ label: "Erase Diagonal", redo: () => al.diagonals.delete(k2), undo: () => al.diagonals.set(k2, cur) }); } }
         else if (diagonalDir !== null) {
-          if (cur === diagonalDir) { al.diagonals.delete(k2); pushUndo({ redo: () => al.diagonals.delete(k2), undo: () => al.diagonals.set(k2, cur) }); }
-          else { const d = diagonalDir; al.diagonals.set(k2, d); pushUndo({ redo: () => al.diagonals.set(k2, d), undo: () => { if (cur !== undefined) al.diagonals.set(k2, cur); else al.diagonals.delete(k2); } }); }
+          if (cur === diagonalDir) { al.diagonals.delete(k2); pushUndo({ label: "Erase Diagonal", redo: () => al.diagonals.delete(k2), undo: () => al.diagonals.set(k2, cur) }); }
+          else { const d = diagonalDir; al.diagonals.set(k2, d); pushUndo({ label: "Draw Diagonal", redo: () => al.diagonals.set(k2, d), undo: () => { if (cur !== undefined) al.diagonals.set(k2, cur); else al.diagonals.delete(k2); } }); }
         }
-        else if (cur === undefined) { al.diagonals.set(k2, 1); pushUndo({ redo: () => al.diagonals.set(k2, 1), undo: () => al.diagonals.delete(k2) }); }
-        else if (cur === 1) { al.diagonals.set(k2, -1); pushUndo({ redo: () => al.diagonals.set(k2, -1), undo: () => al.diagonals.set(k2, 1) }); }
-        else { al.diagonals.delete(k2); pushUndo({ redo: () => al.diagonals.delete(k2), undo: () => al.diagonals.set(k2, -1) }); }
+        else if (cur === undefined) { al.diagonals.set(k2, 1); pushUndo({ label: "Draw Diagonal", redo: () => al.diagonals.set(k2, 1), undo: () => al.diagonals.delete(k2) }); }
+        else if (cur === 1) { al.diagonals.set(k2, -1); pushUndo({ label: "Draw Diagonal", redo: () => al.diagonals.set(k2, -1), undo: () => al.diagonals.set(k2, 1) }); }
+        else { al.diagonals.delete(k2); pushUndo({ label: "Erase Diagonal", redo: () => al.diagonals.delete(k2), undo: () => al.diagonals.set(k2, -1) }); }
         requestDraw(); break;
       }
       case "number": {
         const { ix, iy } = nearestInt(w.x, w.y), k2 = key(ix, iy), cur = al.numbers.get(k2), val = activeNumber;
-        if (e.shiftKey) { if (cur !== undefined) { al.numbers.delete(k2); pushUndo({ redo: () => al.numbers.delete(k2), undo: () => al.numbers.set(k2, cur) }); } }
-        else if (cur === val) { al.numbers.delete(k2); pushUndo({ redo: () => al.numbers.delete(k2), undo: () => al.numbers.set(k2, cur) }); }
-        else { al.numbers.set(k2, val); pushUndo({ redo: () => al.numbers.set(k2, val), undo: () => { if (cur !== undefined) al.numbers.set(k2, cur); else al.numbers.delete(k2); } }); }
+        if (e.shiftKey) { if (cur !== undefined) { al.numbers.delete(k2); pushUndo({ label: "Erase Number", redo: () => al.numbers.delete(k2), undo: () => al.numbers.set(k2, cur) }); } }
+        else if (cur === val) { al.numbers.delete(k2); pushUndo({ label: "Erase Number", redo: () => al.numbers.delete(k2), undo: () => al.numbers.set(k2, cur) }); }
+        else { al.numbers.set(k2, val); pushUndo({ label: "Set Number", redo: () => al.numbers.set(k2, val), undo: () => { if (cur !== undefined) al.numbers.set(k2, cur); else al.numbers.delete(k2); } }); }
         requestDraw(); break;
       }
       case "highlight": {
         const { cx, cy } = worldToCell(w.x, w.y), k2 = key(cx, cy), cur = al.highlights.get(k2), col = highlightColour;
-        if (e.shiftKey || cur === col) { if (cur !== undefined) { al.highlights.delete(k2); pushUndo({ redo: () => al.highlights.delete(k2), undo: () => al.highlights.set(k2, cur) }); } }
-        else { al.highlights.set(k2, col); pushUndo({ redo: () => al.highlights.set(k2, col), undo: () => { if (cur !== undefined) al.highlights.set(k2, cur); else al.highlights.delete(k2); } }); }
+        if (e.shiftKey || cur === col) { if (cur !== undefined) { al.highlights.delete(k2); pushUndo({ label: "Erase Highlight", redo: () => al.highlights.delete(k2), undo: () => al.highlights.set(k2, cur) }); } }
+        else { al.highlights.set(k2, col); pushUndo({ label: "Draw Highlight", redo: () => al.highlights.set(k2, col), undo: () => { if (cur !== undefined) al.highlights.set(k2, cur); else al.highlights.delete(k2); } }); }
         requestDraw(); break;
       }
       case "line": {
         const edge = nearestEdge(w.x, w.y), lk = lineKey(edge.orient, edge.cx, edge.cy);
         const cur = al.lines.get(lk), col = lineColour;
-        if (e.shiftKey || cur === col) { if (cur !== undefined) { al.lines.delete(lk); pushUndo({ redo: () => al.lines.delete(lk), undo: () => al.lines.set(lk, cur) }); } }
-        else { al.lines.set(lk, col); pushUndo({ redo: () => al.lines.set(lk, col), undo: () => { if (cur !== undefined) al.lines.set(lk, cur); else al.lines.delete(lk); } }); }
+        if (e.shiftKey || cur === col) { if (cur !== undefined) { al.lines.delete(lk); pushUndo({ label: "Erase Line", redo: () => al.lines.delete(lk), undo: () => al.lines.set(lk, cur) }); } }
+        else { al.lines.set(lk, col); pushUndo({ label: "Draw Line", redo: () => al.lines.set(lk, col), undo: () => { if (cur !== undefined) al.lines.set(lk, cur); else al.lines.delete(lk); } }); }
         requestDraw(); break;
       }
       case "arrow": {
@@ -2106,7 +2122,7 @@
           if (cx !== arrowStart.cx || cy !== arrowStart.cy) {
             const a = { cx1: arrowStart.cx, cy1: arrowStart.cy, cx2: cx, cy2: cy, colour: arrowColour };
             al.arrows.push(a);
-            pushUndo({ redo: () => al.arrows.push(a), undo: () => { const i = al.arrows.indexOf(a); if (i >= 0) al.arrows.splice(i, 1); } });
+            pushUndo({ label: "Draw Arrow", redo: () => al.arrows.push(a), undo: () => { const i = al.arrows.indexOf(a); if (i >= 0) al.arrows.splice(i, 1); } });
           }
           arrowStart = null; requestDraw();
         }
@@ -2122,16 +2138,16 @@
       const d = ptSegDist(w.x, w.y, s.wx, s.wy, e.wx, e.wy);
       if (d < bestD) { bestD = d; best = i; }
     }
-    if (best >= 0) { const rm = al.arrows.splice(best, 1)[0]; pushUndo({ redo: () => { const i = al.arrows.indexOf(rm); if (i >= 0) al.arrows.splice(i, 1); }, undo: () => al.arrows.push(rm) }); }
+    if (best >= 0) { const rm = al.arrows.splice(best, 1)[0]; pushUndo({ label: "Erase Arrow", redo: () => { const i = al.arrows.indexOf(rm); if (i >= 0) al.arrows.splice(i, 1); }, undo: () => al.arrows.push(rm) }); }
   }
 
   // ── Context menu (right-click remove) ──
   canvas.addEventListener("contextmenu", e => {
     e.preventDefault(); const w = screenToWorld(e.clientX, e.clientY), al = L();
-    if (activeTool === "diagonal") { const { cx, cy } = worldToCell(w.x, w.y), k2 = key(cx, cy), cur = al.diagonals.get(k2); if (cur !== undefined) { al.diagonals.delete(k2); pushUndo({ redo: () => al.diagonals.delete(k2), undo: () => al.diagonals.set(k2, cur) }); requestDraw(); } }
-    else if (activeTool === "number") { const { ix, iy } = nearestInt(w.x, w.y), k2 = key(ix, iy), cur = al.numbers.get(k2); if (cur !== undefined) { al.numbers.delete(k2); pushUndo({ redo: () => al.numbers.delete(k2), undo: () => al.numbers.set(k2, cur) }); requestDraw(); } }
-    else if (activeTool === "highlight") { const { cx, cy } = worldToCell(w.x, w.y), k2 = key(cx, cy), cur = al.highlights.get(k2); if (cur !== undefined) { al.highlights.delete(k2); pushUndo({ redo: () => al.highlights.delete(k2), undo: () => al.highlights.set(k2, cur) }); requestDraw(); } }
-    else if (activeTool === "line") { const edge = nearestEdge(w.x, w.y), lk = lineKey(edge.orient, edge.cx, edge.cy), cur = al.lines.get(lk); if (cur !== undefined) { al.lines.delete(lk); pushUndo({ redo: () => al.lines.delete(lk), undo: () => al.lines.set(lk, cur) }); requestDraw(); } }
+    if (activeTool === "diagonal") { const { cx, cy } = worldToCell(w.x, w.y), k2 = key(cx, cy), cur = al.diagonals.get(k2); if (cur !== undefined) { al.diagonals.delete(k2); pushUndo({ label: "Erase Diagonal", redo: () => al.diagonals.delete(k2), undo: () => al.diagonals.set(k2, cur) }); requestDraw(); } }
+    else if (activeTool === "number") { const { ix, iy } = nearestInt(w.x, w.y), k2 = key(ix, iy), cur = al.numbers.get(k2); if (cur !== undefined) { al.numbers.delete(k2); pushUndo({ label: "Erase Number", redo: () => al.numbers.delete(k2), undo: () => al.numbers.set(k2, cur) }); requestDraw(); } }
+    else if (activeTool === "highlight") { const { cx, cy } = worldToCell(w.x, w.y), k2 = key(cx, cy), cur = al.highlights.get(k2); if (cur !== undefined) { al.highlights.delete(k2); pushUndo({ label: "Erase Highlight", redo: () => al.highlights.delete(k2), undo: () => al.highlights.set(k2, cur) }); requestDraw(); } }
+    else if (activeTool === "line") { const edge = nearestEdge(w.x, w.y), lk = lineKey(edge.orient, edge.cx, edge.cy), cur = al.lines.get(lk); if (cur !== undefined) { al.lines.delete(lk); pushUndo({ label: "Erase Line", redo: () => al.lines.delete(lk), undo: () => al.lines.set(lk, cur) }); requestDraw(); } }
     else if (activeTool === "arrow") { removeArrowNear(w); requestDraw(); }
   });
 
@@ -2259,7 +2275,7 @@
             if (cur !== undefined) {
               const nv = cur === 1 ? -1 : 1;
               al.diagonals.set(k2, nv);
-              pushUndo({ redo: () => al.diagonals.set(k2, nv), undo: () => al.diagonals.set(k2, cur) });
+              pushUndo({ label: "Flip Diagonal", redo: () => al.diagonals.set(k2, nv), undo: () => al.diagonals.set(k2, cur) });
               requestDraw();
             }
             return;
@@ -2365,6 +2381,7 @@
     const newLayer = createLayer(); layers.push(newLayer); const newIdx = layers.length - 1;
     const prevIdx = activeLayerIdx; activeLayerIdx = newIdx;
     pushUndo({
+      label: `Create Layer "${newLayer.name}"`,
       redo: () => { clearSelection(); layers.push(newLayer); activeLayerIdx = layers.length - 1; populateLayers(); },
       undo: () => { clearSelection(); const i = layers.indexOf(newLayer); if (i >= 0) layers.splice(i, 1); activeLayerIdx = Math.min(prevIdx, layers.length - 1); populateLayers(); }
     });
@@ -2379,6 +2396,7 @@
     if (activeLayerIdx >= layers.length) activeLayerIdx = layers.length - 1;
     const newActive = activeLayerIdx;
     pushUndo({
+      label: `Delete Layer "${removed.name}"`,
       redo: () => { clearSelection(); const i = layers.indexOf(removed); if (i >= 0) layers.splice(i, 1); if (activeLayerIdx >= layers.length) activeLayerIdx = layers.length - 1; populateLayers(); },
       undo: () => { clearSelection(); layers.splice(idx, 0, removed); activeLayerIdx = prevActive; populateLayers(); }
     });
@@ -2387,7 +2405,7 @@
 
   $("btn-rename-layer").addEventListener("click", () => {
     const layer = L(); if (!layer) return;
-    showRenameDialog("Layer name", layer.name, (n) => { const old = layer.name; layer.name = n; pushUndo({ redo: () => { layer.name = n; populateLayers(); }, undo: () => { layer.name = old; populateLayers(); } }); populateLayers(); });
+    showRenameDialog("Layer name", layer.name, (n) => { const old = layer.name; layer.name = n; pushUndo({ label: `Rename "${old}" to "${n}"`, redo: () => { layer.name = n; populateLayers(); }, undo: () => { layer.name = old; populateLayers(); } }); populateLayers(); });
   });
 
   $("btn-isolate-layer").addEventListener("click", () => {
