@@ -21,6 +21,13 @@
     <div class="toolbar-group toolbar-title">
       <span class="logo">⧸</span>
       <span class="title">Slant</span>
+      <button id="btn-toggle-panels" class="icon-btn" title="Hide all panels (Z)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+          stroke-linejoin="round" style="width: 15px; height: 15px;">
+          <rect x="3" y="3" width="18" height="18" rx="2" />
+          <path d="M9 3v18M15 3v18" />
+        </svg>
+      </button>
       <button id="btn-theme" class="icon-btn" title="Toggle theme">
         <svg id="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
@@ -250,8 +257,7 @@
             <line x1="8" y1="16" x2="16" y2="16" />
           </svg>
           Hotkeys
-        </button>
-        <input type="file" id="file-input" accept=".json" style="display:none">
+          <input type="file" id="file-input" accept=".json" style="display:none">
       </div>
     </div>
 
@@ -468,6 +474,15 @@
 
   <!-- ─── Toast ─── -->
   <div id="toast" class="toast hidden"></div>
+
+  <!-- Floating show panels button (only visible when panels are hidden) -->
+  <button id="btn-floating-panels-toggle" class="floating-btn" title="Show panels (Z)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+      stroke-linejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <path d="M9 3v18M15 3v18" />
+    </svg>
+  </button>
 
   <script src="engine.js?v=12"></script>
 </body>
