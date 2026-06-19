@@ -2944,12 +2944,12 @@
       });
 
       const canvas = document.createElement("canvas");
-      // Calculate a scale factor that ensures both width and height are at least 1200px (Option A)
+      // Target at least 1200px on the shortest side and 2x scale when the cap permits it.
       let scale = Math.max(2, 1200 / Math.min(vw, vh));
-      // Clamp the scale factor to ensure the maximum dimension does not exceed 4096px
+      // Hard-cap the longest side at 4096px, allowing large selections to be scaled down.
       const maxDim = Math.max(vw, vh);
       if (maxDim * scale > 4096) {
-        scale = Math.max(2, 4096 / maxDim);
+        scale = 4096 / maxDim;
       }
       
       canvas.width = Math.round(vw * scale);
