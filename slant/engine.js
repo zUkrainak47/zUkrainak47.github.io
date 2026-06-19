@@ -1178,11 +1178,15 @@
   // ═══ LAYER UI ═══════════════════════════════════
   function populateLayers() {
     const list = $("layer-list"); list.innerHTML = "";
+    let activeDiv = null;
     // Show top layer first (reverse order)
     for (let i = layers.length - 1; i >= 0; i--) {
       const layer = layers[i], idx = i;
       const div = document.createElement("div");
       div.className = "layer-item" + (idx === activeLayerIdx ? " active" : "") + (layer.visible ? "" : " hidden-layer");
+      if (idx === activeLayerIdx) {
+        activeDiv = div;
+      }
 
       const vis = document.createElement("button");
       vis.className = "layer-vis"; vis.innerHTML = layer.visible ? EYE_OPEN : EYE_SHUT;
@@ -1208,6 +1212,9 @@
 
 
       list.appendChild(div);
+    }
+    if (activeDiv) {
+      activeDiv.scrollIntoView({ block: "nearest" });
     }
   }
 
@@ -2127,6 +2134,21 @@
       return; // swallow all other keys while panel is open
     }
 
+    // Swap between layers (Alt+ArrowUp/Down)
+    if (e.altKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
+      e.preventDefault();
+      const direction = e.key === "ArrowUp" ? 1 : -1;
+      const targetIdx = activeLayerIdx + direction;
+      if (targetIdx >= 0 && targetIdx < layers.length) {
+        clearSelection();
+        activeLayerIdx = targetIdx;
+        populateLayers();
+        requestDraw();
+        toast(`Active layer: ${layers[targetIdx].name}`);
+      }
+      return;
+    }
+
     // Escape cancels arrow start or selection
     if (e.key === "Escape") {
       if (arrowStart) { arrowStart = null; requestDraw(); return; }
@@ -2351,6 +2373,16 @@
       btn.addEventListener("click", () => { recordingAction = act.id; populateHotkeyList(); });
       row.appendChild(label); row.appendChild(btn); list.appendChild(row);
     }
+
+    // Add read-only Swap active layer shortcut (Alt+Up/Down)
+    const layerRow = document.createElement("div"); layerRow.className = "hotkey-row";
+    const layerLabel = document.createElement("span"); layerLabel.className = "hotkey-row__label"; layerLabel.textContent = "Swap active layer";
+    const layerKey = document.createElement("span"); layerKey.className = "hotkey-row__key";
+    layerKey.textContent = "ALT + ↑ / ↓";
+    layerKey.style.cursor = "default";
+    layerKey.style.opacity = "0.7";
+    layerRow.appendChild(layerLabel); layerRow.appendChild(layerKey);
+    list.appendChild(layerRow);
   }
 
   // ── Rename dialog (reusable) ──
