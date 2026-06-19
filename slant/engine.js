@@ -809,6 +809,7 @@
     });
 
     toast(`Pasted ${count} items`);
+    setTool("select");
     scheduleSave();
     requestDraw();
   }
