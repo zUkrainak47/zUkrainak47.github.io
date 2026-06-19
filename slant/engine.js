@@ -75,7 +75,7 @@
 
   // Drag / pan
   let dragging = false, dragStartX = 0, dragStartY = 0, camStartX = 0, camStartY = 0;
-  let pointerDown = false, didDrag = false;
+  let pointerDown = false, activePointerId = null, didDrag = false;
   let lastPaintedCell = null, lastPaintedHighlight = null, lastPaintedLine = null, lastPaintedLineCoord = null, lastPaintedNumber = null;
   let lineDragOrient = null, lineDragFixed = null; // lock orientation+axis during drag
 
@@ -1750,12 +1750,15 @@
 
   // ═══ POINTER EVENTS ═════════════════════════════
   function getP(e) { return { x: e.clientX, y: e.clientY }; }
+  function isCanvasPoint(e) { return document.elementFromPoint(e.clientX, e.clientY) === canvas; }
 
   canvas.addEventListener("pointerdown", e => {
+    if (pointerDown) return;
     const p = getP(e);
     const w = screenToWorld(p.x, p.y);
     dragStartX = p.x;
     dragStartY = p.y;
+    if (e.button === 0 || e.button === 1) activePointerId = e.pointerId;
 
     if (e.button === 0 && activeTool === "select") {
       if (e.shiftKey) {
@@ -1904,13 +1907,15 @@
     requestDraw(); // for hover preview
   });
 
-  canvas.addEventListener("pointerup", e => {
-    if (!pointerDown) return;
+  window.addEventListener("pointerup", e => {
+    if (!pointerDown || e.pointerId !== activePointerId) return;
     const p = getP(e), w = screenToWorld(p.x, p.y);
+    const releasedOnCanvas = isCanvasPoint(e);
 
     if (marqueeActive) {
       marqueeActive = false;
       pointerDown = false;
+      activePointerId = null;
       canvas.style.cursor = getCursor();
       if (!didDrag) {
         selection = selectionBeforeDrag;
@@ -1957,6 +1962,7 @@
     if (draggingSelection) {
       draggingSelection = false;
       pointerDown = false;
+      activePointerId = null;
       canvas.style.cursor = getCursor();
       if (dragSelectionOffset.dcx !== 0 || dragSelectionOffset.dcy !== 0) {
         moveSelection(dragSelectionOffset.dcx, dragSelectionOffset.dcy);
@@ -1968,13 +1974,46 @@
     }
 
     if (dragging) {
-      dragging = false; pointerDown = false; canvas.style.cursor = getCursor(); scheduleSave();
-      if (!didDrag && activeTool === "select") handleClick(w, e);
+      dragging = false; pointerDown = false; activePointerId = null; canvas.style.cursor = getCursor(); scheduleSave();
+      if (!didDrag && activeTool === "select" && releasedOnCanvas) handleClick(w, e);
       return;
     }
 
-    if (e.button === 0 && !didDrag) handleClick(w, e);
-    pointerDown = false; didDrag = false; lastPaintedCell = null; lastPaintedHighlight = null; lastPaintedLine = null; lastPaintedLineCoord = null; lastPaintedNumber = null; lineDragOrient = null; lineDragFixed = null;
+    if (e.button === 0 && !didDrag && releasedOnCanvas) handleClick(w, e);
+    pointerDown = false; activePointerId = null; didDrag = false; lastPaintedCell = null; lastPaintedHighlight = null; lastPaintedLine = null; lastPaintedLineCoord = null; lastPaintedNumber = null; lineDragOrient = null; lineDragFixed = null;
+  });
+
+  window.addEventListener("pointercancel", e => {
+    if (!pointerDown || e.pointerId !== activePointerId) return;
+    const shouldSaveCamera = dragging && (camX !== camStartX || camY !== camStartY);
+    if (marqueeActive) {
+      marqueeActive = false;
+      const al = L();
+      if (al && layerStateBeforeInteraction) {
+        restoreLayerState(al, layerStateBeforeInteraction);
+      }
+      selection = selectionBeforeInteraction;
+      selectionBeforeDrag = null;
+      selectionBeforeInteraction = null;
+      layerStateBeforeInteraction = null;
+    }
+    draggingSelection = false;
+    dragging = false;
+    pointerDown = false;
+    activePointerId = null;
+    didDrag = false;
+    dragSelectionOffset = { dcx: 0, dcy: 0 };
+    canvas.style.cursor = getCursor();
+    lastPaintedCell = null;
+    lastPaintedHighlight = null;
+    lastPaintedLine = null;
+    lastPaintedLineCoord = null;
+    lastPaintedNumber = null;
+    lineDragOrient = null;
+    lineDragFixed = null;
+    if (shouldSaveCamera) scheduleSave();
+    updateDeleteButtonPosition();
+    requestDraw();
   });
 
 
@@ -2243,6 +2282,7 @@
       if (marqueeActive) {
         marqueeActive = false;
         pointerDown = false;
+        activePointerId = null;
         selection = selectionBeforeDrag;
         if (selection) {
           selection.values = null;
