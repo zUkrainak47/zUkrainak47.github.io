@@ -2566,7 +2566,15 @@
   $("btn-load").addEventListener("click", () => $("file-input").click());
   $("file-input").addEventListener("change", e => {
     const file = e.target.files[0]; if (!file) return;
-    const r = new FileReader(); r.onload = () => { try { deserialise(r.result); toast("Imported " + file.name); } catch (err) { toast("Error loading file"); console.error(err); } };
+    const r = new FileReader(); r.onload = () => {
+      try {
+        JSON.parse(r.result); // Validate before creating or switching canvases.
+        const canvasName = file.name.replace(/\.[^.]+$/, "").trim() || undefined;
+        createCanvas(canvasName);
+        deserialise(r.result);
+        toast("Imported " + file.name);
+      } catch (err) { toast("Error loading file"); console.error(err); }
+    };
     r.readAsText(file); e.target.value = "";
   });
 
